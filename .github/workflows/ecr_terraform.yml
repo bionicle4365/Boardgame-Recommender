@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - ecr_infrastructure/
-      - "./.github/workflows/ecr_terraform.yml"
+      - ".github/workflows/ecr_terraform.yml"
   pull_request:
     branches: [ "main" ]
     paths:
