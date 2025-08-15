@@ -19,20 +19,13 @@ env:
   S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME}}
 
 jobs:
-  generate-tag:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Generate Docker image tag
-      id: generate_tag
-      run: echo "IMAGE_TAG=bgg_scraper:$(date +%s)" >> $GITHUB_ENV
   build:
     runs-on: ubuntu-latest
     needs: generate-tag
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ${IMAGE_TAG}
+      run: docker build . --file Dockerfile --tag bgg_scraper:${{ github.run_number }}
       working-directory: ./bgg_game_scraper
   push:
     runs-on: ubuntu-latest
@@ -44,7 +37,7 @@ jobs:
     - name: Push the Docker image to ECR
       run: |
         aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_URL}
-        docker tag ${IMAGE_TAG} ${ECR_URL}:latest
+        docker tag bgg_scraper:${{ github.run_number }} ${ECR_URL}:latest
         docker push ${ECR_URL}:latest
       working-directory: ./bgg_game_scraper
 
