@@ -3,10 +3,11 @@ name: Docker Image CI
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - ./bgg_game_scraper/
   pull_request:
     branches: [ "main" ]
-  paths:
-    - ./bgg_game_scraper/
+  
 
 jobs:
 
