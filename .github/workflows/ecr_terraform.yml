@@ -4,13 +4,13 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - ./ecr_infrastructure/
-      - ./.github/workflows/ecr_terraform.yml
+      - ecr_infrastructure/
+      - "./.github/workflows/ecr_terraform.yml"
   pull_request:
     branches: [ "main" ]
     paths:
-      - ./ecr_infrastructure/
-      - ./.github/workflows/ecr_terraform.yml
+      - ecr_infrastructure/
+      - ".github/workflows/ecr_terraform.yml"
   workflow_dispatch:
 
 permissions:

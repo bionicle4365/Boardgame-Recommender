@@ -4,13 +4,13 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - ./bgg_game_scraper/
-      - ./.github/workflows/scraper-docker-image.yml
+      - bgg_game_scraper/
+      - ".github/workflows/scraper-docker-image.yml"
   pull_request:
     branches: [ "main" ]
     paths:
-      - ./bgg_game_scraper/
-      - ./.github/workflows/scraper-docker-image.yml
+      - bgg_game_scraper/
+      - ".github/workflows/scraper-docker-image.yml"
   workflow_dispatch:
   workflow_run:
     workflows: ["ECR Terraform"]
