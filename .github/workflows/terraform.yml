@@ -70,6 +70,7 @@ jobs:
     steps:
       - name: Build Lambda Zip
         run: |
+          ls
           cd bgg_game_data_scraper/
           mkdir -p package
           pip install -r requirements.txt -t ./package
