@@ -7,6 +7,7 @@ on:
       - ./bgg_game_scraper/
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
