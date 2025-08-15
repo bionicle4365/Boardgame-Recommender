@@ -19,14 +19,7 @@ env:
   S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME}}
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag bgg_scraper:${{ github.run_number }}
-      working-directory: ./bgg_game_scraper
-  push:
+  build and push:
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -35,6 +28,7 @@ jobs:
       run: echo "ECR_URL=$(aws secretsmanager get-secret-value --region us-east-1 --secret-id ecr_repository_url --query SecretString --output text)" >> $GITHUB_ENV
     - name: Push the Docker image to ECR
       run: |
+        docker build . --file Dockerfile --tag bgg_scraper:${{ github.run_number }}
         aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_URL}
         docker tag bgg_scraper:${{ github.run_number }} ${ECR_URL}:latest
         docker push ${ECR_URL}:latest
