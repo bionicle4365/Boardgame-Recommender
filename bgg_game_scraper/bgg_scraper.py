@@ -10,7 +10,7 @@ def main():
     Reads a starting ID from S3, queries BGG API, and checks if it's a boardgame.
     """
     s3_bucket_name = os.environ.get('S3_BUCKET_NAME', 'your-s3-bucket-name') # Replace with your S3 bucket name
-    s3_key = os.environ.get('S3_KEY', 'bgg_start_id.txt') # Replace with your S3 key for the ID file
+    s3_key = os.environ.get('S3_KEY', 'bgg-scraper/bgg_start_id.txt') # Replace with your S3 key for the ID file
     bgg_api_base_url = "https://boardgamegeek.com/xmlapi2/thing"
 
     s3 = boto3.client('s3')
