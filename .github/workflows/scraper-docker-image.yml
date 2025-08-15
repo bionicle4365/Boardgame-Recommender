@@ -23,4 +23,4 @@ jobs:
         AWS_ACCESS_KEY: ${{secrets.AWS_ACCESS_KEY}}
         AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
         S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME_SCRAPER}}
-      run: docker build ./ --file Dockerfile --tag bgg_scraper:$(date +%s)
+      run: docker build ./bgg_game_scraper/ --file Dockerfile --tag bgg_scraper:$(date +%s)
