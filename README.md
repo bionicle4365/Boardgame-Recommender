@@ -1,1 +1,2 @@
+[![BGG Game Scraper Docker Image](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/scraper-docker-image.yml/badge.svg)](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/scraper-docker-image.yml) [![ECR Terraform](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/ecr_terraform.yml/badge.svg)](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/ecr_terraform.yml)
 # Boardgame-Recommender
