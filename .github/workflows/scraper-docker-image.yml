@@ -38,7 +38,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
         S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME}}
       run: |
-        echo "${ECR_URL}"
+        echo ${ECR_URL}
         aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_URL}
         docker tag bgg_scraper:$(date +%s) ${ECR_URL}:latest
         docker push ${ECR_URL}:latest
