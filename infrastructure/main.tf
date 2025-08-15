@@ -22,7 +22,7 @@ module "lambda" {
   lambda_function_name = "bgg_game_data_scraper"
   sqs_queue_url = module.sqs.sqs_queue_url
   sqs_queue_arn = module.sqs.sqs_queue_arn
-  lambda_execution_role_arn = module.iam.lambda_exec.arn
+  lambda_execution_role_arn = module.iam.lambda_exec_role_arn
 }
 
 module "iam" {
