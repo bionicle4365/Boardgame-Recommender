@@ -89,7 +89,7 @@ jobs:
 
     # Generates an execution plan for Terraform
     - name: Terraform Plan
-      run: terraform plan -input=false -backend-config=config.s3.tfbackend
+      run: terraform plan -input=false
       working-directory: ./infrastructure
 
       # On push to "main", build or change infrastructure according to Terraform configuration files
