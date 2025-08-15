@@ -8,6 +8,10 @@ terraform {
   backend "s3" {}
 }
 
+provider "aws" {
+  region = "us-east-1"
+}
+
 module "sqs" {
   source = "./modules/sqs"
   sqs_queue_name = "bgg_game_data_scraper_queue"
