@@ -48,6 +48,7 @@ jobs:
 
     # Checks that all Terraform configuration files are syntactically valid and internally consistent, regardless of any state or variables
     - name: Terraform Validate
+      depends-on: Build Lambda Zip
       run: terraform validate
       working-directory: ./infrastructure
 
@@ -62,3 +63,14 @@ jobs:
       if: github.ref == 'refs/heads/main'
       run: terraform apply -auto-approve -input=false
       working-directory: ./infrastructure
+
+    - name: Build Lambda Zip
+      run: |
+        pip install -r requirements.txt -t ./package
+        cd package
+        zip -r ../bgg_game_data_scraper.zip .
+        cd ..
+        zip -g bgg_game_data_scraper.zip bgg_game_data_scraper.py
+        mv bgg_game_data_scraper.zip ../infrastructure/bgg_game_data_scraper.zip
+      working-directory: ./bgg_game_data_scraper
+
