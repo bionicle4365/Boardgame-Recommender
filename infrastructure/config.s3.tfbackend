@@ -1,4 +1,4 @@
 bucket = "boardgame-app"
-key = "boardgame-app-ecr-infra-terraform-state"
+key = "boardgame-app-terraform-state"
 region = "us-east-1"
 use_lockfile = true
