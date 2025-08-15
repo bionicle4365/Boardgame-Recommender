@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build "./BGG Game Scraper" --file Dockerfile --bgg_scraper:$(date +%s)
+      run: docker build "./BGG Game Scraper" --file Dockerfile --tag bgg_scraper:$(date +%s)
