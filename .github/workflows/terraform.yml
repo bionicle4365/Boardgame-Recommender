@@ -57,9 +57,9 @@ jobs:
     name: 'Terraform'
     runs-on: ubuntu-latest
     env:
-        TF_VAR_AWS_ACCESS_KEY: ${{secrets.AWS_ACCESS_KEY}}
-        TF_VAR_AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-        TF_VAR_S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME_SCRAPER}}
+        AWS_ACCESS_KEY: ${{secrets.AWS_ACCESS_KEY}}
+        AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+        S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME_SCRAPER}}
 
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
