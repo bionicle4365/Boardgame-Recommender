@@ -46,9 +46,9 @@ jobs:
       run: terraform init -backend-config=config.s3.tfbackend
       working-directory: ./ecr_infrastructure
 
-    # Checks that all Terraform configuration files adhere to a canonical format
-    - name: Terraform Format
-      run: terraform fmt -check
+    # Checks that all Terraform configuration files are syntactically valid and internally consistent, regardless of any state or variables
+    - name: Terraform Validate
+      run: terraform validate
       working-directory: ./ecr_infrastructure
 
     # Generates an execution plan for Terraform
