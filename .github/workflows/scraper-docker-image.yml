@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - ./bgg_game_scraper/
+      - ./.github/workflows/scraper-docker-image.yml
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
