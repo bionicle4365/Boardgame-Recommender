@@ -5,6 +5,8 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  paths:
+    - ./bgg_game_scraper/
 
 jobs:
 
@@ -15,4 +17,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build "./BGG Game Scraper" --file Dockerfile --tag bgg_scraper:$(date +%s)
+      run: docker build ./bgg_game_scraper/ --file Dockerfile --tag bgg_scraper:$(date +%s)
