@@ -2,15 +2,15 @@ import boto3
 import requests
 import xml.etree.ElementTree as ET
 import os
-import sys # Import sys for exiting on critical errors
+import sys
 
 def main():
     """
     Main function to scrape BoardGameGeek API.
     Reads a starting ID from S3, queries BGG API, and checks if it's a boardgame.
     """
-    s3_bucket_name = os.environ.get('S3_BUCKET_NAME', 'your-s3-bucket-name') # Replace with your S3 bucket name
-    s3_key = os.environ.get('S3_KEY', 'bgg-scraper/bgg_start_id.txt') # Replace with your S3 key for the ID file
+    s3_bucket_name = os.environ.get('S3_BUCKET_NAME', 'boardgame-app')
+    s3_key = os.environ.get('S3_KEY', 'bgg-scraper/bgg_start_id.txt')
     bgg_api_base_url = "https://boardgamegeek.com/xmlapi2/thing"
 
     s3 = boto3.client('s3')

@@ -15,3 +15,8 @@ provider "aws" {
 module "ecr" {
   source = "./ecr"
 }
+
+module "secretsmanager" {
+  source = "./secretsmanager"
+  ecr_repository_url = module.ecr.boardgame_app_ecr_repository_url
+}
