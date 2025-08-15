@@ -13,12 +13,12 @@ provider "aws" {
 }
 
 module "sqs" {
-  source = "./modules/sqs"
+  source = "./sqs"
   sqs_queue_name = "bgg_game_data_scraper_queue"
 }
 
 module "lambda" {
-  source = "./modules/lambda"
+  source = "./lambda"
   lambda_function_name = "bgg_game_data_scraper"
   sqs_queue_url = module.sqs.sqs_queue_url
   sqs_queue_arn = module.sqs.sqs_queue_arn
@@ -26,6 +26,6 @@ module "lambda" {
 }
 
 module "iam" {
-  source = "./modules/iam"
+  source = "./iam"
   lambda_execution_role_name = "bgg_game_data_scraper_role"
 }
