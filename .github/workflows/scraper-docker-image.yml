@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build the Docker image
       with:
-        AWS_ACCESS_KEY: ${{secrets.AWS_ACCESS_KEY}}
-        AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-        S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME_SCRAPER}}
+        - AWS_ACCESS_KEY: ${{secrets.AWS_ACCESS_KEY}}
+        - AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+        - S3_BUCKET_NAME: ${{secrets.S3_BUCKET_NAME_SCRAPER}}
       run: docker build ./bgg_game_scraper/ --file Dockerfile --tag bgg_scraper:$(date +%s)
