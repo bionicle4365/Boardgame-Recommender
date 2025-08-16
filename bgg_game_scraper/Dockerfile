@@ -7,6 +7,9 @@ WORKDIR /app
 # Install any needed packages specified in requirements.txt
 # Since boto3 and requests are used, we'll install them directly.
 # In a real-world scenario, you'd typically have a requirements.txt file.
+ARG AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+ARG AWS_REGION=$AWS_REGION
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install awscli
