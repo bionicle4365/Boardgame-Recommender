@@ -13,9 +13,9 @@ ARG AWS_REGION=$AWS_REGION
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install awscli
-RUN aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-RUN aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-RUN aws configure set region $AWS_REGION
+RUN aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+RUN aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+RUN aws configure set region "$AWS_REGION"
 
 # Copy the current directory contents into the container at /app
 COPY bgg_scraper.py .
