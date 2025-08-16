@@ -20,8 +20,12 @@ def main():
     retry_delay_seconds = 1 # Delay before retrying a failed batch
     sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg-game-data-scraper-queue') # New: SQS Queue Name
 
-    s3 = boto3.client('s3')
-    sqs = boto3.client('sqs') # New: Initialize SQS client
+    s3 = boto3.client('s3', aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                      aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+                      region_name=os.environ.get('AWS_REGION', 'us-east-1'))
+    sqs = boto3.client('sqs', aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                       aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+                       region_name=os.environ.get('AWS_REGION', 'us-east-1')) 
     start_id = None
     update_counter = 0 # Initialize counter for S3 updates
 
