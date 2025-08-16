@@ -183,6 +183,12 @@ def lambda_handler(event, context):
     if batch_item_failures:
         print(f"Finished processing. Successfully processed: {len(processed_ids)} IDs. Failed to process: {len(batch_item_failures)} records.")
         return {
+            'statusCode': 207, # Multi-Status
+            'body': json.dumps({
+                'message': 'Some IDs processed with failures.',
+                'processed_ids': processed_ids,
+                'failed_ids': failed_ids
+            }),
             'batchItemFailures': batch_item_failures
         }
     else:
