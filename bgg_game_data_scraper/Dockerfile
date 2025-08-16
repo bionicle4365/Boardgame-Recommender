@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM amazon/aws-lambda-python:3.12-arm64
+FROM amazon/aws-lambda-python:3.12-x86_64
 
 # Set environment variables for the S3 bucket and key
 ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
