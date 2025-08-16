@@ -20,7 +20,6 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    needs: lambda
     env:
         AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY}}
         AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
@@ -70,26 +69,3 @@ jobs:
       if: github.ref == 'refs/heads/main'
       run: terraform apply -auto-approve -input=false
       working-directory: ./infrastructure
-  
-  lambda:
-    name: 'Build Lambda Zip'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Build Lambda Zip
-        run: |
-          pip install -r requirements.txt -t ./package
-          cd package
-          zip -r ../bgg_game_data_scraper.zip .
-          cd ..
-          zip -g bgg_game_data_scraper.zip bgg_game_data.py
-          # The zip file is now at bgg_game_data_scraper/bgg_game_data_scraper.zip
-        working-directory: bgg_game_data_scraper/
-      - name: Upload Lambda Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bgg_game_data_scraper_zip # Name of the artifact
-          path: bgg_game_data_scraper/bgg_game_data_scraper.zip # Path to the zip file
-          retention-days: 1 # Optional: how long to keep the artifact
-
