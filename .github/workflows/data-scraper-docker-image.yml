@@ -24,7 +24,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Get ECR URL
-      run: echo "ECR_URL=$(aws secretsmanager get-secret-value --region us-east-1 --secret-id ecr_repository_url --query SecretString --output text)" >> $GITHUB_ENV
+      run: echo "ECR_URL=$(aws secretsmanager get-secret-value --region us-east-1 --secret-id bgg_game_data_scraper_repository_url --query SecretString --output text)" >> $GITHUB_ENV
     - name: Push the Docker image to ECR
       run: |
         docker build . --file Dockerfile --tag bgg_game_data_scraper:${{ github.run_number }}
