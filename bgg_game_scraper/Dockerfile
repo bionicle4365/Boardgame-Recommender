@@ -9,7 +9,7 @@ WORKDIR /app
 # In a real-world scenario, you'd typically have a requirements.txt file.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install aws-cli
+RUN pip install awscli
 RUN aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
 RUN aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
 RUN aws configure set region $AWS_REGION
