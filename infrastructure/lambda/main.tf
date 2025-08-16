@@ -1,5 +1,5 @@
 data "aws_secretsmanager_secret" "bgg_game_data_scraper_ecr_url" {
-  name = "bgg_game_data_scraper_ecr_url"
+  name = "bgg_game_data_scraper_repository_url"
 }
 data "aws_secretsmanager_secret_version" "current" {
   secret_id = data.aws_secretsmanager_secret.bgg_game_data_scraper_ecr_url.id
