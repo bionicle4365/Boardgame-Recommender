@@ -13,6 +13,7 @@ def main():
     """
     s3_bucket_name = os.environ.get('S3_BUCKET_NAME', 'boardgame-app')
     s3_key = os.environ.get('S3_KEY', 'bgg-scraper/bgg_start_id.txt')
+    aws_region = os.environ.get('AWS_REGION', 'us-east-1')
     bgg_api_base_url = "https://boardgamegeek.com/xmlapi2/thing"
     request_delay_seconds = 1 # Delay between requests to respect API limits (e.g., 1 second)
     s3_update_interval = 100 # Update S3 every 100 IDs
@@ -20,12 +21,8 @@ def main():
     retry_delay_seconds = 1 # Delay before retrying a failed batch
     sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg-game-data-scraper-queue') # New: SQS Queue Name
 
-    s3 = boto3.client('s3', aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-                      aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
-                      region_name=os.environ.get('AWS_REGION', 'us-east-1'))
-    sqs = boto3.client('sqs', aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-                       aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
-                       region_name=os.environ.get('AWS_REGION', 'us-east-1')) 
+    s3 = boto3.client('s3', region_name=aws_region)
+    sqs = boto3.client('sqs', region_name=aws_region) 
     start_id = None
     update_counter = 0 # Initialize counter for S3 updates
 
