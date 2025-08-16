@@ -15,6 +15,7 @@ provider "aws" {
 module "sqs" {
   source = "./sqs"
   sqs_queue_name = "bgg_game_data_scraper_queue"
+  sqs_queue_visibility_timeout_seconds = module.lambda.bgg_game_data_scraper_lambda_timeout
 }
 
 module "lambda" {
