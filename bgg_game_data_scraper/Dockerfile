@@ -10,7 +10,8 @@ ENV S3_BUCKET_NAME=$S3_BUCKET_NAME
 # Since boto3 and requests are used, we'll install them directly.
 # In a real-world scenario, you'd typically have a requirements.txt file.
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
 # Copy the current directory contents into the container at /app
 COPY bgg_game_data.py ${LAMBDA_TASK_ROOT}
