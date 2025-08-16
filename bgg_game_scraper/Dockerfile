@@ -7,7 +7,6 @@ WORKDIR /app
 # Set environment variables for the S3 bucket and key
 ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY
-ENV S3_BUCKET_NAME=$S3_BUCKET_NAME
 
 # Install any needed packages specified in requirements.txt
 # Since boto3 and requests are used, we'll install them directly.
