@@ -36,6 +36,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    # Download the Lambda zip artifact from the 'lambda' job
+    - name: Download Lambda Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: bgg_game_data_scraper_zip
+        path: ./infrastructure # Download directly into the infrastructure directory
+
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
@@ -77,6 +84,12 @@ jobs:
           zip -r ../bgg_game_data_scraper.zip .
           cd ..
           zip -g bgg_game_data_scraper.zip bgg_game_data.py
-          mv bgg_game_data_scraper.zip ../infrastructure/bgg_game_data_scraper.zip
+          # The zip file is now at bgg_game_data_scraper/bgg_game_data_scraper.zip
         working-directory: bgg_game_data_scraper/
+      - name: Upload Lambda Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bgg_game_data_scraper_zip # Name of the artifact
+          path: bgg_game_data_scraper/bgg_game_data_scraper.zip # Path to the zip file
+          retention-days: 1 # Optional: how long to keep the artifact
 
