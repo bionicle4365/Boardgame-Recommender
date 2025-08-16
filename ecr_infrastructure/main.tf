@@ -18,5 +18,6 @@ module "ecr" {
 
 module "secretsmanager" {
   source = "./secretsmanager"
-  ecr_repository_url = module.ecr.boardgame_app_ecr_repository_url
+  bgg_game_data_scraper_ecr_url = module.ecr.bgg_game_data_scraper_ecr_url
+  bgg_game_scraper_ecr_url = module.ecr.bgg_game_scraper_ecr_url
 }

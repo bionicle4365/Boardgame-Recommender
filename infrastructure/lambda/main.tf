@@ -1,11 +1,16 @@
+data "aws_secretsmanager_secret" "bgg_game_data_scraper_ecr_url" {
+  name = "bgg_game_data_scraper_ecr_url"
+}
+data "aws_secretsmanager_secret_version" "current" {
+  secret_id = data.aws_secretsmanager_secret.bgg_game_data_scraper_ecr_url.id
+}
+
 resource "aws_lambda_function" "bgg_game_data_scraper" {
   function_name    = var.lambda_function_name
-  runtime          = "python3.10"
-  handler          = "bgg_game_data_scraper.lambda_handler"
   role             = var.lambda_execution_role_arn
-  timeout          = 300 # 5 minutes
-  source_code_hash = filebase64sha256("bgg_game_data_scraper.zip")
-  filename         = "bgg_game_data_scraper.zip"
+  package_type     = "Image"
+  image_uri        = "${data.aws_secretsmanager_secret_version.current.secret_string}:latest"
+  timeout          = 120
 }
 
 resource "aws_lambda_event_source_mapping" "bgg_game_data_scraper_esm" {
