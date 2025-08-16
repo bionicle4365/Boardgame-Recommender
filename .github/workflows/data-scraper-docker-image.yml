@@ -37,5 +37,5 @@ jobs:
     steps:
     - name: Deploy Lambda Function
       run: |
-        aws lambda update-function-code --function-name bgg_game_data_scraper --image-uri ${ECR_URL}:latest
+        aws lambda update-function-code --region us-east-1 --function-name bgg_game_data_scraper --image-uri ${ECR_URL}:latest
 
