@@ -35,13 +35,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    # Download the Lambda zip artifact from the 'lambda' job
-    - name: Download Lambda Artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: bgg_game_data_scraper_zip
-        path: ./infrastructure # Download directly into the infrastructure directory
-
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
