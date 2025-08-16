@@ -1,4 +1,4 @@
-name: BGG Game Scraper Docker Image
+name: BGG Game Data Scraper Docker Image
 
 on:
   push:
