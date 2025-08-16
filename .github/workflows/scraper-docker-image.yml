@@ -27,7 +27,7 @@ jobs:
       run: echo "ECR_URL=$(aws secretsmanager get-secret-value --secret-id bgg_game_scraper_repository_url --query SecretString --output text)" >> $GITHUB_ENV
     - name: Push the Docker image to ECR
       run: |
-        docker build . --file Dockerfile --tag bgg_scraper:${{ github.run_number }}
+        docker build . --file Dockerfile --tag bgg_scraper:${{ github.run_number }} --build-arg AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }} --build-arg AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }} --build-arg AWS_REGION=${{ env.AWS_REGION }}
         aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_URL}
         docker tag bgg_scraper:${{ github.run_number }} ${ECR_URL}:latest
         docker push ${ECR_URL}:latest
