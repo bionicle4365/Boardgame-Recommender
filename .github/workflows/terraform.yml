@@ -12,6 +12,10 @@ on:
       - infrastructure/**
       - ".github/workflows/terraform.yml"
   workflow_dispatch:
+  workflow_run:
+    workflows: ["BGG Game Data Scraper Docker Image", "BGG Game Scraper Docker Image"]
+    types:
+      - completed
 
 permissions:
   contents: read
