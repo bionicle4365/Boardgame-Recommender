@@ -6,7 +6,7 @@ resource "aws_glue_catalog_database" "boardgame_app_db" {
   name = var.glue_database_name
 }
 
-resource "aws_glue_catalog_table" "boardgame_app_table" {
+resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
   name          = var.glue_raw_table_name
   database_name = aws_glue_catalog_database.boardgame_app_db.name
   parameters    = {
@@ -114,7 +114,7 @@ resource "aws_glue_catalog_table" "boardgame_app_table" {
   }
 }
 
-resource "aws_glue_catalog_table" "boardgame_app_table" {
+resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
   name          = var.glue_combined_table_name
   database_name = aws_glue_catalog_database.boardgame_app_db.name
   parameters    = {
