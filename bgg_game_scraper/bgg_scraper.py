@@ -19,7 +19,7 @@ def main():
     s3_update_interval = 100 # Update S3 every 100 IDs
     batch_size = 20 # Number of IDs to query at a time
     retry_delay_seconds = 1 # Delay before retrying a failed batch
-    sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg-game-data-scraper-queue') # New: SQS Queue Name
+    sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg_game_data_scraper_queue') # New: SQS Queue Name
 
     s3 = boto3.client('s3', region_name=aws_region)
     sqs = boto3.client('sqs', region_name=aws_region) 

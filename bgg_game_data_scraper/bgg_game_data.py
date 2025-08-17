@@ -139,15 +139,6 @@ def lambda_handler(event, context):
                 print(f"Successfully retrieved data for ID {game_id}: {game_data.get('name', 'N/A')}")
 
                 # Convert game_data to pandas DataFrame
-                # Ensure all list fields are handled (e.g., converted to strings or JSON strings)
-                # for Parquet compatibility if they contain varying lengths.
-                # For simplicity, we'll convert lists to comma-separated strings.
-                for key, value in game_data.items():
-                    if isinstance(value, list):
-                        game_data[key] = ','.join(map(str, value))
-                    # Handle potential nested dicts from 'stats' if it was kept as a dict
-                    # For this version, stats fields are flattened, so this is less critical.
-
                 df = pd.DataFrame([game_data])
 
                 # Define S3 path for the Parquet file
