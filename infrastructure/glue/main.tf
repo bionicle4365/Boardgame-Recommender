@@ -15,6 +15,13 @@ resource "aws_glue_catalog_table" "boardgame_app_table" {
     input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
     compressed    = false
+    ser_de_info {
+      name                  = "boardgame_app_parquet"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters = {
+        "parquet.ignore.statistics" = "true"
+      }
+    }
 
     columns {
       name = "id"
