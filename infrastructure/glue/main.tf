@@ -80,30 +80,6 @@ resource "aws_glue_catalog_table" "boardgame_app_table" {
       name = "min_age"
       type = "int"
     }
-
-    columns {
-      name = "categories"
-    }
-
-    columns {
-      name = "mechanics"
-    }
-
-    columns {
-      name = "designers"
-    }
-
-    columns {
-      name = "artists"
-    }
-
-    columns {
-      name = "publishers"
-    }
-
-    columns {
-      name = "families"
-    }
     
   }
 }
