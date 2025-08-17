@@ -9,6 +9,9 @@ resource "aws_glue_catalog_database" "boardgame_app_db" {
 resource "aws_glue_catalog_table" "boardgame_app_table" {
   name          = var.glue_table_name
   database_name = aws_glue_catalog_database.boardgame_app_db.name
+  parameters    = {
+    "classification" = "parquet"
+  }
 
   storage_descriptor {
     location      = "s3://${data.aws_s3_bucket.boardgame_app_bucket.id}/data/boardgames/"
@@ -19,7 +22,7 @@ resource "aws_glue_catalog_table" "boardgame_app_table" {
       name                  = "boardgame_app_parquet"
       serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
       parameters = {
-        "parquet.ignore.statistics" = "true"
+        "serialization.format" = "parquet"
       }
     }
 
