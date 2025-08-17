@@ -34,5 +34,6 @@ module "iam" {
 module "glue" {
   source = "./glue"
   glue_database_name = "boardgame_app"
-  glue_table_name = "boardgame_app_raw_table"
+  glue_raw_table_name = "boardgame_app_raw_table"
+  glue_combined_table_name = "boardgame_app_combined_table"
 }
