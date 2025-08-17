@@ -30,3 +30,9 @@ module "iam" {
   source = "./iam"
   lambda_execution_role_name = "bgg_game_data_scraper_role"
 }
+
+module "glue" {
+  source = "./glue"
+  glue_database_name = "boardgame_app"
+  glue_table_name = "boardgame_app_raw_table"
+}

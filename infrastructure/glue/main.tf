@@ -3,11 +3,11 @@ data "aws_s3_bucket" "boardgame_app_bucket" {
 }
 
 resource "aws_glue_catalog_database" "boardgame_app_db" {
-  name = "boardgame_app"
+  name = var.glue_database_name
 }
 
 resource "aws_glue_catalog_table" "boardgame_app_table" {
-  name          = "boardgame_app_raw_table"
+  name          = var.glue_table_name
   database_name = aws_glue_catalog_database.boardgame_app_db.name
 
   storage_descriptor {
