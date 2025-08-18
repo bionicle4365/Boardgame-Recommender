@@ -46,7 +46,7 @@ def get_game_data(game_id):
     """
     Queries the BoardGameGeek API for a given game ID and extracts relevant data.
     """
-    api_url = f"{BGG_API_BASE_URL}?id={game_id}"
+    api_url = f"{BGG_API_BASE_URL}?id={game_id}&stats=1"
     print(f"Querying BGG API for ID: {game_id} at {api_url}")
 
     try:
@@ -79,7 +79,6 @@ def get_game_data(game_id):
             'id': item.get('id'),
             'type': item.get('type'),
             'name': _get_element_value(item, "./name[@type='primary']"),
-            'description': _get_element_text(item, 'description'),
             'year_published': safe_int(_get_element_value(item, 'yearpublished', attribute='value')),
             'min_players': safe_int(_get_element_value(item, 'minplayers', attribute='value')),
             'max_players': safe_int(_get_element_value(item, 'maxplayers', attribute='value')),
@@ -87,6 +86,7 @@ def get_game_data(game_id):
             'min_playtime': safe_int(_get_element_value(item, 'minplaytime', attribute='value')),
             'max_playtime': safe_int(_get_element_value(item, 'maxplaytime', attribute='value')),
             'min_age': safe_int(_get_element_value(item, 'minage', attribute='value')),
+            'rank': safe_int(_get_element_value(item, ".//statistics/ratings/ranks/rank[@name='boardgame']", attribute='value')),
             'categories': _get_links(item, 'boardgamecategory'),
             'mechanics': _get_links(item, 'boardgamemechanic'),
             'designers': _get_links(item, 'boardgamedesigner'),

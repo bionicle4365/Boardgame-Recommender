@@ -60,11 +60,6 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
         name = "playing_time"
         type = "int"
     }
-
-    columns {
-        name = "description"
-        type = "string"
-    }
     
     columns {
         name = "min_playtime"
@@ -78,6 +73,11 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
 
     columns {
         name = "min_age"
+        type = "int"
+    }
+
+    columns {
+        name = "rank"
         type = "int"
     }
 
@@ -196,11 +196,6 @@ resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
         name = "playing_time"
         type = "int"
     }
-
-    columns {
-        name = "description"
-        type = "string"
-    }
     
     columns {
         name = "min_playtime"
@@ -214,6 +209,11 @@ resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
 
     columns {
         name = "min_age"
+        type = "int"
+    }
+
+    columns {
+        name = "rank"
         type = "int"
     }
 

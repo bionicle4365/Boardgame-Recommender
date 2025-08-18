@@ -11,6 +11,7 @@ resource "aws_lambda_function" "bgg_game_data_scraper" {
   package_type     = "Image"
   image_uri        = "${data.aws_secretsmanager_secret_version.current.secret_string}:latest"
   timeout          = 120
+  memory_size      = 256
 }
 
 resource "aws_lambda_event_source_mapping" "bgg_game_data_scraper_esm" {
