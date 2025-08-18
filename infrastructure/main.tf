@@ -38,7 +38,7 @@ module "glue" {
   glue_combined_table_name = "boardgame_app_combined_table"
   combine_glue_job_name = "boardgame_app_combine_job"
   combine_glue_job_script_key = module.s3.combine_glue_job_script_key
-
+  glue_service_role_arn = module.iam.glue_service_role_arn
 }
 
 module "s3" {

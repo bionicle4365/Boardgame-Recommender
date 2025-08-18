@@ -54,7 +54,7 @@ resource "aws_iam_role_policy" "lambda_exec_policy" {
 }
 
 resource "aws_iam_role" "glue_service_role" {
-  name = "bgg_game_data_scraper_glue_service_role"
+  name = "combine_raw_glue_service_role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -71,7 +71,7 @@ resource "aws_iam_role" "glue_service_role" {
 }
 
 resource "aws_iam_role_policy" "glue_service_role_policy" {
-  name = "bgg_game_data_scraper_glue_service_role_policy"
+  name = "combine_raw_glue_service_role_policy"
   role = aws_iam_role.glue_service_role.id
 
   policy = jsonencode({

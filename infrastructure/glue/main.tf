@@ -117,7 +117,7 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
 resource "aws_glue_job" "boardgame_app_combine_job" {
   name     = var.combine_glue_job_name
   description = "Glue job to combine raw board game data into a single Parquet file"
-  role_arn = aws_iam_role.glue_service_role.arn
+  role_arn = var.glue_service_role_arn
   glue_version      = "5.0"
   max_retries       = 0
   timeout           = 2

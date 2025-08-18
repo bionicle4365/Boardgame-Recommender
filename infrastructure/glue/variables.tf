@@ -23,3 +23,8 @@ variable "combine_glue_job_script_key" {
   description = "The S3 location of the Glue job script for combining raw data"
   type        = string
 }
+
+variable "glue_service_role_arn" {
+  description = "The ARN of the Glue service role"
+  type        = string
+}
