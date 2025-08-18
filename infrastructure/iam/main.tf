@@ -94,6 +94,20 @@ resource "aws_iam_role_policy" "glue_service_role_policy" {
         ]
         Effect   = "Allow"
         Resource = "*"
+      },
+      {
+        Action   = [
+          "glue:GetTable",
+          "glue:GetTables",
+          "glue:GetDatabase",
+          "glue:GetPartitions",
+          "glue:GetTableVersion",
+          "glue:GetTableVersions",
+          "glue:GetSchema",
+          "glue:GetSchemas"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
       }
     ]
   })
