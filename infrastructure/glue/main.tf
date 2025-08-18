@@ -127,7 +127,7 @@ resource "aws_glue_job" "boardgame_app_combine_job" {
 
   command {
     name            = "combine_raw_to_single_file"
-    script_location = var.combine_glue_job_script_key
+    script_location = "s3://${data.aws_s3_bucket.boardgame_app_bucket.id}/${var.combine_glue_job_script_key}"
     python_version  = "3"
   }
 
