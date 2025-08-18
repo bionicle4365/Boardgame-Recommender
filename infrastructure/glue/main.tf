@@ -126,7 +126,7 @@ resource "aws_glue_job" "boardgame_app_combine_job" {
   execution_class   = "FLEX"
 
   command {
-    name            = "combine_raw_to_single_file"
+    name            = "glueetl"
     script_location = "s3://${data.aws_s3_bucket.boardgame_app_bucket.id}/${var.combine_glue_job_script_key}"
     python_version  = "3"
   }
