@@ -14,11 +14,15 @@ spark = gluc.spark_session
 job = Job(gluc)
 job.init(args["JOB_NAME"], args)
 
-# Script generated for DPU: Glue-2.0
 boardgame_app_raw_table = gluc.create_dynamic_frame.from_catalog(
     database="boardgame_app",
     table_name="boardgame_app_raw_table",
     transformation_ctx="boardgame_app_raw_table",
+)
+
+purge_s3 = gluc.purge_s3_path(
+    s3_path="s3://boardgame-app/data/boardgames_combined/",
+    options={"retentionPeriod": 0}
 )
 
 s3_location = gluc.write_dynamic_frame.from_options(
