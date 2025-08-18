@@ -13,3 +13,13 @@ variable "glue_combined_table_name" {
   type        = string
   
 }
+
+variable "combine_glue_job_name" {
+  description = "The name of the Glue job for combining raw data"
+  type        = string
+}
+
+variable "combine_glue_job_script_key" {
+  description = "The S3 location of the Glue job script for combining raw data"
+  type        = string
+}

@@ -36,4 +36,13 @@ module "glue" {
   glue_database_name = "boardgame_app"
   glue_raw_table_name = "boardgame_app_raw_table"
   glue_combined_table_name = "boardgame_app_combined_table"
+  combine_glue_job_name = "boardgame_app_combine_job"
+  combine_glue_job_script_key = module.s3.combine_glue_job_script_key
+
+}
+
+module "s3" {
+  source = "./s3"
+  s3_bucket_name = "boardgame-app"
+  combine_glue_job_script_name = "combine_raw_to_single_file.py"
 }
