@@ -52,3 +52,49 @@ resource "aws_iam_role_policy" "lambda_exec_policy" {
     ]
   })
 }
+
+resource "aws_iam_role" "glue_service_role" {
+  name = "bgg_game_data_scraper_glue_service_role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Principal = {
+          Service = "glue.amazonaws.com"
+        }
+        Effect    = "Allow"
+        Sid       = ""
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "glue_service_role_policy" {
+  name = "bgg_game_data_scraper_glue_service_role_policy"
+  role = aws_iam_role.glue_service_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action   = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
+}
