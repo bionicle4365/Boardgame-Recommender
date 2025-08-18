@@ -133,6 +133,11 @@ resource "aws_glue_job" "boardgame_app_combine_job" {
 
   default_arguments = {
     "--TempDir" = "s3://${data.aws_s3_bucket.boardgame_app_bucket.id}/temp/"
+    "--job-language" = "python"
+    "--enable-metrics" = "true"
+    "--enable-job-insights" = "true"
+    "--enable-glue-datacatalog" = "true"
+    "--enable-spark-ui" = "true"
   }
 }
 
