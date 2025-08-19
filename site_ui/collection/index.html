@@ -7,7 +7,6 @@ title: BGG Collection Browser
     #collection-data {
         max-height: 50vh; /* 50% of viewport height */
         overflow-y: auto; /* Enable vertical scrolling */
-        border: 1px solid #ccc; /* Optional: add a border to visualize the scrollable area */
     }
     #bgg-collection-table {
         width: 100%; /* Make table take full width of its container */
@@ -92,11 +91,9 @@ title: BGG Collection Browser
 
 <h1>Collection Browser</h1>
 
-<form id="bgg-form">
-    <label for="bgg_username">BGG Username:</label>
-    <input type="text" id="bgg_username" name="bgg_username">
-    <button type="submit">Submit</button>
-</form>
+<div id="username-form">
+    {% include username_form.html %}
+</div>
 
 <div id="collection-data"></div>
 
@@ -293,6 +290,7 @@ title: BGG Collection Browser
         if (filteredGamesData.length === 0) {
             collectionDataDiv.innerHTML = '<p>No games match the current filters.</p>';
             filtersDiv.style.display = 'none'; // Hide filters if no data
+            collectionDataDiv.style.border = 'none'; // Hide border if no data
             return;
         }
 
@@ -323,6 +321,7 @@ title: BGG Collection Browser
         });
         tableHtml += '</tbody></table>';
         collectionDataDiv.innerHTML = tableHtml;
+        collectionDataDiv.style.border = '1px solid #ccc'; // Show border when table is rendered
 
         // Show filters once the table is rendered
         filtersDiv.style.display = 'block';

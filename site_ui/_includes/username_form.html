@@ -1,0 +1,43 @@
+<style>
+    #bgg-form {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: 20px auto 20px 0;
+            background-color: #f9f9f9;
+    }
+
+    #bgg-form label {
+            font-weight: bold;
+            color: #333;
+    }
+
+    #bgg-form input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-grow: 1;
+            box-sizing: border-box;
+    }
+
+    #bgg-form button[type="submit"] {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+    }
+</style>
+
+<form id="bgg-form">
+    <label for="bgg_username">BGG Username:</label>
+    <input type="text" id="bgg_username" name="bgg_username">
+    <button type="submit">Submit</button>
+</form>
