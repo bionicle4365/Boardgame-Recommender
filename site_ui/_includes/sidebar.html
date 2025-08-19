@@ -1,5 +1,6 @@
 <h3>Sidebar</h3>
 <ul>
-    <li><a href="/Boardgame-Recommender">Home</a></li>
-    <!-- Add more sidebar links here -->
+    {% for item in site.data.side_nav %}
+        <li><a href="{{ item.link }}">{{ item.name }}</a></li>
+    {% endfor %}
 </ul>
