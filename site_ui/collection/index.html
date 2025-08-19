@@ -1,0 +1,558 @@
+---
+layout: default
+title: BGG Collection Browser
+---
+
+<style>
+    #collection-data {
+        max-height: 50vh; /* 50% of viewport height */
+        overflow-y: auto; /* Enable vertical scrolling */
+        border: 1px solid #ccc; /* Optional: add a border to visualize the scrollable area */
+    }
+    #bgg-collection-table {
+        width: 100%; /* Make table take full width of its container */
+        border-collapse: collapse;
+    }
+    #bgg-collection-table th, #bgg-collection-table td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    #bgg-collection-table th {
+        cursor: pointer;
+        background-color: #f2f2f2;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    #filters {
+        display: none; /* Initially hide the filters */
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #eee;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+    }
+    #filters h3 {
+        margin-top: 0;
+        color: #333;
+    }
+    #filter-rows-container {
+        display: flex;
+        flex-direction: column; /* Stack filter rows vertically */
+        gap: 10px; /* Space between filter rows */
+    }
+    .filter-row {
+        display: flex; /* Make elements *inside* the row flex */
+        align-items: center;
+        gap: 10px; /* Space between elements within a row */
+        flex-wrap: wrap; /* Allow elements within a row to wrap */
+        padding: 5px;
+        border-radius: 3px;
+    }
+    .filter-row label {
+        font-weight: bold;
+        min-width: 100px; /* Align labels */
+    }
+    .filter-row select, .filter-row input[type="text"], .filter-row input[type="number"] {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        flex-grow: 1; /* Allow inputs to grow */
+        max-width: 180px; /* Limit input width */
+    }
+    .filter-row .filter-value-container {
+        display: flex;
+        gap: 5px;
+        flex-grow: 1;
+    }
+    .filter-row .remove-filter {
+        padding: 5px 10px;
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+    #filters button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 10px;
+        margin-right: 10px; /* Space between buttons */
+    }
+    #filters button:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+<h1>Collection Browser</h1>
+
+<form id="bgg-form">
+    <label for="bgg_username">BGG Username:</label>
+    <input type="text" id="bgg_username" name="bgg_username">
+    <button type="submit">Submit</button>
+</form>
+
+<div id="collection-data"></div>
+
+<div id="filters">
+    <h3>Filter Builder</h3>
+    <div id="filter-rows-container"></div>
+    <button id="add-filter-row">Add Filter</button>
+    <button id="apply-filters">Apply Filters</button>
+</div>
+
+<script>
+    let gamesData = []; // Store the fetched game data
+    let filteredGamesData = []; // Store the currently filtered data
+    let currentSortColumn = null;
+    let currentSortDirection = 'asc';
+
+    const headers = [
+        { name: 'Name', key: 'name', type: 'string' },
+        { name: 'Year Published', key: 'yearPublished', type: 'number' },
+        { name: 'Collection Status', key: 'collectionStatus', type: 'string' },
+        { name: 'Number of Plays', key: 'numPlays', type: 'number' },
+        { name: 'User Rating', key: 'userRating', type: 'number' },
+        { name: 'Average Rating', key: 'averageRating', type: 'number' },
+        { name: 'Rank', key: 'rank', type: 'number' },
+        { name: 'User Rank', key: 'userRank', type: 'number' } // New column
+    ];
+
+    function createColumnDropdown(selectedValue = '') {
+        const select = document.createElement('select');
+        select.className = 'filter-column';
+        select.innerHTML = '<option value="">Select Column</option>';
+        headers.forEach(header => {
+            const option = document.createElement('option');
+            option.value = header.key;
+            option.textContent = header.name;
+            if (selectedValue === header.key) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        return select;
+    }
+
+    function createOperatorDropdown(columnType, selectedValue = '') {
+        const select = document.createElement('select');
+        select.className = 'filter-operator';
+        let optionsHtml = '<option value="">Select Operator</option>';
+
+        if (columnType === 'string') {
+            optionsHtml += '<option value="contains">contains</option>';
+            optionsHtml += '<option value="equals">equals</option>';
+            optionsHtml += '<option value="starts_with">starts with</option>';
+            optionsHtml += '<option value="ends_with">ends with</option>';
+            optionsHtml += '<option value="is_empty">is empty</option>';
+            optionsHtml += '<option value="is_not_empty">is not empty</option>';
+        } else if (columnType === 'number') {
+            optionsHtml += '<option value="equals">equals</option>';
+            optionsHtml += '<option value="greater_than">greater than</option>';
+            optionsHtml += '<option value="less_than">less than</option>';
+            optionsHtml += '<option value="greater_than_or_equal">greater than or equal to</option>';
+            optionsHtml += '<option value="less_than_or_equal">less than or equal to</option>';
+            optionsHtml += '<option value="is_empty">is empty</option>';
+            optionsHtml += '<option value="is_not_empty">is not empty</option>';
+        }
+        select.innerHTML = optionsHtml;
+        if (selectedValue) {
+            select.value = selectedValue;
+        }
+        return select;
+    }
+
+    function createValueInput(columnType, operator, selectedValue = '') {
+        const span = document.createElement('span');
+        span.className = 'filter-value-container';
+
+        if (operator === 'is_empty' || operator === 'is_not_empty') {
+            span.innerHTML = ''; // No input needed for these operators
+        } else {
+            const input = document.createElement('input');
+            if (columnType === 'number') {
+                input.type = 'number';
+                input.step = 'any';
+            } else {
+                input.type = 'text';
+            }
+            input.className = 'filter-value';
+            input.value = selectedValue;
+
+            const columnValueOption = document.createElement('select');
+            columnValueOption.className = 'filter-value-column-option';
+            columnValueOption.innerHTML = '<option value="">Type Value</option>';
+            headers.forEach(header => {
+                const option = document.createElement('option');
+                option.value = header.key;
+                option.textContent = `Column: ${header.name}`;
+                columnValueOption.appendChild(option);
+            });
+
+            span.appendChild(input);
+            span.appendChild(columnValueOption);
+
+            columnValueOption.addEventListener('change', function() {
+                if (this.value) {
+                    input.style.display = 'none';
+                    input.value = ''; // Clear typed value when selecting a column
+                } else {
+                    input.style.display = 'inline-block';
+                }
+            });
+        }
+        return span;
+    }
+
+    function addFilterRow(columnKey = '', operator = '', value = '') {
+        const container = document.getElementById('filter-rows-container');
+        const filterRow = document.createElement('div');
+        filterRow.className = 'filter-row';
+
+        const columnDropdown = createColumnDropdown(columnKey);
+        filterRow.appendChild(columnDropdown);
+
+        const operatorDropdown = createOperatorDropdown(headers.find(h => h.key === columnKey)?.type, operator);
+        filterRow.appendChild(operatorDropdown);
+
+        const valueInput = createValueInput(headers.find(h => h.key === columnKey)?.type, operator, value);
+        filterRow.appendChild(valueInput);
+
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remove';
+        removeButton.className = 'remove-filter';
+        removeButton.addEventListener('click', () => filterRow.remove());
+        filterRow.appendChild(removeButton);
+
+        container.appendChild(filterRow);
+
+        const updateRowInputs = () => {
+            const selectedColumnKey = columnDropdown.value;
+            const selectedColumnType = headers.find(h => h.key === selectedColumnKey)?.type;
+            const selectedOperator = operatorDropdown.value;
+
+            // Recreate operator dropdown based on selected column type
+            const newOperatorDropdown = createOperatorDropdown(selectedColumnType, selectedOperator);
+            operatorDropdown.replaceWith(newOperatorDropdown);
+            operatorDropdown = newOperatorDropdown; // Update reference
+
+            // Recreate value input based on selected column type and operator
+            const newValueInput = createValueInput(selectedColumnType, selectedOperator);
+            valueInput.replaceWith(newValueInput);
+            valueInput = newValueInput; // Update reference
+
+            operatorDropdown.addEventListener('change', updateRowInputs);
+        };
+
+        columnDropdown.addEventListener('change', updateRowInputs);
+        operatorDropdown.addEventListener('change', updateRowInputs);
+
+        // Initial update if values are pre-set
+        if (columnKey) { // Only update if a column was pre-selected
+            updateRowInputs();
+        }
+    }
+
+    function calculateUserRanks() {
+        // Filter out games with N/A user ratings for ranking purposes
+        const rankedGames = gamesData.filter(game => game.userRating !== 'N/A');
+
+        // Sort games by userRating in descending order
+        rankedGames.sort((a, b) => parseFloat(b.userRating) - parseFloat(a.userRating));
+
+        let currentRank = 1;
+        for (let i = 0; i < rankedGames.length; i++) {
+            if (i > 0 && parseFloat(rankedGames[i].userRating) < parseFloat(rankedGames[i-1].userRating)) {
+                currentRank = i + 1;
+            }
+            rankedGames[i].userRank = currentRank;
+        }
+
+        // Assign N/A to games that were not ranked
+        gamesData.forEach(game => {
+            if (game.userRating === 'N/A') {
+                game.userRank = 'N/A';
+            }
+        });
+    }
+
+    function renderTable() {
+        const collectionDataDiv = document.getElementById('collection-data');
+        const filtersDiv = document.getElementById('filters');
+
+        if (filteredGamesData.length === 0) {
+            collectionDataDiv.innerHTML = '<p>No games match the current filters.</p>';
+            filtersDiv.style.display = 'none'; // Hide filters if no data
+            return;
+        }
+
+        let tableHtml = '<table border="1" id="bgg-collection-table"><thead><tr>';
+
+        headers.forEach(header => {
+            let sortIndicator = '';
+            if (currentSortColumn === header.key) {
+                sortIndicator = currentSortDirection === 'asc' ? ' &#9650;' : ' &#9660;'; // Up or Down arrow
+            }
+            tableHtml += `<th data-sort-by="${header.key}" data-sort-type="${header.type}">${header.name}${sortIndicator}</th>`;
+        });
+        tableHtml += '</tr></thead><tbody>';
+
+        filteredGamesData.forEach(game => {
+            tableHtml += `<tr>
+                <td><a href="https://boardgamegeek.com/boardgame/${game.item_id}" target="_blank">${game.name}</a></td>
+                <td>${game.yearPublished}</td>
+                <td>${game.collectionStatus}</td>
+                <td>${game.numPlays}</td>
+                <td>${game.userRating !== 'N/A' ? parseFloat(game.userRating).toFixed(2) : 'N/A'}</td>
+                <td>${game.averageRating !== 'N/A' ? parseFloat(game.averageRating).toFixed(2) : 'N/A'}</td>
+                <td>${isNaN(game.rank) || game.rank === Infinity ? 'N/A' : game.rank}</td>
+                <td>${game.userRank}</td>
+            </tr>`;
+        });
+        tableHtml += '</tbody></table>';
+        collectionDataDiv.innerHTML = tableHtml;
+
+        // Show filters once the table is rendered
+        filtersDiv.style.display = 'block';
+
+        // Add event listeners to new headers
+        document.querySelectorAll('#bgg-collection-table th').forEach(header => {
+            header.addEventListener('click', function() {
+                const sortBy = this.dataset.sortBy;
+                const sortType = this.dataset.sortType;
+                sortTable(sortBy, sortType);
+            });
+        });
+    }
+
+    function sortTable(columnKey, columnType) {
+        if (currentSortColumn === columnKey) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortColumn = columnKey;
+            currentSortDirection = 'asc';
+        }
+
+        filteredGamesData.sort((a, b) => {
+            let valA = a[columnKey];
+            let valB = b[columnKey];
+
+            if (columnType === 'number') {
+                valA = parseFloat(valA);
+                valB = parseFloat(valB);
+                if (isNaN(valA)) valA = currentSortDirection === 'asc' ? Infinity : -Infinity; // Handle N/A for numbers
+                if (isNaN(valB)) valB = currentSortDirection === 'asc' ? Infinity : -Infinity;
+            } else { // string type
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
+            }
+
+            if (valA < valB) {
+                return currentSortDirection === 'asc' ? -1 : 1;
+            } else if (valA > valB) {
+                return currentSortDirection === 'asc' ? 1 : -1;
+            } else {
+                return 0;
+            }
+        });
+        renderTable();
+    }
+
+    function applyFilters() {
+        filteredGamesData = [...gamesData]; // Start with all data
+        const filterRows = document.querySelectorAll('.filter-row');
+
+        filterRows.forEach(row => {
+            const columnKey = row.querySelector('.filter-column').value;
+            const operator = row.querySelector('.filter-operator').value;
+            const valueInput = row.querySelector('.filter-value');
+            const valueColumnOption = row.querySelector('.filter-value-column-option');
+
+            if (!columnKey || !operator) return; // Skip incomplete filters
+
+            let filterValue = null;
+            let isValueAColumn = false;
+
+            if (valueColumnOption && valueColumnOption.value) {
+                filterValue = valueColumnOption.value; // It's a column key
+                isValueAColumn = true;
+            } else if (valueInput) {
+                filterValue = valueInput.value;
+            }
+
+            const columnType = headers.find(h => h.key === columnKey)?.type;
+
+            filteredGamesData = filteredGamesData.filter(game => {
+                let gameValue = game[columnKey];
+                let compareValue = filterValue;
+
+                if (isValueAColumn) {
+                    compareValue = game[filterValue]; // Get value from the other column
+                }
+
+                // Type conversion for comparison
+                if (columnType === 'number') {
+                    gameValue = parseFloat(gameValue);
+                    compareValue = parseFloat(compareValue);
+                    if (isNaN(gameValue)) gameValue = -Infinity; // Treat N/A as very small for number comparisons
+                    if (isNaN(compareValue)) compareValue = -Infinity;
+                }
+
+                switch (operator) {
+                    case 'contains':
+                        return String(gameValue).toLowerCase().includes(String(compareValue).toLowerCase());
+                    case 'equals':
+                        return gameValue == compareValue; // Use == for loose equality across types
+                    case 'greater_than':
+                        return gameValue > compareValue;
+                    case 'less_than':
+                        return gameValue < compareValue;
+                    case 'greater_than_or_equal':
+                        return gameValue >= compareValue;
+                    case 'less_than_or_equal':
+                        return gameValue <= compareValue;
+                    case 'starts_with':
+                        return String(gameValue).toLowerCase().startsWith(String(compareValue).toLowerCase());
+                    case 'ends_with':
+                        return String(gameValue).toLowerCase().endsWith(String(compareValue).toLowerCase());
+                    case 'is_empty':
+                        return gameValue === 'N/A' || gameValue === null || String(gameValue).trim() === '' || (typeof gameValue === 'number' && isNaN(gameValue));
+                    case 'is_not_empty':
+                        return !(gameValue === 'N/A' || gameValue === null || String(gameValue).trim() === '' || (typeof gameValue === 'number' && isNaN(gameValue)));
+                    default:
+                        return true;
+                }
+            });
+        });
+
+        // Re-sort after filtering, maintaining current sort order
+        if (currentSortColumn) {
+            sortTable(currentSortColumn, headers.find(h => h.key === currentSortColumn)?.type || 'string');
+        } else {
+            renderTable(); // Just render if no sort was applied yet
+        }
+    }
+
+    document.getElementById('add-filter-row').addEventListener('click', () => addFilterRow());
+    document.getElementById('apply-filters').addEventListener('click', applyFilters);
+
+    document.getElementById('bgg-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const username = document.getElementById('bgg_username').value;
+        if (!username) {
+            alert('Please enter a BGG username.');
+            return;
+        }
+
+        const apiUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
+        const collectionDataDiv = document.getElementById('collection-data');
+        collectionDataDiv.innerHTML = 'Loading collection...';
+
+        let xmlDoc = null;
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+            try {
+                const response = await fetch(apiUrl);
+                const text = await response.text();
+                const parser = new DOMParser();
+                xmlDoc = parser.parseFromString(text, "text/xml");
+
+                // Check for API-specific errors within the XML
+                const errors = xmlDoc.getElementsByTagName('errors');
+                if (errors.length > 0) {
+                    const errorMessage = errors[0].getElementsByTagName('error')[0]?.textContent || 'Unknown API error.';
+                    collectionDataDiv.innerHTML = `<p>BGG API Error: ${errorMessage}</p>`;
+                    document.getElementById('filters').style.display = 'none'; // Hide filters on API error
+                    return; // Do not retry on API-specific errors
+                }
+
+                const items = xmlDoc.getElementsByTagName('item');
+                if (items.length === 0) {
+                    // This means no collection found, not a transient error, so no retry
+                    collectionDataDiv.innerHTML = '<p>No collection found for this user or an error occurred.</p>';
+                    document.getElementById('filters').style.display = 'none'; // Hide filters if no collection
+                    return;
+                }
+
+                // If we reached here, it means we got valid data, so break the loop
+                break;
+
+            } catch (error) {
+                console.error(`Attempt ${attempts}: Error fetching BGG collection:`, error);
+                if (attempts < maxAttempts) {
+                    collectionDataDiv.innerHTML = `<p>Attempt ${attempts}: Network error fetching collection data. Retrying...</p>`;
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
+                } else {
+                    collectionDataDiv.innerHTML = '<p>Failed to fetch collection data after multiple retries due to network issues. Please try again later.</p>';
+                    document.getElementById('filters').style.display = 'none'; // Hide filters on network error
+                    return;
+                }
+            }
+        }
+
+        // If xmlDoc is still null after all attempts, something went wrong
+        if (!xmlDoc) {
+            collectionDataDiv.innerHTML = '<p>Failed to fetch collection data. Please try again later.</p>';
+            document.getElementById('filters').style.display = 'none'; // Hide filters if data fetching failed
+            return;
+        }
+
+        // Process the data and populate gamesData array
+        gamesData = [];
+        const items = xmlDoc.getElementsByTagName('item');
+        for (let i = 0; i < items.length; i++) {
+            const name = items[i].getElementsByTagName('name')[0]?.textContent || 'N/A';
+            const yearPublished = items[i].getElementsByTagName('yearpublished')[0]?.textContent || 'N/A';
+
+            const status = items[i].getElementsByTagName('status')[0];
+            let collectionStatus = '';
+            if (status) {
+                if (status.getAttribute('own') === '1') collectionStatus += 'Own ';
+                if (status.getAttribute('preordered') === '1') collectionStatus += 'Preordered ';
+                if (status.getAttribute('wanttoplay') === '1') collectionStatus += 'Want to Play ';
+                if (status.getAttribute('wanttobuy') === '1') collectionStatus += 'Want to Buy ';
+                if (status.getAttribute('wishlist') === '1') collectionStatus += 'Wishlist ';
+                collectionStatus = collectionStatus.trim() || 'N/A';
+            }
+
+            const numPlays = items[i].getElementsByTagName('numplays')[0]?.textContent || '0';
+
+            const stats = items[i].getElementsByTagName('stats')[0];
+            const userRating = stats?.getElementsByTagName('rating')[0]?.getAttribute('value') || 'N/A';
+            const bayesAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
+
+            let rank = 'N/A';
+            const ranks = stats?.getElementsByTagName('ranks')[0];
+            if (ranks) {
+                const boardgameRank = Array.from(ranks.getElementsByTagName('rank')).find(r => r.getAttribute('name') === 'boardgame');
+                rank = boardgameRank?.getAttribute('value') || 'N/A';
+            }
+
+            const item_id = items[i].getAttribute('objectid') || 'N/A';
+
+            gamesData.push({
+                item_id: item_id, // Add item_id here
+                name: name,
+                yearPublished: yearPublished,
+                collectionStatus: collectionStatus,
+                numPlays: parseInt(numPlays),
+                userRating: userRating,
+                averageRating: bayesAverage,
+                rank: rank === 'N/A' ? Infinity : parseInt(rank) // Use Infinity for N/A ranks for sorting
+            });
+        }
+        calculateUserRanks(); // Calculate user ranks after populating gamesData
+        filteredGamesData = [...gamesData]; // Initialize filtered data with all data
+        renderTable(); // Initial render of the table
+    });
+</script>

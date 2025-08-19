@@ -1,4 +1,4 @@
 - name: Home
-  link: /Boardgame-Recommender
-- name: Collection Browser
+  link: /Boardgame-Recommender/
+- name: BGG Collection Browser
   link: /Boardgame-Recommender/collection
