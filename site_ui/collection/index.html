@@ -116,11 +116,12 @@ title: BGG Collection Browser
     const headers = [
         { name: 'Name', key: 'name', type: 'string' },
         { name: 'Year Published', key: 'yearPublished', type: 'number' },
+        { name: 'BGG Rating', key: 'bggRating', type: 'number' },
+        { name: 'BGG User Average', key: 'bggUserRating', type: 'number' },
+        { name: 'BGG Rank', key: 'bggRank', type: 'number' },
         { name: 'Collection Status', key: 'collectionStatus', type: 'string' },
         { name: 'Number of Plays', key: 'numPlays', type: 'number' },
         { name: 'User Rating', key: 'userRating', type: 'number' },
-        { name: 'Average Rating', key: 'averageRating', type: 'number' },
-        { name: 'Rank', key: 'rank', type: 'number' },
         { name: 'User Rank', key: 'userRank', type: 'number' } // New column
     ];
 
@@ -227,7 +228,10 @@ title: BGG Collection Browser
         const removeButton = document.createElement('button');
         removeButton.textContent = 'Remove';
         removeButton.className = 'remove-filter';
-        removeButton.addEventListener('click', () => filterRow.remove());
+        removeButton.addEventListener('click', () => {
+            filterRow.remove();
+            applyFilters(); // Call applyFilters to refresh the table
+        });
         filterRow.appendChild(removeButton);
 
         container.appendChild(filterRow);
@@ -307,12 +311,14 @@ title: BGG Collection Browser
             tableHtml += `<tr>
                 <td><a href="https://boardgamegeek.com/boardgame/${game.item_id}" target="_blank">${game.name}</a></td>
                 <td>${game.yearPublished}</td>
+                <td>${game.bggRating !== 'N/A' ? parseFloat(game.bggRating).toFixed(2) : 'N/A'}</td>
+                <td>${game.bggUserRating !== 'N/A' ? parseFloat(game.bggUserRating).toFixed(2) : 'N/A'}</td>
+                <td>${isNaN(game.bggRank) || game.bggRank === Infinity ? 'N/A' : game.bggRank}</td>
                 <td>${game.collectionStatus}</td>
                 <td>${game.numPlays}</td>
                 <td>${game.userRating !== 'N/A' ? parseFloat(game.userRating).toFixed(2) : 'N/A'}</td>
-                <td>${game.averageRating !== 'N/A' ? parseFloat(game.averageRating).toFixed(2) : 'N/A'}</td>
-                <td>${isNaN(game.rank) || game.rank === Infinity ? 'N/A' : game.rank}</td>
                 <td>${game.userRank}</td>
+
             </tr>`;
         });
         tableHtml += '</tbody></table>';
@@ -392,6 +398,20 @@ title: BGG Collection Browser
                 let gameValue = game[columnKey];
                 let compareValue = filterValue;
 
+                // Determine if the game's value for this column is 'N/A' or equivalent
+                let isGameValueNA = false;
+                if (columnType === 'number') {
+                    // For numbers, N/A is represented as Infinity or NaN
+                    isGameValueNA = isNaN(gameValue) || gameValue === Infinity || gameValue === -Infinity;
+                } else { // string type
+                    isGameValueNA = gameValue === 'N/A' || gameValue === null || String(gameValue).trim() === '';
+                }
+
+                // If the game's value for this column is N/A and the operator is not checking for emptiness, exclude it.
+                if (isGameValueNA && operator !== 'is_empty' && operator !== 'is_not_empty') {
+                    return false;
+                }
+
                 if (isValueAColumn) {
                     compareValue = game[filterValue]; // Get value from the other column
                 }
@@ -400,7 +420,8 @@ title: BGG Collection Browser
                 if (columnType === 'number') {
                     gameValue = parseFloat(gameValue);
                     compareValue = parseFloat(compareValue);
-                    if (isNaN(gameValue)) gameValue = -Infinity; // Treat N/A as very small for number comparisons
+                    // If after parsing, it's NaN, treat it as -Infinity for comparison, unless it was originally N/A and already handled above
+                    if (isNaN(gameValue)) gameValue = -Infinity;
                     if (isNaN(compareValue)) compareValue = -Infinity;
                 }
 
@@ -477,12 +498,6 @@ title: BGG Collection Browser
                 }
 
                 const items = xmlDoc.getElementsByTagName('item');
-                if (items.length === 0) {
-                    // This means no collection found, not a transient error, so no retry
-                    collectionDataDiv.innerHTML = '<p>No collection found for this user or an error occurred.</p>';
-                    document.getElementById('filters').style.display = 'none'; // Hide filters if no collection
-                    return;
-                }
 
                 // If we reached here, it means we got valid data, so break the loop
                 break;
@@ -529,13 +544,14 @@ title: BGG Collection Browser
 
             const stats = items[i].getElementsByTagName('stats')[0];
             const userRating = stats?.getElementsByTagName('rating')[0]?.getAttribute('value') || 'N/A';
-            const bayesAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
+            const userAverage = stats?.getElementsByTagName('average')[0]?.getAttribute('value') || 'N/A';
+            const bggAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
 
             let rank = 'N/A';
             const ranks = stats?.getElementsByTagName('ranks')[0];
             if (ranks) {
                 const boardgameRank = Array.from(ranks.getElementsByTagName('rank')).find(r => r.getAttribute('name') === 'boardgame');
-                rank = boardgameRank?.getAttribute('value') || 'N/A';
+                bggRank = boardgameRank?.getAttribute('value') || 'N/A';
             }
 
             const item_id = items[i].getAttribute('objectid') || 'N/A';
@@ -544,11 +560,12 @@ title: BGG Collection Browser
                 item_id: item_id, // Add item_id here
                 name: name,
                 yearPublished: yearPublished,
+                bggRating: bggAverage,
+                bggUserRating: userAverage,
+                bggRank: bggRank === 'N/A' ? Infinity : parseInt(bggRank), // Use Infinity for N/A ranks for sorting
                 collectionStatus: collectionStatus,
                 numPlays: parseInt(numPlays),
                 userRating: userRating,
-                averageRating: bayesAverage,
-                rank: rank === 'N/A' ? Infinity : parseInt(rank) // Use Infinity for N/A ranks for sorting
             });
         }
         calculateUserRanks(); // Calculate user ranks after populating gamesData
