@@ -46,13 +46,15 @@ def get_user_data(username):
                     return float(val) if val is not None else None
                 except (ValueError, TypeError):
                     return None
-                
-            user_data.append({
-                'id': item.get('objectid'),
-                'username': username,
-                'rating': safe_float(_get_element_value(item, ".//stats/rating", attribute='value')),
-                'own': True if _get_element_value(item, ".//status", attribute='own') == '1' else False
-            })
+            rating = safe_float(_get_element_value(item, ".//stats/rating", attribute='value'))
+            own = True if _get_element_value(item, ".//status", attribute='own') == '1' else False
+            if rating or own:
+                user_data.append({
+                    'id': item.get('objectid'),
+                    'username': username,
+                    'rating': rating,
+                    'own': own
+                })
         return user_data
 
     except requests.RequestException as e:

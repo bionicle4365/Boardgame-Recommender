@@ -180,11 +180,6 @@ resource "aws_glue_catalog_table" "boardgame_app_user_table_raw" {
     }
 
     columns {
-        name = "max_players"
-        type = "int"
-    }
-
-    columns {
         name = "rating"
         type = "double"
     }
