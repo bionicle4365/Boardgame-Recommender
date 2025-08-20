@@ -27,6 +27,7 @@ module "lambda" {
   data_sqs_queue_arn = module.sqs.data_sqs_queue_arn
   user_sqs_queue_arn = module.sqs.user_sqs_queue_arn
   lambda_execution_role_arn = module.iam.lambda_exec_role_arn
+  user_lambda_function_name = "bgg_user_data_scraper"
 }
 
 module "iam" {
