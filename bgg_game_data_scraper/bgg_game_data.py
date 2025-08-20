@@ -79,20 +79,11 @@ def get_game_data(game_id):
             'id': item.get('id'),
             'type': item.get('type'),
             'name': _get_element_value(item, "./name[@type='primary']"),
-            'year_published': safe_int(_get_element_value(item, 'yearpublished', attribute='value')),
-            'min_players': safe_int(_get_element_value(item, 'minplayers', attribute='value')),
             'max_players': safe_int(_get_element_value(item, 'maxplayers', attribute='value')),
-            'playing_time': safe_int(_get_element_value(item, 'playingtime', attribute='value')),
-            'min_playtime': safe_int(_get_element_value(item, 'minplaytime', attribute='value')),
-            'max_playtime': safe_int(_get_element_value(item, 'maxplaytime', attribute='value')),
-            'min_age': safe_int(_get_element_value(item, 'minage', attribute='value')),
-            'rank': safe_int(_get_element_value(item, ".//statistics/ratings/ranks/rank[@name='boardgame']", attribute='value')),
+            'rating': safe_float(_get_element_value(item, ".//statistics/ratings/bayesaverage", attribute='value')),
             'categories': _get_links(item, 'boardgamecategory'),
             'mechanics': _get_links(item, 'boardgamemechanic'),
             'designers': _get_links(item, 'boardgamedesigner'),
-            'artists': _get_links(item, 'boardgameartist'),
-            'publishers': _get_links(item, 'boardgamepublisher'),
-            'families': _get_links(item, 'boardgamefamily'),
         }
         print(f"Extracted game data for ID {game_id}: {game_data}")
         return game_data

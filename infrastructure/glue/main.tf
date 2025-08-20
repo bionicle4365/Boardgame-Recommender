@@ -32,23 +32,8 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
     }
 
     columns {
-        name = "type"
-        type = "string"
-    }
-
-    columns {
         name = "name"
         type = "string"
-    }
-
-    columns {
-        name = "year_published"
-        type = "int"
-    }
-
-    columns {
-        name = "min_players"
-        type = "int"
     }
 
     columns {
@@ -57,59 +42,24 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
     }
 
     columns {
-        name = "playing_time"
-        type = "int"
-    }
-    
-    columns {
-        name = "min_playtime"
-        type = "int"
-    }
-
-    columns {
-        name = "max_playtime"
-        type = "int"
-    }
-
-    columns {
-        name = "min_age"
-        type = "int"
-    }
-
-    columns {
-        name = "rank"
-        type = "int"
+        name = "rating"
+        type = "float"
     }
 
     columns {
         name = "categories"
         type = "array<string>"
-      }
+    }
 
     columns {
         name = "mechanics"
         type = "array<string>"
-      }
+    }
 
     columns {
         name = "designers"
         type = "array<string>"
-      }
-
-    columns {
-        name = "artists"
-        type = "array<string>"
-      }
-
-    columns {
-        name = "publishers"
-        type = "array<string>"
-      }
-
-    columns {
-        name = "families"
-        type = "array<string>"
-      }
+    }
     
   }
 }
@@ -168,23 +118,8 @@ resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
     }
 
     columns {
-        name = "type"
-        type = "string"
-    }
-
-    columns {
         name = "name"
         type = "string"
-    }
-
-    columns {
-        name = "year_published"
-        type = "int"
-    }
-
-    columns {
-        name = "min_players"
-        type = "int"
     }
 
     columns {
@@ -193,59 +128,23 @@ resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
     }
 
     columns {
-        name = "playing_time"
-        type = "int"
-    }
-    
-    columns {
-        name = "min_playtime"
-        type = "int"
-    }
-
-    columns {
-        name = "max_playtime"
-        type = "int"
-    }
-
-    columns {
-        name = "min_age"
-        type = "int"
-    }
-
-    columns {
-        name = "rank"
-        type = "int"
+        name = "rating"
+        type = "float"
     }
 
     columns {
         name = "categories"
         type = "array<string>"
-      }
+    }
 
     columns {
         name = "mechanics"
         type = "array<string>"
-      }
+    }
 
     columns {
         name = "designers"
         type = "array<string>"
-      }
-
-    columns {
-        name = "artists"
-        type = "array<string>"
-      }
-
-    columns {
-        name = "publishers"
-        type = "array<string>"
-      }
-
-    columns {
-        name = "families"
-        type = "array<string>"
-      }
-    
+    }
   }
 }
