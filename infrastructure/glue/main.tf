@@ -181,7 +181,7 @@ resource "aws_glue_catalog_table" "boardgame_app_user_table_raw" {
 
     columns {
         name = "own"
-        type = "boolean"
+        type = "binary"
     }
   }
 }
