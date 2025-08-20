@@ -1,0 +1,44 @@
+name: BGG User Data Scraper Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - bgg_user_data/**
+      - ".github/workflows/user-scraper-docker-image.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - bgg_user_data/**
+      - ".github/workflows/user-scraper-docker-image.yml"
+  workflow_dispatch:
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: "us-east-1"
+
+jobs:
+  build_and_push_docker_image:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Get ECR URL
+      run: echo "ECR_URL=$(aws secretsmanager get-secret-value --secret-id bgg_user_data_scraper_repository_url --query SecretString --output text)" >> $GITHUB_ENV
+    - name: Push the Docker image to ECR
+      run: |
+        docker build . --file Dockerfile --tag bgg_user_data_scraper:${{ github.run_number }}
+        aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_URL}
+        docker tag bgg_user_data_scraper:${{ github.run_number }} ${ECR_URL}:latest
+        docker push ${ECR_URL}:latest
+      working-directory: ./bgg_user_data_scraper
+  deploy_lambda:
+    needs: build_and_push_docker_image
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get ECR URL
+      run: echo "ECR_URL=$(aws secretsmanager get-secret-value --secret-id bgg_user_data_scraper_repository_url --query SecretString --output text)" >> $GITHUB_ENV
+    - name: Deploy Lambda Function
+      run: |
+        aws lambda update-function-code --function-name bgg_user_data_scraper --image-uri ${ECR_URL}:latest
+

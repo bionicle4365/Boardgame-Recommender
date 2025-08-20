@@ -14,15 +14,18 @@ provider "aws" {
 
 module "sqs" {
   source = "./sqs"
-  sqs_queue_name = "bgg_game_data_scraper_queue"
-  sqs_queue_visibility_timeout_seconds = module.lambda.bgg_game_data_scraper_lambda_timeout
+  data_sqs_queue_name = "bgg_game_data_scraper_queue"
+  data_sqs_queue_visibility_timeout_seconds = module.lambda.bgg_game_data_scraper_lambda_timeout
+  user_sqs_queue_name = "bgg_user_data_scraper_queue"
+  user_sqs_queue_visibility_timeout_seconds = module.lambda.bgg_user_data_scraper_lambda_timeout
 }
 
 module "lambda" {
   source = "./lambda"
   lambda_function_name = "bgg_game_data_scraper"
-  sqs_queue_url = module.sqs.sqs_queue_url
-  sqs_queue_arn = module.sqs.sqs_queue_arn
+  data_sqs_queue_url = module.sqs.data_sqs_queue_url
+  data_sqs_queue_arn = module.sqs.data_sqs_queue_arn
+  user_sqs_queue_arn = module.sqs.user_sqs_queue_arn
   lambda_execution_role_arn = module.iam.lambda_exec_role_arn
 }
 
