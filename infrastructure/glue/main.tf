@@ -43,7 +43,7 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
 
     columns {
         name = "rating"
-        type = "float"
+        type = "double"
     }
 
     columns {
@@ -129,7 +129,7 @@ resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
 
     columns {
         name = "rating"
-        type = "float"
+        type = "double"
     }
 
     columns {
