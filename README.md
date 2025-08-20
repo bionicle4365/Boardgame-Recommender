@@ -1,6 +1,8 @@
 Docker Images
 
-[![BGG Game Scraper Docker Image](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/scraper-docker-image.yml/badge.svg)](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/scraper-docker-image.yml) [![BGG Game Data Scraper Docker Image](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/data-scraper-docker-image.yml/badge.svg)](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/data-scraper-docker-image.yml)
+[![BGG Game Scraper Docker Image](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/scraper-docker-image.yml/badge.svg)](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/scraper-docker-image.yml) 
+[![BGG Game Data Scraper Docker Image](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/data-scraper-docker-image.yml/badge.svg)](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/data-scraper-docker-image.yml)
+[![BGG User Data Scraper Docker Image](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/user-scraper-docker-image.yml/badge.svg)](https://github.com/bionicle4365/Boardgame-Recommender/actions/workflows/user-scraper-docker-image.yml)
 
 Terraform Scripts
 
