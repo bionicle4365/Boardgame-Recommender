@@ -1,0 +1,77 @@
+<style>
+    header {
+        background-color: #eee;
+        padding: 10px 15px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start; /* Align items to the start (left) */
+        border-bottom: 1px solid #ccc;
+    }
+
+    /* Styles for the hamburger menu button in the header */
+    .header-toggle-button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-size: 16px;
+        border-radius: 4px;
+        width: 40px; /* Fixed width for the hamburger icon */
+        height: 40px; /* Fixed height for the hamburger icon */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        align-items: center;
+        box-sizing: border-box;
+    }
+
+    .header-toggle-button .bar {
+        width: 80%; /* Width of each bar */
+        height: 3px; /* Thickness of each bar */
+        background-color: white;
+        border-radius: 2px;
+    }
+
+    .header-toggle-button:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+
+<button id="sidebar-toggle" class="header-toggle-button">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+</button>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarContainer = parent.document.getElementById('sidebar-container');
+        const mainWrapper = document.getElementById('main-wrapper');
+
+        const adjustContentMargin = () => {
+            if (sidebarContainer.classList.contains('collapsed')) {
+                mainWrapper.style.marginLeft = '0px'; // Collapsed width
+                sidebarContainer.style.width = '0px'; // Collapse sidebar
+            } else {
+                mainWrapper.style.marginLeft = '250px'; // Expanded width
+                sidebarContainer.style.width = '250px'; // Expand sidebar
+            }
+        };
+
+        // Initial adjustment
+        adjustContentMargin();
+
+        // Observe changes to the sidebar-container's class list
+        const observer = new MutationObserver(adjustContentMargin);
+        observer.observe(sidebarContainer, { attributes: true, attributeFilter: ['class'] });
+
+        // Toggle sidebar on button click
+        sidebarToggle.addEventListener('click', function() {
+            sidebarContainer.classList.toggle('collapsed');
+        });
+    });
+</script>

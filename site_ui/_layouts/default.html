@@ -8,12 +8,12 @@
             margin: 0;
             height: 100vh; /* Full viewport height */
         }
-        #sidebar {
-            width: 200px; /* Adjust as needed */
-            background-color: #f0f0f0;
-            padding: 15px;
-            box-sizing: border-box;
-            flex-shrink: 0;
+        #main-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 250px; /* Initial margin to make space for the sidebar */
+            transition: margin-left 0.3s ease-in-out; /* Smooth transition for margin changes */
         }
         #content {
             flex-grow: 1;
@@ -23,11 +23,16 @@
     </style>
 </head>
 <body>
-    <div id="sidebar">
+    <div id="sidebar-wrapper">
         {% include sidebar.html %}
     </div>
-    <div id="content">
-        {{ content }}
+    <div id="main-wrapper">
+        <header>
+            {% include header.html %}
+        </header>
+        <div id="content">
+            {{ content }}
+        </div>
     </div>
 </body>
 </html>

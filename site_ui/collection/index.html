@@ -146,8 +146,6 @@ title: BGG Collection Browser
         if (columnType === 'string') {
             optionsHtml += '<option value="contains">contains</option>';
             optionsHtml += '<option value="equals">equals</option>';
-            optionsHtml += '<option value="starts_with">starts with</option>';
-            optionsHtml += '<option value="ends_with">ends with</option>';
             optionsHtml += '<option value="is_empty">is empty</option>';
             optionsHtml += '<option value="is_not_empty">is not empty</option>';
         } else if (columnType === 'number') {
@@ -437,10 +435,6 @@ title: BGG Collection Browser
                         return gameValue >= compareValue;
                     case 'less_than_or_equal':
                         return gameValue <= compareValue;
-                    case 'starts_with':
-                        return String(gameValue).toLowerCase().startsWith(String(compareValue).toLowerCase());
-                    case 'ends_with':
-                        return String(gameValue).toLowerCase().endsWith(String(compareValue).toLowerCase());
                     case 'is_empty':
                         return gameValue === 'N/A' || gameValue === null || String(gameValue).trim() === '' || (typeof gameValue === 'number' && isNaN(gameValue));
                     case 'is_not_empty':

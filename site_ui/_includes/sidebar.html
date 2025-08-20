@@ -1,6 +1,53 @@
-<h3>Sidebar</h3>
-<ul>
-    {% for item in site.data.side_nav %}
-        <li><a href="{{ item.link }}">{{ item.name }}</a></li>
-    {% endfor %}
-</ul>
+<style>
+    .sidebar ul {
+        list-style-type: none; /* Remove bullet points */
+        padding: 0;
+    }
+
+    .sidebar li {
+        margin-bottom: 10px; /* Space out list items */
+    }
+
+    .sidebar a {
+        text-decoration: none; /* Remove underline from links */
+        color: #007bff; /* Link color */
+        font-weight: bold;
+        padding: 5px 0;
+        display: block; /* Make the whole area clickable */
+    }
+
+    .sidebar a:hover {
+        color: #0056b3; /* Darker color on hover */
+    }
+
+    .sidebar {
+        /* This div now holds the actual content, its height should be 100% of its parent (sidebar-container) */
+        width: 100%; /* Ensure it fills the container */
+        height: 100%;
+        box-sizing: border-box;
+        padding: 15px; /* Keep padding for content */
+    }
+
+    .sidebar-container {
+        width: 250px; /* Initial width of the sidebar */
+        height: 100vh; /* Make sidebar container take full viewport height */
+        transition: width 0.3s ease-in-out; /* Smooth transition for width changes */
+        overflow: hidden; /* Hide content when collapsed */
+        white-space: nowrap; /* Prevent content from wrapping */
+        position: fixed; /* Fixed position on the screen */
+        top: 0;
+        left: 0; /* Start at the left edge */
+        background-color: #f2f2f2; /* Background for the entire sidebar area */
+        z-index: 999; /* Below the button, but above main content */
+    }
+</style>
+
+<div id="sidebar-container" class="sidebar-container">
+    <div class="sidebar">
+        <ul>
+            {% for item in site.data.side_nav %}
+                <li><a href="{{ item.link }}">{{ item.name }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
