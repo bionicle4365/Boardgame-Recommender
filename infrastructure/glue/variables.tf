@@ -28,3 +28,8 @@ variable "glue_service_role_arn" {
   description = "The ARN of the Glue service role"
   type        = string
 }
+
+variable "glue_user_raw_table_name" {
+  description = "The name of the Glue user raw table"
+  type        = string
+}

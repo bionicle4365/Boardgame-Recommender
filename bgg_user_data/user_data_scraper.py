@@ -48,7 +48,7 @@ def get_user_data(username):
                     return None
                 
             user_data.append({
-                'item_id': item.get('objectid'),
+                'id': item.get('objectid'),
                 'rating': safe_float(_get_element_value(item, ".//stats/rating", attribute='value')),
                 'own': 'true' if _get_element_value(item, ".//status", attribute='own') == '1' else 'false'
             })

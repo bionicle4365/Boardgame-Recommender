@@ -43,6 +43,7 @@ module "glue" {
   combine_glue_job_name = "boardgame_app_combine_job"
   combine_glue_job_script_key = module.s3.combine_glue_job_script_key
   glue_service_role_arn = module.iam.glue_service_role_arn
+  glue_user_raw_table_name = "boardgame_app_user_raw_table"
 }
 
 module "s3" {
