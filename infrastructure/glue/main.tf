@@ -175,13 +175,23 @@ resource "aws_glue_catalog_table" "boardgame_app_user_table_raw" {
     }
 
     columns {
+        name = "username"
+        type = "string"
+    }
+
+    columns {
+        name = "max_players"
+        type = "int"
+    }
+
+    columns {
         name = "rating"
         type = "double"
     }
 
     columns {
         name = "own"
-        type = "binary"
+        type = "boolean"
     }
   }
 }
