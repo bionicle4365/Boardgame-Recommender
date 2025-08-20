@@ -6,7 +6,7 @@ data "aws_secretsmanager_secret_version" "data_current" {
 }
 
 resource "aws_lambda_function" "bgg_game_data_scraper" {
-  function_name    = var.lambda_function_name
+  function_name    = var.data_lambda_function_name
   role             = var.lambda_execution_role_arn
   package_type     = "Image"
   image_uri        = "${data.aws_secretsmanager_secret_version.data_current.secret_string}:latest"
@@ -29,7 +29,7 @@ data "aws_secretsmanager_secret_version" "user_current" {
 }
 
 resource "aws_lambda_function" "bgg_user_data_scraper" {
-  function_name    = var.lambda_function_name
+  function_name    = var.user_lambda_function_name
   role             = var.lambda_execution_role_arn
   package_type     = "Image"
   image_uri        = "${data.aws_secretsmanager_secret_version.user_current.secret_string}:latest"

@@ -22,7 +22,7 @@ module "sqs" {
 
 module "lambda" {
   source = "./lambda"
-  lambda_function_name = "bgg_game_data_scraper"
+  data_lambda_function_name = "bgg_game_data_scraper"
   data_sqs_queue_url = module.sqs.data_sqs_queue_url
   data_sqs_queue_arn = module.sqs.data_sqs_queue_arn
   user_sqs_queue_arn = module.sqs.user_sqs_queue_arn
