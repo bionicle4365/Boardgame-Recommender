@@ -40,6 +40,8 @@ def _get_links(item_element, link_type):
         value = link.get('value')
         if value:
             links.append(value)
+    if len(links) == 0:
+        return None
     return links
 
 def get_game_data(game_id):

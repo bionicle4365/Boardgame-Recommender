@@ -104,7 +104,7 @@ def main():
                         result_message = f"ID {item_id} exists but is not a boardgame (Type: {item_type}). Name: {item_name}"
                         print(result_message)
                 
-                if not items_found:
+                if not items_found and current_ids_batch[0] > 452300:
                     print(f"No items found in BGG API response for IDs: {ids_param}. Exiting.")
                     sys.exit(1) # Exit if no items are found in the response
 
