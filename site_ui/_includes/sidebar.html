@@ -26,6 +26,9 @@
         height: 100%;
         box-sizing: border-box;
         padding: 15px; /* Keep padding for content */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between; /* Keep nav at top, footer at bottom */
     }
 
     .sidebar-container {
@@ -40,6 +43,17 @@
         background-color: #f2f2f2; /* Background for the entire sidebar area */
         z-index: 999; /* Below the button, but above main content */
     }
+
+    .sidebar-footer {
+        text-align: center;
+        padding-top: 10px;
+    }
+
+    .sidebar-footer-img {
+        max-width: 100%;
+        height: auto;
+        display: inline-block;
+    }
 </style>
 
 <div id="sidebar-container" class="sidebar-container">
@@ -49,5 +63,10 @@
                 <li><a href="{{ item.link }}">{{ item.name }}</a></li>
             {% endfor %}
         </ul>
+        <div class="sidebar-footer">
+            <a href="http://www.boardgamegeek.com" target="_blank" rel="noopener noreferrer">
+                <img src="{{ '/assets/img/powered_by_BGG_02_MED.png' | relative_url }}" alt="Powered by BGG" class="sidebar-footer-img">
+            </a>
+        </div>
     </div>
 </div>
