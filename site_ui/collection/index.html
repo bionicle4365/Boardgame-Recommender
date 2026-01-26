@@ -476,7 +476,11 @@ title: BGG Collection Browser
         while (attempts < maxAttempts) {
             attempts++;
             try {
-                const response = await fetch(apiUrl);
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Authorization': 'Bearer d7c06498-1652-4ea7-a95b-3f0e58752365'
+                    }
+                });
                 const text = await response.text();
                 const parser = new DOMParser();
                 xmlDoc = parser.parseFromString(text, "text/xml");
