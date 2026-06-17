@@ -3,8 +3,386 @@ layout: default
 title: Boardgame Recommender
 ---
 
-<h1>Boardgame Recommender</h1>
+<style>
+    /* Premium Modern Styles */
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --background: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --success: #10b981;
+    }
 
-<div id="username-form">
-    {% include username_form.html %}
+    .recommender-container {
+        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-main);
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header-section {
+        margin-bottom: 30px;
+        text-align: left;
+    }
+
+    .header-section h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .header-section p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        margin: 0;
+    }
+
+    /* Form Styles */
+    .form-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        margin-bottom: 30px;
+        transition: all 0.3s ease;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    @media (min-width: 640px) {
+        .form-grid {
+            grid-template-columns: 2fr 1fr;
+        }
+        .full-width {
+            grid-column: span 2;
+        }
+        .year-inputs {
+            display: flex;
+            gap: 15px;
+        }
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-main);
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select {
+        padding: 12px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        background-color: #f8fafc;
+        color: var(--text-main);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        background-color: #fff;
+    }
+
+    .submit-btn {
+        background-color: var(--primary);
+        color: white;
+        padding: 14px 28px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .submit-btn:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+    }
+
+    .submit-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Loader / Status styles */
+    .status-card {
+        background-color: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 20px;
+        display: none;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3.5px solid #dbeafe;
+        border-top: 3.5px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .status-text {
+        font-weight: 600;
+        color: #1e40af;
+        margin: 0;
+    }
+
+    /* Results layout */
+    .results-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+
+    .rec-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        transition: all 0.3s ease;
+        animation: slideUp 0.4s ease;
+    }
+
+    .rec-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        border-color: #cbd5e1;
+    }
+
+    .rec-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .rec-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-main);
+        text-decoration: none;
+    }
+
+    .rec-title:hover {
+        color: var(--primary);
+    }
+
+    .rec-reason {
+        line-height: 1.6;
+        color: var(--text-muted);
+        margin: 0;
+        font-size: 1.02rem;
+    }
+
+    .badge {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Animations */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="recommender-container">
+    <div class="header-section">
+        <h1>AI Boardgame Recommender</h1>
+        <p>Get personalized board game recommendations powered by Amazon Bedrock.</p>
+    </div>
+
+    <!-- Configuration Form -->
+    <div class="form-card">
+        <form id="recommender-form" class="form-grid">
+            <div class="form-group">
+                <label for="username">BoardGameGeek Username</label>
+                <input type="text" id="username" placeholder="e.g. bionicle4365" required>
+            </div>
+
+            <div class="form-group">
+                <label for="own_status">Ownership Filter</label>
+                <select id="own_status">
+                    <option value="unowned" selected>Recommend games I don't own yet</option>
+                    <option value="owned">Recommend games I already own</option>
+                    <option value="any">Show any recommendations</option>
+                </select>
+            </div>
+
+            <div class="form-group full-width">
+                <label>Filter by Publishing Year (Optional)</label>
+                <div class="year-inputs">
+                    <input type="number" id="year_start" placeholder="From Year (e.g. 2023)" min="1900" max="2100" style="flex-grow: 1;">
+                    <input type="number" id="year_end" placeholder="To Year (e.g. 2026)" min="1900" max="2100" style="flex-grow: 1;">
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn full-width" id="submit-btn">
+                <span>Get AI Recommendations</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Status / Progress Card -->
+    <div id="status-card" class="status-card">
+        <div class="spinner"></div>
+        <div id="status-message" class="status-text">Processing request...</div>
+    </div>
+
+    <!-- Recommendations Results -->
+    <div id="recommendations-results" class="results-grid"></div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("recommender-form");
+        const statusCard = document.getElementById("status-card");
+        const statusMessage = document.getElementById("status-message");
+        const resultsContainer = document.getElementById("recommendations-results");
+        const submitBtn = document.getElementById("submit-btn");
+
+        const apiUrl = "{{ site.api_url }}"; // Load API Gateway URL dynamically from Jekyll config
+        let pollingInterval = null;
+
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            
+            // Clear existing states
+            clearInterval(pollingInterval);
+            resultsContainer.innerHTML = "";
+            statusCard.style.display = "flex";
+            statusMessage.textContent = "Connecting to backend recommender engine...";
+            submitBtn.disabled = true;
+
+            const username = document.getElementById("username").value.trim();
+            const own_status = document.getElementById("own_status").value;
+            const year_start = document.getElementById("year_start").value;
+            const year_end = document.getElementById("year_end").value;
+
+            // Build query params
+            let params = new URLSearchParams({
+                username: username,
+                own_status: own_status
+            });
+            if (year_start) params.append("year_start", year_start);
+            if (year_end) params.append("year_end", year_end);
+
+            const queryUrl = `${apiUrl}/recommendations?${params.toString()}`;
+
+            function pollRecommendations() {
+                fetch(queryUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error("Network response error");
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === "scraping") {
+                            statusMessage.textContent = "First time search! We are currently scraping your collection from BGG. This takes about 30 seconds...";
+                        } else if (data.status === "ready") {
+                            clearInterval(pollingInterval);
+                            statusCard.style.display = "none";
+                            submitBtn.disabled = false;
+                            renderRecommendations(data.recommendations);
+                        } else {
+                            throw new Error("Unexpected response status");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Fetch error:", error);
+                        clearInterval(pollingInterval);
+                        statusCard.style.display = "none";
+                        submitBtn.disabled = false;
+                        resultsContainer.innerHTML = `<div style="color: #ef4444; font-weight: bold; padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch recommendations. Ensure that API Gateway CORS and the Lambda function are running correctly.</div>`;
+                    });
+            }
+
+            // Trigger initial call and start polling
+            pollRecommendations();
+            pollingInterval = setInterval(pollRecommendations, 5000);
+        });
+
+        function renderRecommendations(recs) {
+            if (!recs || recs.length === 0) {
+                resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: #fff;">No recommendations found matching those criteria. Try relaxing your year filters!</div>`;
+                return;
+            }
+
+            let html = "";
+            recs.forEach((rec, index) => {
+                const searchLink = `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(rec.name)}`;
+                html += `
+                    <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
+                        <div class="rec-card-header">
+                            <a href="${searchLink}" target="_blank" class="rec-title">${escapeHTML(rec.name)}</a>
+                            <span class="badge">Match #${index + 1}</span>
+                        </div>
+                        <p class="rec-reason">${escapeHTML(rec.reason)}</p>
+                    </div>
+                `;
+            });
+            resultsContainer.innerHTML = html;
+        }
+
+        function escapeHTML(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    });
+</script>

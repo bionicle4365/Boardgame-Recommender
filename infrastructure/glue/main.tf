@@ -60,6 +60,11 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
         name = "designers"
         type = "array<string>"
     }
+
+    columns {
+        name = "year_published"
+        type = "int"
+    }
     
   }
 }
@@ -164,6 +169,11 @@ resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
     columns {
         name = "designers"
         type = "array<string>"
+    }
+
+    columns {
+        name = "year_published"
+        type = "int"
     }
   }
 }
