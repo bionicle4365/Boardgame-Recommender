@@ -9,7 +9,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container at /app
-COPY bgg_scraper.py .
+COPY bgg_game_scraper.py .
 
 # Run the Python script when the container launches
-CMD ["python", "bgg_scraper.py"]
+CMD ["python", "bgg_game_scraper.py"]

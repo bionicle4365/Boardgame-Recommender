@@ -4,12 +4,12 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - bgg_user_data/**
+      - bgg_user_data_scraper/**
       - ".github/workflows/user-scraper-docker-image.yml"
   pull_request:
     branches: [ "main" ]
     paths:
-      - bgg_user_data/**
+      - bgg_user_data_scraper/**
       - ".github/workflows/user-scraper-docker-image.yml"
   workflow_dispatch:
 
@@ -37,7 +37,7 @@ jobs:
         aws ecr get-login-password | docker login --username AWS --password-stdin ${ECR_URL}
         docker tag bgg_user_data_scraper:${{ github.run_number }} ${ECR_URL}:latest
         docker push ${ECR_URL}:latest
-      working-directory: ./bgg_user_data
+      working-directory: ./bgg_user_data_scraper
   deploy_lambda:
     needs: build_and_push_docker_image
     runs-on: ubuntu-latest

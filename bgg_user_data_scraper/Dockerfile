@@ -9,7 +9,7 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Copy the current directory contents into the container at /app
-COPY user_data_scraper.py ${LAMBDA_TASK_ROOT}
+COPY bgg_user_data_scraper.py ${LAMBDA_TASK_ROOT}
 
 # Run the Python script when the container launches
-CMD ["user_data_scraper.lambda_handler"]
+CMD ["bgg_user_data_scraper.lambda_handler"]
