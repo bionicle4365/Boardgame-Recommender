@@ -1,3 +1,5 @@
 title: BG Recommender
 description: A simple Jekyll site.
 baseurl: "/Boardgame-Recommender"
+api_url: ""
+

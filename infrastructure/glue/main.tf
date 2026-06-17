@@ -65,7 +65,7 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
 }
 
 resource "aws_glue_crawler" "boardgame_app_raw_game_data_crawler" {
-  name          = "boardgame-app-raw-data-crawler"
+  name          = "boardgame-app-raw-game-data-crawler"
   database_name = aws_glue_catalog_database.boardgame_app_db.name
   role          = var.glue_service_role_arn
 
@@ -184,9 +184,6 @@ resource "aws_glue_crawler" "boardgame_app_user_data_crawler" {
       "Tables" : { "AddOrUpdateBehavior" : "MergeNewColumns" }
     }
   })
-
-  # Schedule to run weekly on Sunday at 3 AM UTC.
-  schedule = "cron(0 3 ? * SUN *)"
 }
 
 resource "aws_glue_catalog_table" "boardgame_app_user_table_raw" {

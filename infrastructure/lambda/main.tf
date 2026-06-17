@@ -51,3 +51,26 @@ resource "aws_lambda_event_source_mapping" "bgg_user_data_scraper_esm" {
   enabled          = true
   batch_size       = 10
 }
+
+data "archive_file" "bgg_api_proxy_zip" {
+  type        = "zip"
+  source_file = "../bgg_api_proxy/bgg_api_proxy.py"
+  output_path = "${path.module}/bgg_api_proxy.zip"
+}
+
+resource "aws_lambda_function" "bgg_api_proxy" {
+  filename         = data.archive_file.bgg_api_proxy_zip.output_path
+  function_name    = "bgg_api_proxy"
+  role             = var.lambda_execution_role_arn
+  handler          = "bgg_api_proxy.lambda_handler"
+  source_code_hash = data.archive_file.bgg_api_proxy_zip.output_base64sha256
+  runtime          = "python3.10"
+  timeout          = 30
+  memory_size      = 128
+
+  environment {
+    variables = {
+      BGG_API_TOKEN = var.bgg_api_token
+    }
+  }
+}

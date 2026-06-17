@@ -465,7 +465,11 @@ title: BGG Collection Browser
             return;
         }
 
-        const apiUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
+        const apiBaseUrl = "{{ site.api_url }}";
+        const apiUrl = apiBaseUrl 
+            ? `${apiBaseUrl}/collection?username=${username}`
+            : `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
+
         const collectionDataDiv = document.getElementById('collection-data');
         collectionDataDiv.innerHTML = 'Loading collection...';
 
@@ -476,11 +480,7 @@ title: BGG Collection Browser
         while (attempts < maxAttempts) {
             attempts++;
             try {
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Authorization': 'Bearer d7c06498-1652-4ea7-a95b-3f0e58752365'
-                    }
-                });
+                const response = await fetch(apiUrl);
                 const text = await response.text();
                 const parser = new DOMParser();
                 xmlDoc = parser.parseFromString(text, "text/xml");
