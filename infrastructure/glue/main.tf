@@ -64,10 +64,32 @@ resource "aws_glue_catalog_table" "boardgame_app_table_raw" {
   }
 }
 
+resource "aws_glue_crawler" "boardgame_app_raw_game_data_crawler" {
+  name          = "boardgame-app-raw-data-crawler"
+  database_name = aws_glue_catalog_database.boardgame_app_db.name
+  role          = var.glue_service_role_arn
+
+  s3_target {
+    path = "s3://${data.aws_s3_bucket.boardgame_app_bucket.id}/data/boardgames/"
+  }
+
+  # This configuration helps the crawler update the existing table gracefully.
+  configuration = jsonencode({
+    "Version" : 1.0,
+    "CrawlerOutput" : {
+      "Partitions" : { "AddOrUpdateBehavior" : "InheritFromTable" },
+      "Tables" : { "AddOrUpdateBehavior" : "MergeNewColumns" }
+    }
+  })
+
+  # Schedule to run daily at 2 AM UTC. You can adjust this cron expression as needed.
+  schedule = "cron(0 2 ? * SUN *)"
+}
+
 resource "aws_glue_job" "boardgame_app_combine_job" {
-  name     = var.combine_glue_job_name
-  description = "Glue job to combine raw board game data into a single Parquet file"
-  role_arn = var.glue_service_role_arn
+  name              = var.combine_glue_job_name
+  description       = "Glue job to combine raw board game data into a single Parquet file"
+  role_arn          = var.glue_service_role_arn
   glue_version      = "5.0"
   max_retries       = 0
   timeout           = 15
@@ -147,6 +169,27 @@ resource "aws_glue_catalog_table" "boardgame_app_table_combined" {
         type = "array<string>"
     }
   }
+}
+
+resource "aws_glue_crawler" "boardgame_app_user_data_crawler" {
+  name          = "boardgame-app-user-data-crawler"
+  database_name = aws_glue_catalog_database.boardgame_app_db.name
+  role          = var.glue_service_role_arn
+
+  s3_target {
+    path = "s3://${data.aws_s3_bucket.boardgame_app_bucket.id}/data/users/"
+  }
+
+  configuration = jsonencode({
+    "Version" : 1.0,
+    "CrawlerOutput" : {
+      "Partitions" : { "AddOrUpdateBehavior" : "InheritFromTable" },
+      "Tables" : { "AddOrUpdateBehavior" : "MergeNewColumns" }
+    }
+  })
+
+  # Schedule to run weekly on Sunday at 3 AM UTC.
+  schedule = "cron(0 3 ? * SUN *)"
 }
 
 resource "aws_glue_catalog_table" "boardgame_app_user_table_raw" {
