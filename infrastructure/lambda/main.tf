@@ -74,3 +74,24 @@ resource "aws_lambda_function" "bgg_api_proxy" {
     }
   }
 }
+
+data "aws_ssm_parameter" "bgg_recommender_ecr_url" {
+  name = "/bgg/ecr/bgg_recommender_repository_url"
+}
+
+resource "aws_lambda_function" "bgg_recommender" {
+  function_name = "bgg_recommender"
+  role          = var.lambda_execution_role_arn
+  package_type  = "Image"
+  image_uri     = "${data.aws_ssm_parameter.bgg_recommender_ecr_url.value}:latest"
+  timeout       = 60
+  memory_size   = 512
+
+  environment {
+    variables = {
+      S3_OUTPUT_BUCKET_NAME = var.s3_bucket_name
+      USER_SQS_QUEUE_URL    = var.user_sqs_queue_url
+      BEDROCK_MODEL_ID      = "anthropic.claude-3-haiku-20240307-v1:0"
+    }
+  }
+}

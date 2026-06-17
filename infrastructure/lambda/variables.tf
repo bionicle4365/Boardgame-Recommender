@@ -23,6 +23,16 @@ variable "user_lambda_function_name" {
   type        = string
 }
 
+variable "user_sqs_queue_url" {
+  description = "The URL of the SQS queue for the BGG user data scraper"
+  type        = string
+}
+
+variable "s3_bucket_name" {
+  description = "The name of the S3 bucket where scraper data is stored"
+  type        = string
+}
+
 variable "bgg_api_token" {
   description = "The authorization token for the BGG API"
   type        = string

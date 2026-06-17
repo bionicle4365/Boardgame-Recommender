@@ -26,9 +26,11 @@ module "lambda" {
   data_sqs_queue_url = module.sqs.data_sqs_queue_url
   data_sqs_queue_arn = module.sqs.data_sqs_queue_arn
   user_sqs_queue_arn = module.sqs.user_sqs_queue_arn
+  user_sqs_queue_url = module.sqs.user_sqs_queue_url
   lambda_execution_role_arn = module.iam.lambda_exec_role_arn
   user_lambda_function_name = "bgg_user_data_scraper"
   bgg_api_token             = var.bgg_api_token
+  s3_bucket_name            = module.s3.bucket_name
 }
 
 module "iam" {

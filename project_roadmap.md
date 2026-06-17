@@ -17,19 +17,21 @@ Exposing credentials client-side on a public hosting service like GitHub Pages i
 
 ---
 
-## Milestone 2: Build the Backend Serving API Layer
+## Milestone 2: Build the Backend Serving AI Layer
 
 ### Objective
-Establish the bridge between the frontend user interface and the back-end machine learning engine and database files.
+Establish the bridge between the frontend user interface and the backend AI recommendation engine and database files.
 
 ### Tasks
 - [ ] **Provision AWS API Gateway**: 
   - Define HTTP/REST API endpoints in the Terraform code (e.g. `/recommendations` and `/collection`).
-- [ ] **Request Handler Lambda**:
+- [ ] **Request Handler Lambda (AI-Based)**:
   - Build a Lambda function triggered by API Gateway that receives a BGG username.
   - Check the S3 bucket (`s3://boardgame-app/data/users/`) to see if `users/{username}.parquet` already exists.
   - **If not found**: Push the username to the `bgg_user_data_scraper_queue` SQS queue to trigger the scraping Lambda asynchronously. Return a `{"status": "scraping"}` payload to the client.
-  - **If found**: Query the Athena tables or load the parquet file directly, run the recommendation model (from `ml_engine`), and return the recommended board games.
+  - **If found**: Load the user's collection parquet file from S3, extract their liked games, query Amazon Bedrock (e.g., Claude 3 Haiku or Titan) to generate personalized board game recommendations with explanations, and return the recommendations.
+- [ ] **Bedrock IAM Permissions**:
+  - Grant the serving Lambda IAM permissions to invoke Bedrock models (`bedrock:InvokeModel`).
 
 ---
 

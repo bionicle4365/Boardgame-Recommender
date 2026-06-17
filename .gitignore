@@ -5,3 +5,4 @@
 **/.terraform/**
 **/.env
 **/.terraform.lock.hcl
+ml_engine/**
