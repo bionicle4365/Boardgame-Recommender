@@ -5,18 +5,25 @@ title: BGG Collection Browser
 
 <style>
     #collection-data {
-        max-height: 50vh; /* 50% of viewport height */
-        overflow-y: auto; /* Enable vertical scrolling */
+        max-height: 50vh;
+        /* 50% of viewport height */
+        overflow-y: auto;
+        /* Enable vertical scrolling */
     }
+
     #bgg-collection-table {
-        width: 100%; /* Make table take full width of its container */
+        width: 100%;
+        /* Make table take full width of its container */
         border-collapse: collapse;
     }
-    #bgg-collection-table th, #bgg-collection-table td {
+
+    #bgg-collection-table th,
+    #bgg-collection-table td {
         padding: 8px;
         text-align: left;
         border-bottom: 1px solid #ddd;
     }
+
     #bgg-collection-table th {
         cursor: pointer;
         background-color: #f2f2f2;
@@ -24,47 +31,66 @@ title: BGG Collection Browser
         top: 0;
         z-index: 1;
     }
+
     #filters {
-        display: none; /* Initially hide the filters */
+        display: none;
+        /* Initially hide the filters */
         margin-top: 20px;
         padding: 15px;
         border: 1px solid #eee;
         background-color: #f9f9f9;
         border-radius: 5px;
     }
+
     #filters h3 {
         margin-top: 0;
         color: #333;
     }
+
     #filter-rows-container {
         display: flex;
-        flex-direction: column; /* Stack filter rows vertically */
-        gap: 10px; /* Space between filter rows */
+        flex-direction: column;
+        /* Stack filter rows vertically */
+        gap: 10px;
+        /* Space between filter rows */
     }
+
     .filter-row {
-        display: flex; /* Make elements *inside* the row flex */
+        display: flex;
+        /* Make elements *inside* the row flex */
         align-items: center;
-        gap: 10px; /* Space between elements within a row */
-        flex-wrap: wrap; /* Allow elements within a row to wrap */
+        gap: 10px;
+        /* Space between elements within a row */
+        flex-wrap: wrap;
+        /* Allow elements within a row to wrap */
         padding: 5px;
         border-radius: 3px;
     }
+
     .filter-row label {
         font-weight: bold;
-        min-width: 100px; /* Align labels */
+        min-width: 100px;
+        /* Align labels */
     }
-    .filter-row select, .filter-row input[type="text"], .filter-row input[type="number"] {
+
+    .filter-row select,
+    .filter-row input[type="text"],
+    .filter-row input[type="number"] {
         padding: 8px;
         border: 1px solid #ddd;
         border-radius: 4px;
-        flex-grow: 1; /* Allow inputs to grow */
-        max-width: 180px; /* Limit input width */
+        flex-grow: 1;
+        /* Allow inputs to grow */
+        max-width: 180px;
+        /* Limit input width */
     }
+
     .filter-row .filter-value-container {
         display: flex;
         gap: 5px;
         flex-grow: 1;
     }
+
     .filter-row .remove-filter {
         padding: 5px 10px;
         background-color: #dc3545;
@@ -73,6 +99,7 @@ title: BGG Collection Browser
         border-radius: 3px;
         cursor: pointer;
     }
+
     #filters button {
         padding: 10px 20px;
         background-color: #007bff;
@@ -82,8 +109,10 @@ title: BGG Collection Browser
         cursor: pointer;
         font-size: 16px;
         margin-top: 10px;
-        margin-right: 10px; /* Space between buttons */
+        margin-right: 10px;
+        /* Space between buttons */
     }
+
     #filters button:hover {
         background-color: #0056b3;
     }
@@ -194,7 +223,7 @@ title: BGG Collection Browser
             span.appendChild(input);
             span.appendChild(columnValueOption);
 
-            columnValueOption.addEventListener('change', function() {
+            columnValueOption.addEventListener('change', function () {
                 if (this.value) {
                     input.style.display = 'none';
                     input.value = ''; // Clear typed value when selecting a column
@@ -267,7 +296,7 @@ title: BGG Collection Browser
 
         let currentRank = 1;
         for (let i = 0; i < rankedGames.length; i++) {
-            if (i > 0 && parseFloat(rankedGames[i].userRating) < parseFloat(rankedGames[i-1].userRating)) {
+            if (i > 0 && parseFloat(rankedGames[i].userRating) < parseFloat(rankedGames[i - 1].userRating)) {
                 currentRank = i + 1;
             }
             rankedGames[i].userRank = currentRank;
@@ -326,7 +355,7 @@ title: BGG Collection Browser
 
         // Add event listeners to new headers
         document.querySelectorAll('#bgg-collection-table th').forEach(header => {
-            header.addEventListener('click', function() {
+            header.addEventListener('click', function () {
                 const sortBy = this.dataset.sortBy;
                 const sortType = this.dataset.sortType;
                 sortTable(sortBy, sortType);
@@ -456,7 +485,7 @@ title: BGG Collection Browser
     document.getElementById('add-filter-row').addEventListener('click', () => addFilterRow());
     document.getElementById('apply-filters').addEventListener('click', applyFilters);
 
-    document.getElementById('bgg-form').addEventListener('submit', async function(event) {
+    document.getElementById('bgg-form').addEventListener('submit', async function (event) {
         event.preventDefault();
 
         const username = document.getElementById('bgg_username').value;
@@ -466,7 +495,7 @@ title: BGG Collection Browser
         }
 
         const apiBaseUrl = "{{ site.api_url }}";
-        const apiUrl = apiBaseUrl 
+        const apiUrl = apiBaseUrl
             ? `${apiBaseUrl}/collection?username=${username}`
             : `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
 
