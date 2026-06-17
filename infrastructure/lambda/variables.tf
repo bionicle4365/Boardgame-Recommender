@@ -22,3 +22,10 @@ variable "user_lambda_function_name" {
   description = "The name of the Lambda function for the BGG game data scraper"
   type        = string
 }
+
+variable "bgg_api_token" {
+  description = "The authorization token for the BGG API"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

@@ -1,2 +1,7 @@
 **/Gemfile.lock
 **/_site/** 
+**.bat
+**/__pycache__/**
+**/.terraform/**
+**/.env
+**/.terraform.lock.hcl

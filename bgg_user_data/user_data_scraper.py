@@ -1,7 +1,8 @@
 import json
 import requests
 import xml.etree.ElementTree as ET
-import os # Re-added for os.environ.get
+import os
+import time # New import for time.sleep
 
 import pandas as pd # New import for DataFrame operations
 import pyarrow # Required by pandas for Parquet engine
@@ -25,41 +26,55 @@ def get_user_data(username):
     api_url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&subtype=boardgame&excludesubtype=boardgameexpansion&stats=1"
     print(f"Querying BGG API for user: {username} at {api_url}")
 
-    try:
-        response = requests.get(api_url)
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
-        xml_data = response.content
-        print(f"Successfully received response for user {username}.")
+    retries = 3
+    for i in range(retries):
+        try:
+            bgg_api_token = os.environ.get('BGG_API_TOKEN')
+            headers = {}
+            if bgg_api_token:
+                headers["Authorization"] = f"Bearer {bgg_api_token}"
+            response = requests.get(api_url, headers=headers)
+            response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+            xml_data = response.content
+            print(f"Successfully received response for user {username}.")
 
-        root = ET.fromstring(xml_data)
-        items = root.findall(".//item")
+            root = ET.fromstring(xml_data)
+            items = root.findall(".//item")
+            if "accepted" in root.text:
+                raise ValueError(f"BGG API message for {username}: {root.text}")
 
-        if items is None:
-            print(f"No collection items found for user {username}.")
-            return None
+            if items is None:
+                print(f"No collection items found for user {username}.")
+                return None
 
-        user_data = []
-        for item in items:
-            
-            def safe_float(val):
-                try:
-                    return float(val) if val is not None else None
-                except (ValueError, TypeError):
-                    return None
-            rating = safe_float(_get_element_value(item, ".//stats/rating", attribute='value'))
-            own = True if _get_element_value(item, ".//status", attribute='own') == '1' else False
-            if rating or own:
-                user_data.append({
-                    'id': item.get('objectid'),
-                    'username': username,
-                    'rating': rating,
-                    'own': own
-                })
-        return user_data
+            user_data = []
+            for item in items:
+                
+                def safe_float(val):
+                    try:
+                        return float(val) if val is not None else None
+                    except (ValueError, TypeError):
+                        return None
+                rating = safe_float(_get_element_value(item, ".//stats/rating", attribute='value'))
+                own = True if _get_element_value(item, ".//status", attribute='own') == '1' else False
+                if rating or own:
+                    user_data.append({
+                        'id': item.get('objectid'),
+                        'username': username,
+                        'rating': rating,
+                        'own': own
+                    })
+            return user_data
 
-    except requests.RequestException as e:
-        print(f"Error querying BGG API for user {username}: {e}")
-        return None
+        except Exception as e:
+            print(f"Error querying BGG API for user {username}: {e}")
+            if i < retries - 1:
+                print(f"Retrying in 20 seconds...")
+                time.sleep(20)
+            else:
+                print(f"Max retries reached for user {username}.")
+                retries = 3
+                return None
 
 def lambda_handler(event, context):
     """

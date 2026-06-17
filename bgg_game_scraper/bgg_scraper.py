@@ -66,7 +66,11 @@ def main():
         while not batch_succeeded:
             print(f"Querying BGG API for IDs: {ids_param} (Attempt {retry_count + 1})")
             try:
-                response = requests.get(api_url)
+                bgg_api_token = os.environ.get('BGG_API_TOKEN')
+                headers = {}
+                if bgg_api_token:
+                    headers["Authorization"] = f"Bearer {bgg_api_token}"
+                response = requests.get(api_url, headers=headers)
                 response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
                 xml_data = response.content
                 print(f"Successfully received response for IDs {ids_param} from BGG API.")

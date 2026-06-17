@@ -24,7 +24,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Get ECR URL
-      run: echo "ECR_URL=$(aws secretsmanager get-secret-value --secret-id bgg_user_data_scraper_repository_url --query SecretString --output text)" >> $GITHUB_ENV
+      run: echo "ECR_URL=$(aws ssm get-parameter --name "/bgg/ecr/bgg_user_data_scraper_repository_url" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
     - name: Push the Docker image to ECR
       run: |
         docker build . --file Dockerfile --tag bgg_user_data_scraper:${{ github.run_number }}
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Get ECR URL
-      run: echo "ECR_URL=$(aws secretsmanager get-secret-value --secret-id bgg_user_data_scraper_repository_url --query SecretString --output text)" >> $GITHUB_ENV
+      run: echo "ECR_URL=$(aws ssm get-parameter --name "/bgg/ecr/bgg_user_data_scraper_repository_url" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
     - name: Deploy Lambda Function
       run: |
         aws lambda update-function-code --function-name bgg_user_data_scraper --image-uri ${ECR_URL}:latest

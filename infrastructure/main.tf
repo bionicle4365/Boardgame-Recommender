@@ -28,6 +28,7 @@ module "lambda" {
   user_sqs_queue_arn = module.sqs.user_sqs_queue_arn
   lambda_execution_role_arn = module.iam.lambda_exec_role_arn
   user_lambda_function_name = "bgg_user_data_scraper"
+  bgg_api_token             = var.bgg_api_token
 }
 
 module "iam" {
@@ -51,3 +52,23 @@ module "s3" {
   s3_bucket_name = "boardgame-app"
   combine_glue_job_script_name = "combine_raw_to_single_file.py"
 }
+
+module "ecs" {
+  source          = "./ecs"
+  s3_bucket_name  = module.s3.bucket_name
+  s3_bucket_arn   = module.s3.bucket_arn
+  sqs_queue_name  = module.sqs.data_sqs_queue_name
+  sqs_queue_arn   = module.sqs.data_sqs_queue_arn
+  bgg_api_token   = var.bgg_api_token
+}
+
+module "eventbridge" {
+  source                      = "./eventbridge"
+  ecs_cluster_arn             = module.ecs.cluster_arn
+  ecs_task_definition_arn     = module.ecs.task_definition_arn
+  ecs_subnets                 = module.ecs.subnets
+  ecs_security_group_id       = module.ecs.security_group_id
+  ecs_task_execution_role_arn = module.ecs.ecs_task_execution_role_arn
+  ecs_task_role_arn           = module.ecs.ecs_task_role_arn
+}
+

@@ -40,8 +40,6 @@ def _get_links(item_element, link_type):
         value = link.get('value')
         if value:
             links.append(value)
-    if len(links) == 0:
-        return None
     return links
 
 def get_game_data(game_id):
@@ -52,7 +50,11 @@ def get_game_data(game_id):
     print(f"Querying BGG API for ID: {game_id} at {api_url}")
 
     try:
-        response = requests.get(api_url)
+        bgg_api_token = os.environ.get('BGG_API_TOKEN')
+        headers = {}
+        if bgg_api_token:
+            headers["Authorization"] = f"Bearer {bgg_api_token}"
+        response = requests.get(api_url, headers=headers)
         response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
         xml_data = response.content
         print(f"Successfully received response for ID {game_id}.")
@@ -81,6 +83,7 @@ def get_game_data(game_id):
             'id': item.get('id'),
             'type': item.get('type'),
             'name': _get_element_value(item, "./name[@type='primary']"),
+            'year_published': safe_int(_get_element_value(item, 'yearpublished', attribute='value')),
             'max_players': safe_int(_get_element_value(item, 'maxplayers', attribute='value')),
             'rating': safe_float(_get_element_value(item, ".//statistics/ratings/bayesaverage", attribute='value')),
             'categories': _get_links(item, 'boardgamecategory'),

@@ -81,9 +81,6 @@ resource "aws_glue_crawler" "boardgame_app_raw_game_data_crawler" {
       "Tables" : { "AddOrUpdateBehavior" : "MergeNewColumns" }
     }
   })
-
-  # Schedule to run daily at 2 AM UTC. You can adjust this cron expression as needed.
-  schedule = "cron(0 2 ? * SUN *)"
 }
 
 resource "aws_glue_job" "boardgame_app_combine_job" {
@@ -231,5 +228,39 @@ resource "aws_glue_catalog_table" "boardgame_app_user_table_raw" {
         name = "own"
         type = "boolean"
     }
+  }
+}
+
+resource "aws_glue_workflow" "boardgame_workflow" {
+  name        = "boardgame-data-workflow"
+  description = "Workflow to coordinate crawler runs and data compaction ETL jobs"
+}
+
+resource "aws_glue_trigger" "start_crawler" {
+  name          = "start-crawler-trigger"
+  type          = "SCHEDULED"
+  schedule      = "cron(0 2 ? * SUN *)"
+  workflow_name = aws_glue_workflow.boardgame_workflow.name
+
+  actions {
+    crawler_name = aws_glue_crawler.boardgame_app_raw_game_data_crawler.name
+  }
+}
+
+resource "aws_glue_trigger" "run_compaction_job" {
+  name          = "run-compaction-job-trigger"
+  type          = "CONDITIONAL"
+  workflow_name = aws_glue_workflow.boardgame_workflow.name
+
+  predicate {
+    logical = "ANY"
+    conditions {
+      crawler_name = aws_glue_crawler.boardgame_app_raw_game_data_crawler.name
+      crawl_state  = "SUCCEEDED"
+    }
+  }
+
+  actions {
+    job_name = aws_glue_job.boardgame_app_combine_job.name
   }
 }
