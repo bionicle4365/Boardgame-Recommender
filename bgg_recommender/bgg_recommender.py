@@ -37,7 +37,9 @@ def get_catalog():
         for page in pages:
             for obj in page.get('Contents', []):
                 key = obj['Key']
-                if key.endswith('.parquet'):
+                size = obj.get('Size', 0)
+                # Skip metadata log files, directories, and zero-byte logs
+                if size > 0 and not key.endswith('_SUCCESS') and not key.endswith('$folder$') and not '/.' in key:
                     local_path = f"/tmp/{os.path.basename(key)}"
                     print(f"Downloading catalog chunk: {key}")
                     s3.download_file(bucket, key, local_path)
