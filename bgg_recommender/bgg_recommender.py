@@ -20,7 +20,7 @@ CATALOG_CACHE = None
 
 def get_catalog():
     """
-    Downloads and merges all parquet files in the boardgames_combined folder from S3.
+    Downloads the single combined catalog parquet file from S3.
     Caches the combined catalog in memory for warm starts.
     """
     global CATALOG_CACHE
@@ -30,26 +30,11 @@ def get_catalog():
 
     print("Fetching game catalog from S3...")
     try:
-        paginator = s3.get_paginator('list_objects_v2')
-        pages = paginator.paginate(Bucket=bucket, Prefix="data/boardgames_combined/")
-        
-        dfs = []
-        for page in pages:
-            for obj in page.get('Contents', []):
-                key = obj['Key']
-                size = obj.get('Size', 0)
-                # Skip metadata log files, directories, and zero-byte logs
-                if size > 0 and not key.endswith('_SUCCESS') and not key.endswith('$folder$') and not '/.' in key:
-                    local_path = f"/tmp/{os.path.basename(key)}"
-                    print(f"Downloading catalog chunk: {key}")
-                    s3.download_file(bucket, key, local_path)
-                    dfs.append(pd.read_parquet(local_path))
-                    
-        if not dfs:
-            print("Warning: No combined catalog parquet files found on S3.")
-            return None
-            
-        CATALOG_CACHE = pd.concat(dfs, ignore_index=True)
+        key = "data/boardgames_combined/catalog.parquet"
+        local_path = "/tmp/catalog.parquet"
+        print(f"Downloading catalog file: {key}")
+        s3.download_file(bucket, key, local_path)
+        CATALOG_CACHE = pd.read_parquet(local_path)
         print(f"Successfully loaded and cached catalog with {len(CATALOG_CACHE)} games.")
         return CATALOG_CACHE
     except Exception as e:
