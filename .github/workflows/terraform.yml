@@ -5,11 +5,13 @@ on:
     branches: [ "main" ]
     paths:
       - infrastructure/**
+      - "bgg_raw_to_compressed/**"
       - ".github/workflows/terraform.yml"
   pull_request:
     branches: [ "main" ]
     paths:
       - infrastructure/**
+      - "bgg_raw_to_compressed/**"
       - ".github/workflows/terraform.yml"
   workflow_dispatch:
 
