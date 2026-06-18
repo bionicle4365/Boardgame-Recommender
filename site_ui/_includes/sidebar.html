@@ -1,68 +1,138 @@
 <style>
+    .sidebar {
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 36px;
+        padding: 4px 8px;
+    }
+
+    .sidebar-brand-logo {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+    }
+
+    .sidebar-brand-name {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 1.15rem;
+        color: #ffffff;
+        letter-spacing: -0.02em;
+    }
+
     .sidebar ul {
-        list-style-type: none; /* Remove bullet points */
+        list-style-type: none;
         padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
     .sidebar li {
-        margin-bottom: 10px; /* Space out list items */
+        margin: 0;
     }
 
-    .sidebar a {
-        text-decoration: none; /* Remove underline from links */
-        color: #007bff; /* Link color */
-        font-weight: bold;
-        padding: 5px 0;
-        display: block; /* Make the whole area clickable */
-    }
-
-    .sidebar a:hover {
-        color: #0056b3; /* Darker color on hover */
-    }
-
-    .sidebar {
-        /* This div now holds the actual content, its height should be 100% of its parent (sidebar-container) */
-        width: 100%; /* Ensure it fills the container */
-        height: 100%;
-        box-sizing: border-box;
-        padding: 15px; /* Keep padding for content */
+    .sidebar a.nav-item {
+        text-decoration: none;
+        color: var(--sidebar-text);
+        font-weight: 500;
+        padding: 12px 16px;
+        border-radius: 10px;
         display: flex;
-        flex-direction: column;
-        justify-content: space-between; /* Keep nav at top, footer at bottom */
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s ease;
+        font-size: 0.95rem;
+    }
+
+    .sidebar a.nav-item:hover {
+        color: var(--sidebar-text-hover);
+        background-color: var(--sidebar-active-bg);
+        transform: translateX(2px);
+    }
+
+    /* Active nav item */
+    .sidebar a.nav-item.active {
+        color: #ffffff;
+        background-color: var(--primary);
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
     }
 
     .sidebar-container {
-        width: 250px; /* Initial width of the sidebar */
-        height: 100vh; /* Make sidebar container take full viewport height */
-        transition: width 0.3s ease-in-out; /* Smooth transition for width changes */
-        overflow: hidden; /* Hide content when collapsed */
-        white-space: nowrap; /* Prevent content from wrapping */
-        position: fixed; /* Fixed position on the screen */
+        width: 260px;
+        height: 100vh;
+        transition: width 0.3s ease-in-out;
+        overflow: hidden;
+        white-space: nowrap;
+        position: fixed;
         top: 0;
-        left: 0; /* Start at the left edge */
-        background-color: #f2f2f2; /* Background for the entire sidebar area */
-        z-index: 999; /* Below the button, but above main content */
+        left: 0;
+        background-color: var(--sidebar-bg);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        z-index: 999;
     }
 
     .sidebar-footer {
         text-align: center;
-        padding-top: 10px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .sidebar-footer-img {
-        max-width: 100%;
+        max-width: 80%;
         height: auto;
-        display: inline-block;
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+    }
+
+    .sidebar-footer-img:hover {
+        opacity: 1;
     }
 </style>
 
 <div id="sidebar-container" class="sidebar-container">
     <div class="sidebar">
-        <ul>
-            {% for item in site.data.side_nav %}
-                <li><a href="{{ item.link }}">{{ item.name }}</a></li>
-            {% endfor %}
-        </ul>
+        <div>
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-logo">B</div>
+                <span class="sidebar-brand-name">BG Recommender</span>
+            </div>
+            <ul>
+                {% for item in site.data.side_nav %}
+                    {% assign is_active = false %}
+                    {% if page.url == item.link or (item.link != "/Boardgame-Recommender/" and page.url contains item.link) %}
+                        {% assign is_active = true %}
+                    {% endif %}
+                    <li>
+                        <a href="{{ item.link }}" class="nav-item {% if is_active %}active{% endif %}">
+                            <span>{{ item.name }}</span>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
         <div class="sidebar-footer">
             <a href="http://www.boardgamegeek.com" target="_blank" rel="noopener noreferrer">
                 <img src="{{ '/assets/img/powered_by_BGG_02_MED.png' | relative_url }}" alt="Powered by BGG" class="sidebar-footer-img">

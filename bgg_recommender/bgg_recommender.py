@@ -157,18 +157,9 @@ def lambda_handler(event, context):
             })
         }
 
-    # Clean catalog types defensively to handle evolving database schemas
-    if 'year_published' not in catalog_df.columns:
-        catalog_df['year_published'] = np.nan
+    # Clean catalog types
     catalog_df['year_published'] = pd.to_numeric(catalog_df['year_published'], errors='coerce')
-    
-    if 'rating' not in catalog_df.columns:
-        catalog_df['rating'] = np.nan
     catalog_df['rating'] = pd.to_numeric(catalog_df['rating'], errors='coerce')
-
-    for col in ['categories', 'mechanics', 'designers']:
-        if col not in catalog_df.columns:
-            catalog_df[col] = [[] for _ in range(len(catalog_df))]
 
     # Join user profile with catalog to map user rated game IDs to their metadata (names, features)
     # The user table ID and catalog ID should be matched as strings

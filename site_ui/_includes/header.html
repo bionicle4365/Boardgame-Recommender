@@ -1,50 +1,79 @@
 <style>
     header {
-        background-color: #eee;
-        padding: 10px 15px;
+        background-color: var(--header-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 16px 24px;
         display: flex;
         align-items: center;
-        justify-content: flex-start; /* Align items to the start (left) */
-        border-bottom: 1px solid #ccc;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        height: 70px;
     }
 
-    /* Styles for the hamburger menu button in the header */
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .header-page-title {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: var(--text-main);
+        margin: 0;
+    }
+
+    /* Modern clean toggle button */
     .header-toggle-button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 10px 15px;
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        padding: 8px;
         cursor: pointer;
         font-size: 16px;
-        border-radius: 4px;
-        width: 40px; /* Fixed width for the hamburger icon */
-        height: 40px; /* Fixed height for the hamburger icon */
+        border-radius: 8px;
+        width: 38px;
+        height: 38px;
         display: flex;
         flex-direction: column;
         justify-content: space-around;
         align-items: center;
         box-sizing: border-box;
+        transition: all 0.2s ease;
     }
 
     .header-toggle-button .bar {
-        width: 80%; /* Width of each bar */
-        height: 3px; /* Thickness of each bar */
-        background-color: white;
-        border-radius: 2px;
+        width: 18px;
+        height: 2px;
+        background-color: var(--text-muted);
+        border-radius: 1px;
+        transition: all 0.2s ease;
     }
 
     .header-toggle-button:hover {
-        background-color: #0056b3;
+        background-color: rgba(0, 0, 0, 0.05);
+        color: var(--text-main);
+        border-color: var(--text-main);
+    }
+    
+    .header-toggle-button:hover .bar {
+        background-color: var(--text-main);
     }
 </style>
 
-
-<button id="sidebar-toggle" class="header-toggle-button">
-    <div class="bar"></div>
-    <div class="bar"></div>
-    <div class="bar"></div>
-</button>
-
+<div class="header-left">
+    <button id="sidebar-toggle" class="header-toggle-button">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </button>
+    <h1 class="header-page-title">{{ page.title }}</h1>
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -54,11 +83,11 @@
 
         const adjustContentMargin = () => {
             if (sidebarContainer.classList.contains('collapsed')) {
-                mainWrapper.style.marginLeft = '0px'; // Collapsed width
-                sidebarContainer.style.width = '0px'; // Collapse sidebar
+                mainWrapper.style.marginLeft = '0px';
+                sidebarContainer.style.width = '0px';
             } else {
-                mainWrapper.style.marginLeft = '250px'; // Expanded width
-                sidebarContainer.style.width = '250px'; // Expand sidebar
+                mainWrapper.style.marginLeft = '260px';
+                sidebarContainer.style.width = '260px';
             }
         };
 
