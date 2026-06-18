@@ -4,133 +4,301 @@ title: BGG Collection Browser
 ---
 
 <style>
+    :root {
+        --primary-green: #10b981;
+        --primary-green-hover: #059669;
+        --primary-green-light: #ecfdf5;
+        --primary-green-border: #a7f3d0;
+        --primary-green-glow: rgba(16, 185, 129, 0.15);
+    }
+
+    .collection-container {
+        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-main);
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header-section {
+        margin-bottom: 30px;
+        text-align: left;
+    }
+
+    .header-section h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .header-section p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        margin: 0;
+    }
+
     #collection-data {
-        max-height: 50vh;
-        /* 50% of viewport height */
+        max-height: 60vh;
         overflow-y: auto;
-        /* Enable vertical scrolling */
+        margin-bottom: 30px;
+        transition: all 0.3s ease;
+    }
+
+    #collection-data.has-content {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background-color: var(--card-bg);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+
+    .collection-message {
+        padding: 40px;
+        text-align: center;
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 1.05rem;
+    }
+
+    .collection-message.error {
+        color: #ef4444;
+        background-color: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 12px;
+        margin: 20px;
+    }
+
+    .collection-status-card {
+        background-color: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 12px;
+        padding: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        animation: fadeIn 0.3s ease;
+        margin: 20px;
+    }
+
+    .collection-spinner {
+        width: 28px;
+        height: 28px;
+        border: 3.5px solid #d1fae5;
+        border-top: 3.5px solid #10b981;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .collection-status-text {
+        font-weight: 600;
+        color: #065f46;
+        margin: 0;
+        font-family: 'Outfit', sans-serif;
     }
 
     #bgg-collection-table {
         width: 100%;
-        /* Make table take full width of its container */
         border-collapse: collapse;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
     }
 
     #bgg-collection-table th,
     #bgg-collection-table td {
-        padding: 8px;
+        padding: 14px 18px;
         text-align: left;
-        border-bottom: 1px solid #ddd;
+        border-bottom: 1px solid var(--border);
     }
 
     #bgg-collection-table th {
         cursor: pointer;
-        background-color: #f2f2f2;
+        background-color: #f8fafc;
+        color: var(--text-main);
+        font-weight: 600;
+        font-family: 'Outfit', sans-serif;
         position: sticky;
         top: 0;
         z-index: 1;
+        transition: background-color 0.2s ease;
+        user-select: none;
+        border-bottom: 2.5px solid var(--border);
+    }
+
+    #bgg-collection-table th:hover {
+        background-color: #f1f5f9;
+        color: #059669;
+    }
+
+    #bgg-collection-table tr:hover td {
+        background-color: rgba(16, 185, 129, 0.02);
+    }
+
+    #bgg-collection-table td a {
+        color: #10b981;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s ease;
+    }
+
+    #bgg-collection-table td a:hover {
+        color: #059669;
+        text-decoration: underline;
     }
 
     #filters {
         display: none;
-        /* Initially hide the filters */
-        margin-top: 20px;
-        padding: 15px;
-        border: 1px solid #eee;
-        background-color: #f9f9f9;
-        border-radius: 5px;
+        margin-top: 30px;
+        padding: 28px;
+        border: 1px solid var(--border);
+        background-color: var(--card-bg);
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     }
 
     #filters h3 {
         margin-top: 0;
-        color: #333;
+        margin-bottom: 20px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.25rem;
+        color: var(--text-main);
     }
 
     #filter-rows-container {
         display: flex;
         flex-direction: column;
-        /* Stack filter rows vertically */
-        gap: 10px;
-        /* Space between filter rows */
+        gap: 12px;
+        margin-bottom: 20px;
     }
 
     .filter-row {
         display: flex;
-        /* Make elements *inside* the row flex */
         align-items: center;
-        gap: 10px;
-        /* Space between elements within a row */
+        gap: 12px;
         flex-wrap: wrap;
-        /* Allow elements within a row to wrap */
-        padding: 5px;
-        border-radius: 3px;
+        padding: 12px;
+        background-color: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 8px;
     }
 
     .filter-row label {
-        font-weight: bold;
-        min-width: 100px;
-        /* Align labels */
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-main);
+        min-width: 80px;
     }
 
     .filter-row select,
     .filter-row input[type="text"],
     .filter-row input[type="number"] {
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.9rem;
         flex-grow: 1;
-        /* Allow inputs to grow */
-        max-width: 180px;
-        /* Limit input width */
+        max-width: 200px;
+        transition: all 0.2s ease;
+        background-color: #ffffff;
+        color: var(--text-main);
+    }
+
+    .filter-row select:focus,
+    .filter-row input:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
     }
 
     .filter-row .filter-value-container {
         display: flex;
-        gap: 5px;
+        gap: 8px;
         flex-grow: 1;
     }
 
     .filter-row .remove-filter {
-        padding: 5px 10px;
-        background-color: #dc3545;
+        padding: 10px 16px;
+        background-color: #ef4444;
         color: white;
         border: none;
-        border-radius: 3px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.85rem;
         cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .filter-row .remove-filter:hover {
+        background-color: #dc2626;
+        transform: translateY(-1px);
     }
 
     #filters button {
-        padding: 10px 20px;
-        background-color: #007bff;
-        color: white;
+        padding: 12px 24px;
         border: none;
-        border-radius: 5px;
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 16px;
-        margin-top: 10px;
-        margin-right: 10px;
-        /* Space between buttons */
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        margin-right: 12px;
     }
 
-    #filters button:hover {
-        background-color: #0056b3;
+    #add-filter-row {
+        background-color: #f1f5f9;
+        color: var(--text-main);
+        border: 1px solid var(--border) !important;
+    }
+
+    #add-filter-row:hover {
+        background-color: #e2e8f0;
+        transform: translateY(-1px);
+    }
+
+    #apply-filters {
+        background-color: var(--primary-green);
+        color: white;
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.15);
+    }
+
+    #apply-filters:hover {
+        background-color: var(--primary-green-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 </style>
 
-<h1>Collection Browser</h1>
+<div class="collection-container">
+    <div class="header-section">
+        <h1>BGG Collection Browser</h1>
+        <p>Browse, filter, and sort your BoardGameGeek collection directly in a sleek, interactive viewer.</p>
+    </div>
 
-<div id="username-form">
-    {% include username_form.html %}
-</div>
+    <div id="username-form">
+        {% include username_form.html %}
+    </div>
 
-<div id="collection-data"></div>
+    <div id="collection-data"></div>
 
-<div id="filters">
-    <h3>Filter Builder</h3>
-    <div id="filter-rows-container"></div>
-    <button id="add-filter-row">Add Filter</button>
-    <button id="apply-filters">Apply Filters</button>
+    <div id="filters">
+        <h3>Filter Builder</h3>
+        <div id="filter-rows-container"></div>
+        <button id="add-filter-row">Add Filter</button>
+        <button id="apply-filters">Apply Filters</button>
+    </div>
 </div>
 
 <script>
@@ -148,7 +316,7 @@ title: BGG Collection Browser
         { name: 'Collection Status', key: 'collectionStatus', type: 'string' },
         { name: 'Number of Plays', key: 'numPlays', type: 'number' },
         { name: 'User Rating', key: 'userRating', type: 'number' },
-        { name: 'User Rank', key: 'userRank', type: 'number' } // New column
+        { name: 'User Rank', key: 'userRank', type: 'number' }
     ];
 
     function createColumnDropdown(selectedValue = '') {
@@ -243,10 +411,10 @@ title: BGG Collection Browser
         const columnDropdown = createColumnDropdown(columnKey);
         filterRow.appendChild(columnDropdown);
 
-        const operatorDropdown = createOperatorDropdown(headers.find(h => h.key === columnKey)?.type, operator);
+        let operatorDropdown = createOperatorDropdown(headers.find(h => h.key === columnKey)?.type, operator);
         filterRow.appendChild(operatorDropdown);
 
-        const valueInput = createValueInput(headers.find(h => h.key === columnKey)?.type, operator, value);
+        let valueInput = createValueInput(headers.find(h => h.key === columnKey)?.type, operator, value);
         filterRow.appendChild(valueInput);
 
         const removeButton = document.createElement('button');
@@ -315,13 +483,13 @@ title: BGG Collection Browser
         const filtersDiv = document.getElementById('filters');
 
         if (filteredGamesData.length === 0) {
-            collectionDataDiv.innerHTML = '<p>No games match the current filters.</p>';
+            collectionDataDiv.innerHTML = '<div class="collection-message">No games match the current filters.</div>';
+            collectionDataDiv.classList.add('has-content');
             filtersDiv.style.display = 'none'; // Hide filters if no data
-            collectionDataDiv.style.border = 'none'; // Hide border if no data
             return;
         }
 
-        let tableHtml = '<table border="1" id="bgg-collection-table"><thead><tr>';
+        let tableHtml = '<table id="bgg-collection-table"><thead><tr>';
 
         headers.forEach(header => {
             let sortIndicator = '';
@@ -343,12 +511,11 @@ title: BGG Collection Browser
                 <td>${game.numPlays}</td>
                 <td>${game.userRating !== 'N/A' ? parseFloat(game.userRating).toFixed(2) : 'N/A'}</td>
                 <td>${game.userRank}</td>
-
             </tr>`;
         });
         tableHtml += '</tbody></table>';
         collectionDataDiv.innerHTML = tableHtml;
-        collectionDataDiv.style.border = '1px solid #ccc'; // Show border when table is rendered
+        collectionDataDiv.classList.add('has-content');
 
         // Show filters once the table is rendered
         filtersDiv.style.display = 'block';
@@ -500,7 +667,13 @@ title: BGG Collection Browser
             : `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
 
         const collectionDataDiv = document.getElementById('collection-data');
-        collectionDataDiv.innerHTML = 'Loading collection...';
+        collectionDataDiv.innerHTML = `
+            <div class="collection-status-card">
+                <div class="collection-spinner"></div>
+                <div class="collection-status-text">Fetching collection data from BGG...</div>
+            </div>
+        `;
+        collectionDataDiv.classList.add('has-content');
 
         let xmlDoc = null;
         let attempts = 0;
@@ -518,23 +691,37 @@ title: BGG Collection Browser
                 const errors = xmlDoc.getElementsByTagName('errors');
                 if (errors.length > 0) {
                     const errorMessage = errors[0].getElementsByTagName('error')[0]?.textContent || 'Unknown API error.';
-                    collectionDataDiv.innerHTML = `<p>BGG API Error: ${errorMessage}</p>`;
+                    collectionDataDiv.innerHTML = `
+                        <div class="collection-message error">
+                            BGG API Error: ${errorMessage}
+                        </div>
+                    `;
+                    collectionDataDiv.classList.add('has-content');
                     document.getElementById('filters').style.display = 'none'; // Hide filters on API error
                     return; // Do not retry on API-specific errors
                 }
 
                 const items = xmlDoc.getElementsByTagName('item');
-
-                // If we reached here, it means we got valid data, so break the loop
                 break;
 
             } catch (error) {
                 console.error(`Attempt ${attempts}: Error fetching BGG collection:`, error);
                 if (attempts < maxAttempts) {
-                    collectionDataDiv.innerHTML = `<p>Attempt ${attempts}: Network error fetching collection data. Retrying...</p>`;
+                    collectionDataDiv.innerHTML = `
+                        <div class="collection-status-card">
+                            <div class="collection-spinner"></div>
+                            <div class="collection-status-text">Attempt ${attempts}: Network error fetching collection data. Retrying...</div>
+                        </div>
+                    `;
+                    collectionDataDiv.classList.add('has-content');
                     await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
                 } else {
-                    collectionDataDiv.innerHTML = '<p>Failed to fetch collection data after multiple retries due to network issues. Please try again later.</p>';
+                    collectionDataDiv.innerHTML = `
+                        <div class="collection-message error">
+                            Failed to fetch collection data after multiple retries due to network issues. Please try again later.
+                        </div>
+                    `;
+                    collectionDataDiv.classList.add('has-content');
                     document.getElementById('filters').style.display = 'none'; // Hide filters on network error
                     return;
                 }
@@ -543,7 +730,12 @@ title: BGG Collection Browser
 
         // If xmlDoc is still null after all attempts, something went wrong
         if (!xmlDoc) {
-            collectionDataDiv.innerHTML = '<p>Failed to fetch collection data. Please try again later.</p>';
+            collectionDataDiv.innerHTML = `
+                <div class="collection-message error">
+                    Failed to fetch collection data. Please try again later.
+                </div>
+            `;
+            collectionDataDiv.classList.add('has-content');
             document.getElementById('filters').style.display = 'none'; // Hide filters if data fetching failed
             return;
         }
@@ -573,7 +765,7 @@ title: BGG Collection Browser
             const userAverage = stats?.getElementsByTagName('average')[0]?.getAttribute('value') || 'N/A';
             const bggAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
 
-            let rank = 'N/A';
+            let bggRank = 'N/A';
             const ranks = stats?.getElementsByTagName('ranks')[0];
             if (ranks) {
                 const boardgameRank = Array.from(ranks.getElementsByTagName('rank')).find(r => r.getAttribute('name') === 'boardgame');
@@ -583,7 +775,7 @@ title: BGG Collection Browser
             const item_id = items[i].getAttribute('objectid') || 'N/A';
 
             gamesData.push({
-                item_id: item_id, // Add item_id here
+                item_id: item_id,
                 name: name,
                 yearPublished: yearPublished,
                 bggRating: bggAverage,
