@@ -22,7 +22,7 @@ jobs:
   build_and_push_docker_image:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Get ECR URL
       run: |
         ECR_URL=$(aws ssm get-parameter --name /bgg/ecr/bgg_game_data_scraper_repository_url --query Parameter.Value --output text)
