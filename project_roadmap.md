@@ -1,67 +1,65 @@
 # Boardgame Recommender - Project Roadmap
 
-This document outlines the next steps and architecture enhancements for the Boardgame Recommender project.
+This document outlines the next steps and architecture enhancements for the Boardgame Recommender project, prioritized logically to focus on immediate pipeline fixes, API safety, core UI usability, visual analytics, and caching.
 
 ---
 
-## Milestone 1: Crawler & Data Pipeline Verification
+## Milestone 1: Crawler & Data Pipeline Verification (Coalescing & Download Optimization)
 
 ### Objective
-Verify the end-to-end data pipeline from raw scraped data in S3 to the combined board game catalog, ensuring correct schema mapping and data density.
+Optimize the AWS Glue ETL compaction script to write consolidated Parquet files, verify the end-to-end raw-to-combined data pipeline, and speed up Lambda catalog download times.
 
 ### Tasks
+- [ ] Refactor the PySpark ETL script (`combine_raw_to_single_file.py`) to coalesce dynamic frame partitions to `1` so it writes a single compressed Parquet file to S3.
 - [ ] Monitor the catalog scraper progress to ensure it has successfully processed the full target range of BoardGameGeek game IDs.
 - [ ] Trigger and run the AWS Glue Crawler to scan the raw catalog dataset.
-- [ ] Run the Glue ETL compaction job (`boardgame_app_combine_job`) to consolidate raw records into the combined table.
-- [ ] Run verification queries (via Athena/Python) to ensure the combined table contains all newly crawled game metadata (such as `year_published`) and matches row count expectations.
+- [ ] Execute the compaction Glue job (`boardgame_app_combine_job`) to consolidate raw JSON/Parquet records into the single combined catalog file.
+- [ ] Refactor `bgg_recommender/bgg_recommender.py` loading logic to fetch this single catalog Parquet file directly from S3, completely bypassing listing and loop downloads to eliminate container cold-start delay.
+- [ ] Verify that the combined database table schema mapping successfully handles newly scraped fields (such as `year_published`).
 
 ---
 
-## Milestone 2: Advanced Frontend Analytics Dashboard
+## Milestone 2: Scraper Resilience, Concurrency Limiting, & API Back-off
 
 ### Objective
-Enrich the Jekyll website with collection metrics and visualizations to provide users with visual insights into their gaming catalog.
+Protect the BGG XMLAPI2 endpoint from concurrent request spikes, implement robust retry mechanisms, and avoid rate limiting or IP blocks.
 
 ### Tasks
-- [ ] Integrate a charting library (e.g., Chart.js or vanilla SVG charts) into the Jekyll UI layout.
-- [ ] Implement a dashboard layout showing:
-  - Category and mechanics breakdown (e.g., pie/donut chart of most played genres).
-  - Complexity (weight) distribution (e.g., bar chart of game weight ranges).
-  - Optimal player count ranges.
-  - Rating distribution of their rated boardgames.
+- [ ] Limit SQS-to-Lambda trigger concurrency (e.g., using `reserved_concurrent_executions` or `max_concurrency` properties) in Terraform to regulate BGG outbound request concurrency.
+- [ ] Implement exponential back-off with random jitter retries in the scraper scripts (`bgg_game_scraper.py`, `bgg_game_data_scraper.py`, `bgg_user_data_scraper.py`).
+- [ ] Optimize checkpoint persistence frequency to limit duplicated scraped IDs upon container restart.
 
 ---
 
 ## Milestone 3: Interactive Collection Browser Enhancements
 
 ### Objective
-Improve user controls and scalability of the BGG Collection Browser table.
+Scale the collection browser to handle large lists, adding user controls for sorting and filtering.
 
 ### Tasks
-- [ ] Implement client-side pagination or virtual scrolling to seamlessly display collections with hundreds of games.
-- [ ] Add interactive column sorting (sorting by rating, weight, play time, name).
-- [ ] Create advanced multi-select filter components (e.g., filtering by complexity range, player count, category tags).
+- [ ] Implement client-side pagination or virtual scrolling for the collection table.
+- [ ] Add interactive column sorting for key attributes (e.g., rating, weight, complexity, play time, name).
+- [ ] Build advanced multi-select tag filter components.
 
 ---
 
-## Milestone 4: Scraper Resilience & Deduplication
+## Milestone 4: Advanced Frontend Analytics Dashboard
 
 ### Objective
-Ensure scraper jobs are reliable, handle rate limiting gracefully, and produce clean, optimized Parquet outputs.
+Enrich the Jekyll UI with collection visual analytics.
 
 ### Tasks
-- [ ] Add robust exponential back-off and retry logic in `bgg_game_scraper` and `bgg_user_data_scraper` to handle BGG API throttling.
-- [ ] Implement deduplication logic to prevent redundant writes or overlapping records in raw S3 Parquet files.
-- [ ] Optimize S3 directory structures and partitioning schemes.
+- [ ] Integrate a charting library (like Chart.js or custom SVG charts) into the Jekyll UI pages.
+- [ ] Build a dashboard presenting collection distribution statistics (e.g., categories breakdown donut chart, complexity ranges bar chart, player count distribution).
 
 ---
 
-## Milestone 5: Serving API Performance Optimization & Caching
+## Milestone 5: Caching & Serving API Performance Optimization
 
 ### Objective
-Speed up recommendations serving API requests and lower Bedrock token usage by caching query outputs.
+Improve response times for active users, minimize Bedrock costs, and reduce duplicate scraper invocations.
 
 ### Tasks
-- [ ] Implement a recommendation cache (e.g., JSON files in an S3 prefix like `data/recommendation_cache/{username}.json` or DynamoDB storage).
-- [ ] Add caching for BGG collection api proxy queries to prevent repeating slow scraping calls for active users.
-- [ ] Optimize Lambda container initialization and dependency footprint for faster cold-start times.
+- [ ] Implement client-side `localStorage` caching on the frontend to instantly serve repeated searches.
+- [ ] Implement server-side recommendation caching (e.g., caching generated JSON results in S3).
+- [ ] Optimize Lambda container footprints to further reduce cold-start latency.
