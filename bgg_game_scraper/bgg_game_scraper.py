@@ -16,8 +16,8 @@ def main():
     aws_region = os.environ.get('AWS_REGION', 'us-east-1')
     bgg_api_base_url = "https://boardgamegeek.com/xmlapi2/thing"
     request_delay_seconds = 1 # Delay between requests to respect API limits (e.g., 1 second)
-    s3_update_interval = 100 # Update S3 every 100 IDs
-    batch_size = 20 # Number of IDs to query at a time
+    batch_size = int(os.environ.get('BATCH_SIZE', '100')) # Number of IDs to query at a time
+    s3_update_interval = int(os.environ.get('S3_UPDATE_INTERVAL', '500')) # Update S3 every 500 IDs
     retry_delay_seconds = 1 # Delay before retrying a failed batch
     sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg_game_data_scraper_queue') # New: SQS Queue Name
 
