@@ -669,31 +669,9 @@ title: BGG Collection Browser
         // Prev button
         buttonsHtml += `<button class="pagination-btn ${currentPage === 1 ? 'disabled' : ''}" id="page-prev" data-page="${currentPage - 1}">&larr; Prev</button>`;
 
-        // Numbered buttons with ellipsis logic
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - 2);
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-        
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        if (startPage > 1) {
-            buttonsHtml += `<button class="pagination-btn" data-page="1">1</button>`;
-            if (startPage > 2) {
-                buttonsHtml += `<span class="pagination-ellipsis">...</span>`;
-            }
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
+        // Numbered buttons - full numbered list
+        for (let i = 1; i <= totalPages; i++) {
             buttonsHtml += `<button class="pagination-btn ${currentPage === i ? 'active' : ''}" data-page="${i}">${i}</button>`;
-        }
-
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                buttonsHtml += `<span class="pagination-ellipsis">...</span>`;
-            }
-            buttonsHtml += `<button class="pagination-btn" data-page="${totalPages}">${totalPages}</button>`;
         }
 
         // Next button
