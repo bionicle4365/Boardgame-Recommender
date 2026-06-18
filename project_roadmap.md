@@ -37,9 +37,9 @@ Protect the BGG XMLAPI2 endpoint from concurrent request spikes, implement robus
 Scale the collection browser to handle large lists, adding user controls for sorting and filtering.
 
 ### Tasks
-- [ ] Implement client-side pagination or virtual scrolling for the collection table.
-- [ ] Add interactive column sorting for key attributes (e.g., rating, weight, complexity, play time, name).
-- [ ] Build advanced multi-select tag filter components.
+- [x] Implement client-side pagination or virtual scrolling for the collection table.
+- [x] Add interactive column sorting for key attributes (e.g., rating, play time, name).
+- [x] Build advanced multi-select tag filter components.
 
 ---
 

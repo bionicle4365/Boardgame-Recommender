@@ -283,126 +283,146 @@ title: BGG Collection Browser
         user-select: none;
     }
 
-    /* Filters Style */
-    #filters {
+    /* Faceted Filters Style */
+    #faceted-filters {
         display: none;
         margin-top: 30px;
-        padding: 28px;
+        padding: 24px;
         border: 1px solid var(--border);
         background-color: var(--card-bg);
         border-radius: 16px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     }
 
-    #filters h3 {
+    #faceted-filters h3 {
         margin-top: 0;
         margin-bottom: 20px;
         font-family: 'Outfit', sans-serif;
         font-size: 1.25rem;
         color: var(--text-main);
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
     }
 
-    #filter-rows-container {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-bottom: 20px;
-    }
-
-    .filter-row {
+    .filter-group {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 16px;
+        margin-bottom: 18px;
         flex-wrap: wrap;
-        padding: 12px;
-        background-color: #f8fafc;
-        border: 1px solid var(--border);
-        border-radius: 8px;
     }
 
-    .filter-row label {
+    .filter-label {
         font-weight: 600;
         font-size: 0.9rem;
         color: var(--text-main);
-        min-width: 80px;
+        min-width: 130px;
     }
 
-    .filter-row select,
-    .filter-row input[type="text"],
-    .filter-row input[type="number"] {
-        padding: 10px 14px;
+    .filter-options {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    /* Filter Buttons */
+    .filter-btn {
+        padding: 8px 14px;
         border: 1.5px solid var(--border);
-        border-radius: 6px;
-        font-size: 0.9rem;
-        flex-grow: 1;
-        max-width: 200px;
+        border-radius: 8px;
+        background-color: var(--card-bg);
+        color: var(--text-main);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
         transition: all 0.2s ease;
-        background-color: #ffffff;
+        user-select: none;
+    }
+
+    .filter-btn:hover {
+        border-color: #cbd5e1;
+        background-color: #f8fafc;
+    }
+
+    .filter-btn.active {
+        background-color: #10b981;
+        border-color: #10b981;
+        color: white;
+    }
+
+    /* Status Chips */
+    .filter-chip {
+        padding: 6px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 20px;
+        background-color: var(--card-bg);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+
+    .filter-chip:hover {
+        border-color: #cbd5e1;
         color: var(--text-main);
     }
 
-    .filter-row select:focus,
-    .filter-row input:focus {
-        outline: none;
+    /* Active status chip coloring */
+    .filter-chip[data-status="Own"].active {
+        background-color: #ecfdf5;
         border-color: #10b981;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        color: #047857;
+    }
+    
+    .filter-chip[data-status="Preordered"].active {
+        background-color: #fffbeb;
+        border-color: #f59e0b;
+        color: #b45309;
     }
 
-    .filter-row .filter-value-container {
+    .filter-chip[data-status="Want to Play"].active {
+        background-color: #eff6ff;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+    }
+
+    .filter-chip[data-status="Want to Buy"].active {
+        background-color: #f0fdfa;
+        border-color: #14b8a6;
+        color: #0f766e;
+    }
+
+    .filter-chip[data-status="Wishlist"].active {
+        background-color: #fdf2f8;
+        border-color: #ec4899;
+        color: #be185d;
+    }
+
+    .filter-actions {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
         display: flex;
-        gap: 8px;
-        flex-grow: 1;
+        justify-content: flex-end;
     }
 
-    .filter-row .remove-filter {
-        padding: 10px 16px;
-        background-color: #ef4444;
-        color: white;
-        border: none;
-        border-radius: 6px;
+    .clear-filters-btn {
+        padding: 8px 16px;
+        background-color: #f1f5f9;
+        color: var(--text-main);
+        border: 1px solid var(--border);
+        border-radius: 8px;
         font-weight: 600;
         font-size: 0.85rem;
         cursor: pointer;
         transition: all 0.2s ease;
     }
 
-    .filter-row .remove-filter:hover {
-        background-color: #dc2626;
-        transform: translateY(-1px);
-    }
-
-    #filters button {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 0.95rem;
-        font-weight: 600;
-        transition: all 0.2s ease;
-        margin-right: 12px;
-    }
-
-    #add-filter-row {
-        background-color: #f1f5f9;
-        color: var(--text-main);
-        border: 1px solid var(--border) !important;
-    }
-
-    #add-filter-row:hover {
+    .clear-filters-btn:hover {
         background-color: #e2e8f0;
-        transform: translateY(-1px);
-    }
-
-    #apply-filters {
-        background-color: var(--primary-green);
-        color: white;
-        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.15);
-    }
-
-    #apply-filters:hover {
-        background-color: var(--primary-green-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 12px rgba(16, 185, 129, 0.25);
     }
 
     @keyframes spin {
@@ -414,6 +434,7 @@ title: BGG Collection Browser
         from { opacity: 0; }
         to { opacity: 1; }
     }
+</style>
 </style>
 
 <div class="collection-container">
@@ -452,12 +473,56 @@ title: BGG Collection Browser
         <div class="pagination-buttons" id="pagination-page-list"></div>
     </div>
 
-    <!-- Filter Builder -->
-    <div id="filters">
-        <h3>Filter Builder</h3>
-        <div id="filter-rows-container"></div>
-        <button id="add-filter-row">Add Filter</button>
-        <button id="apply-filters">Apply Filters</button>
+    <!-- Faceted Filter Panel -->
+    <div id="faceted-filters" style="display: none;">
+        <h3>Filter Collection</h3>
+        
+        <div class="filter-group">
+            <span class="filter-label">Collection Status:</span>
+            <div class="filter-options status-options">
+                <button class="filter-chip status-chip" data-status="Own">Own</button>
+                <button class="filter-chip status-chip" data-status="Preordered">Preordered</button>
+                <button class="filter-chip status-chip" data-status="Want to Play">Want to Play</button>
+                <button class="filter-chip status-chip" data-status="Want to Buy">Want to Buy</button>
+                <button class="filter-chip status-chip" data-status="Wishlist">Wishlist</button>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Players:</span>
+            <div class="filter-options player-options">
+                <button class="filter-btn player-btn active" data-player="any">Any</button>
+                <button class="filter-btn player-btn" data-player="1">1 (Solo)</button>
+                <button class="filter-btn player-btn" data-player="2">2 Players</button>
+                <button class="filter-btn player-btn" data-player="3-4">3-4 Players</button>
+                <button class="filter-btn player-btn" data-player="5">5+ Players</button>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Play Time:</span>
+            <div class="filter-options time-options">
+                <button class="filter-btn time-btn active" data-time="any">Any</button>
+                <button class="filter-btn time-btn" data-time="short">Short (&lt; 30m)</button>
+                <button class="filter-btn time-btn" data-time="medium">Medium (30-60m)</button>
+                <button class="filter-btn time-btn" data-time="long">Long (60-120m)</button>
+                <button class="filter-btn time-btn" data-time="epic">Epic (&gt; 120m)</button>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">BGG Rating:</span>
+            <div class="filter-options rating-options">
+                <button class="filter-btn rating-btn active" data-rating="any">Any</button>
+                <button class="filter-btn rating-btn" data-rating="6">6.0+</button>
+                <button class="filter-btn rating-btn" data-rating="7">7.0+</button>
+                <button class="filter-btn rating-btn" data-rating="8">8.0+</button>
+            </div>
+        </div>
+        
+        <div class="filter-actions">
+            <button id="clear-all-filters" class="clear-filters-btn">Clear All Filters</button>
+        </div>
     </div>
 </div>
 
@@ -468,6 +533,12 @@ title: BGG Collection Browser
     let currentSortDirection = 'asc';
     let currentPage = 1;
     let pageSize = 25;
+
+    // Facet Filter State Variables
+    let activeStatuses = []; // Array of active status strings
+    let activePlayerFilter = 'any';
+    let activeTimeFilter = 'any';
+    let activeRatingFilter = 'any';
 
     const headers = [
         { name: 'Name', key: 'name', type: 'string' },
@@ -484,142 +555,7 @@ title: BGG Collection Browser
         { name: 'User Rank', key: 'userRank', type: 'number' }
     ];
 
-    function createColumnDropdown(selectedValue = '') {
-        const select = document.createElement('select');
-        select.className = 'filter-column';
-        select.innerHTML = '<option value="">Select Column</option>';
-        headers.forEach(header => {
-            const option = document.createElement('option');
-            option.value = header.key;
-            option.textContent = header.name;
-            if (selectedValue === header.key) {
-                option.selected = true;
-            }
-            select.appendChild(option);
-        });
-        return select;
-    }
-
-    function createOperatorDropdown(columnType, selectedValue = '') {
-        const select = document.createElement('select');
-        select.className = 'filter-operator';
-        let optionsHtml = '<option value="">Select Operator</option>';
-
-        if (columnType === 'string') {
-            optionsHtml += '<option value="contains">contains</option>';
-            optionsHtml += '<option value="equals">equals</option>';
-            optionsHtml += '<option value="is_empty">is empty</option>';
-            optionsHtml += '<option value="is_not_empty">is not empty</option>';
-        } else if (columnType === 'number') {
-            optionsHtml += '<option value="equals">equals</option>';
-            optionsHtml += '<option value="greater_than">greater than</option>';
-            optionsHtml += '<option value="less_than">less than</option>';
-            optionsHtml += '<option value="greater_than_or_equal">greater than or equal to</option>';
-            optionsHtml += '<option value="less_than_or_equal">less than or equal to</option>';
-            optionsHtml += '<option value="is_empty">is empty</option>';
-            optionsHtml += '<option value="is_not_empty">is not empty</option>';
-        }
-        select.innerHTML = optionsHtml;
-        if (selectedValue) {
-            select.value = selectedValue;
-        }
-        return select;
-    }
-
-    function createValueInput(columnType, operator, selectedValue = '') {
-        const span = document.createElement('span');
-        span.className = 'filter-value-container';
-
-        if (operator === 'is_empty' || operator === 'is_not_empty') {
-            span.innerHTML = ''; // No input needed for these operators
-        } else {
-            const input = document.createElement('input');
-            if (columnType === 'number') {
-                input.type = 'number';
-                input.step = 'any';
-            } else {
-                input.type = 'text';
-            }
-            input.className = 'filter-value';
-            input.value = selectedValue;
-
-            const columnValueOption = document.createElement('select');
-            columnValueOption.className = 'filter-value-column-option';
-            columnValueOption.innerHTML = '<option value="">Type Value</option>';
-            headers.forEach(header => {
-                const option = document.createElement('option');
-                option.value = header.key;
-                option.textContent = `Column: ${header.name}`;
-                columnValueOption.appendChild(option);
-            });
-
-            span.appendChild(input);
-            span.appendChild(columnValueOption);
-
-            columnValueOption.addEventListener('change', function () {
-                if (this.value) {
-                    input.style.display = 'none';
-                    input.value = ''; // Clear typed value when selecting a column
-                } else {
-                    input.style.display = 'inline-block';
-                }
-            });
-        }
-        return span;
-    }
-
-    function addFilterRow(columnKey = '', operator = '', value = '') {
-        const container = document.getElementById('filter-rows-container');
-        const filterRow = document.createElement('div');
-        filterRow.className = 'filter-row';
-
-        const columnDropdown = createColumnDropdown(columnKey);
-        filterRow.appendChild(columnDropdown);
-
-        let operatorDropdown = createOperatorDropdown(headers.find(h => h.key === columnKey)?.type, operator);
-        filterRow.appendChild(operatorDropdown);
-
-        let valueInput = createValueInput(headers.find(h => h.key === columnKey)?.type, operator, value);
-        filterRow.appendChild(valueInput);
-
-        const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remove';
-        removeButton.className = 'remove-filter';
-        removeButton.addEventListener('click', () => {
-            filterRow.remove();
-            currentPage = 1;
-            filterAndRender(); // Refresh data
-        });
-        filterRow.appendChild(removeButton);
-
-        container.appendChild(filterRow);
-
-        const updateRowInputs = () => {
-            const selectedColumnKey = columnDropdown.value;
-            const selectedColumnType = headers.find(h => h.key === selectedColumnKey)?.type;
-            const selectedOperator = operatorDropdown.value;
-
-            // Recreate operator dropdown based on selected column type
-            const newOperatorDropdown = createOperatorDropdown(selectedColumnType, selectedOperator);
-            operatorDropdown.replaceWith(newOperatorDropdown);
-            operatorDropdown = newOperatorDropdown; // Update reference
-
-            // Recreate value input based on selected column type and operator
-            const newValueInput = createValueInput(selectedColumnType, selectedOperator);
-            valueInput.replaceWith(newValueInput);
-            valueInput = newValueInput; // Update reference
-
-            operatorDropdown.addEventListener('change', updateRowInputs);
-        };
-
-        columnDropdown.addEventListener('change', updateRowInputs);
-        operatorDropdown.addEventListener('change', updateRowInputs);
-
-        // Initial update if values are pre-set
-        if (columnKey) { // Only update if a column was pre-selected
-            updateRowInputs();
-        }
-    }
+    // Faceted filtering helper functions (previously query builder helper functions)
 
     function calculateUserRanks() {
         // Filter out games with N/A user ratings for ranking purposes
@@ -691,7 +627,7 @@ title: BGG Collection Browser
 
     function renderTable() {
         const collectionDataDiv = document.getElementById('collection-data');
-        const filtersDiv = document.getElementById('filters');
+        const filtersDiv = document.getElementById('faceted-filters');
         const controlsDiv = document.getElementById('browser-controls-bar');
 
         if (gamesData.length === 0) {
@@ -789,79 +725,60 @@ title: BGG Collection Browser
             );
         }
 
-        // Apply Builder Filters
-        const filterRows = document.querySelectorAll('.filter-row');
-        filterRows.forEach(row => {
-            const columnKey = row.querySelector('.filter-column').value;
-            const operator = row.querySelector('.filter-operator').value;
-            const valueInput = row.querySelector('.filter-value');
-            const valueColumnOption = row.querySelector('.filter-value-column-option');
-
-            if (!columnKey || !operator) return; // Skip incomplete filters
-
-            let filterValue = null;
-            let isValueAColumn = false;
-
-            if (valueColumnOption && valueColumnOption.value) {
-                filterValue = valueColumnOption.value; // It's a column key
-                isValueAColumn = true;
-            } else if (valueInput) {
-                filterValue = valueInput.value;
-            }
-
-            const columnType = headers.find(h => h.key === columnKey)?.type;
-
+        // Apply Faceted Filters
+        
+        // 1. Status Filter (Multi-select OR logic)
+        if (activeStatuses.length > 0) {
             filteredGamesData = filteredGamesData.filter(game => {
-                let gameValue = game[columnKey];
-                let compareValue = filterValue;
+                const gameStatus = game.collectionStatus || '';
+                return activeStatuses.some(status => gameStatus.includes(status));
+            });
+        }
 
-                // Determine if the game's value for this column is 'N/A' or equivalent
-                let isGameValueNA = false;
-                if (columnType === 'number') {
-                    isGameValueNA = isNaN(gameValue) || gameValue === 'N/A' || gameValue === null || gameValue === undefined || gameValue === Infinity || gameValue === -Infinity;
-                } else { // string type
-                    isGameValueNA = gameValue === 'N/A' || gameValue === null || gameValue === undefined || String(gameValue).trim() === '';
-                }
-
-                // If the game's value for this column is N/A and the operator is not checking for emptiness, exclude it.
-                if (isGameValueNA && operator !== 'is_empty' && operator !== 'is_not_empty') {
-                    return false;
-                }
-
-                if (isValueAColumn) {
-                    compareValue = game[filterValue]; // Get value from the other column
-                }
-
-                // Type conversion for comparison
-                if (columnType === 'number') {
-                    gameValue = parseFloat(gameValue);
-                    compareValue = parseFloat(compareValue);
-                    if (isNaN(gameValue)) gameValue = -Infinity;
-                    if (isNaN(compareValue)) compareValue = -Infinity;
-                }
-
-                switch (operator) {
-                    case 'contains':
-                        return String(gameValue).toLowerCase().includes(String(compareValue).toLowerCase());
-                    case 'equals':
-                        return gameValue == compareValue; // Use == for loose equality across types
-                    case 'greater_than':
-                        return gameValue > compareValue;
-                    case 'less_than':
-                        return gameValue < compareValue;
-                    case 'greater_than_or_equal':
-                        return gameValue >= compareValue;
-                    case 'less_than_or_equal':
-                        return gameValue <= compareValue;
-                    case 'is_empty':
-                        return isGameValueNA;
-                    case 'is_not_empty':
-                        return !isGameValueNA;
-                    default:
-                        return true;
+        // 2. Player Count Filter
+        if (activePlayerFilter !== 'any') {
+            const p = parseInt(activePlayerFilter);
+            filteredGamesData = filteredGamesData.filter(game => {
+                const min = parseInt(game.minPlayers);
+                const max = parseInt(game.maxPlayers);
+                if (activePlayerFilter === '3-4') {
+                    // Check if range [min, max] overlaps with [3, 4]
+                    return !isNaN(min) && !isNaN(max) && min <= 4 && max >= 3;
+                } else if (activePlayerFilter === '5') {
+                    return !isNaN(max) && max >= 5;
+                } else {
+                    return !isNaN(min) && !isNaN(max) && min <= p && max >= p;
                 }
             });
-        });
+        }
+
+        // 3. Play Time Filter
+        if (activeTimeFilter !== 'any') {
+            filteredGamesData = filteredGamesData.filter(game => {
+                const time = parseInt(game.playingTime);
+                if (isNaN(time)) return false;
+                if (activeTimeFilter === 'short') {
+                    return time > 0 && time < 30;
+                } else if (activeTimeFilter === 'medium') {
+                    return time >= 30 && time <= 60;
+                } else if (activeTimeFilter === 'long') {
+                    return time >= 60 && time <= 120;
+                } else if (activeTimeFilter === 'epic') {
+                    return time > 120;
+                }
+                return true;
+            });
+        }
+
+        // 4. Rating Filter
+        if (activeRatingFilter !== 'any') {
+            const minRating = parseFloat(activeRatingFilter);
+            filteredGamesData = filteredGamesData.filter(game => {
+                const rating = parseFloat(game.bggRating);
+                if (isNaN(rating)) return false;
+                return rating >= minRating;
+            });
+        }
 
         // Re-sort after filtering/searching, maintaining current sort order
         if (currentSortColumn) {
@@ -905,11 +822,89 @@ title: BGG Collection Browser
         filterAndRender();
     });
 
-    document.getElementById('add-filter-row').addEventListener('click', () => addFilterRow());
-    document.getElementById('apply-filters').addEventListener('click', () => {
-        currentPage = 1;
-        filterAndRender();
-    });
+    // Set up faceted filter listeners
+    function setupFacetedFilters() {
+        // Status chips (multi-select)
+        document.querySelectorAll('.status-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                const status = this.dataset.status;
+                this.classList.toggle('active');
+                if (this.classList.contains('active')) {
+                    if (!activeStatuses.includes(status)) {
+                        activeStatuses.push(status);
+                    }
+                } else {
+                    activeStatuses = activeStatuses.filter(s => s !== status);
+                }
+                currentPage = 1;
+                filterAndRender();
+            });
+        });
+
+        // Player buttons (single-select)
+        document.querySelectorAll('.player-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                activePlayerFilter = this.dataset.player;
+                currentPage = 1;
+                filterAndRender();
+            });
+        });
+
+        // Time buttons (single-select)
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                activeTimeFilter = this.dataset.time;
+                currentPage = 1;
+                filterAndRender();
+            });
+        });
+
+        // Rating buttons (single-select)
+        document.querySelectorAll('.rating-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                activeRatingFilter = this.dataset.rating;
+                currentPage = 1;
+                filterAndRender();
+            });
+        });
+
+        // Clear all filters button
+        const clearBtn = document.getElementById('clear-all-filters');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                activeStatuses = [];
+                activePlayerFilter = 'any';
+                activeTimeFilter = 'any';
+                activeRatingFilter = 'any';
+
+                document.querySelectorAll('.status-chip').forEach(chip => chip.classList.remove('active'));
+                
+                document.querySelectorAll('.player-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('.player-btn[data-player="any"]').classList.add('active');
+                
+                document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('.time-btn[data-time="any"]').classList.add('active');
+                
+                document.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('.rating-btn[data-rating="any"]').classList.add('active');
+
+                const searchInput = document.getElementById('game-search-input');
+                if (searchInput) searchInput.value = '';
+
+                currentPage = 1;
+                filterAndRender();
+            });
+        }
+    }
+
+    // Initialize listeners
+    setupFacetedFilters();
 
     document.getElementById('bgg-form').addEventListener('submit', async function (event) {
         event.preventDefault();
@@ -956,7 +951,7 @@ title: BGG Collection Browser
                         </div>
                     `;
                     collectionDataDiv.classList.add('has-content');
-                    document.getElementById('filters').style.display = 'none'; // Hide filters on API error
+                    document.getElementById('faceted-filters').style.display = 'none'; // Hide filters on API error
                     document.getElementById('browser-controls-bar').style.display = 'none';
                     renderPagination(0);
                     return;
@@ -982,7 +977,7 @@ title: BGG Collection Browser
                         </div>
                     `;
                     collectionDataDiv.classList.add('has-content');
-                    document.getElementById('filters').style.display = 'none';
+                    document.getElementById('faceted-filters').style.display = 'none';
                     document.getElementById('browser-controls-bar').style.display = 'none';
                     renderPagination(0);
                     return;
@@ -997,7 +992,7 @@ title: BGG Collection Browser
                 </div>
             `;
             collectionDataDiv.classList.add('has-content');
-            document.getElementById('filters').style.display = 'none';
+            document.getElementById('faceted-filters').style.display = 'none';
             document.getElementById('browser-controls-bar').style.display = 'none';
             renderPagination(0);
             return;
