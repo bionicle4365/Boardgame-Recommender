@@ -12,6 +12,8 @@ args = getResolvedOptions(sys.argv, ["JOB_NAME"])
 sc = SparkContext()
 gluc = GlueContext(sc)
 spark = gluc.spark_session
+# Disable vectorized reader to handle physical type discrepancies in parquet (e.g., empty lists defaulting to INT32)
+spark.conf.set("spark.sql.parquet.enableVectorizedReader", "false")
 job = Job(gluc)
 job.init(args["JOB_NAME"], args)
 

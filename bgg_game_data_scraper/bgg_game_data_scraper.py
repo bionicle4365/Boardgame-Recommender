@@ -145,8 +145,20 @@ def lambda_handler(event, context):
                 s3_full_path = f"s3://{S3_OUTPUT_BUCKET_NAME}/data/{s3_output_key}"
 
                 try:
-                    # Save DataFrame to S3 in Parquet format
-                    df.to_parquet(s3_full_path, index=False, engine='pyarrow')
+                    # Enforce strict PyArrow schema to prevent type mismatches on empty lists
+                    schema = pyarrow.schema([
+                        ('id', pyarrow.string()),
+                        ('type', pyarrow.string()),
+                        ('name', pyarrow.string()),
+                        ('year_published', pyarrow.int32()),
+                        ('max_players', pyarrow.int32()),
+                        ('rating', pyarrow.float64()),
+                        ('categories', pyarrow.list_(pyarrow.string())),
+                        ('mechanics', pyarrow.list_(pyarrow.string())),
+                        ('designers', pyarrow.list_(pyarrow.string()))
+                    ])
+                    # Save DataFrame to S3 in Parquet format with explicit schema
+                    df.to_parquet(s3_full_path, index=False, engine='pyarrow', schema=schema)
                     print(f"Successfully saved data for ID {game_id} to S3: {s3_full_path}")
                     processed_ids.append(game_id)
                 except Exception as s3_e:
