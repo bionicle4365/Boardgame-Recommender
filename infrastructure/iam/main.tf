@@ -98,7 +98,8 @@ resource "aws_iam_role_policy" "glue_service_role_policy" {
         Action   = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
-          "logs:PutLogEvents"
+          "logs:PutLogEvents",
+          "cloudwatch:PutMetricData"
         ]
         Effect   = "Allow"
         Resource = "*"
