@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 import pandas as pd
@@ -47,16 +48,32 @@ def get_catalog():
         print(f"Error loading catalog database: {e}")
         return None
 
-def user_file_exists(username):
-    """Checks if the user's parquet file exists on S3."""
+def get_user_profile_status(username, ttl_hours=24):
+    """
+    Checks if the user's parquet file exists on S3, and if it is stale.
+    Returns (exists, is_stale)
+    """
     key = f"data/users/{username}.parquet"
     try:
-        s3.head_object(Bucket=bucket, Key=key)
-        return True
+        response = s3.head_object(Bucket=bucket, Key=key)
+        last_modified = response['LastModified']
+        age_hours = (datetime.now(timezone.utc) - last_modified).total_seconds() / 3600.0
+        return True, age_hours >= ttl_hours
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
-            return False
+            return False, False
         raise e
+
+def trigger_background_scrape(username):
+    """Sends username to SQS queue to trigger a profile scrape/update."""
+    if user_sqs_queue_url:
+        try:
+            sqs.send_message(QueueUrl=user_sqs_queue_url, MessageBody=username)
+            print(f"Successfully sent username update request to queue: {user_sqs_queue_url}")
+        except Exception as sqs_err:
+            print(f"Error sending message to SQS: {sqs_err}")
+    else:
+        print("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
 
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
@@ -79,9 +96,9 @@ def lambda_handler(event, context):
     year_start = query_params.get('year_start')
     year_end = query_params.get('year_end')
     
-    # 1. Check if user's profile is scraped
+    # 1. Check if user's profile is scraped and if it is stale (stale TTL = 24 hours)
     try:
-        exists = user_file_exists(username)
+        exists, is_stale = get_user_profile_status(username, ttl_hours=24)
     except Exception as s3_check_err:
         print(f"S3 checks failed: {s3_check_err}")
         return {
@@ -95,15 +112,7 @@ def lambda_handler(event, context):
         
     if not exists:
         print(f"User profile for '{username}' not found. Queueing scrape job.")
-        if user_sqs_queue_url:
-            try:
-                sqs.send_message(QueueUrl=user_sqs_queue_url, MessageBody=username)
-                print(f"Successfully sent username to queue: {user_sqs_queue_url}")
-            except Exception as sqs_err:
-                print(f"Error sending message to SQS: {sqs_err}")
-        else:
-            print("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
-            
+        trigger_background_scrape(username)
         return {
             'statusCode': 200,
             'headers': {
@@ -112,6 +121,10 @@ def lambda_handler(event, context):
             },
             'body': json.dumps({'status': 'scraping'})
         }
+
+    if is_stale:
+        print(f"User profile for '{username}' is stale. Queueing background update scrape job.")
+        trigger_background_scrape(username)
         
     # 2. User data exists. Download and load it
     user_key = f"data/users/{username}.parquet"
