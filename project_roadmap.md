@@ -11,11 +11,11 @@ Optimize the AWS Glue ETL compaction script to write consolidated Parquet files,
 
 ### Tasks
 - [x] Refactor the PySpark ETL script (`combine_raw_to_single_file.py`) to coalesce dynamic frame partitions to `1` so it writes a single compressed Parquet file to S3.
-- [ ] Monitor the catalog scraper progress to ensure it has successfully processed the full target range of BoardGameGeek game IDs.
-- [ ] Trigger and run the AWS Glue Crawler to scan the raw catalog dataset.
-- [ ] Execute the compaction Glue job (`boardgame_app_combine_job`) to consolidate raw JSON/Parquet records into the single combined catalog file.
+- [x] Monitor the catalog scraper progress to ensure it has successfully processed the full target range of BoardGameGeek game IDs.
+- [x] Trigger and run the AWS Glue Crawler to scan the raw catalog dataset.
+- [x] Execute the compaction Glue job (`boardgame_app_combine_job`) to consolidate raw JSON/Parquet records into the single combined catalog file.
 - [x] Refactor `bgg_recommender/bgg_recommender.py` loading logic to fetch this single catalog Parquet file directly from S3, completely bypassing listing and loop downloads to eliminate container cold-start delay.
-- [ ] Verify that the combined database table schema mapping successfully handles newly scraped fields (such as `year_published`).
+- [x] Verify that the combined database table schema mapping successfully handles newly scraped fields (such as `year_published`).
 
 ---
 
