@@ -293,13 +293,17 @@ title: Boardgame Recommender
         const submitBtn = document.getElementById("submit-btn");
 
         const apiUrl = "{{ site.api_url }}"; // Load API Gateway URL dynamically from Jekyll config
-        let pollingInterval = null;
+        let pollingTimeout = null;
+        let isPollingActive = false;
 
         form.addEventListener("submit", function (e) {
             e.preventDefault();
             
-            // Clear existing states
-            clearInterval(pollingInterval);
+            // Clear existing states and cancel active polling
+            isPollingActive = false;
+            if (pollingTimeout) {
+                clearTimeout(pollingTimeout);
+            }
             resultsContainer.innerHTML = "";
             statusCard.style.display = "flex";
             statusMessage.textContent = "Connecting to backend recommender engine...";
@@ -319,8 +323,11 @@ title: Boardgame Recommender
             if (year_end) params.append("year_end", year_end);
 
             const queryUrl = `${apiUrl}/recommendations?${params.toString()}`;
+            isPollingActive = true;
 
             function pollRecommendations() {
+                if (!isPollingActive) return;
+
                 fetch(queryUrl)
                     .then(response => {
                         if (!response.ok) {
@@ -329,10 +336,13 @@ title: Boardgame Recommender
                         return response.json();
                     })
                     .then(data => {
+                        if (!isPollingActive) return;
+
                         if (data.status === "scraping") {
                             statusMessage.textContent = "First time search! We are currently scraping your collection from BGG. This takes about 30 seconds...";
+                            pollingTimeout = setTimeout(pollRecommendations, 5000);
                         } else if (data.status === "ready") {
-                            clearInterval(pollingInterval);
+                            isPollingActive = false;
                             statusCard.style.display = "none";
                             submitBtn.disabled = false;
                             renderRecommendations(data.recommendations);
@@ -341,17 +351,17 @@ title: Boardgame Recommender
                         }
                     })
                     .catch(error => {
+                        if (!isPollingActive) return;
                         console.error("Fetch error:", error);
-                        clearInterval(pollingInterval);
+                        isPollingActive = false;
                         statusCard.style.display = "none";
                         submitBtn.disabled = false;
                         resultsContainer.innerHTML = `<div style="color: #ef4444; font-weight: bold; padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch recommendations. Ensure that API Gateway CORS and the Lambda function are running correctly.</div>`;
                     });
             }
 
-            // Trigger initial call and start polling
+            // Trigger initial call
             pollRecommendations();
-            pollingInterval = setInterval(pollRecommendations, 5000);
         });
 
         function renderRecommendations(recs) {
