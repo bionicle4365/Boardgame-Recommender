@@ -91,7 +91,7 @@ resource "aws_lambda_function" "bgg_recommender" {
     variables = {
       S3_OUTPUT_BUCKET_NAME = var.s3_bucket_name
       USER_SQS_QUEUE_URL    = var.user_sqs_queue_url
-      BEDROCK_MODEL_ID      = "anthropic.claude-3-haiku-20240307-v1:0"
+      BEDROCK_MODEL_ID      = "amazon.nova-micro-v1:0"
     }
   }
 }

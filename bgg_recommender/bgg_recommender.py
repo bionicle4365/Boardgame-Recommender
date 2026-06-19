@@ -13,7 +13,7 @@ bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
 # Read environment variables
 bucket = os.environ.get('S3_OUTPUT_BUCKET_NAME', 'boardgame-app')
 user_sqs_queue_url = os.environ.get('USER_SQS_QUEUE_URL')
-bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'anthropic.claude-3-haiku-20240307-v1:0')
+bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'amazon.nova-micro-v1:0')
 
 # In-memory global cache for catalog to reuse across container warm starts
 CATALOG_CACHE = None
