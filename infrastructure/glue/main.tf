@@ -95,7 +95,7 @@ resource "aws_glue_job" "boardgame_app_combine_job" {
   glue_version      = "5.0"
   max_retries       = 0
   timeout           = 15
-  number_of_workers = 2
+  number_of_workers = 10
   worker_type       = "G.1X"
   execution_class   = "FLEX"
 
