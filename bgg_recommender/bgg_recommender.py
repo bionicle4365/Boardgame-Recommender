@@ -210,8 +210,12 @@ def lambda_handler(event, context):
             
     user_features = user_categories.union(user_mechanics)
 
+    # Convert candidates dataframe to a list of dictionaries to bypass slow Pandas row iteration (which takes 30+ seconds)
+    columns_to_keep = ['id', 'name', 'categories', 'mechanics', 'rating', 'year_published']
+    candidate_records = candidates[columns_to_keep].to_dict('records')
+
     candidate_scores = []
-    for _, row in candidates.iterrows():
+    for row in candidate_records:
         # Clean candidates lists
         cand_cats = row.get('categories')
         cand_mechs = row.get('mechanics')
@@ -231,8 +235,14 @@ def lambda_handler(event, context):
             
         candidate_scores.append((score, row))
 
-    # Sort candidates by similarity first, then by catalog rating
-    candidate_scores.sort(key=lambda x: (x[0], x[1].get('rating') or 0.0), reverse=True)
+    # Sort candidates by similarity first, then by catalog rating, safely handling NaN values
+    import math
+    def safe_rating(r_val):
+        if r_val is None or not isinstance(r_val, (int, float)) or math.isnan(r_val):
+            return 0.0
+        return float(r_val)
+
+    candidate_scores.sort(key=lambda x: (x[0], safe_rating(x[1].get('rating'))), reverse=True)
     top_candidates = [item[1] for item in candidate_scores[:25]]
 
     # 6. Build Bedrock Prompt & Invoke
