@@ -21,11 +21,12 @@ boardgame_app_raw_table = gluc.create_dynamic_frame.from_catalog(
     database="boardgame_app",
     table_name="boardgame_app_raw_table",
     transformation_ctx="boardgame_app_raw_table",
+    additional_options={"groupFiles": "inPartition", "groupSize": "10485760"} # Group small files into ~10MB chunks to optimize S3 reads
 )
 
-# Coalesce dynamic frame to 1 partition by converting to Spark DataFrame and back
-coalesced_df = boardgame_app_raw_table.toDF().coalesce(1)
-boardgame_app_combined = DynamicFrame.fromDF(coalesced_df, gluc, "boardgame_app_combined")
+# Repartition to 1 instead of coalesce(1) to keep the read phase parallelized across all executor cores
+repartitioned_df = boardgame_app_raw_table.toDF().repartition(1)
+boardgame_app_combined = DynamicFrame.fromDF(repartitioned_df, gluc, "boardgame_app_combined")
 
 purge_s3 = gluc.purge_s3_path(
     s3_path="s3://boardgame-app/data/boardgames_combined/",
