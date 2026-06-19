@@ -157,12 +157,12 @@ def lambda_handler(event, context):
     if liked_games.empty:
         liked_games = user_df.sort_values(by='rating', ascending=False).head(10)
 
-    liked_joined = liked_games.merge(catalog_df, on='id', how='inner')
+    liked_joined = liked_games.merge(catalog_df, on='id', how='inner', suffixes=('_user', '_catalog'))
 
     # Construct list of liked games for the Bedrock prompt
     liked_games_profile = []
     for _, row in liked_joined.head(20).iterrows():
-        liked_games_profile.append(f"- {row['name']} (User Rating: {row['rating'] if pd.notna(row['rating']) else 'Owned'})")
+        liked_games_profile.append(f"- {row['name']} (User Rating: {row['rating_user'] if pd.notna(row['rating_user']) else 'Owned'})")
     liked_games_str = "\n".join(liked_games_profile)
 
     # 4. Filter Candidates based on user preferences
