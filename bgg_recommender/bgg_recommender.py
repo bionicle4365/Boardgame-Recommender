@@ -332,6 +332,19 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
             response_text = "\n".join(lines).strip()
             
         result_json = json.loads(response_text)
+        
+        # Map names back to IDs from the candidates/catalog so the UI can link directly to the game page
+        candidate_id_map = {row['name'].lower(): row['id'] for row in top_candidates}
+        for rec in result_json.get('recommendations', []):
+            rec_name = rec.get('name', '')
+            game_id = candidate_id_map.get(rec_name.lower())
+            if not game_id:
+                match = catalog_df[catalog_df['name'].str.lower() == rec_name.lower()]
+                if not match.empty:
+                    game_id = match.iloc[0]['id']
+            if game_id:
+                rec['id'] = str(game_id)
+
     except Exception as bedrock_e:
         print(f"Bedrock invocation or parsing failed: {bedrock_e}")
         # Fallback to returning candidates list directly if AI call fails
@@ -340,6 +353,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
             result_json = {
                 "recommendations": [
                     {
+                        "id": str(row['id']),
                         "name": row['name'],
                         "reason": f"Highly recommended match sharing mechanics: {', '.join(safe_list(row.get('mechanics'))[:3])}."
                     }

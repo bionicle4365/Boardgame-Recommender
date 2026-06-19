@@ -362,11 +362,13 @@ title: Boardgame Recommender
 
             let html = "";
             recs.forEach((rec, index) => {
-                const searchLink = `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(rec.name)}`;
+                const gameLink = rec.id 
+                    ? `https://boardgamegeek.com/boardgame/${rec.id}` 
+                    : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(rec.name)}`;
                 html += `
                     <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
                         <div class="rec-card-header">
-                            <a href="${searchLink}" target="_blank" class="rec-title">${escapeHTML(rec.name)}</a>
+                            <a href="${gameLink}" target="_blank" class="rec-title">${escapeHTML(rec.name)}</a>
                             <span class="badge">Match #${index + 1}</span>
                         </div>
                         <p class="rec-reason">${escapeHTML(rec.reason)}</p>
