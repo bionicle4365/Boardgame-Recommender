@@ -198,17 +198,34 @@ def lambda_handler(event, context):
         except ValueError:
             pass
 
-    # 5. Jaccard similarity selection
-    # Gather user's preferred categories & mechanics
-    user_categories = set()
-    user_mechanics = set()
+    # 5. Feature similarity selection weighted by user rating
+    # Gather user's preferred categories & mechanics, weighted by the user's rating of each game
+    import math
+    feature_weights = {}
     for _, row in liked_joined.iterrows():
-        if isinstance(row.get('categories'), (list, np.ndarray)):
-            user_categories.update(row['categories'])
-        if isinstance(row.get('mechanics'), (list, np.ndarray)):
-            user_mechanics.update(row['mechanics'])
+        # Get user's rating. If 'N/A' or missing, treat as 7.0 (since it's a liked or owned game)
+        u_rating = row.get('rating_user')
+        try:
+            u_rating = float(u_rating)
+            if math.isnan(u_rating) or u_rating <= 0:
+                u_rating = 7.0
+        except (ValueError, TypeError):
+            u_rating = 7.0
             
-    user_features = user_categories.union(user_mechanics)
+        # Give higher weight to games the user rated higher (e.g. weight = rating - 5.0, so 10/10 has weight 5.0, 7/10 has 2.0)
+        # Baseline of 5.0 emphasizes differences between good and great games.
+        weight = max(1.0, u_rating - 5.0)
+
+        cats = row.get('categories')
+        mechs = row.get('mechanics')
+        cats = list(cats) if isinstance(cats, (list, np.ndarray)) else []
+        mechs = list(mechs) if isinstance(mechs, (list, np.ndarray)) else []
+        
+        for f in set(cats + mechs):
+            feature_weights[f] = feature_weights.get(f, 0.0) + weight
+
+    # Total sum of feature weights in user profile
+    total_user_weight = sum(feature_weights.values()) or 1.0
 
     # Convert candidates dataframe to a list of dictionaries to bypass slow Pandas row iteration (which takes 30+ seconds)
     columns_to_keep = ['id', 'name', 'categories', 'mechanics', 'rating', 'year_published']
@@ -226,23 +243,20 @@ def lambda_handler(event, context):
         
         cand_features = set(cand_cats + cand_mechs)
         
-        if not user_features or not cand_features:
-            score = 0.0
-        else:
-            intersection = len(user_features.intersection(cand_features))
-            union = len(user_features.union(cand_features))
-            score = intersection / union
+        # Calculate similarity score: sum of shared feature weights / total user weight
+        shared_features = cand_features.intersection(feature_weights.keys())
+        sim_score = sum(feature_weights[f] for f in shared_features) / total_user_weight
             
-        candidate_scores.append((score, row))
+        candidate_scores.append((sim_score, row))
 
-    # Sort candidates by similarity first, then by catalog rating, safely handling NaN values
-    import math
-    def safe_rating(r_val):
+    # Sort candidates by composite score (similarity_score * rating), safely defaulting NaN ratings to 5.5
+    def composite_score(sim, row_dict):
+        r_val = row_dict.get('rating')
         if r_val is None or not isinstance(r_val, (int, float)) or math.isnan(r_val):
-            return 0.0
-        return float(r_val)
+            r_val = 5.5  # Neutral default prior for unrated/new games
+        return sim * float(r_val)
 
-    candidate_scores.sort(key=lambda x: (x[0], safe_rating(x[1].get('rating'))), reverse=True)
+    candidate_scores.sort(key=lambda x: composite_score(x[0], x[1]), reverse=True)
     top_candidates = [item[1] for item in candidate_scores[:25]]
 
     # 6. Build Bedrock Prompt & Invoke
