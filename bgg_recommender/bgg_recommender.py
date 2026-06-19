@@ -292,7 +292,7 @@ Please recommend 10 great board games from your general knowledge.
     user_prompt += """
 For each recommended game:
 1. Provide the exact name of the game.
-2. Provide a 2-3 sentence personalized explanation of why they would enjoy it, mentioning specific mechanics or themes from the games they already like.
+2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it. This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements (for example: "If you enjoyed Gloomhaven and Mage Knight, you will love this game's use of card-driven hand management.").
 
 Format your response as a JSON object with a single key "recommendations", which is a list of objects containing "name" and "reason".
 Do not include any introductory or concluding text (e.g. do not say "Here are your recommendations:" or use markdown code blocks). Output only raw, valid JSON.
