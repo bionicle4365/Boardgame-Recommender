@@ -14,6 +14,8 @@ gluc = GlueContext(sc)
 spark = gluc.spark_session
 # Disable vectorized reader to handle physical type discrepancies in parquet (e.g., empty lists defaulting to INT32)
 spark.conf.set("spark.sql.parquet.enableVectorizedReader", "false")
+# Decrease openCostInBytes from 4MB to 64KB so Spark groups 139k small files into ~70 partitions instead of 4,344
+spark.conf.set("spark.sql.files.openCostInBytes", "65536")
 job = Job(gluc)
 job.init(args["JOB_NAME"], args)
 
