@@ -18,6 +18,12 @@ bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'anthropic.claude-3-haiku-
 # In-memory global cache for catalog to reuse across container warm starts
 CATALOG_CACHE = None
 
+def safe_list(val):
+    """Helper to safely convert array/list/nullable to a Python list without triggering array truth value errors."""
+    if isinstance(val, (list, np.ndarray)):
+        return list(val)
+    return []
+
 def get_catalog():
     """
     Downloads the single combined catalog parquet file from S3.
@@ -234,8 +240,8 @@ def lambda_handler(event, context):
     if top_candidates:
         cand_list = []
         for row in top_candidates:
-            cats = ", ".join(list(row.get('categories') or []))
-            mechs = ", ".join(list(row.get('mechanics') or []))
+            cats = ", ".join(safe_list(row.get('categories')))
+            mechs = ", ".join(safe_list(row.get('mechanics')))
             cand_list.append(f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, Categories: {cats}, Mechanics: {mechs})")
         candidates_str = "\n".join(cand_list)
 
@@ -311,7 +317,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
                 "recommendations": [
                     {
                         "name": row['name'],
-                        "reason": f"Highly recommended match sharing mechanics: {', '.join(list(row.get('mechanics') or [])[:3])}."
+                        "reason": f"Highly recommended match sharing mechanics: {', '.join(safe_list(row.get('mechanics'))[:3])}."
                     }
                     for row in top_candidates[:10]
                 ]
