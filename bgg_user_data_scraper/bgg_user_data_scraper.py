@@ -40,6 +40,14 @@ def get_user_data(username):
             print(f"Successfully received response for user {username}.")
 
             root = ET.fromstring(xml_data)
+            
+            # Check for BGG API errors (e.g., non-existent user)
+            if root.tag == 'errors':
+                error_msg = root.find(".//error/message")
+                error_text = error_msg.text if error_msg is not None else "Invalid username specified"
+                print(f"BGG API returned error for user {username}: {error_text}")
+                return [] # Gracefully return empty list
+
             items = root.findall(".//item")
             if root.text and "accepted" in root.text:
                 raise ValueError(f"BGG API message for {username}: {root.text}")
@@ -106,11 +114,11 @@ def lambda_handler(event, context):
 
             user_data = get_user_data(user_id)
 
-            if user_data:
-                print(f"Successfully retrieved data for user {user_id}.")
+            if user_data is not None:
+                print(f"Successfully retrieved data for user {user_id}. Collection size: {len(user_data)}")
 
                 # Convert user_data to pandas DataFrame
-                df = pd.DataFrame(user_data)
+                df = pd.DataFrame(user_data, columns=['id', 'username', 'rating', 'own'])
 
                 # Define S3 path for the Parquet file
                 # Recommended: Write each game to a unique Parquet file, potentially partitioned.
@@ -129,7 +137,7 @@ def lambda_handler(event, context):
                     failed_ids.append(user_id)
                     batch_item_failures.append({"itemIdentifier": record['messageId']})
             else:
-                print(f"Failed to retrieve data for user {user_id}.")
+                print(f"Failed to retrieve data for user {user_id} (retries exhausted).")
                 failed_ids.append(user_id)
                 batch_item_failures.append({"itemIdentifier": record['messageId']})
 

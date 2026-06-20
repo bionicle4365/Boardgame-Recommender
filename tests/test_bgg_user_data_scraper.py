@@ -85,3 +85,41 @@ def test_lambda_handler_success(mock_to_parquet, mock_get_user_data):
         index=False,
         engine='pyarrow'
     )
+
+@patch('requests.get')
+def test_get_user_data_invalid_user(mock_get):
+    xml_str = """
+    <errors>
+        <error>
+            <message>Invalid username specified</message>
+        </error>
+    </errors>
+    """
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.content = xml_str.encode('utf-8')
+    mock_get.return_value = mock_resp
+
+    data = bgg_user_data_scraper.get_user_data("tester1")
+    assert data == [] # Should return an empty list gracefully
+
+@patch('bgg_user_data_scraper.get_user_data')
+@patch('pandas.DataFrame.to_parquet')
+def test_lambda_handler_invalid_user_saves_empty_parquet(mock_to_parquet, mock_get_user_data):
+    mock_get_user_data.return_value = [] # User doesn't exist or empty collection
+
+    event = {
+        "Records": [
+            {"messageId": "msg124", "body": "tester1"}
+        ]
+    }
+    response = bgg_user_data_scraper.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['processed_ids'] == ['tester1']
+    
+    mock_to_parquet.assert_called_once()
+    # Check that it saves with the expected columns
+    args, kwargs = mock_to_parquet.call_args
+    assert args[0] == 's3://test-bucket/data/users/tester1.parquet'
+
