@@ -51,17 +51,17 @@ def get_catalog():
 def get_user_profile_status(username, ttl_hours=24):
     """
     Checks if the user's parquet file exists on S3, and if it is stale.
-    Returns (exists, is_stale)
+    Returns (exists, is_stale, last_modified)
     """
     key = f"data/users/{username}.parquet"
     try:
         response = s3.head_object(Bucket=bucket, Key=key)
         last_modified = response['LastModified']
         age_hours = (datetime.now(timezone.utc) - last_modified).total_seconds() / 3600.0
-        return True, age_hours >= ttl_hours
+        return True, age_hours >= ttl_hours, last_modified
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
-            return False, False
+            return False, False, None
         raise e
 
 def trigger_background_scrape(username):
@@ -74,6 +74,58 @@ def trigger_background_scrape(username):
             print(f"Error sending message to SQS: {sqs_err}")
     else:
         print("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
+
+def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=24):
+    """
+    Checks if cached recommendations exist on S3 and are within TTL.
+    Also ensures the cache file is newer than the user's profile parquet file (smart invalidation).
+    Returns recommendations list if fresh, else None.
+    """
+    try:
+        print(f"Checking S3 recommendations cache: {cache_key}")
+        response = s3.head_object(Bucket=bucket, Key=cache_key)
+        cache_last_modified = response['LastModified']
+        
+        # 1. Check expiration TTL
+        age_hours = (datetime.now(timezone.utc) - cache_last_modified).total_seconds() / 3600.0
+        if age_hours >= ttl_hours:
+            print(f"Cache stale: recommendations are {age_hours:.2f} hours old (TTL = {ttl_hours} hours).")
+            return None
+            
+        # 2. Check smart invalidation (profile updated since recommendations were cached)
+        if profile_last_modified and profile_last_modified > cache_last_modified:
+            print(f"Cache invalidated: user profile was updated ({profile_last_modified}) since recommendations were cached ({cache_last_modified}).")
+            return None
+            
+        # 3. Cache is valid. Download and return it
+        print(f"Cache hit: recommendations are fresh ({age_hours:.2f} hours old). Downloading.")
+        local_path = f"/tmp/{os.path.basename(cache_key)}"
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        s3.download_file(bucket, cache_key, local_path)
+        with open(local_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+            
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            print("Cache miss: recommendations not found in S3.")
+            return None
+        raise e
+    except Exception as e:
+        print(f"Error checking recommendations cache: {e}")
+        return None
+
+def save_recommendations_to_cache(cache_key, recommendations):
+    """Saves generated recommendations as JSON file in S3 cache."""
+    try:
+        print(f"Saving generated recommendations to S3 cache: {cache_key}")
+        local_path = f"/tmp/{os.path.basename(cache_key)}"
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        with open(local_path, 'w', encoding='utf-8') as f:
+            json.dump(recommendations, f, ensure_ascii=False)
+        s3.upload_file(local_path, bucket, cache_key)
+        print("Successfully uploaded recommendations to S3 cache.")
+    except Exception as e:
+        print(f"Error saving recommendations to cache: {e}")
 
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
@@ -98,7 +150,7 @@ def lambda_handler(event, context):
     
     # 1. Check if user's profile is scraped and if it is stale (stale TTL = 24 hours)
     try:
-        exists, is_stale = get_user_profile_status(username, ttl_hours=24)
+        exists, is_stale, profile_last_modified = get_user_profile_status(username, ttl_hours=24)
     except Exception as s3_check_err:
         print(f"S3 checks failed: {s3_check_err}")
         return {
@@ -125,8 +177,24 @@ def lambda_handler(event, context):
     if is_stale:
         print(f"User profile for '{username}' is stale. Queueing background update scrape job.")
         trigger_background_scrape(username)
+
+    # 2. Check S3 recommendation cache (TTL = 24 hours)
+    cache_key = f"data/recommendation_cache/{username}_{own_status}_{year_start or 'any'}_{year_end or 'any'}.json"
+    cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=24)
+    if cached_recs is not None:
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'status': 'ready',
+                'recommendations': cached_recs
+            })
+        }
         
-    # 2. User data exists. Download and load it
+    # 3. User data exists. Download and load it
     user_key = f"data/users/{username}.parquet"
     local_user_path = f"/tmp/{username}.parquet"
     try:
@@ -376,6 +444,11 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
         else:
             result_json = {"recommendations": [], "error": "AI recommendation currently unavailable"}
 
+    # Save successfully generated recommendations to cache
+    recs_list = result_json.get('recommendations', [])
+    if recs_list:
+        save_recommendations_to_cache(cache_key, recs_list)
+
     return {
         'statusCode': 200,
         'headers': {
@@ -384,6 +457,6 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
         },
         'body': json.dumps({
             'status': 'ready',
-            'recommendations': result_json.get('recommendations', [])
+            'recommendations': recs_list
         })
     }

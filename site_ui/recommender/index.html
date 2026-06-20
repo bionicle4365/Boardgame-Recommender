@@ -314,6 +314,32 @@ title: Boardgame Recommender
             const year_start = document.getElementById("year_start").value;
             const year_end = document.getElementById("year_end").value;
 
+            // Build unique cache key
+            const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}`;
+
+            // Check if fresh cache exists (TTL = 24 hours)
+            const cachedDataStr = localStorage.getItem(cacheKey);
+            if (cachedDataStr) {
+                try {
+                    const cachedData = JSON.parse(cachedDataStr);
+                    const ageMs = Date.now() - cachedData.timestamp;
+                    const oneDayMs = 24 * 60 * 60 * 1000;
+                    if (ageMs < oneDayMs) {
+                        console.log("Serving recommendations from local storage cache.");
+                        statusCard.style.display = "none";
+                        submitBtn.disabled = false;
+                        renderRecommendations(cachedData.recommendations);
+                        return; // Exit and skip calling backend
+                    } else {
+                        console.log("Cached recommendations are stale. Requesting fresh data.");
+                        localStorage.removeItem(cacheKey);
+                    }
+                } catch (e) {
+                    console.error("Error reading from local cache:", e);
+                    localStorage.removeItem(cacheKey);
+                }
+            }
+
             // Build query params
             let params = new URLSearchParams({
                 username: username,
@@ -345,6 +371,18 @@ title: Boardgame Recommender
                             isPollingActive = false;
                             statusCard.style.display = "none";
                             submitBtn.disabled = false;
+
+                            // Cache recommendations to local storage
+                            try {
+                                const cacheVal = {
+                                    timestamp: Date.now(),
+                                    recommendations: data.recommendations
+                                };
+                                localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
+                            } catch (cacheErr) {
+                                console.error("Error writing to local storage cache:", cacheErr);
+                            }
+
                             renderRecommendations(data.recommendations);
                         } else {
                             throw new Error("Unexpected response status");
