@@ -43,15 +43,41 @@ def test_get_game_data_success(mock_get):
         <item id="10" type="boardgame">
             <name type="primary" value="Catan"/>
             <yearpublished value="1995"/>
+            <minplayers value="3"/>
             <maxplayers value="4"/>
+            <playingtime value="60"/>
+            <minplaytime value="45"/>
+            <maxplaytime value="90"/>
+            <minage value="10"/>
+            <thumbnail>https://cf.geekdo-images.com/thumb/catan.png</thumbnail>
+            <image>https://cf.geekdo-images.com/original/catan.png</image>
             <statistics>
                 <ratings>
                     <bayesaverage value="7.25"/>
+                    <averageweight value="2.32"/>
                 </ratings>
             </statistics>
             <link type="boardgamecategory" value="Trading"/>
             <link type="boardgamemechanic" value="Dice Rolling"/>
             <link type="boardgamedesigner" value="Klaus Teuber"/>
+            <link type="boardgamepublisher" value="Kosmos"/>
+            <poll name="suggested_numplayers" title="Suggested Players">
+                <results numplayers="3">
+                    <result value="Best" numvotes="15"/>
+                    <result value="Recommended" numvotes="5"/>
+                    <result value="Not Recommended" numvotes="1"/>
+                </results>
+                <results numplayers="4">
+                    <result value="Best" numvotes="2"/>
+                    <result value="Recommended" numvotes="18"/>
+                    <result value="Not Recommended" numvotes="0"/>
+                </results>
+                <results numplayers="2">
+                    <result value="Best" numvotes="0"/>
+                    <result value="Recommended" numvotes="1"/>
+                    <result value="Not Recommended" numvotes="10"/>
+                </results>
+            </poll>
         </item>
     </items>
     """
@@ -65,11 +91,22 @@ def test_get_game_data_success(mock_get):
     assert data['id'] == '10'
     assert data['name'] == 'Catan'
     assert data['year_published'] == 1995
+    assert data['min_players'] == 3
     assert data['max_players'] == 4
+    assert data['playing_time'] == 60
+    assert data['min_playtime'] == 45
+    assert data['max_playtime'] == 90
+    assert data['min_age'] == 10
     assert data['rating'] == 7.25
+    assert data['complexity'] == 2.32
+    assert data['thumbnail'] == 'https://cf.geekdo-images.com/thumb/catan.png'
+    assert data['image'] == 'https://cf.geekdo-images.com/original/catan.png'
     assert data['categories'] == ['Trading']
     assert data['mechanics'] == ['Dice Rolling']
     assert data['designers'] == ['Klaus Teuber']
+    assert data['publishers'] == ['Kosmos']
+    assert data['suggested_players_best'] == ['3']
+    assert data['suggested_players_recommended'] == ['3', '4']
 
 @patch('requests.get')
 @patch('time.sleep') # prevent sleep from delaying tests
@@ -105,11 +142,22 @@ def test_lambda_handler_sqs_events(mock_to_parquet, mock_get_game_data):
         'type': 'boardgame',
         'name': 'Catan',
         'year_published': 1995,
+        'min_players': 3,
         'max_players': 4,
+        'playing_time': 60,
+        'min_playtime': 45,
+        'max_playtime': 90,
+        'min_age': 10,
         'rating': 7.25,
+        'complexity': 2.32,
+        'thumbnail': 'https://cf.geekdo-images.com/thumb/catan.png',
+        'image': 'https://cf.geekdo-images.com/original/catan.png',
         'categories': ['Trading'],
         'mechanics': ['Dice Rolling'],
-        'designers': ['Klaus Teuber']
+        'designers': ['Klaus Teuber'],
+        'publishers': ['Kosmos'],
+        'suggested_players_best': ['3'],
+        'suggested_players_recommended': ['3', '4']
     }
 
     event = {

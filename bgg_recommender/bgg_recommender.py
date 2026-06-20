@@ -348,6 +348,8 @@ def lambda_handler(event, context):
     # Clean catalog types
     catalog_df['year_published'] = pd.to_numeric(catalog_df['year_published'], errors='coerce')
     catalog_df['rating'] = pd.to_numeric(catalog_df['rating'], errors='coerce')
+    if 'complexity' in catalog_df.columns:
+        catalog_df['complexity'] = pd.to_numeric(catalog_df['complexity'], errors='coerce')
 
     # Join user profile with catalog to map user rated game IDs to their metadata (names, features)
     # The user table ID and catalog ID should be matched as strings
@@ -398,8 +400,11 @@ def lambda_handler(event, context):
     if player_count:
         try:
             p_count = int(player_count)
-            candidates = candidates[candidates['max_players'] >= p_count]
-            print(f"Filtered catalog by player_count >= {p_count}. Candidates left: {len(candidates)}")
+            if 'min_players' in candidates.columns:
+                candidates = candidates[(candidates['min_players'] <= p_count) & (candidates['max_players'] >= p_count)]
+            else:
+                candidates = candidates[candidates['max_players'] >= p_count]
+            print(f"Filtered catalog by player_count {p_count}. Candidates left: {len(candidates)}")
         except ValueError:
             pass
 
@@ -447,8 +452,53 @@ def lambda_handler(event, context):
         hotness_scores[g_id] = max(0.0, min(1.0, score))
 
     # Convert candidates dataframe to a list of dictionaries to bypass slow Pandas row iteration (which takes 30+ seconds)
-    columns_to_keep = ['id', 'name', 'categories', 'mechanics', 'rating', 'year_published', 'max_players']
+    possible_columns = [
+        'id', 'name', 'categories', 'mechanics', 'rating', 'year_published', 
+        'min_players', 'max_players', 'playing_time', 'min_playtime', 'max_playtime', 
+        'complexity', 'min_age', 'thumbnail', 'image', 'designers', 'publishers',
+        'suggested_players_best', 'suggested_players_recommended'
+    ]
+    columns_to_keep = [col for col in possible_columns if col in candidates.columns]
     candidate_records = candidates[columns_to_keep].to_dict('records')
+
+    # Gather user's preferred designers & publishers, and average complexity
+    user_designers = {}
+    user_publishers = {}
+    user_avg_complexity = 2.5
+    has_complexity = 'complexity' in liked_joined.columns
+    has_publishers = 'publishers' in liked_joined.columns
+    
+    if not liked_joined.empty:
+        # 1. Complexity preference
+        if has_complexity:
+            liked_complexities = liked_joined['complexity'].dropna()
+            if not liked_complexities.empty:
+                user_avg_complexity = liked_complexities.mean()
+        
+        # 2. Designers & Publishers preference
+        for _, row in liked_joined.iterrows():
+            u_rating = row.get('rating_user')
+            try:
+                u_rating = float(u_rating)
+                if math.isnan(u_rating) or u_rating <= 0:
+                    u_rating = 7.0
+            except (ValueError, TypeError):
+                u_rating = 7.0
+            weight = max(1.0, u_rating - 5.0)
+
+            des = row.get('designers')
+            des = list(des) if isinstance(des, (list, np.ndarray)) else []
+            for d in des:
+                user_designers[d] = user_designers.get(d, 0.0) + weight
+                
+            if has_publishers:
+                pubs = row.get('publishers')
+                pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
+                for p in pubs:
+                    user_publishers[p] = user_publishers.get(p, 0.0) + weight
+
+    total_des_weight = sum(user_designers.values()) or 1.0
+    total_pub_weight = sum(user_publishers.values()) or 1.0
 
     candidate_scores = []
     for row in candidate_records:
@@ -481,6 +531,37 @@ def lambda_handler(event, context):
             comp_score = (w_mech * mech_sim + w_cat * cat_sim + w_pop * pop_score + w_hot * hot_score) / denominator
         else:
             comp_score = 0.0
+
+        # A. Apply community suggested player count soft penalty
+        if player_count and 'suggested_players_recommended' in row:
+            rec_list = safe_list(row.get('suggested_players_recommended'))
+            if rec_list and str(player_count) not in rec_list:
+                comp_score *= 0.5
+
+        # B. Apply complexity preference soft scaling (up to 50% penalty if completely mismatched)
+        if has_complexity:
+            cand_complexity = row.get('complexity')
+            if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
+                complexity_delta = abs(cand_complexity - user_avg_complexity)
+                complexity_sim = max(0.0, 1.0 - (complexity_delta / 2.5))
+                comp_score *= (0.5 + 0.5 * complexity_sim)
+
+        # C. Apply designer/publisher affinity booster (up to 15% bonus)
+        des_sim = 0.0
+        pub_sim = 0.0
+        cand_des = row.get('designers')
+        cand_des = list(cand_des) if isinstance(cand_des, (list, np.ndarray)) else []
+        if cand_des and user_designers:
+            des_sim = sum(user_designers[d] for d in set(cand_des) if d in user_designers) / total_des_weight
+
+        if has_publishers:
+            cand_pubs = row.get('publishers')
+            cand_pubs = list(cand_pubs) if isinstance(cand_pubs, (list, np.ndarray)) else []
+            if cand_pubs and user_publishers:
+                pub_sim = sum(user_publishers[p] for p in set(cand_pubs) if p in user_publishers) / total_pub_weight
+
+        affinity_score = 0.7 * des_sim + 0.3 * pub_sim
+        comp_score *= (1.0 + 0.15 * affinity_score)
             
         candidate_scores.append((comp_score, row))
 
@@ -494,7 +575,17 @@ def lambda_handler(event, context):
         for row in top_candidates:
             cats = ", ".join(safe_list(row.get('categories')))
             mechs = ", ".join(safe_list(row.get('mechanics')))
-            cand_list.append(f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, Max Players: {row.get('max_players', 'N/A')}, Categories: {cats}, Mechanics: {mechs})")
+            
+            # Formulate additional details for prompt
+            players_str = f"Players: {row['min_players']}-{row['max_players']}" if 'min_players' in row and 'max_players' in row and pd.notna(row['min_players']) else f"Max Players: {row.get('max_players', 'N/A')}"
+            playtime_str = f", Playtime: {row['playing_time']}m" if 'playing_time' in row and pd.notna(row['playing_time']) else ""
+            complexity_str = f", Complexity: {row['complexity']:.1f}/5" if 'complexity' in row and pd.notna(row['complexity']) else ""
+            designers_str = f", Designers: {', '.join(safe_list(row.get('designers')))}" if 'designers' in row and row.get('designers') else ""
+            
+            cand_list.append(
+                f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, "
+                f"{players_str}{playtime_str}{complexity_str}{designers_str}, Categories: {cats}, Mechanics: {mechs})"
+            )
         candidates_str = "\n".join(cand_list)
 
     # Incorporate user weights into prompt context

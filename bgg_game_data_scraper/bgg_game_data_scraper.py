@@ -83,16 +83,54 @@ def get_game_data(game_id, max_retries=5, base_delay=2):
                 except (ValueError, TypeError):
                     return None
 
+            # Parse suggested player counts
+            best_players = []
+            rec_players = []
+            poll = item.find(".//poll[@name='suggested_numplayers']")
+            if poll is not None:
+                for results in poll.findall('results'):
+                    num_players = results.get('numplayers')
+                    best_votes = 0
+                    rec_votes = 0
+                    not_rec_votes = 0
+                    for result in results.findall('result'):
+                        val = result.get('value')
+                        votes = safe_int(result.get('numvotes', 0)) or 0
+                        if val == 'Best':
+                            best_votes = votes
+                        elif val == 'Recommended':
+                            rec_votes = votes
+                        elif val == 'Not Recommended':
+                            not_rec_votes = votes
+                    
+                    total_votes = best_votes + rec_votes + not_rec_votes
+                    if total_votes > 0:
+                        if best_votes > rec_votes and best_votes > not_rec_votes:
+                            best_players.append(num_players)
+                        if (best_votes + rec_votes) > not_rec_votes:
+                            rec_players.append(num_players)
+
             game_data = {
                 'id': item.get('id'),
                 'type': item.get('type'),
                 'name': _get_element_value(item, "./name[@type='primary']"),
                 'year_published': safe_int(_get_element_value(item, 'yearpublished', attribute='value')),
+                'min_players': safe_int(_get_element_value(item, 'minplayers', attribute='value')),
                 'max_players': safe_int(_get_element_value(item, 'maxplayers', attribute='value')),
+                'playing_time': safe_int(_get_element_value(item, 'playingtime', attribute='value')),
+                'min_playtime': safe_int(_get_element_value(item, 'minplaytime', attribute='value')),
+                'max_playtime': safe_int(_get_element_value(item, 'maxplaytime', attribute='value')),
+                'min_age': safe_int(_get_element_value(item, 'minage', attribute='value')),
                 'rating': safe_float(_get_element_value(item, ".//statistics/ratings/bayesaverage", attribute='value')),
+                'complexity': safe_float(_get_element_value(item, ".//statistics/ratings/averageweight", attribute='value')),
+                'thumbnail': _get_element_text(item, 'thumbnail'),
+                'image': _get_element_text(item, 'image'),
                 'categories': _get_links(item, 'boardgamecategory'),
                 'mechanics': _get_links(item, 'boardgamemechanic'),
                 'designers': _get_links(item, 'boardgamedesigner'),
+                'publishers': _get_links(item, 'boardgamepublisher'),
+                'suggested_players_best': best_players,
+                'suggested_players_recommended': rec_players,
             }
             print(f"Extracted game data for ID {game_id}: {game_data}")
             return game_data
@@ -157,11 +195,22 @@ def lambda_handler(event, context):
                         ('type', pyarrow.string()),
                         ('name', pyarrow.string()),
                         ('year_published', pyarrow.int32()),
+                        ('min_players', pyarrow.int32()),
                         ('max_players', pyarrow.int32()),
+                        ('playing_time', pyarrow.int32()),
+                        ('min_playtime', pyarrow.int32()),
+                        ('max_playtime', pyarrow.int32()),
+                        ('min_age', pyarrow.int32()),
                         ('rating', pyarrow.float64()),
+                        ('complexity', pyarrow.float64()),
+                        ('thumbnail', pyarrow.string()),
+                        ('image', pyarrow.string()),
                         ('categories', pyarrow.list_(pyarrow.string())),
                         ('mechanics', pyarrow.list_(pyarrow.string())),
-                        ('designers', pyarrow.list_(pyarrow.string()))
+                        ('designers', pyarrow.list_(pyarrow.string())),
+                        ('publishers', pyarrow.list_(pyarrow.string())),
+                        ('suggested_players_best', pyarrow.list_(pyarrow.string())),
+                        ('suggested_players_recommended', pyarrow.list_(pyarrow.string()))
                     ])
                     # Save DataFrame to S3 in Parquet format with explicit schema
                     df.to_parquet(s3_full_path, index=False, engine='pyarrow', schema=schema)

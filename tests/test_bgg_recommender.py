@@ -266,3 +266,88 @@ def test_lambda_handler_full_computation(mock_bedrock, mock_hotness, mock_read_p
     assert len(res_body['recommendations']) == 1
     assert res_body['recommendations'][0]['name'] == 'Gloomhaven'
     assert res_body['recommendations'][0]['id'] == '200'
+
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_lambda_handler_advanced_scoring(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+    
+    # User rated 1 game highly that is high complexity (4.0) by designer "Klaus" and publisher "Kosmos"
+    user_df = pd.DataFrame([
+        {"id": "100", "username": "testuser", "rating": 9.0, "own": True}
+    ])
+    
+    # Catalog contains:
+    # 100 - liked game (high complexity, Kosmos, Klaus)
+    # 200 - candidate A (complexity 3.8, similar mechanics, Klaus, Kosmos, recommended for 3 players)
+    # 300 - candidate B (complexity 1.5, similar mechanics, other designer/pub, not recommended for 3 players)
+    catalog_df = pd.DataFrame([
+        {
+            "id": "100", "name": "Catan Heavy", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.0, 
+            "year_published": 1995, "min_players": 2, "max_players": 4, "playing_time": 60, "min_playtime": 45, "max_playtime": 90,
+            "complexity": 4.0, "min_age": 12, "thumbnail": "t1", "image": "i1", "designers": ["Klaus"], "publishers": ["Kosmos"],
+            "suggested_players_best": ["3"], "suggested_players_recommended": ["3", "4"]
+        },
+        {
+            "id": "200", "name": "Gloomhaven Heavy", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.5, 
+            "year_published": 2017, "min_players": 1, "max_players": 4, "playing_time": 120, "min_playtime": 60, "max_playtime": 120,
+            "complexity": 3.8, "min_age": 14, "thumbnail": "t2", "image": "i2", "designers": ["Klaus"], "publishers": ["Kosmos"],
+            "suggested_players_best": ["3"], "suggested_players_recommended": ["3", "4"]
+        },
+        {
+            "id": "300", "name": "Carcassonne Light", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.5, 
+            "year_published": 2000, "min_players": 2, "max_players": 5, "playing_time": 30, "min_playtime": 30, "max_playtime": 30,
+            "complexity": 1.5, "min_age": 8, "thumbnail": "t3", "image": "i3", "designers": ["Wrede"], "publishers": ["Hans"],
+            "suggested_players_best": ["2"], "suggested_players_recommended": ["2", "4"]
+        }
+    ])
+    
+    mock_read_parquet.side_effect = [user_df, catalog_df]
+    mock_hotness.return_value = []
+    
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"name": "Gloomhaven Heavy", "reason": "Because it matches Klaus and complexity preference."}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+    
+    event = {
+        'queryStringParameters': {
+            'username': 'testuser',
+            'own_status': 'unowned',
+            'player_count': '3',
+            'w_mech': '1.0',
+            'w_cat': '0.0',
+            'w_pop': '0.0',
+            'w_hot': '0.0'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'ready'
+    assert len(res_body['recommendations']) == 1
+    assert res_body['recommendations'][0]['name'] == 'Gloomhaven Heavy'
+    assert res_body['recommendations'][0]['id'] == '200'
+    
+    mock_bedrock.converse.assert_called_once()
+    args, kwargs = mock_bedrock.converse.call_args
+    prompt_text = kwargs['messages'][0]['content'][0]['text']
+    assert "Complexity: 3.8/5" in prompt_text
+    assert "Designers: Klaus" in prompt_text
+    assert "Players: 1-4" in prompt_text
+    assert "Playtime: 120m" in prompt_text
