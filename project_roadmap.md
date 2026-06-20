@@ -160,6 +160,6 @@ Configure API Gateway throttling limits to protect against Bedrock AWS bill over
 Deploy zero-cost compaction Lambdas, disable unused Glue Crawlers, and tune S3 recommendation caching to minimize Bedrock and AWS bill metrics.
 
 ### Tasks
-- [ ] Write and deploy a Python compaction Lambda using Pandas/PyArrow to merge S3 Parquets, replacing Glue ETL Spark job.
-- [ ] Deactivate/Delete the AWS Glue Crawler and AWS Athena configuration queries.
-- [ ] Extend the S3 Bedrock recommendation cache expiration TTL configuration to 7 days (or 30 days) to prevent duplicate generation costs.
+- [x] Write and deploy a Python compaction Lambda using Pandas/PyArrow to merge S3 Parquets, replacing Glue ETL Spark job.
+- [x] Deactivate/Delete the AWS Glue Crawler and AWS Athena configuration queries.
+- [x] Extend the S3 Bedrock recommendation cache expiration TTL configuration to 7 days (or 30 days) to prevent duplicate generation costs.

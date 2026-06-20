@@ -20,3 +20,11 @@ output "bgg_recommender_arn" {
 output "bgg_recommender_function_name" {
   value = aws_lambda_function.bgg_recommender.function_name
 }
+
+output "bgg_compactor_arn" {
+  value = aws_lambda_function.bgg_compactor.arn
+}
+
+output "bgg_compactor_function_name" {
+  value = aws_lambda_function.bgg_compactor.function_name
+}

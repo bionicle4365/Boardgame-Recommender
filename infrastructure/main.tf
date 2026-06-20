@@ -40,21 +40,21 @@ module "iam" {
   lambda_execution_role_name = "bgg_game_data_scraper_role"
 }
 
-module "glue" {
-  source = "./glue"
-  glue_database_name = "boardgame_app"
-  glue_raw_table_name = "boardgame_app_raw_table"
-  glue_combined_table_name = "boardgame_app_combined_table"
-  combine_glue_job_name = "boardgame_app_combine_job"
-  combine_glue_job_script_key = module.s3.combine_glue_job_script_key
-  glue_service_role_arn = module.iam.glue_service_role_arn
-  glue_user_raw_table_name = "boardgame_app_user_raw_table"
-}
+# module "glue" {
+#   source = "./glue"
+#   glue_database_name = "boardgame_app"
+#   glue_raw_table_name = "boardgame_app_raw_table"
+#   glue_combined_table_name = "boardgame_app_combined_table"
+#   combine_glue_job_name = "boardgame_app_combine_job"
+#   combine_glue_job_script_key = module.s3.combine_glue_job_script_key
+#   glue_service_role_arn = module.iam.glue_service_role_arn
+#   glue_user_raw_table_name = "boardgame_app_user_raw_table"
+# }
 
 module "s3" {
   source = "./s3"
   s3_bucket_name = "boardgame-app"
-  combine_glue_job_script_name = "combine_raw_to_single_file.py"
+  # combine_glue_job_script_name = "combine_raw_to_single_file.py"
 }
 
 module "ecs" {
@@ -74,5 +74,7 @@ module "eventbridge" {
   ecs_security_group_id       = module.ecs.security_group_id
   ecs_task_execution_role_arn = module.ecs.ecs_task_execution_role_arn
   ecs_task_role_arn           = module.ecs.ecs_task_role_arn
+  compactor_lambda_arn        = module.lambda.bgg_compactor_arn
+  compactor_lambda_name       = module.lambda.bgg_compactor_function_name
 }
 

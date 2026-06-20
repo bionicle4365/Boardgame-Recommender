@@ -66,3 +66,24 @@ resource "aws_iam_role_policy" "eventbridge_ecs_execution_policy" {
     ]
   })
 }
+
+# 4. EventBridge rule to trigger the weekly Python Compactor Lambda (e.g. Sunday 2 AM UTC)
+resource "aws_cloudwatch_event_rule" "weekly_bgg_compactor_schedule" {
+  name                = "weekly-bgg-compactor-schedule"
+  description         = "Runs the S3 Parquet Compactor Lambda every Sunday at 2 AM"
+  schedule_expression = "cron(0 2 ? * SUN *)"
+}
+
+resource "aws_cloudwatch_event_target" "run_bgg_compactor_lambda" {
+  rule      = aws_cloudwatch_event_rule.weekly_bgg_compactor_schedule.name
+  target_id = "run-bgg-compactor-lambda"
+  arn       = var.compactor_lambda_arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_to_call_compactor" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = var.compactor_lambda_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.weekly_bgg_compactor_schedule.arn
+}

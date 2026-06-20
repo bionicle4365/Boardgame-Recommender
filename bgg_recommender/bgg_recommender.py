@@ -77,7 +77,7 @@ def trigger_background_scrape(username):
     else:
         print("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
 
-def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=24):
+def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168):
     """
     Checks if cached recommendations exist on S3 and are within TTL.
     Also ensures the cache file is newer than the user's profile parquet file (smart invalidation).
@@ -284,9 +284,9 @@ def lambda_handler(event, context):
             })
         }
 
-    # 2. Check S3 recommendation cache (TTL = 24 hours)
+    # 2. Check S3 recommendation cache (TTL = 7 days / 168 hours)
     cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}.json"
-    cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=24)
+    cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168)
     if cached_recs is not None:
         return {
             'statusCode': 200,

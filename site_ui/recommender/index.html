@@ -669,14 +669,14 @@ title: Boardgame Recommender
             // Build unique cache key including weights
             const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
 
-            // Check if fresh cache exists (TTL = 24 hours)
+            // Check if fresh cache exists (TTL = 7 days)
             const cachedDataStr = localStorage.getItem(cacheKey);
             if (cachedDataStr) {
                 try {
                     const cachedData = JSON.parse(cachedDataStr);
                     const ageMs = Date.now() - cachedData.timestamp;
-                    const oneDayMs = 24 * 60 * 60 * 1000;
-                    if (ageMs < oneDayMs) {
+                    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+                    if (ageMs < sevenDaysMs) {
                         console.log("Serving recommendations from local storage cache.");
                         statusCard.style.display = "none";
                         submitBtn.disabled = false;

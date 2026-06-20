@@ -1027,14 +1027,14 @@ title: Playgroup Organizer
             const usernameKey = sortedNames.join("_");
             const cacheKey = `bgg_rec_${usernameKey}_owned_any_any_${player_count}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
 
-            // Check client side cache (TTL = 24 hours)
+            // Check client side cache (TTL = 7 days)
             const cachedDataStr = localStorage.getItem(cacheKey);
             if (cachedDataStr) {
                 try {
                     const cachedData = JSON.parse(cachedDataStr);
                     const ageMs = Date.now() - cachedData.timestamp;
-                    const oneDayMs = 24 * 60 * 60 * 1000;
-                    if (ageMs < oneDayMs) {
+                    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+                    if (ageMs < sevenDaysMs) {
                         console.log("Serving group recommendations from local storage cache.");
                         statusCard.style.display = "none";
                         generatePlanBtn.disabled = false;
