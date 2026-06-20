@@ -88,5 +88,5 @@ Upgrade recommendation card components to display visual thumbnails and key game
 Write comprehensive unit tests with mocks to validate code correctness without spinning up containerized AWS mocks locally.
 
 ### Tasks
-- [ ] Write pytest unit tests using `unittest.mock` to mock S3, SQS, and BGG API calls, keeping local testing lightweight.
-- [ ] Configure automated test executions in GitHub Actions workflows to validate code on every branch push.
+- [x] Write pytest unit tests using `unittest.mock` to mock S3, SQS, and BGG API calls, keeping local testing lightweight.
+- [x] Configure automated test executions in GitHub Actions workflows to validate code on every branch push.
