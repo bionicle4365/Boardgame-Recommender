@@ -28,8 +28,11 @@ resource "aws_lambda_event_source_mapping" "bgg_game_data_scraper_esm" {
   # This is the primary throughput lever: 10x fewer Lambda invocations vs batch_size=10.
   # Upper bound is determined by Lambda timeout vs sequential S3 write time (~300ms each):
   #   100 games x 300ms = 30s S3 writes + ~5s API = ~35s total (well under 180s timeout).
-  batch_size              = 100
-  function_response_types = ["ReportBatchItemFailures"]
+  batch_size = 100
+  # AWS requires this to be > 0 when batch_size > 10. With 60k messages in the
+  # queue the batch fills to 100 almost instantly so this doesn't affect throughput.
+  maximum_batching_window_in_seconds = 30
+  function_response_types            = ["ReportBatchItemFailures"]
 }
 
 data "aws_ssm_parameter" "bgg_user_data_scraper_ecr_url" {
