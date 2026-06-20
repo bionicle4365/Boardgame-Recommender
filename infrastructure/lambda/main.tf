@@ -7,7 +7,7 @@ resource "aws_lambda_function" "bgg_game_data_scraper" {
   role                           = var.lambda_execution_role_arn
   package_type                   = "Image"
   image_uri                      = "${data.aws_ssm_parameter.bgg_game_data_scraper_ecr_url.value}:latest"
-  timeout                        = 120
+  timeout                        = 180
   memory_size                    = 256
   reserved_concurrent_executions = var.data_lambda_concurrency_limit
 
@@ -21,13 +21,14 @@ resource "aws_lambda_function" "bgg_game_data_scraper" {
 }
 
 resource "aws_lambda_event_source_mapping" "bgg_game_data_scraper_esm" {
-  event_source_arn        = var.data_sqs_queue_arn
-  function_name           = aws_lambda_function.bgg_game_data_scraper.arn
-  enabled                 = true
-  batch_size              = 10
-  # Required to honour batchItemFailures in Lambda response.
-  # Without this, SQS re-queues the ENTIRE batch if any message fails,
-  # causing successfully-processed messages to hit maxReceiveCount.
+  event_source_arn = var.data_sqs_queue_arn
+  function_name    = aws_lambda_function.bgg_game_data_scraper.arn
+  enabled          = true
+  # 100 IDs are fetched in a SINGLE BGG API call (?id=1,2,...,100&stats=1).
+  # This is the primary throughput lever: 10x fewer Lambda invocations vs batch_size=10.
+  # Upper bound is determined by Lambda timeout vs sequential S3 write time (~300ms each):
+  #   100 games x 300ms = 30s S3 writes + ~5s API = ~35s total (well under 180s timeout).
+  batch_size              = 100
   function_response_types = ["ReportBatchItemFailures"]
 }
 

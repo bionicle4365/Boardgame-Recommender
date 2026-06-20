@@ -1,7 +1,7 @@
 resource "aws_sqs_queue" "bgg_game_data_scraper_queue" {
   name = var.data_sqs_queue_name
   # AWS recommends visibility_timeout >= 6x Lambda timeout for batched processing.
-  # With batch_size=10 and reserved_concurrency=2, messages can wait for a Lambda slot.
+  # With batch_size=100 and reserved_concurrency=2, messages can wait for a Lambda slot.
   visibility_timeout_seconds = var.data_sqs_queue_visibility_timeout_seconds * 6
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.bgg_game_data_scraper_deadletter.arn
