@@ -101,3 +101,48 @@ def test_main_s3_read_missing_key(mock_boto):
     with pytest.raises(SystemExit) as excinfo:
         bgg_game_scraper.main()
     assert excinfo.value.code == 1
+
+
+@patch('bgg_game_scraper.boto3.client')
+@patch('sys.argv', ['bgg_game_scraper', '--mode', 'reprocess'])
+def test_main_reprocess_mode(mock_boto):
+    mock_s3 = MagicMock()
+    mock_paginator = MagicMock()
+    mock_paginator.paginate.return_value = [
+        {
+            'Contents': [
+                {'Key': 'data/boardgames/100.parquet'},
+                {'Key': 'data/boardgames/200.parquet'},
+                {'Key': 'data/boardgames/not_an_id.parquet'},
+                {'Key': 'data/boardgames/'}
+            ]
+        }
+    ]
+    mock_s3.get_paginator.return_value = mock_paginator
+    
+    mock_sqs = MagicMock()
+    mock_sqs.get_queue_url.return_value = {'QueueUrl': 'https://sqs.mock-queue'}
+    
+    def get_mock_client(service, *args, **kwargs):
+        if service == 's3':
+            return mock_s3
+        if service == 'sqs':
+            return mock_sqs
+        return MagicMock()
+    mock_boto.side_effect = get_mock_client
+    
+    # Run the scraper in reprocess mode
+    bgg_game_scraper.main()
+    
+    # Verify S3 list_objects_v2 paginator was called
+    mock_s3.get_paginator.assert_called_once_with('list_objects_v2')
+    mock_paginator.paginate.assert_called_once_with(Bucket='test-bucket', Prefix='data/boardgames/')
+    
+    # Verify SQS send_message_batch was called with the extracted IDs
+    mock_sqs.send_message_batch.assert_called_once_with(
+        QueueUrl='https://sqs.mock-queue',
+        Entries=[
+            {'Id': '0', 'MessageBody': '100'},
+            {'Id': '1', 'MessageBody': '200'}
+        ]
+    )

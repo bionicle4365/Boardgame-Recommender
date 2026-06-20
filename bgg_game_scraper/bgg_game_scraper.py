@@ -6,26 +6,104 @@ import sys
 import time
 import random
 
+def get_existing_game_ids(s3, bucket_name):
+    """
+    Lists all existing game IDs already stored as parquets in S3.
+    """
+    print(f"Listing existing game files from s3://{bucket_name}/data/boardgames/")
+    game_ids = []
+    try:
+        paginator = s3.get_paginator('list_objects_v2')
+        for page in paginator.paginate(Bucket=bucket_name, Prefix='data/boardgames/'):
+            if 'Contents' in page:
+                for obj in page['Contents']:
+                    key = obj['Key']
+                    if key.endswith('.parquet'):
+                        filename = os.path.basename(key)
+                        game_id_str = filename.replace('.parquet', '')
+                        if game_id_str.isdigit():
+                            game_ids.append(int(game_id_str))
+        print(f"Found {len(game_ids)} existing game files in S3.")
+    except Exception as e:
+        print(f"Error listing S3 objects: {e}")
+    return game_ids
+
+def send_ids_to_sqs_batch(sqs, queue_url, game_ids, batch_size=10):
+    """
+    Sends a list of game IDs to SQS in batches of 10.
+    """
+    print(f"Sending {len(game_ids)} game IDs to SQS queue...")
+    for i in range(0, len(game_ids), batch_size):
+        chunk = game_ids[i:i + batch_size]
+        entries = []
+        for idx, game_id in enumerate(chunk):
+            entries.append({
+                'Id': str(idx),
+                'MessageBody': str(game_id)
+            })
+        try:
+            sqs.send_message_batch(QueueUrl=queue_url, Entries=entries)
+            print(f"Sent batch of {len(chunk)} IDs (indices {i} to {i+len(chunk)-1})")
+        except Exception as e:
+            print(f"Error sending SQS batch: {e}. Falling back to individual sends.")
+            # Fallback to single messages if batch fails
+            for game_id in chunk:
+                try:
+                    sqs.send_message(QueueUrl=queue_url, MessageBody=str(game_id))
+                    print(f"Successfully sent ID {game_id} individually.")
+                except Exception as single_e:
+                    print(f"Failed sending ID {game_id} individually: {single_e}")
+        time.sleep(0.1)
+
 def main():
     """
     Main function to scrape BoardGameGeek API.
-    Reads a starting ID from S3, queries BGG API, and checks if it's a boardgame.
-    Loops, increments ID, and updates S3.
+    Supports two modes:
+    - 'new' (Default): Reads start ID from S3 and crawls sequentially.
+    - 'reprocess': Re-queues all existing game IDs from S3.
     """
+    import argparse
+    parser = argparse.ArgumentParser(description="BGG Game ID Scraper/Queuer")
+    parser.add_argument('--mode', choices=['new', 'reprocess'], default=os.environ.get('SCRAPE_MODE', 'new'),
+                        help="Scraping mode: 'new' (scrape new IDs sequentially from checkpoint) or 'reprocess' (re-queue existing game IDs from S3)")
+    args, unknown = parser.parse_known_args()
+    mode = args.mode.lower()
+
     s3_bucket_name = os.environ.get('S3_BUCKET_NAME', 'boardgame-app')
     s3_key = os.environ.get('S3_KEY', 'bgg-scraper/bgg_start_id.txt')
     aws_region = os.environ.get('AWS_REGION', 'us-east-1')
     bgg_api_base_url = "https://boardgamegeek.com/xmlapi2/thing"
-    request_delay_seconds = 1 # Delay between requests to respect API limits (e.g., 1 second)
-    batch_size = int(os.environ.get('BATCH_SIZE', '20')) # Number of IDs to query at a time
-    s3_update_interval = int(os.environ.get('S3_UPDATE_INTERVAL', '20')) # Update S3 every 20 IDs (saves checkpoint after every batch)
+    request_delay_seconds = 1 # Delay between requests to respect API limits
+    batch_size = int(os.environ.get('BATCH_SIZE', '20')) # Number of IDs to query at a time in new mode
+    s3_update_interval = int(os.environ.get('S3_UPDATE_INTERVAL', '20')) # Update S3 every 20 IDs
     retry_delay_seconds = 2 # Base delay before retrying a failed batch
-    sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg_game_data_scraper_queue') # New: SQS Queue Name
+    sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg_game_data_scraper_queue')
 
     s3 = boto3.client('s3', region_name=aws_region)
-    sqs = boto3.client('sqs', region_name=aws_region) 
+    sqs = boto3.client('sqs', region_name=aws_region)
+
+    # Retrieve SQS Queue URL
+    try:
+        sqs_queue_url = sqs.get_queue_url(QueueName=sqs_queue_name)['QueueUrl']
+        print(f"Successfully retrieved SQS queue URL: {sqs_queue_url}")
+    except Exception as e:
+        print(f"Error getting SQS queue URL for '{sqs_queue_name}': {e}. Exiting.")
+        sys.exit(1)
+
+    if mode == 'reprocess':
+        print("Starting in REPROCESS mode...")
+        existing_ids = get_existing_game_ids(s3, s3_bucket_name)
+        if existing_ids:
+            send_ids_to_sqs_batch(sqs, sqs_queue_url, existing_ids)
+            print("Successfully completed reprocess queueing. Exiting.")
+        else:
+            print("No existing game IDs found to reprocess.")
+        return
+
+    # Default 'new' mode
+    print("Starting in NEW mode (sequential crawler)...")
     start_id = None
-    update_counter = 0 # Initialize counter for S3 updates
+    update_counter = 0
 
     try:
         # 1. Read starting ID from S3
@@ -37,21 +115,13 @@ def main():
 
     except s3.exceptions.NoSuchKey:
         print(f"Error: S3 key '{s3_key}' not found in bucket '{s3_bucket_name}'. Exiting.")
-        sys.exit(1) # Exit with an error code
+        sys.exit(1)
     except Exception as e:
         print(f"Error reading from S3: {e}. Exiting.")
-        sys.exit(1) # Exit with an error code
+        sys.exit(1)
 
     if start_id is None:
         print("Failed to retrieve a valid starting ID. Exiting.")
-        sys.exit(1) # Exit with an error code
-
-    # New: Get SQS queue URL
-    try:
-        sqs_queue_url = sqs.get_queue_url(QueueName=sqs_queue_name)['QueueUrl']
-        print(f"Successfully retrieved SQS queue URL: {sqs_queue_url}")
-    except Exception as e:
-        print(f"Error getting SQS queue URL for '{sqs_queue_name}': {e}. Exiting.")
         sys.exit(1)
 
     # Start the continuous scraping loop
@@ -72,16 +142,16 @@ def main():
                 if bgg_api_token:
                     headers["Authorization"] = f"Bearer {bgg_api_token}"
                 response = requests.get(api_url, headers=headers)
-                response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
+                response.raise_for_status()
                 xml_data = response.content
                 print(f"Successfully received response for IDs {ids_param} from BGG API.")
 
-                # 3. Parse XML response
+                # Parse XML response
                 root = ET.fromstring(xml_data)
 
-                # 4. Check if items exist and are of type 'boardgame'
+                # Check if items exist and are of type 'boardgame'
                 items_found = False
-                for item in root.findall('item'): # Iterate through all 'item' elements
+                for item in root.findall('item'):
                     items_found = True
                     item_id = item.get('id')
                     item_type = item.get('type')
@@ -93,7 +163,6 @@ def main():
                     if item_type == 'boardgame':
                         result_message = f"ID {item_id} is a boardgame: {item_name}"
                         print(result_message)
-                        # New: Send message to SQS
                         try:
                             sqs.send_message(
                                 QueueUrl=sqs_queue_url,
@@ -102,18 +171,15 @@ def main():
                             print(f"Successfully sent ID {item_id} to SQS queue '{sqs_queue_name}'.")
                         except Exception as sqs_e:
                             print(f"Error sending ID {item_id} to SQS: {sqs_e}")
-                            # This error is logged but does not stop the scraper,
-                            # as the main goal is to continue scraping IDs.
-                            # SQS messages can be retried by the Lambda consumer.
                     else:
                         result_message = f"ID {item_id} exists but is not a boardgame (Type: {item_type}). Name: {item_name}"
                         print(result_message)
                 
                 if not items_found and current_ids_batch[0] > 452300:
                     print(f"No items found in BGG API response for IDs: {ids_param}. Exiting.")
-                    sys.exit(1) # Exit if no items are found in the response
+                    sys.exit(1)
 
-                batch_succeeded = True # Mark success to break the retry loop
+                batch_succeeded = True
 
             except requests.exceptions.RequestException as e:
                 delay = min(60, retry_delay_seconds * (2 ** retry_count))
@@ -136,29 +202,26 @@ def main():
 
         if not batch_succeeded:
             print(f"Failed to process batch {ids_param}. Exiting.")
-            sys.exit(1) # Exit if a batch consistently fails
+            sys.exit(1)
 
         # If batch succeeded, update state and prepare for next batch
         start_id += batch_size
-        update_counter += batch_size # Increment the counter by the batch size
+        update_counter += batch_size
 
-        # 5. Update starting ID in S3 for persistence, only if counter reaches interval
+        # Update starting ID in S3 for persistence
         if update_counter >= s3_update_interval:
             print(f"Update interval reached. Attempting to update S3 with ID: {start_id}.")
             try:
                 s3.put_object(Bucket=s3_bucket_name, Key=s3_key, Body=str(start_id).encode('utf-8'))
                 print(f"Successfully updated S3 with new starting ID: {start_id}")
-                update_counter = 0 # Reset counter after successful update
+                update_counter = 0
             except Exception as e:
                 print(f"CRITICAL ERROR: Failed to update S3 with ID {start_id}: {e}. Exiting to prevent data loss.")
-                sys.exit(1) # Exit if we can't persist the state
+                sys.exit(1)
         else:
             print(f"Incremented ID to {start_id}. S3 update skipped (next update in {s3_update_interval - update_counter} IDs).")
 
-        # Wait before the next request to respect API rate limits
         time.sleep(request_delay_seconds)
 
 if __name__ == '__main__':
-    # When running in an ECR container, this script will be executed directly.
-    # Environment variables for S3_BUCKET_NAME and S3_KEY should be set in the container definition.
     main()
