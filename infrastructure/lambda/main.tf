@@ -15,6 +15,7 @@ resource "aws_lambda_function" "bgg_game_data_scraper" {
     variables = {
       S3_OUTPUT_BUCKET_NAME = "boardgame-app"
       BGG_API_TOKEN         = var.bgg_api_token
+      PYTHONIOENCODING      = "utf-8"
     }
   }
 }
@@ -43,6 +44,7 @@ resource "aws_lambda_function" "bgg_user_data_scraper" {
     variables = {
       S3_OUTPUT_BUCKET_NAME = "boardgame-app"
       BGG_API_TOKEN         = var.bgg_api_token
+      PYTHONIOENCODING      = "utf-8"
     }
   }
 }
@@ -95,6 +97,7 @@ resource "aws_lambda_function" "bgg_recommender" {
       USER_SQS_QUEUE_URL    = var.user_sqs_queue_url
       BEDROCK_MODEL_ID      = "amazon.nova-micro-v1:0"
       BGG_API_TOKEN         = var.bgg_api_token
+      PYTHONIOENCODING      = "utf-8"
     }
   }
 }
@@ -113,7 +116,8 @@ resource "aws_lambda_function" "bgg_compactor" {
 
   environment {
     variables = {
-      S3_BUCKET_NAME = var.s3_bucket_name
+      S3_BUCKET_NAME   = var.s3_bucket_name
+      PYTHONIOENCODING = "utf-8"
     }
   }
 }

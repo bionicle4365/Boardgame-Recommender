@@ -132,7 +132,7 @@ def get_game_data(game_id, max_retries=5, base_delay=2):
                 'suggested_players_best': best_players,
                 'suggested_players_recommended': rec_players,
             }
-            print(f"Extracted game data for ID {game_id}: {game_data}")
+            print(f"Extracted game data for ID {game_id}: {json.dumps(game_data, ensure_ascii=True)}")
             return game_data
 
         except (requests.exceptions.RequestException, ET.ParseError, Exception) as e:
@@ -176,7 +176,7 @@ def lambda_handler(event, context):
             game_data = get_game_data(game_id)
 
             if game_data:
-                print(f"Successfully retrieved data for ID {game_id}: {game_data.get('name', 'N/A')}")
+                print(f"Successfully retrieved data for ID {game_id}: {repr(game_data.get('name', 'N/A'))}")
 
                 # Convert game_data to pandas DataFrame
                 df = pd.DataFrame([game_data])
