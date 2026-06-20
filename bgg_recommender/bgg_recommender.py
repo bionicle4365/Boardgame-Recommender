@@ -671,16 +671,28 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
         result_json = json.loads(response_text)
         
         # Map names back to IDs from the candidates/catalog so the UI can link directly to the game page
-        candidate_id_map = {row['name'].lower(): row['id'] for row in top_candidates}
+        candidate_map = {row['name'].lower(): row for row in top_candidates}
         for rec in result_json.get('recommendations', []):
             rec_name = rec.get('name', '')
-            game_id = candidate_id_map.get(rec_name.lower())
-            if not game_id:
+            game_meta = candidate_map.get(rec_name.lower())
+            if not game_meta:
                 match = catalog_df[catalog_df['name'].str.lower() == rec_name.lower()]
                 if not match.empty:
-                    game_id = match.iloc[0]['id']
-            if game_id:
-                rec['id'] = str(game_id)
+                    game_meta = match.iloc[0].to_dict()
+            if game_meta:
+                rec['id'] = str(game_meta['id'])
+                # Append rich metadata for the frontend
+                rec['year_published'] = int(game_meta['year_published']) if pd.notna(game_meta.get('year_published')) else None
+                rec['min_players'] = int(game_meta['min_players']) if pd.notna(game_meta.get('min_players')) else None
+                rec['max_players'] = int(game_meta['max_players']) if pd.notna(game_meta.get('max_players')) else None
+                rec['playing_time'] = int(game_meta['playing_time']) if pd.notna(game_meta.get('playing_time')) else None
+                rec['min_playtime'] = int(game_meta['min_playtime']) if pd.notna(game_meta.get('min_playtime')) else None
+                rec['max_playtime'] = int(game_meta['max_playtime']) if pd.notna(game_meta.get('max_playtime')) else None
+                rec['min_age'] = int(game_meta['min_age']) if pd.notna(game_meta.get('min_age')) else None
+                rec['rating'] = float(game_meta['rating']) if pd.notna(game_meta.get('rating')) else None
+                rec['complexity'] = float(game_meta['complexity']) if pd.notna(game_meta.get('complexity')) else None
+                rec['thumbnail'] = str(game_meta['thumbnail']) if pd.notna(game_meta.get('thumbnail')) else None
+                rec['image'] = str(game_meta['image']) if pd.notna(game_meta.get('image')) else None
 
     except Exception as bedrock_e:
         print(f"Bedrock invocation or parsing failed: {bedrock_e}")
@@ -692,7 +704,18 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
                     {
                         "id": str(row['id']),
                         "name": row['name'],
-                        "reason": f"Highly recommended match sharing mechanics: {', '.join(safe_list(row.get('mechanics'))[:3])}."
+                        "reason": f"Highly recommended match sharing mechanics: {', '.join(safe_list(row.get('mechanics'))[:3])}.",
+                        "year_published": int(row['year_published']) if pd.notna(row.get('year_published')) else None,
+                        "min_players": int(row['min_players']) if pd.notna(row.get('min_players')) else None,
+                        "max_players": int(row['max_players']) if pd.notna(row.get('max_players')) else None,
+                        "playing_time": int(row['playing_time']) if pd.notna(row.get('playing_time')) else None,
+                        "min_playtime": int(row['min_playtime']) if pd.notna(row.get('min_playtime')) else None,
+                        "max_playtime": int(row['max_playtime']) if pd.notna(row.get('max_playtime')) else None,
+                        "min_age": int(row['min_age']) if pd.notna(row.get('min_age')) else None,
+                        "rating": float(row['rating']) if pd.notna(row.get('rating')) else None,
+                        "complexity": float(row['complexity']) if pd.notna(row.get('complexity')) else None,
+                        "thumbnail": str(row['thumbnail']) if pd.notna(row.get('thumbnail')) else None,
+                        "image": str(row['image']) if pd.notna(row.get('image')) else None,
                     }
                     for row in top_candidates[:10]
                 ]

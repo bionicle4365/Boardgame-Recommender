@@ -76,9 +76,9 @@ Create a dedicated space to manage board game night groups, select who is attend
 Upgrade recommendation card components to display visual thumbnails and key game statistics.
 
 ### Tasks
-- [ ] Refactor game scrapers to parse and store BGG public image and thumbnail CDN URLs in the S3 Parquet database.
-- [ ] Redesign recommendation cards in the Jekyll UI to render thumbnails directly from BGG's CDN.
-- [ ] Render key metadata (complexity rating/weight, BGG rating, player count, play time) on recommendation cards.
+- [x] Refactor game scrapers to parse and store BGG public image and thumbnail CDN URLs in the S3 Parquet database.
+- [x] Redesign recommendation cards in the Jekyll UI to render thumbnails directly from BGG's CDN.
+- [x] Render key metadata (complexity rating/weight, BGG rating, player count, play time) on recommendation cards.
 
 ---
 

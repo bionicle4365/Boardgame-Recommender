@@ -446,11 +446,51 @@ title: Playgroup Organizer
         border-color: #cbd5e1;
     }
 
+    .rec-card-body {
+        display: flex;
+        gap: 20px;
+        flex-direction: column;
+    }
+
+    @media (min-width: 640px) {
+        .rec-card-body {
+            flex-direction: row;
+            align-items: flex-start;
+        }
+    }
+
+    .rec-card-thumbnail {
+        width: 80px;
+        height: 80px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background-color: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .rec-card-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .rec-card-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
     .rec-card-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 10px;
+        gap: 12px;
     }
 
     .rec-title {
@@ -464,8 +504,48 @@ title: Playgroup Organizer
         color: var(--primary);
     }
 
+    .rec-stats-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 2px;
+        margin-bottom: 6px;
+    }
+
+    .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 6px;
+        background-color: #f1f5f9;
+        color: #475569;
+    }
+
+    .stat-badge.rating {
+        background-color: #fef3c7;
+        color: #b45309;
+    }
+
+    .stat-badge.complexity {
+        background-color: #fae8ff;
+        color: #86198f;
+    }
+
+    .stat-badge.playtime {
+        background-color: #e0f2fe;
+        color: #0369a1;
+    }
+
+    .stat-badge.players {
+        background-color: #dcfce7;
+        color: #15803d;
+    }
+
     .rec-reason {
-        line-height: 1.5;
+        line-height: 1.6;
         color: var(--text-muted);
         margin: 0;
         font-size: 0.95rem;
@@ -479,6 +559,8 @@ title: Playgroup Organizer
         padding: 3px 8px;
         border-radius: 9999px;
         text-transform: uppercase;
+        letter-spacing: 0.05em;
+        flex-shrink: 0;
     }
 
     /* Animations */
@@ -1043,13 +1125,67 @@ title: Playgroup Organizer
                 const gameLink = rec.id 
                     ? `https://boardgamegeek.com/boardgame/${rec.id}` 
                     : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(rec.name)}`;
+                
+                // Formulate stats badges
+                let statsHtml = "";
+                if (rec.rating) {
+                    statsHtml += `
+                        <span class="stat-badge rating" title="BGG Geek Rating (Bayesian Average)">
+                            <span style="color: #b45309; font-weight: bold; margin-right: 2px;">★</span> ${rec.rating.toFixed(1)}
+                        </span>`;
+                }
+                if (rec.complexity) {
+                    statsHtml += `
+                        <span class="stat-badge complexity" title="Weight / Complexity (1.0 = Lightest, 5.0 = Heaviest)">
+                            <span style="color: #86198f; font-weight: bold; margin-right: 2px;">⚙</span> ${rec.complexity.toFixed(1)}/5
+                        </span>`;
+                }
+                if (rec.min_players && rec.max_players) {
+                    const playersStr = rec.min_players === rec.max_players ? `${rec.min_players}` : `${rec.min_players}-${rec.max_players}`;
+                    statsHtml += `
+                        <span class="stat-badge players" title="Supported Player Count">
+                            <span style="color: #15803d; font-weight: bold; margin-right: 2px;">👥</span> ${playersStr} Players
+                        </span>`;
+                }
+                if (rec.playing_time || (rec.min_playtime && rec.max_playtime)) {
+                    let playStr = "";
+                    if (rec.min_playtime && rec.max_playtime && rec.min_playtime !== rec.max_playtime) {
+                        playStr = `${rec.min_playtime}-${rec.max_playtime}`;
+                    } else {
+                        playStr = `${rec.playing_time || rec.min_playtime}`;
+                    }
+                    statsHtml += `
+                        <span class="stat-badge playtime" title="Estimated Playing Time">
+                            <span style="color: #0369a1; font-weight: bold; margin-right: 2px;">🕒</span> ${playStr} Min
+                        </span>`;
+                }
+                if (rec.year_published) {
+                    statsHtml += `
+                        <span class="stat-badge year" title="Year Published">
+                            <span style="color: #475569; font-weight: bold; margin-right: 2px;">📅</span> ${rec.year_published}
+                        </span>`;
+                }
+
+                // Fallback placeholder image URL
+                const thumbUrl = rec.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
+                
                 html += `
                     <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
-                        <div class="rec-card-header">
-                            <a href="${gameLink}" target="_blank" class="rec-title">${escapeHTML(rec.name)}</a>
-                            <span class="badge">Match #${index + 1}</span>
+                        <div class="rec-card-body">
+                            <div class="rec-card-thumbnail">
+                                <img src="${thumbUrl}" alt="${escapeHTML(rec.name)}" loading="lazy" onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
+                            </div>
+                            <div class="rec-card-content">
+                                <div class="rec-card-header">
+                                    <a href="${gameLink}" target="_blank" class="rec-title">${escapeHTML(rec.name)}</a>
+                                    <span class="badge">Match #${index + 1}</span>
+                                </div>
+                                <div class="rec-stats-container">
+                                    ${statsHtml}
+                                </div>
+                                <p class="rec-reason">${escapeHTML(rec.reason)}</p>
+                            </div>
                         </div>
-                        <p class="rec-reason">${escapeHTML(rec.reason)}</p>
                     </div>
                 `;
             });
