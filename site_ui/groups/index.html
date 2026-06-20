@@ -1,0 +1,1068 @@
+---
+layout: default
+title: Playgroup Organizer
+---
+
+<style>
+    /* Premium Modern Styles for Playgroups */
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --background: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --success: #10b981;
+        --danger: #ef4444;
+    }
+
+    .groups-container {
+        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-main);
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header-section {
+        margin-bottom: 30px;
+        text-align: left;
+    }
+
+    .header-section h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .header-section p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        margin: 0;
+    }
+
+    /* Main Dashboard Layout */
+    .dashboard-layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    @media (min-width: 768px) {
+        .dashboard-layout {
+            grid-template-columns: 1fr 2fr;
+        }
+    }
+
+    /* Cards */
+    .sidebar-card, .planner-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        transition: all 0.3s ease;
+    }
+
+    .sidebar-card {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        align-self: start;
+    }
+
+    .card-title-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    /* Group Items List */
+    .group-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .group-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .group-item:hover {
+        border-color: var(--primary);
+        background-color: #f5f3ff;
+    }
+
+    .group-item.active {
+        border-color: var(--primary);
+        background-color: #eff6ff;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .group-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .group-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .group-meta {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .delete-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+    }
+
+    .delete-btn:hover {
+        color: var(--danger);
+        background-color: #fee2e2;
+    }
+
+    /* Add/Edit Form */
+    .group-form-container {
+        display: none;
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+        background-color: #f8fafc;
+        border: 1.5px dashed var(--border);
+        border-radius: 10px;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .form-group input, .form-group textarea {
+        padding: 10px 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        background-color: #fff;
+    }
+
+    .form-group input:focus, .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: none;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+        background-color: #e2e8f0;
+        color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+        background-color: #cbd5e1;
+    }
+
+    .btn-outline {
+        background-color: transparent;
+        border: 1.5px solid var(--primary);
+        color: var(--primary);
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+
+    .btn-outline:hover {
+        background-color: #eff6ff;
+    }
+
+    /* Active session planner styles */
+    .planner-section {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .member-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+        margin: 15px 0;
+    }
+
+    .member-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+        background-color: #f8fafc;
+        user-select: none;
+    }
+
+    .member-checkbox-label:hover {
+        border-color: var(--primary);
+        background-color: #fff;
+    }
+
+    .member-checkbox-label input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary);
+    }
+
+    .member-checkbox-label.checked {
+        border-color: var(--primary);
+        background-color: #eff6ff;
+        color: var(--primary);
+    }
+
+    .attendee-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        padding: 12px 16px;
+        border-radius: 8px;
+        color: #166534;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .attendee-badge {
+        background-color: #166534;
+        color: white;
+        padding: 2px 10px;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 40px;
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        background-color: #f8fafc;
+    }
+
+    .empty-state h3 {
+        margin-bottom: 8px;
+        font-size: 1.15rem;
+    }
+
+    /* Collapsible weights styling */
+    .weights-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .weights-content {
+        display: none;
+        animation: slideDown 0.25s ease;
+    }
+
+    /* Sliders inside collapsible details */
+    .sliders-panel {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 15px;
+        background-color: #f8fafc;
+        border: 1px solid var(--border);
+        border-top: none;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        padding: 20px;
+    }
+
+    @media (min-width: 640px) {
+        .sliders-panel {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .slider-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .slider-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .slider-badge {
+        background-color: #e0e7ff;
+        color: var(--primary);
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 4px;
+    }
+
+    .weight-slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 5px;
+        border-radius: 9999px;
+        background: #cbd5e1;
+        outline: none;
+    }
+
+    .weight-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+    }
+
+    /* Status progress styling */
+    .status-card {
+        background-color: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 20px;
+        display: none;
+        align-items: center;
+        gap: 15px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3.5px solid #dbeafe;
+        border-top: 3.5px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        flex-shrink: 0;
+    }
+
+    .status-text {
+        font-weight: 600;
+        color: #1e40af;
+        margin: 0;
+        font-size: 0.95rem;
+        line-height: 1.4;
+    }
+
+    /* Results */
+    .results-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .rec-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        transition: all 0.3s ease;
+        animation: slideUp 0.4s ease;
+    }
+
+    .rec-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        border-color: #cbd5e1;
+    }
+
+    .rec-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+    }
+
+    .rec-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--text-main);
+        text-decoration: none;
+    }
+
+    .rec-title:hover {
+        color: var(--primary);
+    }
+
+    .rec-reason {
+        line-height: 1.5;
+        color: var(--text-muted);
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .badge {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 9999px;
+        text-transform: uppercase;
+    }
+
+    /* Animations */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="groups-container">
+    <div class="header-section">
+        <h1>Playgroup Organizer</h1>
+        <p>Save your board gaming groups, select attendees, and find games collectively owned that match the players.</p>
+    </div>
+
+    <div class="dashboard-layout">
+        <!-- Sidebar - Playgroups master list -->
+        <div class="sidebar-card">
+            <div class="card-title-container">
+                <h2 class="card-title">My Playgroups</h2>
+                <button class="btn btn-outline" id="show-create-form-btn">New Group</button>
+            </div>
+
+            <!-- Group Creation Form -->
+            <div class="group-form-container" id="group-form-card">
+                <h3 style="margin: 0; font-size: 1rem;" id="form-title">Create Playgroup</h3>
+                <form id="group-form">
+                    <input type="hidden" id="edit-group-id">
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="group-name-input">Group Name</label>
+                        <input type="text" id="group-name-input" placeholder="e.g. Friday Night Heavy" required>
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="group-members-input">BGG Usernames (comma-separated)</label>
+                        <textarea id="group-members-input" placeholder="e.g. bionicle4365, player2, player3" rows="3" required></textarea>
+                    </div>
+                    <div class="form-actions" style="margin-top: 15px;">
+                        <button type="button" class="btn btn-secondary" id="cancel-form-btn">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="save-group-btn">Save Group</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- List of groups -->
+            <div class="group-list" id="group-list-container">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+
+        <!-- Planner Detail & Recommendations panel -->
+        <div class="planner-card">
+            <div id="planner-active-view" style="display: none;">
+                <div class="planner-section">
+                    <div class="card-title-container" style="border-bottom: none; padding-bottom: 0;">
+                        <h2 class="card-title" id="active-group-name">Friday Night Gamers</h2>
+                        <div class="form-actions">
+                            <button class="btn btn-secondary" id="select-all-btn">Select All</button>
+                            <button class="btn btn-secondary" id="select-none-btn">Clear</button>
+                        </div>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: -10px 0 0 0;">Check which group members are attending the session tonight:</p>
+
+                    <!-- Attendee Grid Checkboxes -->
+                    <div class="member-grid" id="member-checkboxes-container">
+                        <!-- Loaded dynamically -->
+                    </div>
+
+                    <!-- Attendee Summary count badge -->
+                    <div class="attendee-summary">
+                        <span>Attendance Count</span>
+                        <span class="attendee-badge" id="attendance-count-badge">0 players</span>
+                    </div>
+
+                    <!-- Collapsible Weights Section -->
+                    <div>
+                        <div class="weights-toggle" id="weights-toggle-bar">
+                            <span>Fine-tune Recommendation Priorities (Optional)</span>
+                            <span id="weights-caret">▼</span>
+                        </div>
+                        <div class="weights-content" id="weights-expandable-content">
+                            <div class="sliders-panel">
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>Mechanics Match</span>
+                                        <span id="w_mech_val" class="slider-badge">50%</span>
+                                    </div>
+                                    <input type="range" id="w_mech" min="0" max="100" value="50" class="weight-slider">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>Categories Match</span>
+                                        <span id="w_cat_val" class="slider-badge">50%</span>
+                                    </div>
+                                    <input type="range" id="w_cat" min="0" max="100" value="50" class="weight-slider">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>Popularity Average</span>
+                                        <span id="w_pop_val" class="slider-badge">50%</span>
+                                    </div>
+                                    <input type="range" id="w_pop" min="0" max="100" value="50" class="weight-slider">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>Hotness / Trending</span>
+                                        <span id="w_hot_val" class="slider-badge">0%</span>
+                                    </div>
+                                    <input type="range" id="w_hot" min="0" max="100" value="0" class="weight-slider">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Plan Button -->
+                    <button class="btn btn-primary" style="padding: 12px; font-size: 1rem; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" id="generate-plan-btn">
+                        Generate Game Night Planner Recommendations
+                    </button>
+                </div>
+
+                <!-- Status Progress Card -->
+                <div id="status-card" class="status-card" style="margin-top: 25px;">
+                    <div class="spinner"></div>
+                    <div id="status-message" class="status-text">Consolidating group collections...</div>
+                </div>
+
+                <!-- Recommendations results list -->
+                <div id="recommendations-results" class="results-grid" style="margin-top: 25px;"></div>
+            </div>
+
+            <!-- Empty State - displayed when no group is active/selected -->
+            <div id="planner-empty-state" class="empty-state">
+                <h3>No Playgroup Selected</h3>
+                <p style="margin: 0;">Select an existing playgroup from the left sidebar, or create a new one to begin planning your game night session.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Elements
+        const showCreateFormBtn = document.getElementById("show-create-form-btn");
+        const groupFormCard = document.getElementById("group-form-card");
+        const groupForm = document.getElementById("group-form");
+        const cancelFormBtn = document.getElementById("cancel-form-btn");
+        const groupNameInput = document.getElementById("group-name-input");
+        const groupMembersInput = document.getElementById("group-members-input");
+        const editGroupId = document.getElementById("edit-group-id");
+        const saveGroupBtn = document.getElementById("save-group-btn");
+        const formTitle = document.getElementById("form-title");
+        const groupListContainer = document.getElementById("group-list-container");
+
+        const plannerActiveView = document.getElementById("planner-active-view");
+        const plannerEmptyState = document.getElementById("planner-empty-state");
+        const activeGroupName = document.getElementById("active-group-name");
+        const selectAllBtn = document.getElementById("selectAll-btn") || document.getElementById("select-all-btn");
+        const selectNoneBtn = document.getElementById("select-none-btn");
+        const memberCheckboxesContainer = document.getElementById("member-checkboxes-container");
+        const attendanceCountBadge = document.getElementById("attendance-count-badge");
+        const generatePlanBtn = document.getElementById("generate-plan-btn");
+        const statusCard = document.getElementById("status-card");
+        const statusMessage = document.getElementById("status-message");
+        const resultsContainer = document.getElementById("recommendations-results");
+
+        // Weights Sliders
+        const weightsToggleBar = document.getElementById("weights-toggle-bar");
+        const weightsExpandableContent = document.getElementById("weights-expandable-content");
+        const weightsCaret = document.getElementById("weights-caret");
+
+        const wMechInput = document.getElementById("w_mech");
+        const wCatInput = document.getElementById("w_cat");
+        const wPopInput = document.getElementById("w_pop");
+        const wHotInput = document.getElementById("w_hot");
+
+        const wMechVal = document.getElementById("w_mech_val");
+        const wCatVal = document.getElementById("w_cat_val");
+        const wPopVal = document.getElementById("w_pop_val");
+        const wHotVal = document.getElementById("w_hot_val");
+
+        // API Endpoint setup
+        const apiUrl = "{{ site.api_url }}";
+        let activeGroup = null;
+        let isPollingActive = false;
+        let pollingTimeout = null;
+
+        // 1. Saved groups crud (stored in localStorage)
+        let playgroups = [];
+        try {
+            const stored = localStorage.getItem("bgg_playgroups");
+            if (stored) playgroups = JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed loading playgroups from local storage:", e);
+        }
+
+        function renderGroupList() {
+            if (playgroups.length === 0) {
+                groupListContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px; border: 1px dashed var(--border); border-radius: 8px;">No playgroups saved. Create one above!</div>`;
+                return;
+            }
+
+            let html = "";
+            playgroups.forEach(g => {
+                const isActive = activeGroup && activeGroup.id === g.id;
+                html += `
+                    <div class="group-item ${isActive ? 'active' : ''}" data-id="${g.id}">
+                        <div class="group-info" onclick="selectGroup('${g.id}')">
+                            <span class="group-name">${escapeHTML(g.name)}</span>
+                            <span class="group-meta">${g.members.length} members</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="delete-btn" onclick="editGroup('${g.id}')" title="Edit Group">✎</button>
+                            <button class="delete-btn" onclick="deleteGroup('${g.id}')" title="Delete Group">🗑</button>
+                        </div>
+                    </div>
+                `;
+            });
+            groupListContainer.innerHTML = html;
+        }
+
+        window.selectGroup = function(id) {
+            // Cancel any active polling
+            isPollingActive = false;
+            if (pollingTimeout) clearTimeout(pollingTimeout);
+            statusCard.style.display = "none";
+            resultsContainer.innerHTML = "";
+
+            activeGroup = playgroups.find(g => g.id === id);
+            renderGroupList(); // Update active highlights
+            
+            if (activeGroup) {
+                plannerEmptyState.style.display = "none";
+                plannerActiveView.style.display = "block";
+                activeGroupName.textContent = activeGroup.name;
+
+                // Load member checkboxes
+                let html = "";
+                activeGroup.members.forEach(member => {
+                    html += `
+                        <label class="member-checkbox-label checked" id="label-for-${member.toLowerCase()}">
+                            <input type="checkbox" class="member-checkbox" value="${escapeHTML(member)}" checked onchange="toggleMemberChecked('${member.toLowerCase()}')">
+                            <span>${escapeHTML(member)}</span>
+                        </label>
+                    `;
+                });
+                memberCheckboxesContainer.innerHTML = html;
+                updateAttendanceCount();
+            }
+        };
+
+        window.toggleMemberChecked = function(memberId) {
+            const label = document.getElementById(`label-for-${memberId}`);
+            const checkbox = label.querySelector("input");
+            if (checkbox.checked) {
+                label.classList.add("checked");
+            } else {
+                label.classList.remove("checked");
+            }
+            updateAttendanceCount();
+        };
+
+        function updateAttendanceCount() {
+            const checkedCount = getCheckedUsernames().length;
+            attendanceCountBadge.textContent = `${checkedCount} player${checkedCount !== 1 ? 's' : ''}`;
+        }
+
+        selectAllBtn.addEventListener("click", function() {
+            document.querySelectorAll(".member-checkbox").forEach(cb => {
+                cb.checked = true;
+                cb.parentElement.classList.add("checked");
+            });
+            updateAttendanceCount();
+        });
+
+        selectNoneBtn.addEventListener("click", function() {
+            document.querySelectorAll(".member-checkbox").forEach(cb => {
+                cb.checked = false;
+                cb.parentElement.classList.remove("checked");
+            });
+            updateAttendanceCount();
+        });
+
+        function getCheckedUsernames() {
+            const names = [];
+            document.querySelectorAll(".member-checkbox:checked").forEach(cb => {
+                names.push(cb.value.trim());
+            });
+            return names;
+        }
+
+        window.deleteGroup = function(id) {
+            if (confirm("Are you sure you want to delete this playgroup?")) {
+                playgroups = playgroups.filter(g => g.id !== id);
+                localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
+                
+                if (activeGroup && activeGroup.id === id) {
+                    activeGroup = null;
+                    plannerActiveView.style.display = "none";
+                    plannerEmptyState.style.display = "block";
+                }
+                
+                renderGroupList();
+            }
+        };
+
+        window.editGroup = function(id) {
+            const g = playgroups.find(g => g.id === id);
+            if (g) {
+                editGroupId.value = g.id;
+                groupNameInput.value = g.name;
+                groupMembersInput.value = g.members.join(", ");
+                formTitle.textContent = "Edit Playgroup";
+                groupFormCard.style.display = "flex";
+                showCreateFormBtn.style.display = "none";
+            }
+        };
+
+        showCreateFormBtn.addEventListener("click", function () {
+            editGroupId.value = "";
+            groupNameInput.value = "";
+            groupMembersInput.value = "";
+            formTitle.textContent = "Create Playgroup";
+            groupFormCard.style.display = "flex";
+            showCreateFormBtn.style.display = "none";
+        });
+
+        cancelFormBtn.addEventListener("click", function () {
+            groupFormCard.style.display = "none";
+            showCreateFormBtn.style.display = "block";
+        });
+
+        groupForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            const name = groupNameInput.value.trim();
+            const membersRaw = groupMembersInput.value;
+            const members = membersRaw.split(",").map(m => m.trim()).filter(m => m.length > 0);
+
+            if (members.length === 0) {
+                alert("Please add at least 1 member username!");
+                return;
+            }
+
+            const id = editGroupId.value;
+            if (id) {
+                // Update
+                const g = playgroups.find(g => g.id === id);
+                if (g) {
+                    g.name = name;
+                    g.members = members;
+                }
+            } else {
+                // Create
+                const newGroup = {
+                    id: Date.now().toString(),
+                    name: name,
+                    members: members
+                };
+                playgroups.push(newGroup);
+            }
+
+            localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
+            groupFormCard.style.display = "none";
+            showCreateFormBtn.style.display = "block";
+            renderGroupList();
+            
+            // Re-select if updated active group
+            if (id && activeGroup && activeGroup.id === id) {
+                selectGroup(id);
+            }
+        });
+
+        // Initialize group list
+        renderGroupList();
+
+        // 2. Weights sliders sync
+        function updateSlidersFromStorage() {
+            const storedWeights = localStorage.getItem("bgg_rec_weights");
+            if (storedWeights) {
+                try {
+                    const weights = JSON.parse(storedWeights);
+                    if (weights.mech !== undefined) wMechInput.value = weights.mech;
+                    if (weights.cat !== undefined) wCatInput.value = weights.cat;
+                    if (weights.pop !== undefined) wPopInput.value = weights.pop;
+                    if (weights.hot !== undefined) wHotInput.value = weights.hot;
+                } catch (e) {
+                    console.error("Error reading stored weights:", e);
+                }
+            }
+            wMechVal.textContent = `${wMechInput.value}%`;
+            wCatVal.textContent = `${wCatInput.value}%`;
+            wPopVal.textContent = `${wPopInput.value}%`;
+            wHotVal.textContent = `${wHotInput.value}%`;
+        }
+
+        function saveSlidersToStorage() {
+            const weights = {
+                mech: wMechInput.value,
+                cat: wCatInput.value,
+                pop: wPopInput.value,
+                hot: wHotInput.value
+            };
+            localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
+        }
+
+        [wMechInput, wCatInput, wPopInput, wHotInput].forEach(input => {
+            input.addEventListener("input", function() {
+                const valSpan = document.getElementById(`${input.id}_val`);
+                if (valSpan) valSpan.textContent = `${input.value}%`;
+                saveSlidersToStorage();
+            });
+        });
+
+        updateSlidersFromStorage();
+
+        // Collapsible sliders behavior
+        weightsToggleBar.addEventListener("click", function() {
+            const isVisible = weightsExpandableContent.style.display === "block";
+            if (isVisible) {
+                weightsExpandableContent.style.display = "none";
+                weightsCaret.textContent = "▼";
+                weightsToggleBar.style.borderBottomLeftRadius = "8px";
+                weightsToggleBar.style.borderBottomRightRadius = "8px";
+            } else {
+                weightsExpandableContent.style.display = "block";
+                weightsCaret.textContent = "▲";
+                weightsToggleBar.style.borderBottomLeftRadius = "0px";
+                weightsToggleBar.style.borderBottomRightRadius = "0px";
+            }
+        });
+
+        // 3. API polling recommendation fetching
+        generatePlanBtn.addEventListener("click", function() {
+            const usernames = getCheckedUsernames();
+            if (usernames.length === 0) {
+                alert("Please check at least one attending playgroup member!");
+                return;
+            }
+
+            // Cancel any active polling
+            isPollingActive = false;
+            if (pollingTimeout) clearTimeout(pollingTimeout);
+            resultsContainer.innerHTML = "";
+            statusCard.style.display = "flex";
+            statusMessage.textContent = "Connecting to backend recommender engine...";
+            generatePlanBtn.disabled = true;
+
+            const w_mech = (wMechInput.value / 100).toFixed(2);
+            const w_cat = (wCatInput.value / 100).toFixed(2);
+            const w_pop = (wPopInput.value / 100).toFixed(2);
+            const w_hot = (wHotInput.value / 100).toFixed(2);
+            const player_count = usernames.length;
+
+            // Generate deterministic group cache key
+            const sortedNames = [...usernames].map(u => u.toLowerCase()).sort();
+            const usernameKey = sortedNames.join("_");
+            const cacheKey = `bgg_rec_${usernameKey}_owned_any_any_${player_count}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
+
+            // Check client side cache (TTL = 24 hours)
+            const cachedDataStr = localStorage.getItem(cacheKey);
+            if (cachedDataStr) {
+                try {
+                    const cachedData = JSON.parse(cachedDataStr);
+                    const ageMs = Date.now() - cachedData.timestamp;
+                    const oneDayMs = 24 * 60 * 60 * 1000;
+                    if (ageMs < oneDayMs) {
+                        console.log("Serving group recommendations from local storage cache.");
+                        statusCard.style.display = "none";
+                        generatePlanBtn.disabled = false;
+                        renderRecommendations(cachedData.recommendations);
+                        return;
+                    } else {
+                        localStorage.removeItem(cacheKey);
+                    }
+                } catch (e) {
+                    console.error("Local cache read error:", e);
+                    localStorage.removeItem(cacheKey);
+                }
+            }
+
+            // Call API Gateway endpoint
+            let params = new URLSearchParams({
+                username: usernames.join(","),
+                own_status: "owned",
+                player_count: player_count,
+                w_mech: w_mech,
+                w_cat: w_cat,
+                w_pop: w_pop,
+                w_hot: w_hot
+            });
+
+            const queryUrl = `${apiUrl}/recommendations?${params.toString()}`;
+            isPollingActive = true;
+
+            function pollGroupRecommendations() {
+                if (!isPollingActive) return;
+
+                fetch(queryUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error("API response error");
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!isPollingActive) return;
+
+                        if (data.status === "scraping") {
+                            const usersScraping = data.scraping_users ? data.scraping_users.join(", ") : "some attendees";
+                            statusMessage.textContent = `Scraping and building BGG profiles for: ${usersScraping}. This takes about 30 seconds...`;
+                            pollingTimeout = setTimeout(pollGroupRecommendations, 5000);
+                        } else if (data.status === "ready") {
+                            isPollingActive = false;
+                            statusCard.style.display = "none";
+                            generatePlanBtn.disabled = false;
+
+                            // Cache recommendations
+                            try {
+                                const cacheVal = {
+                                    timestamp: Date.now(),
+                                    recommendations: data.recommendations
+                                };
+                                localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
+                            } catch (e) {
+                                console.error("Local storage cache write error:", e);
+                            }
+
+                            renderRecommendations(data.recommendations);
+                        } else {
+                            throw new Error("Unexpected API status response");
+                        }
+                    })
+                    .catch(error => {
+                        if (!isPollingActive) return;
+                        console.error("API error:", error);
+                        isPollingActive = false;
+                        statusCard.style.display = "none";
+                        generatePlanBtn.disabled = false;
+                        resultsContainer.innerHTML = `<div style="color: #ef4444; font-weight: bold; padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch playgroup recommendations. Check AWS Lambda logs.</div>`;
+                    });
+            }
+
+            pollGroupRecommendations();
+        });
+
+        function renderRecommendations(recs) {
+            if (!recs || recs.length === 0) {
+                resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: #fff; width: 100%;">No recommendations found matching the attendees collection. Try adding more users with rated games or relaxing year filters!</div>`;
+                return;
+            }
+
+            let html = "";
+            recs.forEach((rec, index) => {
+                const gameLink = rec.id 
+                    ? `https://boardgamegeek.com/boardgame/${rec.id}` 
+                    : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(rec.name)}`;
+                html += `
+                    <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
+                        <div class="rec-card-header">
+                            <a href="${gameLink}" target="_blank" class="rec-title">${escapeHTML(rec.name)}</a>
+                            <span class="badge">Match #${index + 1}</span>
+                        </div>
+                        <p class="rec-reason">${escapeHTML(rec.reason)}</p>
+                    </div>
+                `;
+            });
+            resultsContainer.innerHTML = html;
+        }
+
+        function escapeHTML(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    });
+</script>

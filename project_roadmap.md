@@ -63,10 +63,10 @@ Put recommendation parameters directly in the user's hands using sliders, includ
 Create a dedicated space to manage board game night groups, select who is attending, and recommend games everyone will enjoy from their collectively owned libraries.
 
 ### Tasks
-- [ ] Build a new **Playgroups** layout page (`site_ui/groups/index.html`) featuring a clean dashboard to save and edit gaming groups.
-- [ ] Add controls to select which group members are attending a game night session.
-- [ ] Query and consolidate S3 profiles for all attending members to find games collectively owned by the group.
-- [ ] Generate recommendations from this combined library matching the exact attendance player count and optimizing for shared mechanic/theme profiles.
+- [x] Build a new **Playgroups** layout page (`site_ui/groups/index.html`) featuring a clean dashboard to save and edit gaming groups.
+- [x] Add controls to select which group members are attending a game night session.
+- [x] Query and consolidate S3 profiles for all attending members to find games collectively owned by the group.
+- [x] Generate recommendations from this combined library matching the exact attendance player count and optimizing for shared mechanic/theme profiles.
 
 ---
 

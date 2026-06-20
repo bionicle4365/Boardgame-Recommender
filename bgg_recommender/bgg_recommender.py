@@ -219,6 +219,7 @@ def lambda_handler(event, context):
     own_status = query_params.get('own_status', 'unowned').lower()
     year_start = query_params.get('year_start')
     year_end = query_params.get('year_end')
+    player_count = query_params.get('player_count')
 
     # Extract dynamic weights
     try:
@@ -234,39 +235,57 @@ def lambda_handler(event, context):
     w_cat = max(0.0, min(1.0, w_cat))
     w_pop = max(0.0, min(1.0, w_pop))
     w_hot = max(0.0, min(1.0, w_hot))
+
+    # Parse list of BGG usernames (support groups)
+    usernames = [u.strip() for u in username.split(',') if u.strip()]
+    sorted_usernames = sorted([u.lower() for u in usernames])
+    username_key = "_".join(sorted_usernames)
     
-    # 1. Check if user's profile is scraped and if it is stale (stale TTL = 24 hours)
-    try:
-        exists, is_stale, profile_last_modified = get_user_profile_status(username, ttl_hours=24)
-    except Exception as s3_check_err:
-        print(f"S3 checks failed: {s3_check_err}")
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Failed checking user profile status'})
-        }
-        
-    if not exists:
-        print(f"User profile for '{username}' not found. Queueing scrape job.")
-        trigger_background_scrape(username)
+    # 1. Check if user profiles are scraped and if any are stale (stale TTL = 24 hours)
+    scraping_users = []
+    profile_last_modified = None
+    
+    for u in usernames:
+        try:
+            exists, is_stale, u_modified = get_user_profile_status(u, ttl_hours=24)
+        except Exception as s3_check_err:
+            print(f"S3 checks failed for {u}: {s3_check_err}")
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': f'Failed checking user profile status for {u}'})
+            }
+            
+        if not exists:
+            print(f"User profile for '{u}' not found. Queueing scrape job.")
+            trigger_background_scrape(u)
+            scraping_users.append(u)
+        elif is_stale:
+            print(f"User profile for '{u}' is stale. Queueing background update scrape job.")
+            trigger_background_scrape(u)
+            
+        if u_modified:
+            if profile_last_modified is None or u_modified > profile_last_modified:
+                profile_last_modified = u_modified
+                
+    if scraping_users:
         return {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({'status': 'scraping'})
+            'body': json.dumps({
+                'status': 'scraping',
+                'scraping_users': scraping_users
+            })
         }
 
-    if is_stale:
-        print(f"User profile for '{username}' is stale. Queueing background update scrape job.")
-        trigger_background_scrape(username)
-
     # 2. Check S3 recommendation cache (TTL = 24 hours)
-    cache_key = f"data/recommendation_cache/{username}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}.json"
+    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}.json"
     cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=24)
     if cached_recs is not None:
         return {
@@ -281,23 +300,33 @@ def lambda_handler(event, context):
             })
         }
         
-    # 3. User data exists. Download and load it
-    user_key = f"data/users/{username}.parquet"
-    local_user_path = f"/tmp/{username}.parquet"
-    try:
-        print(f"Downloading user profile from S3: {user_key}")
-        s3.download_file(bucket, user_key, local_user_path)
-        user_df = pd.read_parquet(local_user_path)
-    except Exception as user_load_err:
-        print(f"Error loading user profile: {user_load_err}")
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Failed reading user profile'})
-        }
+    # 3. User data exists. Download and load all profiles
+    user_dfs = []
+    owned_ids = set()
+    for u in usernames:
+        user_key = f"data/users/{u}.parquet"
+        local_user_path = f"/tmp/{u}.parquet"
+        try:
+            print(f"Downloading user profile from S3: {user_key}")
+            s3.download_file(bucket, user_key, local_user_path)
+            u_df = pd.read_parquet(local_user_path)
+            u_df['id'] = u_df['id'].astype(str)
+            user_dfs.append(u_df)
+            
+            # Aggregate owned games
+            owned_ids.update(u_df[u_df['own'] == True]['id'].tolist())
+        except Exception as user_load_err:
+            print(f"Error loading user profile {u}: {user_load_err}")
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': f'Failed reading user profile for {u}'})
+            }
+            
+    user_df = pd.concat(user_dfs, ignore_index=True)
 
     # 3. Fetch catalog database
     catalog_df = get_catalog()
@@ -343,7 +372,6 @@ def lambda_handler(event, context):
     candidates = catalog_df.copy()
     
     # filter out games already owned or not owned based on own_status
-    owned_ids = set(user_df[user_df['own'] == True]['id'].tolist())
     if own_status == 'owned':
         candidates = candidates[candidates['id'].isin(owned_ids)]
     elif own_status == 'unowned':
@@ -363,6 +391,15 @@ def lambda_handler(event, context):
     if year_end:
         try:
             candidates = candidates[candidates['year_published'] <= int(year_end)]
+        except ValueError:
+            pass
+
+    # filter by exact player count support
+    if player_count:
+        try:
+            p_count = int(player_count)
+            candidates = candidates[candidates['max_players'] >= p_count]
+            print(f"Filtered catalog by player_count >= {p_count}. Candidates left: {len(candidates)}")
         except ValueError:
             pass
 
@@ -410,7 +447,7 @@ def lambda_handler(event, context):
         hotness_scores[g_id] = max(0.0, min(1.0, score))
 
     # Convert candidates dataframe to a list of dictionaries to bypass slow Pandas row iteration (which takes 30+ seconds)
-    columns_to_keep = ['id', 'name', 'categories', 'mechanics', 'rating', 'year_published']
+    columns_to_keep = ['id', 'name', 'categories', 'mechanics', 'rating', 'year_published', 'max_players']
     candidate_records = candidates[columns_to_keep].to_dict('records')
 
     candidate_scores = []
@@ -457,7 +494,7 @@ def lambda_handler(event, context):
         for row in top_candidates:
             cats = ", ".join(safe_list(row.get('categories')))
             mechs = ", ".join(safe_list(row.get('mechanics')))
-            cand_list.append(f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, Categories: {cats}, Mechanics: {mechs})")
+            cand_list.append(f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, Max Players: {row.get('max_players', 'N/A')}, Categories: {cats}, Mechanics: {mechs})")
         candidates_str = "\n".join(cand_list)
 
     # Incorporate user weights into prompt context
@@ -468,6 +505,8 @@ The user has tuned their preference weights for similarity scoring as follows:
 - Popularity/Community Rating Weight: {w_pop * 100:.0f}%
 - Hotness/Trending Weight: {w_hot * 100:.0f}%
 """
+    if player_count:
+        weight_context += f"- Target Session Player Count: {player_count} players (all candidate games support this player count)\n"
     if w_hot > 0.4:
         weight_context += "The user is highly interested in currently trending or hot releases.\n"
     if w_mech > 0.7:
