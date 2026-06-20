@@ -2,6 +2,8 @@ import json
 import requests
 import xml.etree.ElementTree as ET
 import os # Re-added for os.environ.get
+import random
+import time
 
 import pandas as pd # New import for DataFrame operations
 import pyarrow # Required by pandas for Parquet engine
@@ -42,66 +44,70 @@ def _get_links(item_element, link_type):
             links.append(value)
     return links
 
-def get_game_data(game_id):
+def get_game_data(game_id, max_retries=5, base_delay=2):
     """
     Queries the BoardGameGeek API for a given game ID and extracts relevant data.
     """
     api_url = f"{BGG_API_BASE_URL}?id={game_id}&stats=1"
-    print(f"Querying BGG API for ID: {game_id} at {api_url}")
 
-    try:
-        bgg_api_token = os.environ.get('BGG_API_TOKEN')
-        headers = {}
-        if bgg_api_token:
-            headers["Authorization"] = f"Bearer {bgg_api_token}"
-        response = requests.get(api_url, headers=headers)
-        response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
-        xml_data = response.content
-        print(f"Successfully received response for ID {game_id}.")
+    bgg_api_token = os.environ.get('BGG_API_TOKEN')
+    headers = {}
+    if bgg_api_token:
+        headers["Authorization"] = f"Bearer {bgg_api_token}"
 
-        root = ET.fromstring(xml_data)
-        item = root.find('item')
+    for attempt in range(max_retries):
+        print(f"Querying BGG API for ID: {game_id} at {api_url} (Attempt {attempt + 1}/{max_retries})")
+        try:
+            response = requests.get(api_url, headers=headers)
+            response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
+            xml_data = response.content
+            print(f"Successfully received response for ID {game_id}.")
 
-        if item is None:
-            print(f"No item found for ID {game_id} in BGG API response.")
-            return None
+            root = ET.fromstring(xml_data)
+            item = root.find('item')
 
-        # Helper to convert string to int/float safely
-        def safe_int(val):
-            try:
-                return int(val) if val is not None else None
-            except (ValueError, TypeError):
+            if item is None:
+                print(f"No item found for ID {game_id} in BGG API response.")
                 return None
 
-        def safe_float(val):
-            try:
-                return float(val) if val is not None else None
-            except (ValueError, TypeError):
+            # Helper to convert string to int/float safely
+            def safe_int(val):
+                try:
+                    return int(val) if val is not None else None
+                except (ValueError, TypeError):
+                    return None
+
+            def safe_float(val):
+                try:
+                    return float(val) if val is not None else None
+                except (ValueError, TypeError):
+                    return None
+
+            game_data = {
+                'id': item.get('id'),
+                'type': item.get('type'),
+                'name': _get_element_value(item, "./name[@type='primary']"),
+                'year_published': safe_int(_get_element_value(item, 'yearpublished', attribute='value')),
+                'max_players': safe_int(_get_element_value(item, 'maxplayers', attribute='value')),
+                'rating': safe_float(_get_element_value(item, ".//statistics/ratings/bayesaverage", attribute='value')),
+                'categories': _get_links(item, 'boardgamecategory'),
+                'mechanics': _get_links(item, 'boardgamemechanic'),
+                'designers': _get_links(item, 'boardgamedesigner'),
+            }
+            print(f"Extracted game data for ID {game_id}: {game_data}")
+            return game_data
+
+        except (requests.exceptions.RequestException, ET.ParseError, Exception) as e:
+            print(f"Error querying BGG API for ID {game_id}: {e}")
+            if attempt < max_retries - 1:
+                # Exponential backoff with random jitter (base of 2 seconds, max of 60 seconds)
+                delay = min(60, base_delay * (2 ** attempt))
+                jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
+                print(f"Retrying in {jittered_delay:.2f} seconds...")
+                time.sleep(jittered_delay)
+            else:
+                print(f"Max retries reached for ID {game_id}.")
                 return None
-
-        game_data = {
-            'id': item.get('id'),
-            'type': item.get('type'),
-            'name': _get_element_value(item, "./name[@type='primary']"),
-            'year_published': safe_int(_get_element_value(item, 'yearpublished', attribute='value')),
-            'max_players': safe_int(_get_element_value(item, 'maxplayers', attribute='value')),
-            'rating': safe_float(_get_element_value(item, ".//statistics/ratings/bayesaverage", attribute='value')),
-            'categories': _get_links(item, 'boardgamecategory'),
-            'mechanics': _get_links(item, 'boardgamemechanic'),
-            'designers': _get_links(item, 'boardgamedesigner'),
-        }
-        print(f"Extracted game data for ID {game_id}: {game_data}")
-        return game_data
-
-    except requests.exceptions.RequestException as e:
-        print(f"HTTP Error querying BGG API for ID {game_id}: {e}")
-        return None
-    except ET.ParseError as e:
-        print(f"XML Parse Error for ID {game_id}: {e}")
-        return None
-    except Exception as e:
-        print(f"An unexpected error occurred for ID {game_id}: {e}")
-        return None
 
 def lambda_handler(event, context):
     """

@@ -3,12 +3,13 @@ data "aws_ssm_parameter" "bgg_game_data_scraper_ecr_url" {
 }
 
 resource "aws_lambda_function" "bgg_game_data_scraper" {
-  function_name    = var.data_lambda_function_name
-  role             = var.lambda_execution_role_arn
-  package_type     = "Image"
-  image_uri        = "${data.aws_ssm_parameter.bgg_game_data_scraper_ecr_url.value}:latest"
-  timeout          = 120
-  memory_size      = 256
+  function_name                  = var.data_lambda_function_name
+  role                           = var.lambda_execution_role_arn
+  package_type                   = "Image"
+  image_uri                      = "${data.aws_ssm_parameter.bgg_game_data_scraper_ecr_url.value}:latest"
+  timeout                        = 120
+  memory_size                    = 256
+  reserved_concurrent_executions = var.data_lambda_concurrency_limit
 
   environment {
     variables = {
@@ -30,12 +31,13 @@ data "aws_ssm_parameter" "bgg_user_data_scraper_ecr_url" {
 }
 
 resource "aws_lambda_function" "bgg_user_data_scraper" {
-  function_name    = var.user_lambda_function_name
-  role             = var.lambda_execution_role_arn
-  package_type     = "Image"
-  image_uri        = "${data.aws_ssm_parameter.bgg_user_data_scraper_ecr_url.value}:latest"
-  timeout          = 120
-  memory_size      = 256
+  function_name                  = var.user_lambda_function_name
+  role                           = var.lambda_execution_role_arn
+  package_type                   = "Image"
+  image_uri                      = "${data.aws_ssm_parameter.bgg_user_data_scraper_ecr_url.value}:latest"
+  timeout                        = 120
+  memory_size                    = 256
+  reserved_concurrent_executions = var.user_lambda_concurrency_limit
 
   environment {
     variables = {

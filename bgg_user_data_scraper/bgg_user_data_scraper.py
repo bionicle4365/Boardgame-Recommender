@@ -2,6 +2,7 @@ import json
 import requests
 import xml.etree.ElementTree as ET
 import os
+import random
 import time # New import for time.sleep
 
 import pandas as pd # New import for DataFrame operations
@@ -40,7 +41,7 @@ def get_user_data(username):
 
             root = ET.fromstring(xml_data)
             items = root.findall(".//item")
-            if "accepted" in root.text:
+            if root.text and "accepted" in root.text:
                 raise ValueError(f"BGG API message for {username}: {root.text}")
 
             if items is None:
@@ -69,11 +70,13 @@ def get_user_data(username):
         except Exception as e:
             print(f"Error querying BGG API for user {username}: {e}")
             if i < retries - 1:
-                print(f"Retrying in 20 seconds...")
-                time.sleep(20)
+                # Exponential backoff with random jitter (base = 10, max = 60)
+                delay = min(60, 10 * (2 ** i))
+                jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
+                print(f"Retrying in {jittered_delay:.2f} seconds...")
+                time.sleep(jittered_delay)
             else:
                 print(f"Max retries reached for user {username}.")
-                retries = 3
                 return None
 
 def lambda_handler(event, context):

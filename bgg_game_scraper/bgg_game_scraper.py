@@ -3,7 +3,8 @@ import requests
 import xml.etree.ElementTree as ET
 import os
 import sys
-import time # New import
+import time
+import random
 
 def main():
     """
@@ -17,8 +18,8 @@ def main():
     bgg_api_base_url = "https://boardgamegeek.com/xmlapi2/thing"
     request_delay_seconds = 1 # Delay between requests to respect API limits (e.g., 1 second)
     batch_size = int(os.environ.get('BATCH_SIZE', '20')) # Number of IDs to query at a time
-    s3_update_interval = int(os.environ.get('S3_UPDATE_INTERVAL', '100')) # Update S3 every 100 IDs
-    retry_delay_seconds = 1 # Delay before retrying a failed batch
+    s3_update_interval = int(os.environ.get('S3_UPDATE_INTERVAL', '20')) # Update S3 every 20 IDs (saves checkpoint after every batch)
+    retry_delay_seconds = 2 # Base delay before retrying a failed batch
     sqs_queue_name = os.environ.get('SQS_QUEUE_NAME', 'bgg_game_data_scraper_queue') # New: SQS Queue Name
 
     s3 = boto3.client('s3', region_name=aws_region)
@@ -115,17 +116,23 @@ def main():
                 batch_succeeded = True # Mark success to break the retry loop
 
             except requests.exceptions.RequestException as e:
-                print(f"Error querying BGG API for IDs {ids_param}: {e}. Retrying in {retry_delay_seconds} seconds.")
+                delay = min(60, retry_delay_seconds * (2 ** retry_count))
+                jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
+                print(f"Error querying BGG API for IDs {ids_param}: {e}. Retrying in {jittered_delay:.2f} seconds.")
                 retry_count += 1
-                time.sleep(retry_delay_seconds)
+                time.sleep(jittered_delay)
             except ET.ParseError as e:
-                print(f"Error parsing XML from BGG API for IDs {ids_param}: {e}. Retrying in {retry_delay_seconds} seconds.")
+                delay = min(60, retry_delay_seconds * (2 ** retry_count))
+                jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
+                print(f"Error parsing XML from BGG API for IDs {ids_param}: {e}. Retrying in {jittered_delay:.2f} seconds.")
                 retry_count += 1
-                time.sleep(retry_delay_seconds)
+                time.sleep(jittered_delay)
             except Exception as e:
-                print(f"An unexpected error occurred for IDs {ids_param}: {e}. Retrying in {retry_delay_seconds} seconds.")
+                delay = min(60, retry_delay_seconds * (2 ** retry_count))
+                jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
+                print(f"An unexpected error occurred for IDs {ids_param}: {e}. Retrying in {jittered_delay:.2f} seconds.")
                 retry_count += 1
-                time.sleep(retry_delay_seconds)
+                time.sleep(jittered_delay)
 
         if not batch_succeeded:
             print(f"Failed to process batch {ids_param}. Exiting.")
