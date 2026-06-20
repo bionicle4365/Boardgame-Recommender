@@ -580,7 +580,8 @@ def lambda_handler(event, context):
             players_str = f"Players: {row['min_players']}-{row['max_players']}" if 'min_players' in row and 'max_players' in row and pd.notna(row['min_players']) else f"Max Players: {row.get('max_players', 'N/A')}"
             playtime_str = f", Playtime: {row['playing_time']}m" if 'playing_time' in row and pd.notna(row['playing_time']) else ""
             complexity_str = f", Complexity: {row['complexity']:.1f}/5" if 'complexity' in row and pd.notna(row['complexity']) else ""
-            designers_str = f", Designers: {', '.join(safe_list(row.get('designers')))}" if 'designers' in row and row.get('designers') else ""
+            designers_list = safe_list(row.get('designers'))
+            designers_str = f", Designers: {', '.join(designers_list)}" if 'designers' in row and designers_list else ""
             
             cand_list.append(
                 f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, "
