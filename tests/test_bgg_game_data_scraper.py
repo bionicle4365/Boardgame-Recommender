@@ -179,8 +179,27 @@ def test_lambda_handler_sqs_events(mock_to_parquet, mock_get_game_data):
     assert isinstance(kwargs['schema'], pyarrow.Schema)
 
 @patch('bgg_game_data_scraper.get_game_data')
-def test_lambda_handler_sqs_failures(mock_get_game_data):
-    mock_get_game_data.return_value = None # fail API query
+def test_lambda_handler_game_not_found(mock_get_game_data):
+    """Game not found on BGG (None) should be a graceful skip — no DLQ."""
+    mock_get_game_data.return_value = None
+
+    event = {
+        "Records": [
+            {"messageId": "m1", "body": "999"}
+        ]
+    }
+    response = bgg_game_data_scraper.lambda_handler(event, None)
+    # Graceful skip: message is deleted from queue (200), NOT routed to DLQ
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert 999 in res_body['processed_ids']
+    assert 'batchItemFailures' not in response
+
+
+@patch('bgg_game_data_scraper.get_game_data')
+def test_lambda_handler_sqs_fetch_failures(mock_get_game_data):
+    """Real API fetch failure (GAME_FETCH_FAILED) should route to DLQ."""
+    mock_get_game_data.return_value = bgg_game_data_scraper.GAME_FETCH_FAILED
 
     event = {
         "Records": [
