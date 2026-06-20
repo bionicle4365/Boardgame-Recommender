@@ -25,9 +25,9 @@ Optimize the AWS Glue ETL compaction script to write consolidated Parquet files,
 Protect the BGG XMLAPI2 endpoint from concurrent request spikes, implement robust retry mechanisms, and avoid rate limiting or IP blocks.
 
 ### Tasks
-- [ ] Limit SQS-to-Lambda trigger concurrency (e.g., using `reserved_concurrent_executions` or `max_concurrency` properties) in Terraform to regulate BGG outbound request concurrency.
-- [ ] Implement exponential back-off with random jitter retries in the scraper scripts (`bgg_game_scraper.py`, `bgg_game_data_scraper.py`, `bgg_user_data_scraper.py`).
-- [ ] Optimize checkpoint persistence frequency to limit duplicated scraped IDs upon container restart.
+- [x] Limit SQS-to-Lambda trigger concurrency (e.g., using `reserved_concurrent_executions` or `max_concurrency` properties) in Terraform to regulate BGG outbound request concurrency.
+- [x] Implement exponential back-off with random jitter retries in the scraper scripts (`bgg_game_scraper.py`, `bgg_game_data_scraper.py`, `bgg_user_data_scraper.py`).
+- [x] Optimize checkpoint persistence frequency to limit duplicated scraped IDs upon container restart.
 
 ---
 
