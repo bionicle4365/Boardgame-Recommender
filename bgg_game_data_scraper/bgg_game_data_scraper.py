@@ -44,9 +44,17 @@ def _get_links(item_element, link_type):
             links.append(value)
     return links
 
+# Sentinel to distinguish "fetch failed" from "not found"
+GAME_FETCH_FAILED = object()
+
 def get_game_data(game_id, max_retries=5, base_delay=2):
     """
     Queries the BoardGameGeek API for a given game ID and extracts relevant data.
+
+    Returns:
+        dict  - game data on success
+        None  - game not found on BGG (graceful, don't DLQ)
+        GAME_FETCH_FAILED sentinel - API/network error after all retries (should DLQ)
     """
     api_url = f"{BGG_API_BASE_URL}?id={game_id}&stats=1"
 
@@ -67,8 +75,8 @@ def get_game_data(game_id, max_retries=5, base_delay=2):
             item = root.find('item')
 
             if item is None:
-                print(f"No item found for ID {game_id} in BGG API response.")
-                return None
+                print(f"No item found for ID {game_id} in BGG API response. Game may not exist or has been removed.")
+                return None  # Graceful: not a failure, just not found
 
             # Helper to convert string to int/float safely
             def safe_int(val):
@@ -144,8 +152,8 @@ def get_game_data(game_id, max_retries=5, base_delay=2):
                 print(f"Retrying in {jittered_delay:.2f} seconds...")
                 time.sleep(jittered_delay)
             else:
-                print(f"Max retries reached for ID {game_id}.")
-                return None
+                print(f"Max retries reached for ID {game_id}. Marking as fetch failure for DLQ.")
+                return GAME_FETCH_FAILED  # Real failure: should be retried via DLQ
 
 def lambda_handler(event, context):
     """
@@ -175,16 +183,22 @@ def lambda_handler(event, context):
 
             game_data = get_game_data(game_id)
 
-            if game_data:
+            if game_data is GAME_FETCH_FAILED:
+                # Real API/network failure after all retries — route to DLQ for retry
+                print(f"Fetch failed for ID {game_id} after all retries. Routing to DLQ.")
+                failed_ids.append(game_id)
+                batch_item_failures.append({"itemIdentifier": record['messageId']})
+            elif game_data is None:
+                # Game doesn't exist on BGG (deleted, gap in ID space, accessory, etc.)
+                # This is NOT a failure — treat as successfully processed (message deleted from queue).
+                print(f"Game ID {game_id} not found on BGG. Skipping gracefully (no DLQ).")
+                processed_ids.append(game_id)
+            else:
                 print(f"Successfully retrieved data for ID {game_id}: {repr(game_data.get('name', 'N/A'))}")
 
                 # Convert game_data to pandas DataFrame
                 df = pd.DataFrame([game_data])
 
-                # Define S3 path for the Parquet file
-                # Recommended: Write each game to a unique Parquet file, potentially partitioned.
-                # Example: s3://your-boardgame-data-bucket/boardgames/year_published=YYYY/game_id.parquet
-                # For this example, we'll use a simple key based on game_id.
                 s3_output_key = f"boardgames/{game_id}.parquet"
                 s3_full_path = f"s3://{S3_OUTPUT_BUCKET_NAME}/data/{s3_output_key}"
 
@@ -220,10 +234,6 @@ def lambda_handler(event, context):
                     print(f"Error saving data for ID {game_id} to S3 ({s3_full_path}): {s3_e}")
                     failed_ids.append(game_id)
                     batch_item_failures.append({"itemIdentifier": record['messageId']})
-            else:
-                print(f"Failed to retrieve data for ID {game_id}.")
-                failed_ids.append(game_id)
-                batch_item_failures.append({"itemIdentifier": record['messageId']})
 
         except ValueError:
             print(f"Error: SQS message body '{record.get('body')}' is not a valid integer ID. MessageId: {record.get('messageId')}")
