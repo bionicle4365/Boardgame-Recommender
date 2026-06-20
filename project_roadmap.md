@@ -90,3 +90,76 @@ Write comprehensive unit tests with mocks to validate code correctness without s
 ### Tasks
 - [x] Write pytest unit tests using `unittest.mock` to mock S3, SQS, and BGG API calls, keeping local testing lightweight.
 - [x] Configure automated test executions in GitHub Actions workflows to validate code on every branch push.
+
+---
+
+## Milestone 8: Database Reprocessing & Full Catalog Scrape Execution
+
+### Objective
+Execute the scraper and Glue ETL compaction pipeline to capture the new metadata fields for the entire board game catalog database.
+
+### Tasks
+- [ ] Run `bgg_game_scraper.py` in reprocess mode to queue existing S3 game IDs.
+- [ ] Monitor background SQS scraper workers to ensure the catalog is fully updated with complexity, ratings, playtime, and image URLs.
+- [ ] Execute Glue ETL compaction job to generate a unified, rich Parquet catalog in S3.
+- [ ] Run the AWS Glue Crawler to synchronize database tables.
+
+---
+
+## Milestone 9: Advanced Filter Builder (Hard Exclusions & Designer Weights)
+
+### Objective
+Add advanced UI filters to exclude specific categories, mechanics, or designers, and perform dynamic filtering in Python before calling Bedrock.
+
+### Tasks
+- [ ] Implement exclusion UI multi-select lists for mechanics, categories, and designers.
+- [ ] Update frontend script to deliver exclusion collections as URL query parameters.
+- [ ] Update serving Lambda backend to dynamically parse exclusions and filter candidates in Python prior to Bedrock invocation.
+
+---
+
+## Milestone 10: Mobile UI Optimization & Responsive Navigation Menu
+
+### Objective
+Upgrade UI layouts to support mobile responsive viewports, replacing inline margins with a modern overlay navigation drawer and backdrop.
+
+### Tasks
+- [ ] Define responsive media queries to hide the sidebar and prevent content compression on mobile.
+- [ ] Implement a blurred backdrop overlay div appearing when the mobile sidebar is toggled.
+- [ ] Refactor toggle buttons to manipulate class toggles on `document.body` instead of inline styles.
+
+---
+
+## Milestone 11: Playgroup Taste Profile & Visualizations
+
+### Objective
+Construct visual taste profile charts displaying a playgroup's collective mechanic and category preferences.
+
+### Tasks
+- [ ] Import `Chart.js` via CDN on the playgroup dashboard page.
+- [ ] Aggregate categories and mechanics counts dynamically based on the collective collection of attending members.
+- [ ] Render a responsive radar chart (for mechanics) and bar chart (for categories) showing group taste profile details.
+
+---
+
+## Milestone 12: Production Observability, Rate Limiting, & Cost Protection
+
+### Objective
+Configure API Gateway throttling limits to protect against Bedrock AWS bill overrun, and standardize lambda diagnostics.
+
+### Tasks
+- [ ] Add API Gateway rate limits (throttling quotas) and CORS constraints in Terraform.
+- [ ] Integrate AWS Lambda Powertools for python inside Lambdas to deliver structured JSON logs.
+- [ ] Define CloudWatch metric error alarms for warning thresholds.
+
+---
+
+## Milestone 13: Serverless Cost Optimization & Glue Crawler Bypass
+
+### Objective
+Deploy zero-cost compaction Lambdas, disable unused Glue Crawlers, and tune S3 recommendation caching to minimize Bedrock and AWS bill metrics.
+
+### Tasks
+- [ ] Write and deploy a Python compaction Lambda using Pandas/PyArrow to merge S3 Parquets, replacing Glue ETL Spark job.
+- [ ] Deactivate/Delete the AWS Glue Crawler and AWS Athena configuration queries.
+- [ ] Extend the S3 Bedrock recommendation cache expiration TTL configuration to 7 days (or 30 days) to prevent duplicate generation costs.
