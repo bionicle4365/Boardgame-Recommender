@@ -134,30 +134,32 @@ def test_get_game_data_retry_and_success(mock_sleep, mock_get):
     assert mock_get.call_count == 3
     assert mock_sleep.call_count == 2
 
-@patch('bgg_game_data_scraper.get_game_data')
+@patch('bgg_game_data_scraper.get_batch_game_data')
 @patch('pandas.DataFrame.to_parquet')
-def test_lambda_handler_sqs_events(mock_to_parquet, mock_get_game_data):
-    mock_get_game_data.return_value = {
-        'id': '10',
-        'type': 'boardgame',
-        'name': 'Catan',
-        'year_published': 1995,
-        'min_players': 3,
-        'max_players': 4,
-        'playing_time': 60,
-        'min_playtime': 45,
-        'max_playtime': 90,
-        'min_age': 10,
-        'rating': 7.25,
-        'complexity': 2.32,
-        'thumbnail': 'https://cf.geekdo-images.com/thumb/catan.png',
-        'image': 'https://cf.geekdo-images.com/original/catan.png',
-        'categories': ['Trading'],
-        'mechanics': ['Dice Rolling'],
-        'designers': ['Klaus Teuber'],
-        'publishers': ['Kosmos'],
-        'suggested_players_best': ['3'],
-        'suggested_players_recommended': ['3', '4']
+def test_lambda_handler_sqs_events(mock_to_parquet, mock_get_batch):
+    mock_get_batch.return_value = {
+        '10': {
+            'id': '10',
+            'type': 'boardgame',
+            'name': 'Catan',
+            'year_published': 1995,
+            'min_players': 3,
+            'max_players': 4,
+            'playing_time': 60,
+            'min_playtime': 45,
+            'max_playtime': 90,
+            'min_age': 10,
+            'rating': 7.25,
+            'complexity': 2.32,
+            'thumbnail': 'https://cf.geekdo-images.com/thumb/catan.png',
+            'image': 'https://cf.geekdo-images.com/original/catan.png',
+            'categories': ['Trading'],
+            'mechanics': ['Dice Rolling'],
+            'designers': ['Klaus Teuber'],
+            'publishers': ['Kosmos'],
+            'suggested_players_best': ['3'],
+            'suggested_players_recommended': ['3', '4']
+        }
     }
 
     event = {
@@ -178,10 +180,10 @@ def test_lambda_handler_sqs_events(mock_to_parquet, mock_get_game_data):
     assert kwargs['engine'] == 'pyarrow'
     assert isinstance(kwargs['schema'], pyarrow.Schema)
 
-@patch('bgg_game_data_scraper.get_game_data')
-def test_lambda_handler_game_not_found(mock_get_game_data):
-    """Game not found on BGG (None) should be a graceful skip — no DLQ."""
-    mock_get_game_data.return_value = None
+@patch('bgg_game_data_scraper.get_batch_game_data')
+def test_lambda_handler_game_not_found(mock_get_batch):
+    """Game not found on BGG (absent from batch result) should be a graceful skip — no DLQ."""
+    mock_get_batch.return_value = {}  # empty dict: game ID absent = not found
 
     event = {
         "Records": [
@@ -196,10 +198,10 @@ def test_lambda_handler_game_not_found(mock_get_game_data):
     assert 'batchItemFailures' not in response
 
 
-@patch('bgg_game_data_scraper.get_game_data')
-def test_lambda_handler_sqs_fetch_failures(mock_get_game_data):
-    """Real API fetch failure (GAME_FETCH_FAILED) should route to DLQ."""
-    mock_get_game_data.return_value = bgg_game_data_scraper.GAME_FETCH_FAILED
+@patch('bgg_game_data_scraper.get_batch_game_data')
+def test_lambda_handler_sqs_fetch_failures(mock_get_batch):
+    """Real API fetch failure (GAME_FETCH_FAILED) should route entire batch to DLQ."""
+    mock_get_batch.return_value = bgg_game_data_scraper.GAME_FETCH_FAILED
 
     event = {
         "Records": [
