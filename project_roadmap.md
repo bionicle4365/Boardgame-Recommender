@@ -1,6 +1,6 @@
 # Boardgame Recommender - Project Roadmap
 
-This document outlines the next steps and architecture enhancements for the Boardgame Recommender project, aligned and structured to focus on caching performance, dynamic weights tuning, group recommendation organizers, rich visual card metadata, and robust mock unit tests.
+This document outlines the next steps and architecture enhancements for the Boardgame Recommender project, aligned and structured to focus on caching performance, dynamic weights and BGG Hotness tuning, a dedicated Playgroup Organizer page, rich visual card metadata, and robust mock unit tests.
 
 ---
 
@@ -43,27 +43,30 @@ Improve response times for active users, minimize Bedrock costs, and resolve col
 
 ---
 
-## Milestone 4: Dynamic Personalization & Weight Tuning UI
+## Milestone 4: Recommender Enhancements & Dynamic Personalization UI
 
 ### Objective
-Put recommendation parameters directly in the user's hands using sliders.
+Put recommendation parameters directly in the user's hands using sliders, including matching on current trending games.
 
 ### Tasks
-- [ ] Add smooth range sliders (0 to 100%) to the UI for recommendation weight dimensions (e.g., mechanics match, categories match, and popularity average).
+- [ ] Add smooth range sliders (0 to 100%) to the UI for weight dimensions: mechanics match, categories match, and popularity average.
+- [ ] Add a **Hotness / Trending Slider** that biases recommendations toward new, trending, or upcoming hot releases.
+- [ ] Scrape and parse the official BGG Hotness API feed dynamically or periodically to weight trending items in Bedrock and similarity scores.
 - [ ] Update the serving Lambda to compute similarity scoring using dynamic weights passed via query parameters from the frontend.
 - [ ] Save custom user weight profiles in the browser's `localStorage` to persist adjustments across visits.
 
 ---
 
-## Milestone 5: Playgroup Matcher (Game Night Organizer)
+## Milestone 5: Playgroup Organizer & Game Night Planner Page
 
 ### Objective
-Recommend games from the pool of games collectively owned by a playgroup, finding the best fit for the player count.
+Create a dedicated space to manage board game night groups, select who is attending, and recommend games everyone will enjoy from their collectively owned libraries.
 
 ### Tasks
-- [ ] Expand the UI form to accept multiple BGG usernames.
-- [ ] Implement backend aggregation to pull all users' collections and consolidate them into a collectively owned pool of games.
-- [ ] Filter and rank recommendations from the collectively owned pool based on playgroup size (e.g., matching the number of players) and shared game tastes.
+- [ ] Build a new **Playgroups** layout page (`site_ui/groups/index.html`) featuring a clean dashboard to save and edit gaming groups.
+- [ ] Add controls to select which group members are attending a game night session.
+- [ ] Query and consolidate S3 profiles for all attending members to find games collectively owned by the group.
+- [ ] Generate recommendations from this combined library matching the exact attendance player count and optimizing for shared mechanic/theme profiles.
 
 ---
 
