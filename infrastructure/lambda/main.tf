@@ -21,10 +21,14 @@ resource "aws_lambda_function" "bgg_game_data_scraper" {
 }
 
 resource "aws_lambda_event_source_mapping" "bgg_game_data_scraper_esm" {
-  event_source_arn = var.data_sqs_queue_arn
-  function_name    = aws_lambda_function.bgg_game_data_scraper.arn
-  enabled          = true
-  batch_size       = 10
+  event_source_arn        = var.data_sqs_queue_arn
+  function_name           = aws_lambda_function.bgg_game_data_scraper.arn
+  enabled                 = true
+  batch_size              = 10
+  # Required to honour batchItemFailures in Lambda response.
+  # Without this, SQS re-queues the ENTIRE batch if any message fails,
+  # causing successfully-processed messages to hit maxReceiveCount.
+  function_response_types = ["ReportBatchItemFailures"]
 }
 
 data "aws_ssm_parameter" "bgg_user_data_scraper_ecr_url" {
@@ -50,10 +54,11 @@ resource "aws_lambda_function" "bgg_user_data_scraper" {
 }
 
 resource "aws_lambda_event_source_mapping" "bgg_user_data_scraper_esm" {
-  event_source_arn = var.user_sqs_queue_arn
-  function_name    = aws_lambda_function.bgg_user_data_scraper.arn
-  enabled          = true
-  batch_size       = 10
+  event_source_arn        = var.user_sqs_queue_arn
+  function_name           = aws_lambda_function.bgg_user_data_scraper.arn
+  enabled                 = true
+  batch_size              = 10
+  function_response_types = ["ReportBatchItemFailures"]
 }
 
 data "archive_file" "bgg_api_proxy_zip" {
