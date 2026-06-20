@@ -1,6 +1,6 @@
 # Boardgame Recommender - Project Roadmap
 
-This document outlines the next steps and architecture enhancements for the Boardgame Recommender project, prioritized logically to focus on immediate pipeline fixes, API safety, core UI usability, visual analytics, and caching.
+This document outlines the next steps and architecture enhancements for the Boardgame Recommender project, aligned and structured to focus on caching performance, dynamic weights tuning, group recommendation organizers, rich visual card metadata, and robust mock unit tests.
 
 ---
 
@@ -31,35 +31,59 @@ Protect the BGG XMLAPI2 endpoint from concurrent request spikes, implement robus
 
 ---
 
-## Milestone 3: Interactive Collection Browser Enhancements
+## Milestone 3: Serving Caching & API Performance Optimization
 
 ### Objective
-Scale the collection browser to handle large lists, adding user controls for sorting and filtering.
-
-### Tasks
-- [x] Implement client-side pagination or virtual scrolling for the collection table.
-- [x] Add interactive column sorting for key attributes (e.g., rating, play time, name).
-- [x] Build advanced multi-select tag filter components.
-
----
-
-## Milestone 4: Advanced Frontend Analytics Dashboard
-
-### Objective
-Enrich the Jekyll UI with collection visual analytics.
-
-### Tasks
-- [ ] Integrate a charting library (like Chart.js or custom SVG charts) into the Jekyll UI pages.
-- [ ] Build a dashboard presenting collection distribution statistics (e.g., categories breakdown donut chart, complexity ranges bar chart, player count distribution).
-
----
-
-## Milestone 5: Caching & Serving API Performance Optimization
-
-### Objective
-Improve response times for active users, minimize Bedrock costs, and reduce duplicate scraper invocations.
+Improve response times for active users, minimize Bedrock costs, and resolve cold-start latency.
 
 ### Tasks
 - [ ] Implement client-side `localStorage` caching on the frontend to instantly serve repeated searches.
-- [ ] Implement server-side recommendation caching (e.g., caching generated JSON results in S3).
-- [ ] Optimize Lambda container footprints to further reduce cold-start latency.
+- [ ] Implement server-side recommendation caching in S3 (caching Bedrock-generated recommendation JSON files) with a 24-hour expiration TTL (aligned with the scraper update frequency).
+- [ ] Optimize Lambda container footprints and imports to reduce cold-start latency.
+
+---
+
+## Milestone 4: Dynamic Personalization & Weight Tuning UI
+
+### Objective
+Put recommendation parameters directly in the user's hands using sliders.
+
+### Tasks
+- [ ] Add smooth range sliders (0 to 100%) to the UI for recommendation weight dimensions (e.g., mechanics match, categories match, and popularity average).
+- [ ] Update the serving Lambda to compute similarity scoring using dynamic weights passed via query parameters from the frontend.
+- [ ] Save custom user weight profiles in the browser's `localStorage` to persist adjustments across visits.
+
+---
+
+## Milestone 5: Playgroup Matcher (Game Night Organizer)
+
+### Objective
+Recommend games from the pool of games collectively owned by a playgroup, finding the best fit for the player count.
+
+### Tasks
+- [ ] Expand the UI form to accept multiple BGG usernames.
+- [ ] Implement backend aggregation to pull all users' collections and consolidate them into a collectively owned pool of games.
+- [ ] Filter and rank recommendations from the collectively owned pool based on playgroup size (e.g., matching the number of players) and shared game tastes.
+
+---
+
+## Milestone 6: Rich Cards & CDN-Cached Image Rendering
+
+### Objective
+Upgrade recommendation card components to display visual thumbnails and key game statistics.
+
+### Tasks
+- [ ] Refactor game scrapers to parse and store BGG public image and thumbnail CDN URLs in the S3 Parquet database.
+- [ ] Redesign recommendation cards in the Jekyll UI to render thumbnails directly from BGG's CDN.
+- [ ] Render key metadata (complexity rating/weight, BGG rating, player count, play time) on recommendation cards.
+
+---
+
+## Milestone 7: Unit Testing & CI/CD Verification
+
+### Objective
+Write comprehensive unit tests with mocks to validate code correctness without spinning up containerized AWS mocks locally.
+
+### Tasks
+- [ ] Write pytest unit tests using `unittest.mock` to mock S3, SQS, and BGG API calls, keeping local testing lightweight.
+- [ ] Configure automated test executions in GitHub Actions workflows to validate code on every branch push.
