@@ -94,6 +94,7 @@ resource "aws_lambda_function" "bgg_recommender" {
       S3_OUTPUT_BUCKET_NAME = var.s3_bucket_name
       USER_SQS_QUEUE_URL    = var.user_sqs_queue_url
       BEDROCK_MODEL_ID      = "amazon.nova-micro-v1:0"
+      BGG_API_TOKEN         = var.bgg_api_token
     }
   }
 }

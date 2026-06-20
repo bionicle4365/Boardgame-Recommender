@@ -37,9 +37,9 @@ Protect the BGG XMLAPI2 endpoint from concurrent request spikes, implement robus
 Improve response times for active users, minimize Bedrock costs, and resolve cold-start latency.
 
 ### Tasks
-- [ ] Implement client-side `localStorage` caching on the frontend to instantly serve repeated searches.
-- [ ] Implement server-side recommendation caching in S3 (caching Bedrock-generated recommendation JSON files) with a 24-hour expiration TTL (aligned with the scraper update frequency).
-- [ ] Optimize Lambda container footprints and imports to reduce cold-start latency.
+- [x] Implement client-side `localStorage` caching on the frontend to instantly serve repeated searches.
+- [x] Implement server-side recommendation caching in S3 (caching Bedrock-generated recommendation JSON files) with a 24-hour expiration TTL (aligned with the scraper update frequency).
+- [x] Optimize Lambda container footprints and imports to reduce cold-start latency.
 
 ---
 
@@ -49,11 +49,11 @@ Improve response times for active users, minimize Bedrock costs, and resolve col
 Put recommendation parameters directly in the user's hands using sliders, including matching on current trending games.
 
 ### Tasks
-- [ ] Add smooth range sliders (0 to 100%) to the UI for weight dimensions: mechanics match, categories match, and popularity average.
-- [ ] Add a **Hotness / Trending Slider** that biases recommendations toward new, trending, or upcoming hot releases.
-- [ ] Scrape and parse the official BGG Hotness API feed dynamically or periodically to weight trending items in Bedrock and similarity scores.
-- [ ] Update the serving Lambda to compute similarity scoring using dynamic weights passed via query parameters from the frontend.
-- [ ] Save custom user weight profiles in the browser's `localStorage` to persist adjustments across visits.
+- [x] Add smooth range sliders (0 to 100%) to the UI for weight dimensions: mechanics match, categories match, and popularity average.
+- [x] Add a **Hotness / Trending Slider** that biases recommendations toward new, trending, or upcoming hot releases.
+- [x] Scrape and parse the official BGG Hotness API feed dynamically or periodically to weight trending items in Bedrock and similarity scores.
+- [x] Update the serving Lambda to compute similarity scoring using dynamic weights passed via query parameters from the frontend.
+- [x] Save custom user weight profiles in the browser's `localStorage` to persist adjustments across visits.
 
 ---
 

@@ -5,6 +5,8 @@ import boto3
 from botocore.exceptions import ClientError
 import pandas as pd
 import numpy as np
+import requests
+import xml.etree.ElementTree as ET
 
 # Initialize AWS Clients
 s3 = boto3.client('s3')
@@ -127,6 +129,76 @@ def save_recommendations_to_cache(cache_key, recommendations):
     except Exception as e:
         print(f"Error saving recommendations to cache: {e}")
 
+def get_bgg_hotness(ttl_hours=2):
+    """
+    Retrieves the list of trending board game IDs from the BGG Hotness API.
+    Uses S3 caching (data/hotness_cache.json) to limit API hits to BGG.
+    """
+    cache_key = "data/hotness_cache.json"
+    local_path = "/tmp/hotness_cache.json"
+    
+    # 1. Try reading from S3 cache
+    try:
+        response = s3.head_object(Bucket=bucket, Key=cache_key)
+        last_modified = response['LastModified']
+        age_hours = (datetime.now(timezone.utc) - last_modified).total_seconds() / 3600.0
+        if age_hours < ttl_hours:
+            print(f"Hotness cache hit: file is {age_hours:.2f} hours old. Downloading from S3.")
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            s3.download_file(bucket, cache_key, local_path)
+            with open(local_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except ClientError as e:
+        if e.response['Error']['Code'] != '404':
+            print(f"S3 error checking hotness cache: {e}")
+    except Exception as e:
+        print(f"Error loading hotness cache from S3: {e}")
+
+    # 2. Fetch from BGG XMLAPI2
+    url = "https://boardgamegeek.com/xmlapi2/hot?type=boardgame"
+    bgg_api_token = os.environ.get('BGG_API_TOKEN')
+    headers = {}
+    if bgg_api_token:
+        headers["Authorization"] = f"Bearer {bgg_api_token}"
+
+    print(f"Fetching hotness from BGG XMLAPI2: {url}")
+    try:
+        # 5 seconds timeout to protect Lambda execution time
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            root = ET.fromstring(response.content)
+            hot_games = []
+            for item in root.findall('item'):
+                game_id = item.get('id')
+                rank = int(item.get('rank', '50'))
+                name_val = item.find('name').get('value') if item.find('name') is not None else ""
+                hot_games.append({
+                    "id": str(game_id),
+                    "rank": rank,
+                    "name": name_val
+                })
+            # Save to S3 cache
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump(hot_games, f, ensure_ascii=False)
+            s3.upload_file(local_path, bucket, cache_key)
+            print(f"Successfully cached {len(hot_games)} hot games to S3.")
+            return hot_games
+        else:
+            print(f"Failed to fetch hotness from BGG: status code {response.status_code}")
+    except Exception as e:
+        print(f"Error fetching hotness from BGG: {e}")
+
+    # 3. Fallback: if BGG call failed but we have an old S3 cache, return it
+    try:
+        print("BGG fetch failed. Attempting stale cache fallback.")
+        s3.download_file(bucket, cache_key, local_path)
+        with open(local_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as fallback_e:
+        print(f"Stale hotness cache fallback failed: {fallback_e}")
+        return []
+
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
     
@@ -147,6 +219,21 @@ def lambda_handler(event, context):
     own_status = query_params.get('own_status', 'unowned').lower()
     year_start = query_params.get('year_start')
     year_end = query_params.get('year_end')
+
+    # Extract dynamic weights
+    try:
+        w_mech = float(query_params.get('w_mech', '0.5'))
+        w_cat = float(query_params.get('w_cat', '0.5'))
+        w_pop = float(query_params.get('w_pop', '0.5'))
+        w_hot = float(query_params.get('w_hot', '0.0'))
+    except ValueError:
+        w_mech, w_cat, w_pop, w_hot = 0.5, 0.5, 0.5, 0.0
+
+    # Clamp weights
+    w_mech = max(0.0, min(1.0, w_mech))
+    w_cat = max(0.0, min(1.0, w_cat))
+    w_pop = max(0.0, min(1.0, w_pop))
+    w_hot = max(0.0, min(1.0, w_hot))
     
     # 1. Check if user's profile is scraped and if it is stale (stale TTL = 24 hours)
     try:
@@ -179,7 +266,7 @@ def lambda_handler(event, context):
         trigger_background_scrape(username)
 
     # 2. Check S3 recommendation cache (TTL = 24 hours)
-    cache_key = f"data/recommendation_cache/{username}_{own_status}_{year_start or 'any'}_{year_end or 'any'}.json"
+    cache_key = f"data/recommendation_cache/{username}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}.json"
     cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=24)
     if cached_recs is not None:
         return {
@@ -282,7 +369,8 @@ def lambda_handler(event, context):
     # 5. Feature similarity selection weighted by user rating
     # Gather user's preferred categories & mechanics, weighted by the user's rating of each game
     import math
-    feature_weights = {}
+    mech_weights = {}
+    cat_weights = {}
     for _, row in liked_joined.iterrows():
         # Get user's rating. If 'N/A' or missing, treat as 7.0 (since it's a liked or owned game)
         u_rating = row.get('rating_user')
@@ -302,11 +390,24 @@ def lambda_handler(event, context):
         cats = list(cats) if isinstance(cats, (list, np.ndarray)) else []
         mechs = list(mechs) if isinstance(mechs, (list, np.ndarray)) else []
         
-        for f in set(cats + mechs):
-            feature_weights[f] = feature_weights.get(f, 0.0) + weight
+        for c in set(cats):
+            cat_weights[c] = cat_weights.get(c, 0.0) + weight
+        for m in set(mechs):
+            mech_weights[m] = mech_weights.get(m, 0.0) + weight
 
     # Total sum of feature weights in user profile
-    total_user_weight = sum(feature_weights.values()) or 1.0
+    total_cat_weight = sum(cat_weights.values()) or 1.0
+    total_mech_weight = sum(mech_weights.values()) or 1.0
+
+    # Fetch BGG Hotness list
+    hot_games = get_bgg_hotness(ttl_hours=2)
+    hotness_scores = {}
+    for game in hot_games:
+        g_id = str(game.get("id"))
+        rank = game.get("rank", 50)
+        # linear mapping: rank 1 -> 1.0, rank 50 -> 0.02
+        score = 1.0 - ((rank - 1) / 50.0)
+        hotness_scores[g_id] = max(0.0, min(1.0, score))
 
     # Convert candidates dataframe to a list of dictionaries to bypass slow Pandas row iteration (which takes 30+ seconds)
     columns_to_keep = ['id', 'name', 'categories', 'mechanics', 'rating', 'year_published']
@@ -314,6 +415,7 @@ def lambda_handler(event, context):
 
     candidate_scores = []
     for row in candidate_records:
+        g_id = str(row['id'])
         # Clean candidates lists
         cand_cats = row.get('categories')
         cand_mechs = row.get('mechanics')
@@ -322,22 +424,30 @@ def lambda_handler(event, context):
         cand_cats = list(cand_cats) if isinstance(cand_cats, (list, np.ndarray)) else []
         cand_mechs = list(cand_mechs) if isinstance(cand_mechs, (list, np.ndarray)) else []
         
-        cand_features = set(cand_cats + cand_mechs)
+        # Calculate individual score components
+        shared_cats = set(cand_cats).intersection(cat_weights.keys())
+        shared_mechs = set(cand_mechs).intersection(mech_weights.keys())
         
-        # Calculate similarity score: sum of shared feature weights / total user weight
-        shared_features = cand_features.intersection(feature_weights.keys())
-        sim_score = sum(feature_weights[f] for f in shared_features) / total_user_weight
+        cat_sim = sum(cat_weights[c] for c in shared_cats) / total_cat_weight
+        mech_sim = sum(mech_weights[m] for m in shared_mechs) / total_mech_weight
+        
+        rating = row.get('rating')
+        if rating is None or not isinstance(rating, (int, float)) or math.isnan(rating):
+            rating = 5.5
+        pop_score = max(0.0, min(1.0, (float(rating) - 5.0) / 4.0)) # map BGG bayesaverage 5.0-9.0 to 0.0-1.0
+        
+        hot_score = hotness_scores.get(g_id, 0.0)
+        
+        # Compute composite score weighted by dynamic user choices
+        denominator = w_mech + w_cat + w_pop + w_hot
+        if denominator > 0:
+            comp_score = (w_mech * mech_sim + w_cat * cat_sim + w_pop * pop_score + w_hot * hot_score) / denominator
+        else:
+            comp_score = 0.0
             
-        candidate_scores.append((sim_score, row))
+        candidate_scores.append((comp_score, row))
 
-    # Sort candidates by composite score (similarity_score * rating), safely defaulting NaN ratings to 5.5
-    def composite_score(sim, row_dict):
-        r_val = row_dict.get('rating')
-        if r_val is None or not isinstance(r_val, (int, float)) or math.isnan(r_val):
-            r_val = 5.5  # Neutral default prior for unrated/new games
-        return sim * float(r_val)
-
-    candidate_scores.sort(key=lambda x: composite_score(x[0], x[1]), reverse=True)
+    candidate_scores.sort(key=lambda x: x[0], reverse=True)
     top_candidates = [item[1] for item in candidate_scores[:25]]
 
     # 6. Build Bedrock Prompt & Invoke
@@ -350,11 +460,26 @@ def lambda_handler(event, context):
             cand_list.append(f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, Categories: {cats}, Mechanics: {mechs})")
         candidates_str = "\n".join(cand_list)
 
+    # Incorporate user weights into prompt context
+    weight_context = f"""
+The user has tuned their preference weights for similarity scoring as follows:
+- Mechanics Similarity Weight: {w_mech * 100:.0f}%
+- Categories Similarity Weight: {w_cat * 100:.0f}%
+- Popularity/Community Rating Weight: {w_pop * 100:.0f}%
+- Hotness/Trending Weight: {w_hot * 100:.0f}%
+"""
+    if w_hot > 0.4:
+        weight_context += "The user is highly interested in currently trending or hot releases.\n"
+    if w_mech > 0.7:
+        weight_context += "The user places strong emphasis on games sharing similar play styles and mechanics.\n"
+    if w_cat > 0.7:
+        weight_context += "The user places strong emphasis on games sharing similar themes and categories.\n"
+
     user_prompt = f"""You are a board game recommendation expert.
      
 The user has the following board games in their collection with their ratings (where higher is better):
 {liked_games_str if liked_games_str else "- No games rated/owned yet."}
-
+{weight_context}
 Please recommend 10 board games for the user.
 """
 
