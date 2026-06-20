@@ -359,6 +359,19 @@ title: Boardgame Recommender
             </div>
 
             <div class="form-group full-width">
+                <label for="preset_profile">Recommendation Profile</label>
+                <select id="preset_profile">
+                    <option value="balanced" selected>Balanced Choice (Default)</option>
+                    <option value="thematic">Theme & Story (Thematic)</option>
+                    <option value="strategy">Gameplay & Strategy (Mechanics)</option>
+                    <option value="trending">Hot & Trending</option>
+                    <option value="crowd_pleaser">Crowd Pleasers (Top Rated)</option>
+                    <option value="custom">Custom (Fine-Tune Sliders)</option>
+                </select>
+                <p id="preset_desc" class="preset-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px; line-height: 1.4;"></p>
+            </div>
+
+            <div class="form-group full-width" id="custom-sliders-group" style="display: none;">
                 <label>Fine-tune Recommendation Weights</label>
                 <div class="sliders-container">
                     <div class="slider-group">
@@ -431,8 +444,81 @@ title: Boardgame Recommender
         const wPopVal = document.getElementById("w_pop_val");
         const wHotVal = document.getElementById("w_hot_val");
 
-        // Load & Sync weights from localStorage
-        function updateSlidersFromStorage() {
+        // Preset Configurations
+        const PRESETS = {
+            balanced: {
+                desc: "A balanced blend of mechanics similarity (50%), theme/categories (50%), and community popularity (50%).",
+                weights: { mech: 50, cat: 50, pop: 50, hot: 0 }
+            },
+            thematic: {
+                desc: "Prioritizes games sharing similar themes, settings, and genres (90% categories, 30% mechanics).",
+                weights: { mech: 30, cat: 90, pop: 40, hot: 10 }
+            },
+            strategy: {
+                desc: "Prioritizes games with similar mechanics, rule systems, and strategic depth (90% mechanics, 30% categories).",
+                weights: { mech: 90, cat: 30, pop: 40, hot: 0 }
+            },
+            trending: {
+                desc: "Biases recommendations heavily towards new releases and trending games currently hot on BGG (90% hotness).",
+                weights: { mech: 40, cat: 40, pop: 40, hot: 90 }
+            },
+            crowd_pleaser: {
+                desc: "Focuses on highly-rated, widely-acclaimed community favorites (90% popularity).",
+                weights: { mech: 30, cat: 30, pop: 90, hot: 0 }
+            },
+            custom: {
+                desc: "Manually adjust weights to your exact preferences.",
+                weights: null
+            }
+        };
+
+        const presetSelect = document.getElementById("preset_profile");
+        const presetDesc = document.getElementById("preset_desc");
+        const customSlidersGroup = document.getElementById("custom-sliders-group");
+
+        function saveSlidersToStorage() {
+            const weights = {
+                mech: wMechInput.value,
+                cat: wCatInput.value,
+                pop: wPopInput.value,
+                hot: wHotInput.value
+            };
+            localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
+        }
+
+        function applyPreset(presetKey, updateSliders = true) {
+            const preset = PRESETS[presetKey];
+            if (!preset) return;
+
+            presetDesc.textContent = preset.desc;
+
+            if (presetKey === "custom") {
+                customSlidersGroup.style.display = "block";
+            } else {
+                customSlidersGroup.style.display = "none";
+                if (updateSliders && preset.weights) {
+                    wMechInput.value = preset.weights.mech;
+                    wCatInput.value = preset.weights.cat;
+                    wPopInput.value = preset.weights.pop;
+                    wHotInput.value = preset.weights.hot;
+                    
+                    // Update badges
+                    wMechVal.textContent = `${preset.weights.mech}%`;
+                    wCatVal.textContent = `${preset.weights.cat}%`;
+                    wPopVal.textContent = `${preset.weights.pop}%`;
+                    wHotVal.textContent = `${preset.weights.hot}%`;
+                    
+                    saveSlidersToStorage();
+                }
+            }
+            localStorage.setItem("bgg_rec_preset", presetKey);
+        }
+
+        // Initialize & Sync from localStorage
+        function initializeWeightsAndPresets() {
+            const storedPreset = localStorage.getItem("bgg_rec_preset") || "balanced";
+            presetSelect.value = storedPreset;
+
             const storedWeights = localStorage.getItem("bgg_rec_weights");
             if (storedWeights) {
                 try {
@@ -445,20 +531,15 @@ title: Boardgame Recommender
                     console.error("Error reading stored weights:", e);
                 }
             }
+
+            // Sync visual text badges
             wMechVal.textContent = `${wMechInput.value}%`;
             wCatVal.textContent = `${wCatInput.value}%`;
             wPopVal.textContent = `${wPopInput.value}%`;
             wHotVal.textContent = `${wHotInput.value}%`;
-        }
 
-        function saveSlidersToStorage() {
-            const weights = {
-                mech: wMechInput.value,
-                cat: wCatInput.value,
-                pop: wPopInput.value,
-                hot: wHotInput.value
-            };
-            localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
+            // Apply preset and toggle visibility (do not overwrite if custom values were loaded)
+            applyPreset(storedPreset, false);
         }
 
         [wMechInput, wCatInput, wPopInput, wHotInput].forEach(input => {
@@ -469,8 +550,12 @@ title: Boardgame Recommender
             });
         });
 
-        // Initialize sliders
-        updateSlidersFromStorage();
+        presetSelect.addEventListener("change", function () {
+            applyPreset(presetSelect.value, true);
+        });
+
+        // Initialize weights and presets
+        initializeWeightsAndPresets();
 
         const apiUrl = "{{ site.api_url }}"; // Load API Gateway URL dynamically from Jekyll config
         let pollingTimeout = null;
