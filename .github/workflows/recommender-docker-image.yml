@@ -51,11 +51,13 @@ jobs:
           exit 1
         fi
         echo "ECR_URL=$ECR_URL" >> $GITHUB_ENV
-    - name: Deploy Lambda Function
+    - name: Deploy Lambda Functions
       run: |
         if aws lambda get-function --function-name bgg_recommender >/dev/null 2>&1; then
-          echo "Lambda function exists. Updating function code..."
+          echo "Updating bgg_recommender code..."
           aws lambda update-function-code --function-name bgg_recommender --image-uri ${ECR_URL}:latest
-        else
-          echo "Lambda function does not exist yet. It will be created by the subsequent Terraform workflow."
+        fi
+        if aws lambda get-function --function-name bgg_compactor >/dev/null 2>&1; then
+          echo "Updating bgg_compactor code..."
+          aws lambda update-function-code --function-name bgg_compactor --image-uri ${ECR_URL}:latest
         fi
