@@ -163,3 +163,17 @@ Deploy zero-cost compaction Lambdas, disable unused Glue Crawlers, and tune S3 r
 - [x] Write and deploy a Python compaction Lambda using Pandas/PyArrow to merge S3 Parquets, replacing Glue ETL Spark job.
 - [x] Deactivate/Delete the AWS Glue Crawler and AWS Athena configuration queries.
 - [x] Extend the S3 Bedrock recommendation cache expiration TTL configuration to 7 days (or 30 days) to prevent duplicate generation costs.
+
+---
+
+## Milestone 14: Recommender Personalization via Duration & Complexity Weighting
+
+### Objective
+Enhance the recommendation engine by allowing users to weight their preferences for game length (Short/Medium/Long) and complexity (Low/Medium/High) without applying hard exclusions.
+
+### Tasks
+- [ ] **UI Controls:** Add interactive weight profile buttons/menus on both the Recommender and Playgroups pages for Play Time (Short/Medium/Long/Any) and Complexity (Low/Medium/High/Any) preferences.
+- [ ] **Parameter Passing:** Update the frontend client script to forward these preferences as query parameters (`duration_pref`, `complexity_pref`) to the recommender API.
+- [ ] **Dynamic Weighting Algorithm:** Update [bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py) to map these categories to numeric thresholds (e.g., Short < 45m, Long > 90m; Low < 2.0, High > 3.5) and compute a similarity score bias based on proximity.
+- [ ] **Bedrock Prompt Integration:** Include the user's length and complexity preferences in the Bedrock LLM system context so that the generated recommendation explanations ("reasons") highlight why the game matches their preferred pacing and weight.
+- [ ] **Unit Tests:** Add comprehensive unit tests in [test_bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/tests/test_bgg_recommender.py) to verify weighting calculation correctness and parameter validation.
