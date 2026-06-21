@@ -69,6 +69,24 @@ Secure the recommendation and playgroup endpoints using Amazon Cognito User Pool
 
 ---
 
+## Milestone 16: Collection Browser Analyzer & Library Analytics Dashboard
+
+### Objective
+Enhance the BGG Collection Browser with an embedded visual analytics dashboard tab showing play counts, rating comparisons, and distribution charts for playtimes and player counts using Chart.js.
+
+### Open Questions
+- **Dynamic Filtering Interaction:** Should the analytics dashboard charts automatically filter based on active search queries and faceted filters (e.g., clicking "Duet 2 Players" filters the table and updates all charts to reflect only those 2-player games)? Or should the analytics always represent the entire imported library?
+- **Handling N/A Ratings:** If a user has only rated a few games, the personal rating distribution chart will have mostly `N/A` values. Should the chart fall back to showing BGG rating distribution, or only analyze games with valid user ratings?
+- **CSV/JSON Export:** Should the browser provide an option to download the parsed collection data as a clean CSV or JSON file for offline user analysis?
+
+### Tasks
+- [ ] **Tabbed UI Design:** Refactor [index.html](file:///d:/Git/Boardgame-Recommender/site_ui/collection/index.html) to support tab buttons ("Grid View" and "Collection Analytics") and clear view panels.
+- [ ] **Summary Cards:** Create glassmorphism summary cards displaying key library stats (Total Games, Average Personal vs BGG Rating, Total Plays, #1 Played Game).
+- [ ] **Chart.js Integration:** Load Chart.js via CDN and implement responsive chart containers for playtime, player count, rating distributions, and most played leaderboards.
+- [ ] **Dynamic Data Wiring:** Write Javascript triggers that extract stats from `gamesData` (and optionally react to active filters) to update the Chart.js instances.
+
+---
+
 ## Completed Milestones
 
 * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
