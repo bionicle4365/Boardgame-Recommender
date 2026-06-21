@@ -31,7 +31,14 @@ def test_lambda_handler_success(mock_write_table, mock_dataset, mock_s3_fs):
     # Verify mocks were called correctly
     bucket_name = os.environ.get('S3_BUCKET_NAME', 'boardgame-app')
     mock_s3_fs.assert_called_once_with(region='us-east-1')
-    mock_dataset.assert_called_once_with(f'{bucket_name}/data/boardgames/', format='parquet', filesystem=mock_s3_fs.return_value)
+    
+    mock_dataset.assert_called_once()
+    args, kwargs = mock_dataset.call_args
+    assert args[0] == f'{bucket_name}/data/boardgames/'
+    assert kwargs['format'] == 'parquet'
+    assert kwargs['filesystem'] == mock_s3_fs.return_value
+    assert 'schema' in kwargs
+
     mock_write_table.assert_called_once_with(mock_table, f'{bucket_name}/data/boardgames_combined/catalog.parquet', filesystem=mock_s3_fs.return_value, compression='snappy')
 
 @patch('combine_raw_to_single_file.fs.S3FileSystem')
