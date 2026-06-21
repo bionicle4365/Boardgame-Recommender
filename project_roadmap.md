@@ -177,3 +177,18 @@ Enhance the recommendation engine by allowing users to weight their preferences 
 - [ ] **Dynamic Weighting Algorithm:** Update [bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py) to map these categories to numeric thresholds (e.g., Short < 45m, Long > 90m; Low < 2.0, High > 3.5) and compute a similarity score bias based on proximity.
 - [ ] **Bedrock Prompt Integration:** Include the user's length and complexity preferences in the Bedrock LLM system context so that the generated recommendation explanations ("reasons") highlight why the game matches their preferred pacing and weight.
 - [ ] **Unit Tests:** Add comprehensive unit tests in [test_bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/tests/test_bgg_recommender.py) to verify weighting calculation correctness and parameter validation.
+
+---
+
+## Milestone 15: User Authentication & Profile Persistence
+
+### Objective
+Secure the recommendation and playgroup endpoints using Amazon Cognito User Pools and enable authenticated users to save customized taste profiles, weight presets, and playgroups to persistent storage.
+
+### Tasks
+- [ ] **Cognito Integration:** Configure an Amazon Cognito User Pool and Client in Terraform to handle secure user registration, verification, login, and token generation.
+- [ ] **Frontend Login Flow:** Integrate a modern, responsive authentication screen/modal in the UI using clean Vanilla CSS and Javascript to handle user signup, login, and secure token caching.
+- [ ] **API Security:** Secure API Gateway endpoints by configuring a Cognito Authorizer in Terraform, requiring clients to pass a valid ID/Access token.
+- [ ] **User Profile Storage:** Implement a DynamoDB table or S3 partition keyed by Cognito user IDs (`sub`) to allow users to persistently save, retrieve, and share customized playgroups, weights, and recommendation histories.
+- [ ] **Unit and Integration Tests:** Author mock test suites to verify authorizer route protection and profile persistence APIs.
+
