@@ -4,3 +4,4 @@ pyarrow
 boto3
 fsspec # Required by pandas for S3 file system access
 s3fs # Required by pandas for S3 file system access
+aws-lambda-powertools>=2.30.0

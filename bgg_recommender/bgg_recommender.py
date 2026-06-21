@@ -8,6 +8,39 @@ import numpy as np
 import requests
 import xml.etree.ElementTree as ET
 
+# Initialize Structured Logging with AWS Lambda Powertools or Fallback
+try:
+    from aws_lambda_powertools import Logger
+    logger = Logger(service="bgg-recommender")
+except ImportError:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    class FallbackLogger:
+        def __init__(self):
+            self.log = logging.getLogger("bgg-recommender")
+        def info(self, msg, *args, **kwargs):
+            # Map extra args if present to conform to powertools Logger.info
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.info(f"{msg} - Extra: {extra}")
+            else:
+                self.log.info(msg)
+        def error(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.error(f"{msg} - Extra: {extra}")
+            else:
+                self.log.error(msg)
+        def warning(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.warning(f"{msg} - Extra: {extra}")
+            else:
+                self.log.warning(msg)
+        def inject_lambda_context(self, func):
+            return func
+    logger = FallbackLogger()
+
 # Initialize AWS Clients
 s3 = boto3.client('s3')
 sqs = boto3.client('sqs')
@@ -199,8 +232,9 @@ def get_bgg_hotness(ttl_hours=2):
         print(f"Stale hotness cache fallback failed: {fallback_e}")
         return []
 
+@logger.inject_lambda_context
 def lambda_handler(event, context):
-    print(f"Received event: {json.dumps(event)}")
+    logger.info("Received event", extra={"event": event})
     
     # Extract query parameters
     query_params = event.get('queryStringParameters') or {}

@@ -3,7 +3,7 @@ resource "aws_apigatewayv2_api" "bgg_api" {
   protocol_type = "HTTP"
   
   cors_configuration {
-    allow_origins = ["*"]
+    allow_origins = var.cors_allowed_origins
     allow_methods = ["GET", "OPTIONS"]
     allow_headers = ["content-type", "authorization"]
     max_age       = 300
@@ -14,6 +14,11 @@ resource "aws_apigatewayv2_stage" "bgg_api_stage" {
   api_id      = aws_apigatewayv2_api.bgg_api.id
   name        = "$default"
   auto_deploy = true
+
+  default_route_settings {
+    throttling_burst_limit = 10
+    throttling_rate_limit  = 5
+  }
 }
 
 resource "aws_apigatewayv2_integration" "bgg_api_proxy_integration" {

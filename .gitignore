@@ -6,3 +6,6 @@
 **/.env
 **/.terraform.lock.hcl
 ml_engine/**
+**/*.zip
+**/*.tfstate
+**/*.tfstate.*

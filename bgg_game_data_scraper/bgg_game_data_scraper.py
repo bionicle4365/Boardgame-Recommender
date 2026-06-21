@@ -10,6 +10,38 @@ import pyarrow
 import pyarrow.parquet as pq
 import boto3
 
+# Initialize Structured Logging with AWS Lambda Powertools or Fallback
+try:
+    from aws_lambda_powertools import Logger
+    logger = Logger(service="bgg-game-data-scraper")
+except ImportError:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    class FallbackLogger:
+        def __init__(self):
+            self.log = logging.getLogger("bgg-game-data-scraper")
+        def info(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.info(f"{msg} - Extra: {extra}")
+            else:
+                self.log.info(msg)
+        def error(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.error(f"{msg} - Extra: {extra}")
+            else:
+                self.log.error(msg)
+        def warning(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.warning(f"{msg} - Extra: {extra}")
+            else:
+                self.log.warning(msg)
+        def inject_lambda_context(self, func):
+            return func
+    logger = FallbackLogger()
+
 # BGG API base URL
 BGG_API_BASE_URL = "https://boardgamegeek.com/xmlapi2/thing"
 
@@ -196,6 +228,7 @@ def get_game_data(game_id, max_retries=5, base_delay=2):
     return result.get(str(game_id), None)  # None if not found
 
 
+@logger.inject_lambda_context
 def lambda_handler(event, context):
     """
     AWS Lambda handler function.
@@ -204,7 +237,7 @@ def lambda_handler(event, context):
     For each chunk, queries the BGG API in a single request and writes the returned
     games to S3.
     """
-    print(f"Received event: {json.dumps(event)}")
+    logger.info("Received event", extra={"event": event})
 
     if 'Records' not in event:
         print("No records found in the SQS event.")
