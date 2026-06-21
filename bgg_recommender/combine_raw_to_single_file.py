@@ -17,10 +17,35 @@ def lambda_handler(event, context):
         # Initialize PyArrow S3 filesystem
         s3_fs = fs.S3FileSystem(region=aws_region)
         
+        # Define target schema to unify old (9-column) and new (20-column) Parquet files
+        import pyarrow as pa
+        target_schema = pa.schema([
+            ('id', pa.string()),
+            ('type', pa.string()),
+            ('name', pa.string()),
+            ('year_published', pa.int32()),
+            ('min_players', pa.int32()),
+            ('max_players', pa.int32()),
+            ('playing_time', pa.int32()),
+            ('min_playtime', pa.int32()),
+            ('max_playtime', pa.int32()),
+            ('min_age', pa.int32()),
+            ('rating', pa.float64()),
+            ('complexity', pa.float64()),
+            ('thumbnail', pa.string()),
+            ('image', pa.string()),
+            ('categories', pa.list_(pa.string())),
+            ('mechanics', pa.list_(pa.string())),
+            ('designers', pa.list_(pa.string())),
+            ('publishers', pa.list_(pa.string())),
+            ('suggested_players_best', pa.list_(pa.string())),
+            ('suggested_players_recommended', pa.list_(pa.string()))
+        ])
+
         # Read all parquet files under the raw prefix in S3 directly using PyArrow Dataset API
         source_path = f"{bucket_name}/{raw_prefix}"
         print(f"Reading all raw Parquet files from {source_path}...")
-        dataset = ds.dataset(source_path, format="parquet", filesystem=s3_fs)
+        dataset = ds.dataset(source_path, format="parquet", filesystem=s3_fs, schema=target_schema)
         
         # Convert dataset to a PyArrow Table (in-memory merge)
         print("Converting dataset to PyArrow Table...")
