@@ -82,11 +82,12 @@ def test_lambda_handler_success(mock_write_table, mock_concat_tables, mock_read_
     assert mock_s3.get_object.call_count == 2
     assert mock_read_table.call_count == 2
     
-    # Check that put_object was called to write the catalog back to S3
-    mock_s3.put_object.assert_called_once()
-    _, kwargs = mock_s3.put_object.call_args
-    assert kwargs['Bucket'] == bucket_name
-    assert kwargs['Key'] == 'data/boardgames_combined/catalog.parquet'
+    # Check that upload_file was called to upload the catalog back to S3
+    mock_s3.upload_file.assert_called_once_with(
+        Filename='/tmp/catalog.parquet',
+        Bucket=bucket_name,
+        Key='data/boardgames_combined/catalog.parquet'
+    )
 
 @patch('combine_raw_to_single_file.boto3.client')
 def test_lambda_handler_failure(mock_boto_client):

@@ -3,6 +3,7 @@ import io
 import pyarrow as pa
 import pyarrow.parquet as pq
 import boto3
+import gc
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from botocore.config import Config
 
@@ -186,19 +187,28 @@ def lambda_handler(event, context):
             "num_columns": final_table.num_columns
         })
         
-        # Write back to S3 as a single snappy-compressed Parquet file
-        output_file_path = f"{bucket_name}/{combined_prefix}catalog.parquet"
-        logger.info(f"Writing Snappy-compressed combined Parquet file to s3://{output_file_path}")
+        # Write back to S3 as a single snappy-compressed Parquet file via /tmp to save RAM
+        output_file_path = "/tmp/catalog.parquet"
+        logger.info(f"Writing Snappy-compressed combined Parquet file to {output_file_path}")
         
-        output_buffer = io.BytesIO()
-        pq.write_table(final_table, output_buffer, compression="snappy")
-        output_buffer.seek(0)
+        # Explicitly clear master_tables and force GC to free up memory before writing
+        del master_tables
+        gc.collect()
         
-        s3_client.put_object(
+        pq.write_table(final_table, output_file_path, compression="snappy")
+        
+        # Upload using upload_file (highly memory efficient streaming from disk)
+        logger.info(f"Uploading combined Parquet file to s3://{bucket_name}/{combined_prefix}catalog.parquet")
+        s3_client.upload_file(
+            Filename=output_file_path,
             Bucket=bucket_name,
-            Key=f"{combined_prefix}catalog.parquet",
-            Body=output_buffer.getvalue()
+            Key=f"{combined_prefix}catalog.parquet"
         )
+        
+        # Clean up local file
+        if os.path.exists(output_file_path):
+            os.remove(output_file_path)
+            
         logger.info("S3 Parquet compaction completed successfully")
         
         return {
