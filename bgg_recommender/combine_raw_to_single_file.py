@@ -62,14 +62,37 @@ TARGET_SCHEMA = pa.schema([
     ('suggested_players_recommended', pa.list_(pa.string()))
 ])
 
+def align_table_to_schema(table, target_schema):
+    """
+    Align a PyArrow Table's columns and types with a target schema.
+    Missing fields are filled with nulls, and existing fields are cast to target types.
+    """
+    num_rows = table.num_rows
+    arrays = []
+    
+    for field in target_schema:
+        name = field.name
+        target_type = field.type
+        
+        if name in table.column_names:
+            col = table.column(name)
+            if col.type == target_type:
+                arrays.append(col)
+            else:
+                arrays.append(col.cast(target_type))
+        else:
+            arrays.append(pa.nulls(num_rows, type=target_type))
+            
+    return pa.Table.from_arrays(arrays, schema=target_schema)
+
 def download_and_parse(s3_client, bucket_name, key):
     try:
         response = s3_client.get_object(Bucket=bucket_name, Key=key)
         data = response['Body'].read()
         reader = io.BytesIO(data)
         table = pq.read_table(reader)
-        # Cast to target_schema to ensure compatibility
-        table = table.cast(TARGET_SCHEMA)
+        # Align and cast columns dynamically to target_schema
+        table = align_table_to_schema(table, TARGET_SCHEMA)
         return table
     except Exception as e:
         logger.error(f"Error parsing S3 object at {key}: {e}")
@@ -107,7 +130,6 @@ def lambda_handler(event, context):
             if 'Contents' in page:
                 for obj in page['Contents']:
                     key = obj['Key']
-                    # Process only actual parquet files under raw prefix, excluding output catalog.parquet if it's there
                     if key.endswith('.parquet') and not key.endswith('catalog.parquet'):
                         keys.append(key)
                         
@@ -197,6 +219,5 @@ def lambda_handler(event, context):
         }
 
 if __name__ == '__main__':
-    # Local debugging
     os.environ['S3_BUCKET_NAME'] = 'boardgame-app'
     lambda_handler({}, None)

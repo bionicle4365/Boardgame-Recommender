@@ -2,6 +2,7 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 import pytest
+import pyarrow as pa
 
 # Add recommender folder to path so we can import the script
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_recommender'))
@@ -34,11 +35,28 @@ def test_lambda_handler_success(mock_write_table, mock_concat_tables, mock_read_
     mock_response['Body'].read.return_value = b'fake parquet bytes'
     mock_s3.get_object.return_value = mock_response
     
-    # Mock pq.read_table to return a mock table with cast
-    mock_table = MagicMock()
-    mock_read_table.return_value = mock_table
-    mock_cast_table = MagicMock()
-    mock_table.cast.return_value = mock_cast_table
+    # Create a real small table with 8-column format to verify schema alignment works
+    dummy_schema = pa.schema([
+        ('id', pa.string()),
+        ('type', pa.string()),
+        ('name', pa.string()),
+        ('max_players', pa.int32()),
+        ('rating', pa.float64()),
+        ('categories', pa.list_(pa.string())),
+        ('mechanics', pa.list_(pa.string())),
+        ('designers', pa.list_(pa.string()))
+    ])
+    real_table = pa.Table.from_pydict({
+        'id': ['1'],
+        'type': ['boardgame'],
+        'name': ['Test Game'],
+        'max_players': [4],
+        'rating': [8.5],
+        'categories': [['Theme']],
+        'mechanics': [['Dice']],
+        'designers': [['Designer']]
+    }, schema=dummy_schema)
+    mock_read_table.return_value = real_table
     
     # Mock concat_tables to return final table
     mock_final_table = MagicMock()
@@ -62,7 +80,6 @@ def test_lambda_handler_success(mock_write_table, mock_concat_tables, mock_read_
     
     assert mock_s3.get_object.call_count == 2
     assert mock_read_table.call_count == 2
-    mock_table.cast.assert_called_with(combine_raw_to_single_file.TARGET_SCHEMA)
     
     # Check that put_object was called to write the catalog back to S3
     mock_s3.put_object.assert_called_once()
