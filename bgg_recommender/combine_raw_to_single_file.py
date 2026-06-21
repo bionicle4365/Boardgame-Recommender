@@ -88,7 +88,9 @@ def align_table_to_schema(table, target_schema):
 def download_and_parse(s3_client, bucket_name, key):
     try:
         response = s3_client.get_object(Bucket=bucket_name, Key=key)
-        data = response['Body'].read()
+        # Use with block to explicitly close the StreamingBody and return the connection to the pool
+        with response['Body'] as stream:
+            data = stream.read()
         reader = io.BytesIO(data)
         table = pq.read_table(reader)
         # Align and cast columns dynamically to target_schema
@@ -143,43 +145,36 @@ def lambda_handler(event, context):
             }
             
         master_tables = []
-        current_batch_tables = []
-        batch_size = 5000
+        chunk_size = 10000
         
-        logger.info(f"Downloading and merging {num_files} files using ThreadPoolExecutor with {max_workers} workers...")
+        logger.info(f"Downloading and merging {num_files} files in chunks of {chunk_size} using ThreadPoolExecutor with {max_workers} workers...")
         
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_key = {
-                executor.submit(download_and_parse, s3_client, bucket_name, key): key
-                for key in keys
-            }
+        for chunk_start in range(0, num_files, chunk_size):
+            chunk_keys = keys[chunk_start:chunk_start + chunk_size]
+            logger.info(f"Processing chunk {chunk_start // chunk_size + 1}: files {chunk_start} to {chunk_start + len(chunk_keys)}")
             
-            count = 0
-            for future in as_completed(future_to_key):
-                key = future_to_key[future]
-                try:
-                    table = future.result()
-                    if table is not None:
-                        current_batch_tables.append(table)
-                except Exception as e:
-                    logger.error(f"Future execution failed for {key}: {e}")
+            chunk_tables = []
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_key = {
+                    executor.submit(download_and_parse, s3_client, bucket_name, key): key
+                    for key in chunk_keys
+                }
                 
-                count += 1
-                if count % 10000 == 0:
-                    logger.info(f"Downloaded and parsed {count}/{num_files} files...")
-                
-                # Consolidate batch of tables into a single table to save memory metadata overhead
-                if len(current_batch_tables) >= batch_size:
-                    consolidated = pa.concat_tables(current_batch_tables)
-                    master_tables.append(consolidated)
-                    current_batch_tables = []
-                    
-        # Append remaining tables
-        if current_batch_tables:
-            consolidated = pa.concat_tables(current_batch_tables)
-            master_tables.append(consolidated)
-            current_batch_tables = []
+                for future in as_completed(future_to_key):
+                    key = future_to_key[future]
+                    try:
+                        table = future.result()
+                        if table is not None:
+                            chunk_tables.append(table)
+                    except Exception as e:
+                        logger.error(f"Future execution failed for {key}: {e}")
             
+            # Consolidate this chunk's tables immediately to release single-row table metadata memory
+            if chunk_tables:
+                consolidated = pa.concat_tables(chunk_tables)
+                master_tables.append(consolidated)
+                chunk_tables = []  # Clear references for garbage collection
+                
         if not master_tables:
             raise ValueError("All raw Parquet file downloads and parses failed.")
             

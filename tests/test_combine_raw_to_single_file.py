@@ -31,8 +31,9 @@ def test_lambda_handler_success(mock_write_table, mock_concat_tables, mock_read_
     ]
     
     # Mock get_object
-    mock_response = {'Body': MagicMock()}
-    mock_response['Body'].read.return_value = b'fake parquet bytes'
+    mock_body = MagicMock()
+    mock_body.__enter__.return_value.read.return_value = b'fake parquet bytes'
+    mock_response = {'Body': mock_body}
     mock_s3.get_object.return_value = mock_response
     
     # Create a real small table with 8-column format to verify schema alignment works
