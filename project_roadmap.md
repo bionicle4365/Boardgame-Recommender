@@ -148,9 +148,9 @@ Construct visual taste profile charts displaying a playgroup's collective mechan
 Configure API Gateway throttling limits to protect against Bedrock AWS bill overrun, and standardize lambda diagnostics.
 
 ### Tasks
-- [ ] Add API Gateway rate limits (throttling quotas) and CORS constraints in Terraform.
-- [ ] Integrate AWS Lambda Powertools for python inside Lambdas to deliver structured JSON logs.
-- [ ] Define CloudWatch metric error alarms for warning thresholds.
+- [x] Add API Gateway rate limits (throttling quotas) and CORS constraints in Terraform.
+- [x] Integrate AWS Lambda Powertools for python inside Lambdas to deliver structured JSON logs.
+- [x] Define CloudWatch metric error alarms for warning thresholds.
 
 ---
 
