@@ -34,7 +34,7 @@ graph TD
     S3Combined -->|Download single Parquet| ServingLambda
     S3Users -->|Download user Parquet| ServingLambda
     ServingLambda -->|Jaccard Similarity Match| Candidates[Top Candidates]
-    Candidates -->|Prompt| Bedrock[Amazon Bedrock Claude 3]
+    Candidates -->|Prompt| Bedrock[Amazon Bedrock Nova Micro]
     Bedrock -->|Personalized JSON| ServingLambda
     ServingLambda -->|JSON recommendations| Client
 ```
@@ -44,7 +44,7 @@ graph TD
 ## Directory Structure
 
 * **[site_ui/](file:///d:/Git/Boardgame-Recommender/site_ui)**: The frontend Jekyll dashboard, collection browser, and recommendation interface hosted on GitHub Pages.
-* **[bgg_recommender/](file:///d:/Git/Boardgame-Recommender/bgg_recommender)**: Python container-based Lambda served via API Gateway. Extracts catalog & user collections from S3, executes Jaccard matching, and uses Bedrock Claude 3 Haiku for reasoning.
+* **[bgg_recommender/](file:///d:/Git/Boardgame-Recommender/bgg_recommender)**: Python container-based Lambda served via API Gateway. Extracts catalog & user collections from S3, executes Jaccard matching, and uses Bedrock Amazon Nova Micro for reasoning.
 * **[bgg_game_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_game_scraper)**: Continuous containerized python scraper (run in ECS Fargate) that discovers boardgame IDs and pushes them to SQS.
 * **[bgg_game_data_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_game_data_scraper)**: SQS-triggered Lambda scraper that downloads game details (mechanics, complexity, name, year) and writes them to raw S3 Parquet.
 * **[bgg_user_data_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_user_data_scraper)**: SQS-triggered Lambda scraper that downloads a BGG user's collection, rated games, and ownership status.

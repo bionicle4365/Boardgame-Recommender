@@ -41,7 +41,7 @@ title: Home
 
     @media (min-width: 768px) {
         .features-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         }
     }
 
@@ -85,6 +85,10 @@ title: Home
         background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
     }
 
+    .feature-icon.groups {
+        background: linear-gradient(135deg, #a855f7 0%, #c084fc 100%);
+    }
+
     .feature-card h2 {
         margin-top: 0;
         margin-bottom: 12px;
@@ -114,6 +118,10 @@ title: Home
     .card-action.browser {
         color: #10b981;
     }
+
+    .card-action.groups {
+        color: #a855f7;
+    }
 </style>
 
 <div class="home-container">
@@ -138,10 +146,21 @@ title: Home
             <div>
                 <div class="feature-icon recommender">🤖</div>
                 <h2>AI Recommendations</h2>
-                <p>Get personalized game recommendations powered by Amazon Bedrock (Claude 3 Haiku). Leverages Jaccard similarity to discover new matches.</p>
+                <p>Get personalized game recommendations powered by Amazon Bedrock (Amazon Nova Micro). Leverages Jaccard similarity to discover new matches.</p>
             </div>
             <div class="card-action recommender">
                 <span>Get Recommendations</span> →
+            </div>
+        </a>
+
+        <a href="{{ '/groups/' | relative_url }}" class="feature-card">
+            <div>
+                <div class="feature-icon groups">👥</div>
+                <h2>Playgroup Organizer</h2>
+                <p>Organize gaming groups and track attendees. Consolidate members' libraries to find and recommend games matching group count and tastes.</p>
+            </div>
+            <div class="card-action groups">
+                <span>Organize Playgroups</span> →
             </div>
         </a>
     </div>
