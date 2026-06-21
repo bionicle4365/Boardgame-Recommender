@@ -67,20 +67,20 @@ def get_catalog():
     """
     global CATALOG_CACHE
     if CATALOG_CACHE is not None:
-        print("Loading catalog from in-memory cache.")
+        logger.info("Loading catalog from in-memory cache.")
         return CATALOG_CACHE
 
-    print("Fetching game catalog from S3...")
+    logger.info("Fetching game catalog from S3...")
     try:
         key = "data/boardgames_combined/catalog.parquet"
         local_path = "/tmp/catalog.parquet"
-        print(f"Downloading catalog file: {key}")
+        logger.info(f"Downloading catalog file: {key}")
         s3.download_file(bucket, key, local_path)
         CATALOG_CACHE = pd.read_parquet(local_path)
-        print(f"Successfully loaded and cached catalog with {len(CATALOG_CACHE)} games.")
+        logger.info(f"Successfully loaded and cached catalog with {len(CATALOG_CACHE)} games.")
         return CATALOG_CACHE
     except Exception as e:
-        print(f"Error loading catalog database: {e}")
+        logger.error(f"Error loading catalog database: {e}")
         return None
 
 def get_user_profile_status(username, ttl_hours=24):
@@ -104,11 +104,11 @@ def trigger_background_scrape(username):
     if user_sqs_queue_url:
         try:
             sqs.send_message(QueueUrl=user_sqs_queue_url, MessageBody=username)
-            print(f"Successfully sent username update request to queue: {user_sqs_queue_url}")
+            logger.info(f"Successfully sent username update request to queue: {user_sqs_queue_url}")
         except Exception as sqs_err:
-            print(f"Error sending message to SQS: {sqs_err}")
+            logger.error(f"Error sending message to SQS: {sqs_err}")
     else:
-        print("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
+        logger.error("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
 
 def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168):
     """
@@ -117,23 +117,23 @@ def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168):
     Returns recommendations list if fresh, else None.
     """
     try:
-        print(f"Checking S3 recommendations cache: {cache_key}")
+        logger.info(f"Checking S3 recommendations cache: {cache_key}")
         response = s3.head_object(Bucket=bucket, Key=cache_key)
         cache_last_modified = response['LastModified']
         
         # 1. Check expiration TTL
         age_hours = (datetime.now(timezone.utc) - cache_last_modified).total_seconds() / 3600.0
         if age_hours >= ttl_hours:
-            print(f"Cache stale: recommendations are {age_hours:.2f} hours old (TTL = {ttl_hours} hours).")
+            logger.info(f"Cache stale: recommendations are {age_hours:.2f} hours old (TTL = {ttl_hours} hours).")
             return None
             
         # 2. Check smart invalidation (profile updated since recommendations were cached)
         if profile_last_modified and profile_last_modified > cache_last_modified:
-            print(f"Cache invalidated: user profile was updated ({profile_last_modified}) since recommendations were cached ({cache_last_modified}).")
+            logger.info(f"Cache invalidated: user profile was updated ({profile_last_modified}) since recommendations were cached ({cache_last_modified}).")
             return None
             
         # 3. Cache is valid. Download and return it
-        print(f"Cache hit: recommendations are fresh ({age_hours:.2f} hours old). Downloading.")
+        logger.info(f"Cache hit: recommendations are fresh ({age_hours:.2f} hours old). Downloading.")
         local_path = f"/tmp/{os.path.basename(cache_key)}"
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         s3.download_file(bucket, cache_key, local_path)
@@ -142,25 +142,25 @@ def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168):
             
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
-            print("Cache miss: recommendations not found in S3.")
+            logger.info("Cache miss: recommendations not found in S3.")
             return None
         raise e
     except Exception as e:
-        print(f"Error checking recommendations cache: {e}")
+        logger.error(f"Error checking recommendations cache: {e}")
         return None
 
 def save_recommendations_to_cache(cache_key, recommendations):
     """Saves generated recommendations as JSON file in S3 cache."""
     try:
-        print(f"Saving generated recommendations to S3 cache: {cache_key}")
+        logger.info(f"Saving generated recommendations to S3 cache: {cache_key}")
         local_path = f"/tmp/{os.path.basename(cache_key)}"
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         with open(local_path, 'w', encoding='utf-8') as f:
             json.dump(recommendations, f, ensure_ascii=False)
         s3.upload_file(local_path, bucket, cache_key)
-        print("Successfully uploaded recommendations to S3 cache.")
+        logger.info("Successfully uploaded recommendations to S3 cache.")
     except Exception as e:
-        print(f"Error saving recommendations to cache: {e}")
+        logger.error(f"Error saving recommendations to cache: {e}")
 
 def get_bgg_hotness(ttl_hours=2):
     """
@@ -176,16 +176,16 @@ def get_bgg_hotness(ttl_hours=2):
         last_modified = response['LastModified']
         age_hours = (datetime.now(timezone.utc) - last_modified).total_seconds() / 3600.0
         if age_hours < ttl_hours:
-            print(f"Hotness cache hit: file is {age_hours:.2f} hours old. Downloading from S3.")
+            logger.info(f"Hotness cache hit: file is {age_hours:.2f} hours old. Downloading from S3.")
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             s3.download_file(bucket, cache_key, local_path)
             with open(local_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
     except ClientError as e:
         if e.response['Error']['Code'] != '404':
-            print(f"S3 error checking hotness cache: {e}")
+            logger.error(f"S3 error checking hotness cache: {e}")
     except Exception as e:
-        print(f"Error loading hotness cache from S3: {e}")
+        logger.error(f"Error loading hotness cache from S3: {e}")
 
     # 2. Fetch from BGG XMLAPI2
     url = "https://boardgamegeek.com/xmlapi2/hot?type=boardgame"
@@ -194,7 +194,7 @@ def get_bgg_hotness(ttl_hours=2):
     if bgg_api_token:
         headers["Authorization"] = f"Bearer {bgg_api_token}"
 
-    print(f"Fetching hotness from BGG XMLAPI2: {url}")
+    logger.info(f"Fetching hotness from BGG XMLAPI2: {url}")
     try:
         # 5 seconds timeout to protect Lambda execution time
         response = requests.get(url, headers=headers, timeout=5)
@@ -215,21 +215,21 @@ def get_bgg_hotness(ttl_hours=2):
             with open(local_path, 'w', encoding='utf-8') as f:
                 json.dump(hot_games, f, ensure_ascii=False)
             s3.upload_file(local_path, bucket, cache_key)
-            print(f"Successfully cached {len(hot_games)} hot games to S3.")
+            logger.info(f"Successfully cached {len(hot_games)} hot games to S3.")
             return hot_games
         else:
-            print(f"Failed to fetch hotness from BGG: status code {response.status_code}")
+            logger.error(f"Failed to fetch hotness from BGG: status code {response.status_code}")
     except Exception as e:
-        print(f"Error fetching hotness from BGG: {e}")
+        logger.error(f"Error fetching hotness from BGG: {e}")
 
     # 3. Fallback: if BGG call failed but we have an old S3 cache, return it
     try:
-        print("BGG fetch failed. Attempting stale cache fallback.")
+        logger.info("BGG fetch failed. Attempting stale cache fallback.")
         s3.download_file(bucket, cache_key, local_path)
         with open(local_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as fallback_e:
-        print(f"Stale hotness cache fallback failed: {fallback_e}")
+        logger.error(f"Stale hotness cache fallback failed: {fallback_e}")
         return []
 
 @logger.inject_lambda_context
@@ -283,7 +283,7 @@ def lambda_handler(event, context):
         try:
             exists, is_stale, u_modified = get_user_profile_status(u, ttl_hours=24)
         except Exception as s3_check_err:
-            print(f"S3 checks failed for {u}: {s3_check_err}")
+            logger.error(f"S3 checks failed for {u}: {s3_check_err}")
             return {
                 'statusCode': 500,
                 'headers': {
@@ -294,11 +294,11 @@ def lambda_handler(event, context):
             }
             
         if not exists:
-            print(f"User profile for '{u}' not found. Queueing scrape job.")
+            logger.info(f"User profile for '{u}' not found. Queueing scrape job.")
             trigger_background_scrape(u)
             scraping_users.append(u)
         elif is_stale:
-            print(f"User profile for '{u}' is stale. Queueing background update scrape job.")
+            logger.info(f"User profile for '{u}' is stale. Queueing background update scrape job.")
             trigger_background_scrape(u)
             
         if u_modified:
@@ -341,7 +341,7 @@ def lambda_handler(event, context):
         user_key = f"data/users/{u}.parquet"
         local_user_path = f"/tmp/{u}.parquet"
         try:
-            print(f"Downloading user profile from S3: {user_key}")
+            logger.info(f"Downloading user profile from S3: {user_key}")
             s3.download_file(bucket, user_key, local_user_path)
             u_df = pd.read_parquet(local_user_path)
             u_df['id'] = u_df['id'].astype(str)
@@ -350,7 +350,7 @@ def lambda_handler(event, context):
             # Aggregate owned games
             owned_ids.update(u_df[u_df['own'] == True]['id'].tolist())
         except Exception as user_load_err:
-            print(f"Error loading user profile {u}: {user_load_err}")
+            logger.error(f"Error loading user profile {u}: {user_load_err}")
             return {
                 'statusCode': 500,
                 'headers': {
@@ -365,7 +365,7 @@ def lambda_handler(event, context):
     # 3. Fetch catalog database
     catalog_df = get_catalog()
     if catalog_df is None or catalog_df.empty:
-        print("Catalog database empty or unavailable. Returning empty recommendations.")
+        logger.warning("Catalog database empty or unavailable. Returning empty recommendations.")
         return {
             'statusCode': 200,
             'headers': {
@@ -438,7 +438,7 @@ def lambda_handler(event, context):
                 candidates = candidates[(candidates['min_players'] <= p_count) & (candidates['max_players'] >= p_count)]
             else:
                 candidates = candidates[candidates['max_players'] >= p_count]
-            print(f"Filtered catalog by player_count {p_count}. Candidates left: {len(candidates)}")
+            logger.info(f"Filtered catalog by player_count {p_count}. Candidates left: {len(candidates)}")
         except ValueError:
             pass
 
@@ -682,7 +682,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
             }
         ]
         
-        print(f"Calling Bedrock Converse API with model {bedrock_model_id}...")
+        logger.info(f"Calling Bedrock Converse API with model {bedrock_model_id}...")
         response = bedrock.converse(
             modelId=bedrock_model_id,
             messages=messages,
@@ -693,7 +693,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
         )
         
         response_text = response['output']['message']['content'][0]['text'].strip()
-        print(f"Received Bedrock response: {response_text}")
+        logger.info(f"Received Bedrock response: {response_text}")
         
         # Clean up response text if wrapped in markdown blocks
         if response_text.startswith("```"):
@@ -729,10 +729,10 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
                 rec['image'] = str(game_meta['image']) if pd.notna(game_meta.get('image')) else None
 
     except Exception as bedrock_e:
-        print(f"Bedrock invocation or parsing failed: {bedrock_e}")
+        logger.error(f"Bedrock invocation or parsing failed: {bedrock_e}")
         # Fallback to returning candidates list directly if AI call fails
         if top_candidates:
-            print("Returning candidates directly as a fallback.")
+            logger.warning("Returning candidates directly as a fallback.")
             result_json = {
                 "recommendations": [
                     {

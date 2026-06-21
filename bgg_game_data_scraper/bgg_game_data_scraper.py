@@ -184,7 +184,7 @@ def get_batch_game_data(game_ids, max_retries=5, base_delay=2):
         headers["Authorization"] = f"Bearer {bgg_api_token}"
 
     for attempt in range(max_retries):
-        print(f"Querying BGG API for {len(game_ids)} IDs (batch): {ids_str[:80]}... (Attempt {attempt + 1}/{max_retries})")
+        logger.info(f"Querying BGG API for {len(game_ids)} IDs (batch): {ids_str[:80]}... (Attempt {attempt + 1}/{max_retries})")
         try:
             response = requests.get(api_url, headers=headers)
             response.raise_for_status()
@@ -195,20 +195,20 @@ def get_batch_game_data(game_ids, max_retries=5, base_delay=2):
                 game_data = _parse_item(item)
                 item_id = item.get('id')
                 results[item_id] = game_data
-                print(f"Parsed game {item_id}: {game_data.get('name', '?')!r}")
+                logger.info(f"Parsed game {item_id}: {game_data.get('name', '?')!r}")
 
-            print(f"BGG batch response: {len(results)} of {len(game_ids)} IDs found.")
+            logger.info(f"BGG batch response: {len(results)} of {len(game_ids)} IDs found.")
             return results
 
         except (requests.exceptions.RequestException, ET.ParseError, Exception) as e:
-            print(f"Error in batch BGG API call (attempt {attempt + 1}): {e}")
+            logger.error(f"Error in batch BGG API call (attempt {attempt + 1}): {e}")
             if attempt < max_retries - 1:
                 delay = min(60, base_delay * (2 ** attempt))
                 jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
-                print(f"Retrying in {jittered_delay:.2f} seconds...")
+                logger.info(f"Retrying in {jittered_delay:.2f} seconds...")
                 time.sleep(jittered_delay)
             else:
-                print(f"Max retries reached for batch. Marking all {len(game_ids)} as failed.")
+                logger.error(f"Max retries reached for batch. Marking all {len(game_ids)} as failed.")
                 return GAME_FETCH_FAILED
 
 
@@ -240,7 +240,7 @@ def lambda_handler(event, context):
     logger.info("Received event", extra={"event": event})
 
     if 'Records' not in event:
-        print("No records found in the SQS event.")
+        logger.warning("No records found in the SQS event.")
         return {
             'statusCode': 400,
             'body': json.dumps('No SQS records found.')
@@ -263,7 +263,7 @@ def lambda_handler(event, context):
             id_to_record[str(game_id)] = record
             valid_game_ids.append(game_id)
         except (ValueError, TypeError):
-            print(f"Invalid game ID in SQS body: {body!r} (messageId={record.get('messageId')})")
+            logger.error(f"Invalid game ID in SQS body: {body!r} (messageId={record.get('messageId')})")
             invalid_records.append(record)
             failed_ids.append(body)
             batch_item_failures.append({'itemIdentifier': record['messageId']})
@@ -273,13 +273,13 @@ def lambda_handler(event, context):
     if valid_game_ids:
         for i in range(0, len(valid_game_ids), BGG_MAX_BATCH_SIZE):
             chunk_ids = valid_game_ids[i:i + BGG_MAX_BATCH_SIZE]
-            print(f"Processing chunk {i // BGG_MAX_BATCH_SIZE + 1}: {len(chunk_ids)} game IDs.")
+            logger.info(f"Processing chunk {i // BGG_MAX_BATCH_SIZE + 1}: {len(chunk_ids)} game IDs.")
 
             batch_result = get_batch_game_data(chunk_ids)
 
             if batch_result is GAME_FETCH_FAILED:
                 # Entire chunk failed (network/API error) — route all chunk IDs to DLQ
-                print(f"Batch API call failed for chunk. Routing all {len(chunk_ids)} IDs to DLQ.")
+                logger.error(f"Batch API call failed for chunk. Routing all {len(chunk_ids)} IDs to DLQ.")
                 for gid in chunk_ids:
                     rec = id_to_record[str(gid)]
                     failed_ids.append(gid)
@@ -291,7 +291,7 @@ def lambda_handler(event, context):
 
                     if gid_str not in batch_result:
                         # Game not found on BGG — graceful skip, delete from queue
-                        print(f"Game ID {gid} not found on BGG. Skipping gracefully (no DLQ).")
+                        logger.info(f"Game ID {gid} not found on BGG. Skipping gracefully (no DLQ).")
                         processed_ids.append(gid)
                         continue
 
@@ -300,20 +300,20 @@ def lambda_handler(event, context):
                     try:
                         df = pd.DataFrame([game_data])
                         df.to_parquet(s3_path, index=False, engine='pyarrow', schema=_PARQUET_SCHEMA)
-                        print(f"Saved game {gid} ({game_data.get('name', '?')!r}) -> {s3_path}")
+                        logger.info(f"Saved game {gid} ({game_data.get('name', '?')!r}) -> {s3_path}")
                         processed_ids.append(gid)
                     except Exception as s3_e:
-                        print(f"S3 write failed for ID {gid}: {s3_e}")
+                        logger.error(f"S3 write failed for ID {gid}: {s3_e}")
                         failed_ids.append(gid)
                         batch_item_failures.append({'itemIdentifier': rec['messageId']})
 
             # Sleep between chunks to respect BGG API rate limits
             if i + BGG_MAX_BATCH_SIZE < len(valid_game_ids):
-                print("Sleeping 1.0 second before the next chunk request...")
+                logger.info("Sleeping 1.0 second before the next chunk request...")
                 time.sleep(1.0)
 
     if batch_item_failures:
-        print(f"Finished: {len(processed_ids)} succeeded, {len(batch_item_failures)} failed.")
+        logger.warning(f"Finished SQS event processing with failures: {len(processed_ids)} succeeded, {len(batch_item_failures)} failed.")
         return {
             'statusCode': 207,
             'body': json.dumps({
@@ -324,7 +324,7 @@ def lambda_handler(event, context):
             'batchItemFailures': batch_item_failures
         }
     else:
-        print(f"Finished: all {len(processed_ids)} IDs processed successfully.")
+        logger.info(f"Finished: all {len(processed_ids)} IDs processed successfully.")
         return {
             'statusCode': 200,
             'body': json.dumps({

@@ -9,6 +9,37 @@ import pandas as pd # New import for DataFrame operations
 import pyarrow # Required by pandas for Parquet engine
 import pyarrow.parquet as pq # Explicit import for clarity
 import boto3 # Already imported, ensuring it's available for S3 client
+# Initialize Structured Logging with AWS Lambda Powertools or Fallback
+try:
+    from aws_lambda_powertools import Logger
+    logger = Logger(service="bgg-user-data-scraper")
+except ImportError:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    class FallbackLogger:
+        def __init__(self):
+            self.log = logging.getLogger("bgg-user-data-scraper")
+        def info(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.info(f"{msg} - Extra: {extra}")
+            else:
+                self.log.info(msg)
+        def error(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.error(f"{msg} - Extra: {extra}")
+            else:
+                self.log.error(msg)
+        def warning(self, msg, *args, **kwargs):
+            extra = kwargs.get('extra')
+            if extra:
+                self.log.warning(f"{msg} - Extra: {extra}")
+            else:
+                self.log.warning(msg)
+        def inject_lambda_context(self, func):
+            return func
+    logger = FallbackLogger()
 
 S3_OUTPUT_BUCKET_NAME = os.environ.get('S3_OUTPUT_BUCKET_NAME', 'boardgame-app')
 
@@ -25,7 +56,7 @@ def get_user_data(username):
     Returns a dictionary with user collection information.
     """
     api_url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&subtype=boardgame&excludesubtype=boardgameexpansion&stats=1"
-    print(f"Querying BGG API for user: {username} at {api_url}")
+    logger.info(f"Querying BGG API for user: {username} at {api_url}")
 
     retries = 3
     for i in range(retries):
@@ -37,7 +68,7 @@ def get_user_data(username):
             response = requests.get(api_url, headers=headers)
             response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
             xml_data = response.content
-            print(f"Successfully received response for user {username}.")
+            logger.info(f"Successfully received response for user {username}.")
 
             root = ET.fromstring(xml_data)
             
@@ -45,7 +76,7 @@ def get_user_data(username):
             if root.tag == 'errors':
                 error_msg = root.find(".//error/message")
                 error_text = error_msg.text if error_msg is not None else "Invalid username specified"
-                print(f"BGG API returned error for user {username}: {error_text}")
+                logger.error(f"BGG API returned error for user {username}: {error_text}")
                 return [] # Gracefully return empty list
 
             items = root.findall(".//item")
@@ -53,7 +84,7 @@ def get_user_data(username):
                 raise ValueError(f"BGG API message for {username}: {root.text}")
 
             if items is None:
-                print(f"No collection items found for user {username}.")
+                logger.warning(f"No collection items found for user {username}.")
                 return None
 
             user_data = []
@@ -76,27 +107,28 @@ def get_user_data(username):
             return user_data
 
         except Exception as e:
-            print(f"Error querying BGG API for user {username}: {e}")
+            logger.error(f"Error querying BGG API for user {username}: {e}")
             if i < retries - 1:
                 # Exponential backoff with random jitter (base = 10, max = 60)
                 delay = min(60, 10 * (2 ** i))
                 jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
-                print(f"Retrying in {jittered_delay:.2f} seconds...")
+                logger.info(f"Retrying in {jittered_delay:.2f} seconds...")
                 time.sleep(jittered_delay)
             else:
-                print(f"Max retries reached for user {username}.")
+                logger.error(f"Max retries reached for user {username}.")
                 return None
 
+@logger.inject_lambda_context
 def lambda_handler(event, context):
     """
     AWS Lambda handler function.
     Processes SQS events, extracts user IDs, queries BGG API,
     and retrieves user collection information.
     """
-    print(f"Received event: {json.dumps(event)}")
+    logger.info("Received event", extra={"event": event})
 
     if 'Records' not in event:
-        print("No records found in the SQS event.")
+        logger.warning("No records found in the SQS event.")
         return {
             'statusCode': 400,
             'body': json.dumps('No SQS records found.')
@@ -110,44 +142,41 @@ def lambda_handler(event, context):
         try:
             # SQS message body is expected to be a string
             user_id = record['body']
-            print(f"Processing user ID from SQS: {user_id}")
+            logger.info(f"Processing user ID from SQS: {user_id}")
 
             user_data = get_user_data(user_id)
 
             if user_data is not None:
-                print(f"Successfully retrieved data for user {user_id}. Collection size: {len(user_data)}")
+                logger.info(f"Successfully retrieved data for user {user_id}. Collection size: {len(user_data)}")
 
                 # Convert user_data to pandas DataFrame
                 df = pd.DataFrame(user_data, columns=['id', 'username', 'rating', 'own'])
 
                 # Define S3 path for the Parquet file
-                # Recommended: Write each game to a unique Parquet file, potentially partitioned.
-                # Example: s3://your-boardgame-data-bucket/boardgames/year_published=YYYY/game_id.parquet
-                # For this example, we'll use a simple key based on user_id.
                 s3_output_key = f"users/{user_id}.parquet"
                 s3_full_path = f"s3://{S3_OUTPUT_BUCKET_NAME}/data/{s3_output_key}"
 
                 try:
                     # Save DataFrame to S3 in Parquet format
                     df.to_parquet(s3_full_path, index=False, engine='pyarrow')
-                    print(f"Successfully saved data for user {user_id} to S3: {s3_full_path}")
+                    logger.info(f"Successfully saved data for user {user_id} to S3: {s3_full_path}")
                     processed_ids.append(user_id)
                 except Exception as s3_e:
-                    print(f"Error saving data for user {user_id} to S3 ({s3_full_path}): {s3_e}")
+                    logger.error(f"Error saving data for user {user_id} to S3 ({s3_full_path}): {s3_e}")
                     failed_ids.append(user_id)
                     batch_item_failures.append({"itemIdentifier": record['messageId']})
             else:
-                print(f"Failed to retrieve data for user {user_id} (retries exhausted).")
+                logger.error(f"Failed to retrieve data for user {user_id} (retries exhausted).")
                 failed_ids.append(user_id)
                 batch_item_failures.append({"itemIdentifier": record['messageId']})
 
         except Exception as e:
-            print(f"An error occurred while processing record: {record.get('messageId')}, Error: {e}")
+            logger.error(f"An error occurred while processing record: {record.get('messageId')}, Error: {e}")
             failed_ids.append(record.get('body'))
             batch_item_failures.append({"itemIdentifier": record['messageId']})
 
     if batch_item_failures:
-        print(f"Finished processing. Successfully processed: {len(processed_ids)} IDs. Failed to process: {len(batch_item_failures)} records.")
+        logger.warning(f"Finished processing with failures. Successfully processed: {len(processed_ids)} IDs. Failed to process: {len(batch_item_failures)} records.")
         return {
             'statusCode': 207, # Multi-Status
             'body': json.dumps({
@@ -158,7 +187,7 @@ def lambda_handler(event, context):
             'batchItemFailures': batch_item_failures
         }
     else:
-        print(f"Finished processing. Successfully processed all {len(processed_ids)} IDs.")
+        logger.info(f"Finished processing. Successfully processed all {len(processed_ids)} IDs.")
         return {
             'statusCode': 200,
             'body': json.dumps({
