@@ -124,9 +124,9 @@ Add advanced UI filters to exclude specific categories, mechanics, or designers,
 Upgrade UI layouts to support mobile responsive viewports, replacing inline margins with a modern overlay navigation drawer and backdrop.
 
 ### Tasks
-- [ ] Define responsive media queries to hide the sidebar and prevent content compression on mobile.
-- [ ] Implement a blurred backdrop overlay div appearing when the mobile sidebar is toggled.
-- [ ] Refactor toggle buttons to manipulate class toggles on `document.body` instead of inline styles.
+- [x] Define responsive media queries to hide the sidebar and prevent content compression on mobile.
+- [x] Implement a blurred backdrop overlay div appearing when the mobile sidebar is toggled.
+- [x] Refactor toggle buttons to manipulate class toggles on `document.body` instead of inline styles.
 
 ---
 
