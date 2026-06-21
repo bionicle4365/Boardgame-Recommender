@@ -78,29 +78,32 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const sidebarToggle = document.getElementById('sidebar-toggle');
-        const sidebarContainer = parent.document.getElementById('sidebar-container');
-        const mainWrapper = document.getElementById('main-wrapper');
+        const backdrop = document.getElementById('sidebar-backdrop');
 
-        const adjustContentMargin = () => {
-            if (sidebarContainer.classList.contains('collapsed')) {
-                mainWrapper.style.marginLeft = '0px';
-                sidebarContainer.style.width = '0px';
-            } else {
-                mainWrapper.style.marginLeft = '260px';
-                sidebarContainer.style.width = '260px';
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (window.innerWidth <= 768) {
+                    document.body.classList.toggle('sidebar-open');
+                    document.body.classList.remove('sidebar-collapsed');
+                } else {
+                    document.body.classList.toggle('sidebar-collapsed');
+                    document.body.classList.remove('sidebar-open');
+                }
+            });
+        }
+
+        if (backdrop) {
+            backdrop.addEventListener('click', function() {
+                document.body.classList.remove('sidebar-open');
+            });
+        }
+
+        // Close mobile sidebar overlay if resized back to desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                document.body.classList.remove('sidebar-open');
             }
-        };
-
-        // Initial adjustment
-        adjustContentMargin();
-
-        // Observe changes to the sidebar-container's class list
-        const observer = new MutationObserver(adjustContentMargin);
-        observer.observe(sidebarContainer, { attributes: true, attributeFilter: ['class'] });
-
-        // Toggle sidebar on button click
-        sidebarToggle.addEventListener('click', function() {
-            sidebarContainer.classList.toggle('collapsed');
         });
     });
 </script>

@@ -46,6 +46,12 @@
             top: 0;
             left: 0;
             z-index: 999;
+            width: 260px;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        body.sidebar-collapsed #sidebar-wrapper {
+            transform: translateX(-260px);
         }
 
         #main-wrapper {
@@ -56,6 +62,53 @@
             transition: margin-left 0.3s ease-in-out;
             height: 100vh;
             overflow-y: auto;
+        }
+
+        body.sidebar-collapsed #main-wrapper {
+            margin-left: 0;
+        }
+
+        /* Sidebar backdrop for mobile */
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 998;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+        }
+
+        /* Responsive Breakpoint for Mobile/Tablet */
+        @media (max-width: 768px) {
+            #sidebar-wrapper {
+                transform: translateX(-260px);
+                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.25);
+            }
+            
+            #main-wrapper {
+                margin-left: 0 !important;
+            }
+
+            body.sidebar-open #sidebar-wrapper {
+                transform: translateX(0);
+            }
+
+            body.sidebar-open .sidebar-backdrop {
+                display: block;
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            body.sidebar-open {
+                overflow: hidden;
+            }
         }
 
         #content {
@@ -75,6 +128,7 @@
     </style>
 </head>
 <body>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
     <div id="sidebar-wrapper">
         {% include sidebar.html %}
     </div>
