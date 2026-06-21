@@ -133,13 +133,16 @@ def get_batch_game_data(game_ids, max_retries=5, base_delay=2):
     Fetch data for multiple game IDs in a SINGLE BGG API call.
 
     BGG supports comma-separated IDs: ?id=1,2,3&stats=1
-    This is ~batch_size times faster than one call per game ID.
+    BGG API enforces a maximum of 20 IDs per request.
 
     Returns:
         dict mapping str(game_id) -> game_data dict for games that exist
         Games not found in the response are silently omitted (not DLQ'd).
         Returns GAME_FETCH_FAILED sentinel if the API call itself fails after all retries.
     """
+    if len(game_ids) > 20:
+        raise ValueError(f"get_batch_game_data called with {len(game_ids)} IDs, which exceeds BGG limit of 20.")
+        
     ids_str = ','.join(str(gid) for gid in game_ids)
     api_url = f"{BGG_API_BASE_URL}?id={ids_str}&stats=1"
 
@@ -197,10 +200,9 @@ def lambda_handler(event, context):
     """
     AWS Lambda handler function.
 
-    Fetches all game IDs in the SQS batch with a SINGLE BGG API call
-    (BGG supports ?id=1,2,3,...&stats=1), then writes each result to S3
-    sequentially. This is ~10x faster than one API call per game ID while
-    making no change to the number of outbound API requests (actually 10x fewer).
+    Processes incoming game IDs in chunks of at most 20 IDs to respect BGG API limits.
+    For each chunk, queries the BGG API in a single request and writes the returned
+    games to S3.
     """
     print(f"Received event: {json.dumps(event)}")
 
@@ -233,39 +235,49 @@ def lambda_handler(event, context):
             failed_ids.append(body)
             batch_item_failures.append({'itemIdentifier': record['messageId']})
 
-    # --- Single batched BGG API call for all valid IDs ---
+    # --- Batch process game IDs in chunks of at most 20 ---
+    BGG_MAX_BATCH_SIZE = 20
     if valid_game_ids:
-        batch_result = get_batch_game_data(valid_game_ids)
+        for i in range(0, len(valid_game_ids), BGG_MAX_BATCH_SIZE):
+            chunk_ids = valid_game_ids[i:i + BGG_MAX_BATCH_SIZE]
+            print(f"Processing chunk {i // BGG_MAX_BATCH_SIZE + 1}: {len(chunk_ids)} game IDs.")
 
-        if batch_result is GAME_FETCH_FAILED:
-            # Entire batch failed (network/API error) — route all to DLQ
-            print(f"Batch API call failed. Routing all {len(valid_game_ids)} IDs to DLQ.")
-            for gid in valid_game_ids:
-                rec = id_to_record[str(gid)]
-                failed_ids.append(gid)
-                batch_item_failures.append({'itemIdentifier': rec['messageId']})
-        else:
-            for gid in valid_game_ids:
-                gid_str = str(gid)
-                rec = id_to_record[gid_str]
+            batch_result = get_batch_game_data(chunk_ids)
 
-                if gid_str not in batch_result:
-                    # Game not found on BGG — graceful skip, delete from queue
-                    print(f"Game ID {gid} not found on BGG. Skipping gracefully (no DLQ).")
-                    processed_ids.append(gid)
-                    continue
-
-                game_data = batch_result[gid_str]
-                s3_path = f"s3://{S3_OUTPUT_BUCKET_NAME}/data/boardgames/{gid}.parquet"
-                try:
-                    df = pd.DataFrame([game_data])
-                    df.to_parquet(s3_path, index=False, engine='pyarrow', schema=_PARQUET_SCHEMA)
-                    print(f"Saved game {gid} ({game_data.get('name', '?')!r}) -> {s3_path}")
-                    processed_ids.append(gid)
-                except Exception as s3_e:
-                    print(f"S3 write failed for ID {gid}: {s3_e}")
+            if batch_result is GAME_FETCH_FAILED:
+                # Entire chunk failed (network/API error) — route all chunk IDs to DLQ
+                print(f"Batch API call failed for chunk. Routing all {len(chunk_ids)} IDs to DLQ.")
+                for gid in chunk_ids:
+                    rec = id_to_record[str(gid)]
                     failed_ids.append(gid)
                     batch_item_failures.append({'itemIdentifier': rec['messageId']})
+            else:
+                for gid in chunk_ids:
+                    gid_str = str(gid)
+                    rec = id_to_record[gid_str]
+
+                    if gid_str not in batch_result:
+                        # Game not found on BGG — graceful skip, delete from queue
+                        print(f"Game ID {gid} not found on BGG. Skipping gracefully (no DLQ).")
+                        processed_ids.append(gid)
+                        continue
+
+                    game_data = batch_result[gid_str]
+                    s3_path = f"s3://{S3_OUTPUT_BUCKET_NAME}/data/boardgames/{gid}.parquet"
+                    try:
+                        df = pd.DataFrame([game_data])
+                        df.to_parquet(s3_path, index=False, engine='pyarrow', schema=_PARQUET_SCHEMA)
+                        print(f"Saved game {gid} ({game_data.get('name', '?')!r}) -> {s3_path}")
+                        processed_ids.append(gid)
+                    except Exception as s3_e:
+                        print(f"S3 write failed for ID {gid}: {s3_e}")
+                        failed_ids.append(gid)
+                        batch_item_failures.append({'itemIdentifier': rec['messageId']})
+
+            # Sleep between chunks to respect BGG API rate limits
+            if i + BGG_MAX_BATCH_SIZE < len(valid_game_ids):
+                print("Sleeping 1.0 second before the next chunk request...")
+                time.sleep(1.0)
 
     if batch_item_failures:
         print(f"Finished: {len(processed_ids)} succeeded, {len(batch_item_failures)} failed.")

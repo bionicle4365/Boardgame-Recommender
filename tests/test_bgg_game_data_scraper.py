@@ -213,3 +213,32 @@ def test_lambda_handler_sqs_fetch_failures(mock_get_batch):
     res_body = json.loads(response['body'])
     assert res_body['failed_ids'] == [999]
     assert response['batchItemFailures'] == [{"itemIdentifier": "m1"}]
+
+
+@patch('bgg_game_data_scraper.get_batch_game_data')
+@patch('pandas.DataFrame.to_parquet')
+@patch('time.sleep')
+def test_lambda_handler_chunking(mock_sleep, mock_to_parquet, mock_get_batch):
+    """Test that lambda handler correctly chunks large batches into chunks of 20 and sleeps in between."""
+    def side_effect(game_ids, *args, **kwargs):
+        return {str(gid): {'id': str(gid), 'name': f'Game {gid}'} for gid in game_ids}
+    mock_get_batch.side_effect = side_effect
+
+    # 25 game IDs
+    records = [{"messageId": f"msg{i}", "body": str(100 + i)} for i in range(25)]
+    event = {"Records": records}
+
+    response = bgg_game_data_scraper.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert len(res_body['processed_ids']) == 25
+    assert res_body['processed_ids'] == list(range(100, 125))
+
+    # Should call get_batch_game_data twice: once for 20, once for 5
+    assert mock_get_batch.call_count == 2
+    mock_get_batch.assert_any_call(list(range(100, 120)))
+    mock_get_batch.assert_any_call(list(range(120, 125)))
+
+    # Should sleep once for 1.0 second between the two chunks
+    mock_sleep.assert_called_once_with(1.0)
+    assert mock_to_parquet.call_count == 25
