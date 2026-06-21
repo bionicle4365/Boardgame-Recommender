@@ -116,8 +116,9 @@ resource "aws_lambda_function" "bgg_compactor" {
   role          = var.lambda_execution_role_arn
   package_type  = "Image"
   image_uri     = "${data.aws_ssm_parameter.bgg_recommender_ecr_url.value}:latest"
-  timeout       = 300
-  memory_size   = 1024
+  timeout       = 900
+  memory_size   = 3008
+
 
   image_config {
     command = ["combine_raw_to_single_file.lambda_handler"]

@@ -10,7 +10,7 @@ This document outlines the next steps and active architecture enhancements for t
 Execute the scraper and serverless compaction Lambda pipeline to capture the new metadata fields for the entire board game catalog database.
 
 ### Tasks
-- [ ] Run `bgg_game_scraper.py` in reprocess mode to queue existing S3 game IDs.
+- [x] Run `bgg_game_scraper.py` in reprocess mode to queue existing S3 game IDs.
 - [ ] Monitor background SQS scraper workers to ensure the catalog is fully updated with complexity, ratings, playtime, and image URLs.
 - [ ] Invoke the serverless python compaction Lambda (`bgg_compactor`) to consolidate individual raw game Parquet files into the unified `catalog.parquet` file in S3.
 - [ ] Verify that the compacting Lambda runs successfully within memory and execution time limits for the full dataset.
