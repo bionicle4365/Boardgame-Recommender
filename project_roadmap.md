@@ -187,8 +187,8 @@ Secure the recommendation and playgroup endpoints using Amazon Cognito User Pool
 
 ### Tasks
 - [ ] **Cognito Integration:** Configure an Amazon Cognito User Pool and Client in Terraform to handle secure user registration, verification, login, and token generation.
-- [ ] **Frontend Login Flow:** Integrate a modern, responsive authentication screen/modal in the UI using clean Vanilla CSS and Javascript to handle user signup, login, and secure token caching.
+- [ ] **Frontend Login Flow:** Integrate a custom embedded login modal/screen in the UI using clean Vanilla CSS and Javascript to handle user signup, login, and secure token caching (avoiding redirect Hosted UI).
 - [ ] **API Security:** Secure API Gateway endpoints by configuring a Cognito Authorizer in Terraform, requiring clients to pass a valid ID/Access token.
-- [ ] **User Profile Storage:** Implement a DynamoDB table or S3 partition keyed by Cognito user IDs (`sub`) to allow users to persistently save, retrieve, and share customized playgroups, weights, and recommendation histories.
+- [ ] **User Profile Storage:** Implement a DynamoDB table keyed by Cognito user IDs (`sub`) to persistently save, retrieve, and share customized playgroups, weights, and recommendation histories (leveraging DynamoDB Free Tier).
 - [ ] **Unit and Integration Tests:** Author mock test suites to verify authorizer route protection and profile persistence APIs.
 
