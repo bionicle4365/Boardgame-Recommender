@@ -87,6 +87,20 @@ Enhance the BGG Collection Browser with an embedded visual analytics dashboard t
 
 ---
 
+## Milestone 17: Cold-Start Onboarding (BGG Profile Bypass & Rating Flow)
+
+### Objective
+Provide a seamless recommendation flow for users without a BoardGameGeek profile by presenting a curated onboarding list of 10 popular/common board games and letting them rate (Thumbs Up/Down/Skip) to initialize their interest profile.
+
+### Tasks
+- [ ] **Curated Seed Catalog:** Curate a distinct list of 10 to 15 widely recognized board games across diverse genres (e.g., Catan, Ticket to Ride, Pandemic, Codenames, 7 Wonders, Azul, Wingspan, Dominion, Scythe, Gloomhaven) to serve as initial seeds.
+- [ ] **Onboarding UI Component:** Design a responsive, card-based carousel/modal onboarding wizard in the frontend where users can click Thumbs Up / Thumbs Down / Skip.
+- [ ] **Mock Profile Construction:** Package the user's manual rating selections into a standardized temporary JSON payload structure matching the backend schema (mapping likes to 9.0, dislikes to 3.0, and skipping ignored items).
+- [ ] **API Endpoint Support:** Update the API gateway and the `bgg_recommender` Lambda backend to support receiving this raw inline user profile payload directly, bypassing the S3 profile load step.
+- [ ] **Onboarding Unit Tests:** Implement backend unit tests verifying the recommendation generator executes successfully when provided directly with mock/onboarded profile data payloads.
+
+---
+
 ## Completed Milestones
 
 * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
