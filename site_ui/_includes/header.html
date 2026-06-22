@@ -64,6 +64,216 @@
     .header-toggle-button:hover .bar {
         background-color: var(--text-main);
     }
+
+    /* Auth Header Badge & Button Styles */
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .header-auth-button {
+        background-color: var(--primary);
+        color: #ffffff;
+        border: none;
+        padding: 8px 16px;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.1), 0 2px 4px -1px rgba(79, 70, 229, 0.06);
+    }
+
+    .header-auth-button:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .header-user-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        background-color: #f1f5f9;
+        padding: 6px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+    }
+
+    .header-user-email {
+        font-weight: 600;
+        color: var(--text-main);
+        max-width: 130px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-logout-link {
+        color: var(--primary);
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color 0.15s ease;
+        margin-left: 4px;
+    }
+
+    .header-logout-link:hover {
+        color: var(--primary-hover);
+        text-decoration: underline;
+    }
+
+    /* Auth Modal Overlay and cards with glassmorphism */
+    .auth-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .auth-modal-card {
+        background-color: #ffffff;
+        border-radius: 16px;
+        padding: 30px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        position: relative;
+        border: 1px solid var(--border);
+        animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .auth-modal-close-btn {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: transparent;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: color 0.15s ease;
+    }
+
+    .auth-modal-close-btn:hover {
+        color: var(--text-main);
+    }
+
+    .auth-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-top: 0;
+        margin-bottom: 8px;
+        color: var(--text-main);
+        text-align: center;
+    }
+
+    .auth-subtitle {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-top: 0;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .auth-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 16px;
+        text-align: left;
+    }
+
+    .auth-input-group label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-main);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .auth-input-group input {
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        color: var(--text-main);
+        outline: none;
+        transition: border-color 0.15s ease;
+    }
+
+    .auth-input-group input:focus {
+        border-color: var(--primary);
+    }
+
+    .auth-submit-btn {
+        background-color: var(--primary);
+        color: #ffffff;
+        border: none;
+        padding: 12px;
+        width: 100%;
+        border-radius: 8px;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        margin-top: 10px;
+    }
+
+    .auth-submit-btn:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .auth-footer-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .auth-toggle-link {
+        color: var(--primary);
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .auth-toggle-link:hover {
+        text-decoration: underline;
+    }
+
+    .auth-error-msg {
+        background-color: #fef2f2;
+        color: #ef4444;
+        border: 1px solid #fca5a5;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        font-weight: 500;
+        text-align: left;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(15px); }
+        to { transform: translateY(0); }
+    }
 </style>
 
 <div class="header-left">
@@ -75,8 +285,154 @@
     <h1 class="header-page-title">{{ page.title }}</h1>
 </div>
 
+<div class="header-right">
+    <div id="auth-status-container">
+        <!-- Will be dynamically populated by JS -->
+        <button id="auth-login-btn" class="header-auth-button">Log In</button>
+    </div>
+</div>
+
+<!-- Global Auth Modal -->
+<div id="auth-modal" class="auth-modal-overlay" style="display: none;">
+    <div class="auth-modal-card">
+        <button id="auth-modal-close" class="auth-modal-close-btn">&times;</button>
+        
+        <!-- View 1: Login -->
+        <div id="auth-view-login" class="auth-view">
+            <h2 class="auth-title">Welcome Back</h2>
+            <p class="auth-subtitle">Log in to sync your playgroups and weights</p>
+            <form id="auth-login-form">
+                <div class="auth-input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="login-email" placeholder="e.g. name@domain.com" required>
+                </div>
+                <div class="auth-input-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required>
+                </div>
+                <div id="login-error-msg" class="auth-error-msg" style="display: none;"></div>
+                <button type="submit" class="auth-submit-btn">Log In</button>
+            </form>
+            <div class="auth-footer-text">
+                Don't have an account? <span class="auth-toggle-link" id="go-to-signup">Sign Up</span>
+            </div>
+        </div>
+
+        <!-- View 2: Sign Up -->
+        <div id="auth-view-signup" class="auth-view" style="display: none;">
+            <h2 class="auth-title">Create Account</h2>
+            <p class="auth-subtitle">Save your preferences securely in the cloud</p>
+            <form id="auth-signup-form">
+                <div class="auth-input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="signup-email" placeholder="e.g. name@domain.com" required>
+                </div>
+                <div class="auth-input-group">
+                    <label>Password</label>
+                    <input type="password" id="signup-password" placeholder="Min 8 characters" required>
+                </div>
+                <div class="auth-input-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="signup-confirm-password" placeholder="••••••••" required>
+                </div>
+                <div id="signup-error-msg" class="auth-error-msg" style="display: none;"></div>
+                <button type="submit" class="auth-submit-btn">Sign Up</button>
+            </form>
+            <div class="auth-footer-text">
+                Already have an account? <span class="auth-toggle-link" id="go-to-login">Log In</span>
+            </div>
+        </div>
+
+        <!-- View 3: Confirm Sign Up / Verify Code -->
+        <div id="auth-view-confirm" class="auth-view" style="display: none;">
+            <h2 class="auth-title">Verify Email</h2>
+            <p class="auth-subtitle" id="confirm-instruction">We sent a verification code to your email.</p>
+            <form id="auth-confirm-form">
+                <div class="auth-input-group">
+                    <label>Verification Code</label>
+                    <input type="text" id="confirm-code" placeholder="Enter 6-digit code" required style="letter-spacing: 0.2em; text-align: center; font-size: 1.25rem;">
+                </div>
+                <div id="confirm-error-msg" class="auth-error-msg" style="display: none;"></div>
+                <button type="submit" class="auth-submit-btn">Verify Account</button>
+            </form>
+            <div class="auth-footer-text">
+                Need another code? <span class="auth-toggle-link" id="resend-code-btn">Resend Code</span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    // Cognito configuration values compiled by Jekyll
+    const COGNITO_CLIENT_ID = "{{ site.cognito_client_id }}";
+    const COGNITO_REGION = "{{ site.cognito_region }}";
+
+    // Authentication Helper Methods
+    window.Auth = {
+        isLoggedIn() {
+            return !!localStorage.getItem("bgg_auth_id_token");
+        },
+        async getValidToken() {
+            const idToken = localStorage.getItem("bgg_auth_id_token");
+            const expiry = localStorage.getItem("bgg_auth_token_expiry");
+            const refreshToken = localStorage.getItem("bgg_auth_refresh_token");
+            
+            if (!idToken || !refreshToken) return null;
+            
+            // Refresh token 5 minutes before expiry
+            if (Date.now() > (parseInt(expiry) - 5 * 60 * 1000)) {
+                try {
+                    const res = await this.cognitoRequest("AWSCognitoIdentityProviderService.InitiateAuth", {
+                        ClientId: COGNITO_CLIENT_ID,
+                        AuthFlow: "REFRESH_TOKEN_AUTH",
+                        AuthParameters: {
+                            REFRESH_TOKEN: refreshToken
+                        }
+                    });
+                    if (res.AuthenticationResult) {
+                        const newId = res.AuthenticationResult.IdToken;
+                        localStorage.setItem("bgg_auth_id_token", newId);
+                        localStorage.setItem("bgg_auth_token_expiry", (Date.now() + 3600 * 1000).toString());
+                        return newId;
+                    }
+                } catch (e) {
+                    console.error("Token refresh failed:", e);
+                    this.logout();
+                    return null;
+                }
+            }
+            return idToken;
+        },
+        getEmail() {
+            return localStorage.getItem("bgg_auth_email");
+        },
+        logout() {
+            localStorage.removeItem("bgg_auth_id_token");
+            localStorage.removeItem("bgg_auth_refresh_token");
+            localStorage.removeItem("bgg_auth_email");
+            localStorage.removeItem("bgg_auth_token_expiry");
+            window.location.reload();
+        },
+        async cognitoRequest(target, payload) {
+            const url = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-amz-json-1.1",
+                    "X-Amz-Target": target
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || "Cognito request failed");
+            }
+            return data;
+        }
+    };
+
     document.addEventListener('DOMContentLoaded', function() {
+        // Elements for Sidebar
         const sidebarToggle = document.getElementById('sidebar-toggle');
         const backdrop = document.getElementById('sidebar-backdrop');
 
@@ -99,11 +455,224 @@
             });
         }
 
-        // Close mobile sidebar overlay if resized back to desktop
         window.addEventListener('resize', function() {
             if (window.innerWidth > 768) {
                 document.body.classList.remove('sidebar-open');
             }
         });
+
+        // Cognito Modal & Forms Bindings
+        const authStatusContainer = document.getElementById("auth-status-container");
+        const authModal = document.getElementById("auth-modal");
+        const authModalClose = document.getElementById("auth-modal-close");
+        
+        const loginBtn = document.getElementById("auth-login-btn");
+        
+        const viewLogin = document.getElementById("auth-view-login");
+        const viewSignUp = document.getElementById("auth-view-signup");
+        const viewConfirm = document.getElementById("auth-view-confirm");
+        
+        const loginForm = document.getElementById("auth-login-form");
+        const signUpForm = document.getElementById("auth-signup-form");
+        const confirmForm = document.getElementById("auth-confirm-form");
+        
+        const loginError = document.getElementById("login-error-msg");
+        const signUpError = document.getElementById("signup-error-msg");
+        const confirmError = document.getElementById("confirm-error-msg");
+        
+        const goToSignUp = document.getElementById("go-to-signup");
+        const goToLogin = document.getElementById("go-to-login");
+        const confirmInstruction = document.getElementById("confirm-instruction");
+        const resendCodeBtn = document.getElementById("resend-code-btn");
+
+        let activeEmail = "";
+
+        // Render Authentication Status Header Badge
+        function renderAuthHeader() {
+            if (Auth.isLoggedIn()) {
+                const email = Auth.getEmail() || "User";
+                authStatusContainer.innerHTML = `
+                    <div class="header-user-badge">
+                        <span>Welcome,</span>
+                        <span class="header-user-email" title="${email}">${email}</span>
+                        <span>|</span>
+                        <span class="header-logout-link" onclick="Auth.logout()">Log Out</span>
+                    </div>
+                `;
+            } else {
+                authStatusContainer.innerHTML = `
+                    <button id="auth-login-btn" class="header-auth-button">Log In</button>
+                `;
+                // Rebind event listener
+                document.getElementById("auth-login-btn").addEventListener("click", openModal);
+            }
+        }
+
+        function openModal() {
+            if (!COGNITO_CLIENT_ID) {
+                alert("Cognito Client ID is not configured in _config.yml yet. Please deploy Cognito and update the config.");
+                return;
+            }
+            authModal.style.display = "flex";
+            showLoginView();
+        }
+
+        function closeModal() {
+            authModal.style.display = "none";
+            clearErrors();
+        }
+
+        function clearErrors() {
+            loginError.style.display = "none";
+            signUpError.style.display = "none";
+            confirmError.style.display = "none";
+        }
+
+        function showLoginView() {
+            viewLogin.style.display = "block";
+            viewSignUp.style.display = "none";
+            viewConfirm.style.display = "none";
+            clearErrors();
+        }
+
+        function showSignUpView() {
+            viewLogin.style.display = "none";
+            viewSignUp.style.display = "block";
+            viewConfirm.style.display = "none";
+            clearErrors();
+        }
+
+        function showConfirmView(email) {
+            activeEmail = email;
+            confirmInstruction.innerHTML = `We sent a verification code to <strong>${email}</strong>.`;
+            viewLogin.style.display = "none";
+            viewSignUp.style.display = "none";
+            viewConfirm.style.display = "block";
+            clearErrors();
+        }
+
+        if (loginBtn) loginBtn.addEventListener("click", openModal);
+        if (authModalClose) authModalClose.addEventListener("click", closeModal);
+        if (goToSignUp) goToSignUp.addEventListener("click", showSignUpView);
+        if (goToLogin) goToLogin.addEventListener("click", showLoginView);
+        
+        // Handle login modal dismissal on background click
+        authModal.addEventListener("click", function(e) {
+            if (e.target === authModal) closeModal();
+        });
+
+        // 1. Submit Login Form
+        loginForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            loginError.style.display = "none";
+            const email = document.getElementById("login-email").value.trim();
+            const password = document.getElementById("login-password").value;
+
+            try {
+                const data = await Auth.cognitoRequest("AWSCognitoIdentityProviderService.InitiateAuth", {
+                    ClientId: COGNITO_CLIENT_ID,
+                    AuthFlow: "USER_PASSWORD_AUTH",
+                    AuthParameters: {
+                        USERNAME: email,
+                        PASSWORD: password
+                    }
+                });
+
+                if (data.AuthenticationResult) {
+                    localStorage.setItem("bgg_auth_id_token", data.AuthenticationResult.IdToken);
+                    localStorage.setItem("bgg_auth_refresh_token", data.AuthenticationResult.RefreshToken);
+                    localStorage.setItem("bgg_auth_email", email);
+                    localStorage.setItem("bgg_auth_token_expiry", (Date.now() + 3600 * 1000).toString());
+                    
+                    closeModal();
+                    
+                    // Dispatch login success event so other scripts can sync data
+                    document.dispatchEvent(new CustomEvent("bgg_login_success"));
+                    renderAuthHeader();
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error("Login failed:", err);
+                if (err.message === "User is not confirmed.") {
+                    showConfirmView(email);
+                } else {
+                    loginError.textContent = err.message || "Failed to log in. Please try again.";
+                    loginError.style.display = "block";
+                }
+            }
+        });
+
+        // 2. Submit Sign Up Form
+        signUpForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            signUpError.style.display = "none";
+            const email = document.getElementById("signup-email").value.trim();
+            const password = document.getElementById("signup-password").value;
+            const confirmPassword = document.getElementById("signup-confirm-password").value;
+
+            if (password !== confirmPassword) {
+                signUpError.textContent = "Passwords do not match!";
+                signUpError.style.display = "block";
+                return;
+            }
+
+            try {
+                await Auth.cognitoRequest("AWSCognitoIdentityProviderService.SignUp", {
+                    ClientId: COGNITO_CLIENT_ID,
+                    Username: email,
+                    Password: password,
+                    UserAttributes: [
+                        { Name: "email", Value: email }
+                    ]
+                });
+                showConfirmView(email);
+            } catch (err) {
+                console.error("Sign up failed:", err);
+                signUpError.textContent = err.message || "Registration failed. Please try again.";
+                signUpError.style.display = "block";
+            }
+        });
+
+        // 3. Submit Code Verification Form
+        confirmForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            confirmError.style.display = "none";
+            const code = document.getElementById("confirm-code").value.trim();
+
+            try {
+                await Auth.cognitoRequest("AWSCognitoIdentityProviderService.ConfirmSignUp", {
+                    ClientId: COGNITO_CLIENT_ID,
+                    Username: activeEmail,
+                    ConfirmationCode: code
+                });
+                alert("Account verified successfully! You can now log in.");
+                showLoginView();
+            } catch (err) {
+                console.error("Confirmation failed:", err);
+                confirmError.textContent = err.message || "Verification code is incorrect.";
+                confirmError.style.display = "block";
+            }
+        });
+
+        // 4. Resend Verification Code
+        if (resendCodeBtn) {
+            resendCodeBtn.addEventListener("click", async function() {
+                confirmError.style.display = "none";
+                try {
+                    await Auth.cognitoRequest("AWSCognitoIdentityProviderService.ResendConfirmationCode", {
+                        ClientId: COGNITO_CLIENT_ID,
+                        Username: activeEmail
+                    });
+                    alert("A new verification code has been sent!");
+                } catch (err) {
+                    console.error("Resend code failed:", err);
+                    confirmError.textContent = err.message || "Failed to resend code.";
+                    confirmError.style.display = "block";
+                }
+            });
+        }
+
+        // Initialize header auth badge state
+        renderAuthHeader();
     });
 </script>

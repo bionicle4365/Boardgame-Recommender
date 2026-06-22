@@ -131,3 +131,26 @@ resource "aws_lambda_function" "bgg_compactor" {
     }
   }
 }
+
+data "archive_file" "bgg_preferences_zip" {
+  type        = "zip"
+  source_file = "../bgg_preferences/bgg_preferences_handler.py"
+  output_path = "${path.module}/bgg_preferences.zip"
+}
+
+resource "aws_lambda_function" "bgg_preferences" {
+  filename         = data.archive_file.bgg_preferences_zip.output_path
+  function_name    = "bgg_preferences"
+  role             = var.lambda_execution_role_arn
+  handler          = "bgg_preferences_handler.lambda_handler"
+  source_code_hash = data.archive_file.bgg_preferences_zip.output_base64sha256
+  runtime          = "python3.10"
+  timeout          = 30
+  memory_size      = 256
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+    }
+  }
+}

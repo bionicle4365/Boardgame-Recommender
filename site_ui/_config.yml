@@ -2,4 +2,8 @@ title: BG Recommender
 description: A simple Jekyll site.
 baseurl: "/Boardgame-Recommender"
 api_url: "https://615ajleeol.execute-api.us-east-1.amazonaws.com"
+cognito_region: "us-east-1"
+cognito_client_id: ""
+cognito_user_pool_id: ""
+
 

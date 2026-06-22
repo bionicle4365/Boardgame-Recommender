@@ -33,6 +33,7 @@ module "lambda" {
   s3_bucket_name                = module.s3.bucket_name
   data_lambda_concurrency_limit = var.data_lambda_concurrency_limit
   user_lambda_concurrency_limit = var.user_lambda_concurrency_limit
+  dynamodb_table_name           = aws_dynamodb_table.bgg_user_preferences.name
 }
 
 module "iam" {

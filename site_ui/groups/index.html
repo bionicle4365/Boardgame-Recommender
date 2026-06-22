@@ -883,6 +883,7 @@ title: Playgroup Organizer
             if (confirm("Are you sure you want to delete this playgroup?")) {
                 playgroups = playgroups.filter(g => g.id !== id);
                 localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
+                syncPreferencesToBackend();
                 
                 if (activeGroup && activeGroup.id === id) {
                     activeGroup = null;
@@ -950,6 +951,7 @@ title: Playgroup Organizer
             }
 
             localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
+            syncPreferencesToBackend();
             groupFormCard.style.display = "none";
             showCreateFormBtn.style.display = "block";
             renderGroupList();
@@ -991,6 +993,7 @@ title: Playgroup Organizer
                 hot: wHotInput.value
             };
             localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
+            syncPreferencesToBackend();
         }
 
         [wMechInput, wCatInput, wPopInput, wHotInput].forEach(input => {
@@ -1001,7 +1004,84 @@ title: Playgroup Organizer
             });
         });
 
+        // Preferences Sync functions
+        async function syncPreferencesToBackend() {
+            if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+            
+            const token = await Auth.getValidToken();
+            if (!token) return;
+            
+            const weights = {
+                mech: wMechInput.value,
+                cat: wCatInput.value,
+                pop: wPopInput.value,
+                hot: wHotInput.value
+            };
+            
+            try {
+                await fetch(`${apiUrl}/preferences`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        playgroups: playgroups,
+                        saved_weights: weights,
+                        user_preferences: {}
+                    })
+                });
+            } catch (e) {
+                console.error("Error syncing preferences to backend:", e);
+            }
+        }
+
+        async function loadPreferencesFromBackend() {
+            if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+            
+            const token = await Auth.getValidToken();
+            if (!token) return;
+            
+            try {
+                const response = await fetch(`${apiUrl}/preferences`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.playgroups && Array.isArray(data.playgroups)) {
+                        playgroups = data.playgroups;
+                        localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
+                        renderGroupList();
+                    }
+                    if (data.saved_weights) {
+                        const weights = data.saved_weights;
+                        if (weights.mech !== undefined) wMechInput.value = weights.mech;
+                        if (weights.cat !== undefined) wCatInput.value = weights.cat;
+                        if (weights.pop !== undefined) wPopInput.value = weights.pop;
+                        if (weights.hot !== undefined) wHotInput.value = weights.hot;
+                        localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
+                        
+                        wMechVal.textContent = `${wMechInput.value}%`;
+                        wCatVal.textContent = `${wCatInput.value}%`;
+                        wPopVal.textContent = `${wPopInput.value}%`;
+                        wHotVal.textContent = `${wHotInput.value}%`;
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading preferences from backend:", e);
+            }
+        }
+
         updateSlidersFromStorage();
+        loadPreferencesFromBackend();
+
+        // Listen to custom login event to load preferences immediately upon login
+        document.addEventListener("bgg_login_success", function() {
+            loadPreferencesFromBackend();
+        });
 
         // Restore and bind duration/complexity preferences
         const durationPref = localStorage.getItem("bgg_rec_duration_pref") || "any";

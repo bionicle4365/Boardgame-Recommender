@@ -583,6 +583,7 @@ title: Boardgame Recommender
                 hot: wHotInput.value
             };
             localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
+            syncPreferencesToBackend();
         }
 
         function applyPreset(presetKey, updateSliders = true) {
@@ -666,10 +667,95 @@ title: Boardgame Recommender
             localStorage.setItem("bgg_rec_complexity_pref", this.value);
         });
 
+        // Preferences Sync functions
+        const apiUrl = "{{ site.api_url }}";
+
+        async function syncPreferencesToBackend() {
+            if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+            
+            const token = await Auth.getValidToken();
+            if (!token) return;
+
+            // Safeguard playgroups from local storage so we don't overwrite them
+            let playgroups = [];
+            try {
+                const stored = localStorage.getItem("bgg_playgroups");
+                if (stored) playgroups = JSON.parse(stored);
+            } catch (e) {
+                console.error("Failed loading playgroups from local storage:", e);
+            }
+            
+            const weights = {
+                mech: wMechInput.value,
+                cat: wCatInput.value,
+                pop: wPopInput.value,
+                hot: wHotInput.value
+            };
+            
+            try {
+                await fetch(`${apiUrl}/preferences`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        playgroups: playgroups,
+                        saved_weights: weights,
+                        user_preferences: {}
+                    })
+                });
+            } catch (e) {
+                console.error("Error syncing preferences to backend:", e);
+            }
+        }
+
+        async function loadPreferencesFromBackend() {
+            if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+            
+            const token = await Auth.getValidToken();
+            if (!token) return;
+            
+            try {
+                const response = await fetch(`${apiUrl}/preferences`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.playgroups && Array.isArray(data.playgroups)) {
+                        localStorage.setItem("bgg_playgroups", JSON.stringify(data.playgroups));
+                    }
+                    if (data.saved_weights) {
+                        const weights = data.saved_weights;
+                        if (weights.mech !== undefined) wMechInput.value = weights.mech;
+                        if (weights.cat !== undefined) wCatInput.value = weights.cat;
+                        if (weights.pop !== undefined) wPopInput.value = weights.pop;
+                        if (weights.hot !== undefined) wHotInput.value = weights.hot;
+                        localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
+                        
+                        wMechVal.textContent = `${wMechInput.value}%`;
+                        wCatVal.textContent = `${wCatInput.value}%`;
+                        wPopVal.textContent = `${wPopInput.value}%`;
+                        wHotVal.textContent = `${wHotInput.value}%`;
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading preferences from backend:", e);
+            }
+        }
+
         // Initialize weights and presets
         initializeWeightsAndPresets();
+        loadPreferencesFromBackend();
 
-        const apiUrl = "{{ site.api_url }}"; // Load API Gateway URL dynamically from Jekyll config
+        // Listen to custom login event to load preferences immediately upon login
+        document.addEventListener("bgg_login_success", function() {
+            loadPreferencesFromBackend();
+        });
+
         let pollingTimeout = null;
         let isPollingActive = false;
 

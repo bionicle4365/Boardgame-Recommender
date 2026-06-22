@@ -51,3 +51,8 @@ variable "user_lambda_concurrency_limit" {
   type        = number
   default     = 2
 }
+
+variable "dynamodb_table_name" {
+  description = "The name of the DynamoDB table for user preferences"
+  type        = string
+}

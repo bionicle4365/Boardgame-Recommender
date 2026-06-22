@@ -28,3 +28,11 @@ output "bgg_compactor_arn" {
 output "bgg_compactor_function_name" {
   value = aws_lambda_function.bgg_compactor.function_name
 }
+
+output "bgg_preferences_arn" {
+  value = aws_lambda_function.bgg_preferences.arn
+}
+
+output "bgg_preferences_function_name" {
+  value = aws_lambda_function.bgg_preferences.function_name
+}
