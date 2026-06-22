@@ -97,8 +97,8 @@ resource "aws_lambda_function" "bgg_recommender" {
   role          = var.lambda_execution_role_arn
   package_type  = "Image"
   image_uri     = "${data.aws_ssm_parameter.bgg_recommender_ecr_url.value}:latest"
-  timeout       = 60
-  memory_size   = 512
+  timeout       = 120
+  memory_size   = 1024
 
   environment {
     variables = {
