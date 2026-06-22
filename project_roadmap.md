@@ -36,20 +36,7 @@ This document outlines the next steps and active architecture enhancements for t
  
  ---
  
- ## Milestone 15: User Authentication & Profile Persistence
- 
- ### Objective
- Secure the recommendation and playgroup endpoints using Amazon Cognito User Pools and enable authenticated users to save customized taste profiles, weight presets, and playgroups to persistent storage.
- 
- ### Tasks
- - [ ] **Cognito Integration:** Configure an Amazon Cognito User Pool and Client in Terraform to handle secure user registration, verification, login, and token generation.
- - [ ] **Frontend Login Flow:** Integrate a custom embedded login modal/screen in the UI using clean Vanilla CSS and Javascript to handle user signup, login, and secure token caching (avoiding redirect Hosted UI).
- - [ ] **API Security:** Secure API Gateway endpoints by configuring a Cognito Authorizer in Terraform, requiring clients to pass a valid ID/Access token.
- - [ ] **User Profile Storage:** Implement a DynamoDB table keyed by Cognito user IDs (`sub`) to persistently save, retrieve, and share customized playgroups, weights, and recommendation histories (leveraging DynamoDB Free Tier).
- - [ ] **Unit and Integration Tests:** Author mock test suites to verify authorizer route protection and profile persistence APIs.
- 
- ---
- 
+  
  ## Milestone 16: Collection Browser Analyzer & Library Analytics Dashboard
  
  ### Objective
@@ -109,3 +96,4 @@ This document outlines the next steps and active architecture enhancements for t
  * **Milestone 12: Production Observability, Rate Limiting, & Cost Protection** (API limits, structured logging, alarms)
  * **Milestone 13: Serverless Cost Optimization & Glue Crawler Bypass** (Python pandas/pyarrow compaction Lambda, bypass Athena)
  * **Milestone 14: Recommender Personalization via Duration & Complexity Weighting** (Pacing/complexity soft-weighting, Bedrock justifications, frontend selectors)
+ * **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
