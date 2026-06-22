@@ -440,6 +440,24 @@ title: Boardgame Recommender
             </div>
 
             <div class="form-group full-width">
+                <label>Pacing & Complexity Preferences (Optional)</label>
+                <div class="year-inputs">
+                    <select id="duration_pref" style="flex-grow: 1;">
+                        <option value="any" selected>Any Pacing / Play Time</option>
+                        <option value="short">Short (&lt; 45 mins)</option>
+                        <option value="medium">Medium (45 - 90 mins)</option>
+                        <option value="long">Long (&gt; 90 mins)</option>
+                    </select>
+                    <select id="complexity_pref" style="flex-grow: 1;">
+                        <option value="any" selected>Any Complexity</option>
+                        <option value="low">Low (&lt; 2.0 / 5)</option>
+                        <option value="medium">Medium (2.0 - 3.5 / 5)</option>
+                        <option value="high">High (&gt; 3.5 / 5)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group full-width">
                 <label for="preset_profile">Recommendation Profile</label>
                 <select id="preset_profile">
                     <option value="balanced" selected>Balanced Choice (Default)</option>
@@ -613,6 +631,12 @@ title: Boardgame Recommender
                 }
             }
 
+            // Load and restore duration and complexity preferences
+            const durationPref = localStorage.getItem("bgg_rec_duration_pref") || "any";
+            const complexityPref = localStorage.getItem("bgg_rec_complexity_pref") || "any";
+            document.getElementById("duration_pref").value = durationPref;
+            document.getElementById("complexity_pref").value = complexityPref;
+
             // Sync visual text badges
             wMechVal.textContent = `${wMechInput.value}%`;
             wCatVal.textContent = `${wCatInput.value}%`;
@@ -633,6 +657,13 @@ title: Boardgame Recommender
 
         presetSelect.addEventListener("change", function () {
             applyPreset(presetSelect.value, true);
+        });
+
+        document.getElementById("duration_pref").addEventListener("change", function() {
+            localStorage.setItem("bgg_rec_duration_pref", this.value);
+        });
+        document.getElementById("complexity_pref").addEventListener("change", function() {
+            localStorage.setItem("bgg_rec_complexity_pref", this.value);
         });
 
         // Initialize weights and presets
@@ -659,6 +690,8 @@ title: Boardgame Recommender
             const own_status = document.getElementById("own_status").value;
             const year_start = document.getElementById("year_start").value;
             const year_end = document.getElementById("year_end").value;
+            const duration_pref = document.getElementById("duration_pref").value;
+            const complexity_pref = document.getElementById("complexity_pref").value;
 
             // Normalize weights for query parameter and cache key
             const w_mech = (wMechInput.value / 100).toFixed(2);
@@ -666,8 +699,8 @@ title: Boardgame Recommender
             const w_pop = (wPopInput.value / 100).toFixed(2);
             const w_hot = (wHotInput.value / 100).toFixed(2);
 
-            // Build unique cache key including weights
-            const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
+            // Build unique cache key including weights and preferences
+            const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${duration_pref}_${complexity_pref}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
 
             // Check if fresh cache exists (TTL = 7 days)
             const cachedDataStr = localStorage.getItem(cacheKey);
@@ -703,6 +736,8 @@ title: Boardgame Recommender
             });
             if (year_start) params.append("year_start", year_start);
             if (year_end) params.append("year_end", year_end);
+            if (duration_pref !== "any") params.append("duration_pref", duration_pref);
+            if (complexity_pref !== "any") params.append("complexity_pref", complexity_pref);
 
             const queryUrl = `${apiUrl}/recommendations?${params.toString()}`;
             isPollingActive = true;

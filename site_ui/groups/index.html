@@ -644,6 +644,25 @@ title: Playgroup Organizer
                         <span class="attendee-badge" id="attendance-count-badge">0 players</span>
                     </div>
 
+                    <!-- Pacing & Complexity Preferences -->
+                    <div class="form-group" style="margin-top: 15px; margin-bottom: 15px;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Pacing & Complexity Preferences (Optional)</label>
+                        <div class="year-inputs" style="display: flex; gap: 15px; margin-top: 8px;">
+                            <select id="duration_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: #f8fafc; color: var(--text-main); font-size: 0.95rem;">
+                                <option value="any" selected>Any Pacing / Play Time</option>
+                                <option value="short">Short (&lt; 45 mins)</option>
+                                <option value="medium">Medium (45 - 90 mins)</option>
+                                <option value="long">Long (&gt; 90 mins)</option>
+                            </select>
+                            <select id="complexity_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: #f8fafc; color: var(--text-main); font-size: 0.95rem;">
+                                <option value="any" selected>Any Complexity</option>
+                                <option value="low">Low (&lt; 2.0 / 5)</option>
+                                <option value="medium">Medium (2.0 - 3.5 / 5)</option>
+                                <option value="high">High (&gt; 3.5 / 5)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <!-- Collapsible Weights Section -->
                     <div>
                         <div class="weights-toggle" id="weights-toggle-bar">
@@ -984,6 +1003,19 @@ title: Playgroup Organizer
 
         updateSlidersFromStorage();
 
+        // Restore and bind duration/complexity preferences
+        const durationPref = localStorage.getItem("bgg_rec_duration_pref") || "any";
+        const complexityPref = localStorage.getItem("bgg_rec_complexity_pref") || "any";
+        document.getElementById("duration_pref").value = durationPref;
+        document.getElementById("complexity_pref").value = complexityPref;
+
+        document.getElementById("duration_pref").addEventListener("change", function() {
+            localStorage.setItem("bgg_rec_duration_pref", this.value);
+        });
+        document.getElementById("complexity_pref").addEventListener("change", function() {
+            localStorage.setItem("bgg_rec_complexity_pref", this.value);
+        });
+
         // Collapsible sliders behavior
         weightsToggleBar.addEventListener("click", function() {
             const isVisible = weightsExpandableContent.style.display === "block";
@@ -1021,11 +1053,13 @@ title: Playgroup Organizer
             const w_pop = (wPopInput.value / 100).toFixed(2);
             const w_hot = (wHotInput.value / 100).toFixed(2);
             const player_count = usernames.length;
+            const duration_pref = document.getElementById("duration_pref").value;
+            const complexity_pref = document.getElementById("complexity_pref").value;
 
             // Generate deterministic group cache key
             const sortedNames = [...usernames].map(u => u.toLowerCase()).sort();
             const usernameKey = sortedNames.join("_");
-            const cacheKey = `bgg_rec_${usernameKey}_owned_any_any_${player_count}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
+            const cacheKey = `bgg_rec_${usernameKey}_owned_any_any_${player_count}_${duration_pref}_${complexity_pref}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
 
             // Check client side cache (TTL = 7 days)
             const cachedDataStr = localStorage.getItem(cacheKey);
@@ -1059,6 +1093,8 @@ title: Playgroup Organizer
                 w_pop: w_pop,
                 w_hot: w_hot
             });
+            if (duration_pref !== "any") params.append("duration_pref", duration_pref);
+            if (complexity_pref !== "any") params.append("complexity_pref", complexity_pref);
 
             const queryUrl = `${apiUrl}/recommendations?${params.toString()}`;
             isPollingActive = true;

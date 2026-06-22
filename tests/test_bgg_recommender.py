@@ -351,3 +351,75 @@ def test_lambda_handler_advanced_scoring(mock_bedrock, mock_hotness, mock_read_p
     assert "Designers: Klaus" in prompt_text
     assert "Players: 1-4" in prompt_text
     assert "Playtime: 120m" in prompt_text
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_lambda_handler_duration_and_complexity_preferences(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+    
+    user_df = pd.DataFrame([
+        {"id": "100", "username": "testuser", "rating": 9.0, "own": True}
+    ])
+    
+    catalog_df = pd.DataFrame([
+        {
+            "id": "100", "name": "Catan Heavy", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.0, 
+            "year_published": 1995, "min_players": 2, "max_players": 4, "playing_time": 60, "min_playtime": 45, "max_playtime": 90,
+            "complexity": 4.0, "min_age": 12, "thumbnail": "t1", "image": "i1", "designers": ["Klaus"], "publishers": ["Kosmos"]
+        },
+        {
+            "id": "200", "name": "Carcassonne Light", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.5, 
+            "year_published": 2000, "min_players": 2, "max_players": 5, "playing_time": 30, "min_playtime": 30, "max_playtime": 30,
+            "complexity": 1.5, "min_age": 8, "thumbnail": "t3", "image": "i3", "designers": ["Wrede"], "publishers": ["Hans"]
+        }
+    ])
+    
+    mock_read_parquet.side_effect = [user_df, catalog_df]
+    mock_hotness.return_value = []
+    
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"name": "Carcassonne Light", "reason": "Because it matches your preference for short, light games."}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+    
+    event = {
+        'queryStringParameters': {
+            'username': 'testuser',
+            'own_status': 'unowned',
+            'duration_pref': 'short',
+            'complexity_pref': 'low',
+            'w_mech': '1.0',
+            'w_cat': '0.0',
+            'w_pop': '0.0',
+            'w_hot': '0.0'
+        }
+    }
+    
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'ready'
+    assert len(res_body['recommendations']) == 1
+    assert res_body['recommendations'][0]['name'] == 'Carcassonne Light'
+    assert res_body['recommendations'][0]['id'] == '200'
+    
+    mock_bedrock.converse.assert_called_once()
+    args, kwargs = mock_bedrock.converse.call_args
+    prompt_text = kwargs['messages'][0]['content'][0]['text']
+    assert "Target Play Time Preference: Short" in prompt_text
+    assert "Target Complexity/Weight Preference: Low" in prompt_text
+    assert "If specific play time or complexity preferences are provided, also mention how this game fits those preferences." in prompt_text

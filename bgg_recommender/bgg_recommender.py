@@ -254,6 +254,8 @@ def lambda_handler(event, context):
     year_start = query_params.get('year_start')
     year_end = query_params.get('year_end')
     player_count = query_params.get('player_count')
+    duration_pref = query_params.get('duration_pref', 'any').lower()
+    complexity_pref = query_params.get('complexity_pref', 'any').lower()
 
     # Extract dynamic weights
     try:
@@ -319,7 +321,7 @@ def lambda_handler(event, context):
         }
 
     # 2. Check S3 recommendation cache (TTL = 7 days / 168 hours)
-    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}.json"
+    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}.json"
     cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168)
     if cached_recs is not None:
         return {
@@ -573,15 +575,66 @@ def lambda_handler(event, context):
             if rec_list and str(player_count) not in rec_list:
                 comp_score *= 0.5
 
-        # B. Apply complexity preference soft scaling (up to 50% penalty if completely mismatched)
-        if has_complexity:
+        # B. Apply play time duration preference soft penalty (Short <= 45m, Long >= 90m, Medium 45m-90m)
+        if duration_pref and duration_pref != 'any':
+            playing_time = row.get('playing_time')
+            if playing_time is not None and isinstance(playing_time, (int, float)) and not math.isnan(playing_time):
+                playing_time = float(playing_time)
+                if duration_pref == 'short':
+                    if playing_time <= 45:
+                        dur_mult = 1.0
+                    else:
+                        dur_mult = max(0.5, 1.0 - ((playing_time - 45.0) / 90.0))
+                elif duration_pref == 'long':
+                    if playing_time >= 90:
+                        dur_mult = 1.0
+                    else:
+                        dur_mult = max(0.5, 1.0 - ((90.0 - playing_time) / 90.0))
+                elif duration_pref == 'medium':
+                    if 45 <= playing_time <= 90:
+                        dur_mult = 1.0
+                    elif playing_time < 45:
+                        dur_mult = max(0.6, 1.0 - ((45.0 - playing_time) / 45.0))
+                    else:
+                        dur_mult = max(0.6, 1.0 - ((playing_time - 90.0) / 90.0))
+                else:
+                    dur_mult = 1.0
+                comp_score *= dur_mult
+
+        # C. Apply complexity preference soft scaling (Low <= 2.0, High >= 3.5, Medium 2.0-3.5)
+        # If complexity_pref is set to a specific value, it overrides the default average complexity matching.
+        if complexity_pref and complexity_pref != 'any':
+            cand_complexity = row.get('complexity')
+            if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
+                cand_complexity = float(cand_complexity)
+                if complexity_pref == 'low':
+                    if cand_complexity <= 2.0:
+                        comp_mult = 1.0
+                    else:
+                        comp_mult = max(0.5, 1.0 - ((cand_complexity - 2.0) / 2.0))
+                elif complexity_pref == 'high':
+                    if cand_complexity >= 3.5:
+                        comp_mult = 1.0
+                    else:
+                        comp_mult = max(0.5, 1.0 - ((3.5 - cand_complexity) / 2.5))
+                elif complexity_pref == 'medium':
+                    if 2.0 <= cand_complexity <= 3.5:
+                        comp_mult = 1.0
+                    elif cand_complexity < 2.0:
+                        comp_mult = max(0.6, 1.0 - ((2.0 - cand_complexity) / 2.0))
+                    else:
+                        comp_mult = max(0.6, 1.0 - ((cand_complexity - 3.5) / 1.5))
+                else:
+                    comp_mult = 1.0
+                comp_score *= comp_mult
+        elif has_complexity:
             cand_complexity = row.get('complexity')
             if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
                 complexity_delta = abs(cand_complexity - user_avg_complexity)
                 complexity_sim = max(0.0, 1.0 - (complexity_delta / 2.5))
                 comp_score *= (0.5 + 0.5 * complexity_sim)
 
-        # C. Apply designer/publisher affinity booster (up to 15% bonus)
+        # D. Apply designer/publisher affinity booster (up to 15% bonus)
         des_sim = 0.0
         pub_sim = 0.0
         cand_des = row.get('designers')
@@ -634,6 +687,10 @@ The user has tuned their preference weights for similarity scoring as follows:
 """
     if player_count:
         weight_context += f"- Target Session Player Count: {player_count} players (all candidate games support this player count)\n"
+    if duration_pref and duration_pref != 'any':
+        weight_context += f"- Target Play Time Preference: {duration_pref.capitalize()} length games\n"
+    if complexity_pref and complexity_pref != 'any':
+        weight_context += f"- Target Complexity/Weight Preference: {complexity_pref.capitalize()} weight games\n"
     if w_hot > 0.4:
         weight_context += "The user is highly interested in currently trending or hot releases.\n"
     if w_mech > 0.7:
@@ -664,7 +721,7 @@ Please recommend 10 great board games from your general knowledge.
     user_prompt += """
 For each recommended game:
 1. Provide the exact name of the game.
-2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it. This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements (for example: "If you enjoyed Gloomhaven and Mage Knight, you will love this game's use of card-driven hand management.").
+2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it. This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements (for example: "If you enjoyed Gloomhaven and Mage Knight, you will love this game's use of card-driven hand management."). If specific play time or complexity preferences are provided, also mention how this game fits those preferences.
 
 Format your response as a JSON object with a single key "recommendations", which is a list of objects containing "name" and "reason".
 Do not include any introductory or concluding text (e.g. do not say "Here are your recommendations:" or use markdown code blocks). Output only raw, valid JSON.
