@@ -47,11 +47,11 @@ Construct visual taste profile charts displaying a playgroup's collective mechan
 Enhance the recommendation engine by allowing users to weight their preferences for game length (Short/Medium/Long) and complexity (Low/Medium/High) without applying hard exclusions.
 
 ### Tasks
-- [ ] **UI Controls:** Add interactive weight profile buttons/menus on both the Recommender and Playgroups pages for Play Time (Short/Medium/Long/Any) and Complexity (Low/Medium/High/Any) preferences.
-- [ ] **Parameter Passing:** Update the frontend client script to forward these preferences as query parameters (`duration_pref`, `complexity_pref`) to the recommender API.
-- [ ] **Dynamic Weighting Algorithm:** Update [bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py) to map these categories to numeric thresholds (e.g., Short < 45m, Long > 90m; Low < 2.0, High > 3.5) and compute a similarity score bias based on proximity.
-- [ ] **Bedrock Prompt Integration:** Include the user's length and complexity preferences in the Bedrock LLM system context so that the generated recommendation explanations ("reasons") highlight why the game matches their preferred pacing and weight.
-- [ ] **Unit Tests:** Add comprehensive unit tests in [test_bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/tests/test_bgg_recommender.py) to verify weighting calculation correctness and parameter validation.
+- [x] **UI Controls:** Add interactive weight profile buttons/menus on both the Recommender and Playgroups pages for Play Time (Short/Medium/Long/Any) and Complexity (Low/Medium/High/Any) preferences.
+- [x] **Parameter Passing:** Update the frontend client script to forward these preferences as query parameters (`duration_pref`, `complexity_pref`) to the recommender API.
+- [x] **Dynamic Weighting Algorithm:** Update [bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py) to map these categories to numeric thresholds (e.g., Short < 45m, Long > 90m; Low < 2.0, High > 3.5) and compute a similarity score bias based on proximity.
+- [x] **Bedrock Prompt Integration:** Include the user's length and complexity preferences in the Bedrock LLM system context so that the generated recommendation explanations ("reasons") highlight why the game matches their preferred pacing and weight.
+- [x] **Unit Tests:** Add comprehensive unit tests in [test_bgg_recommender.py](file:///d:/Git/Boardgame-Recommender/tests/test_bgg_recommender.py) to verify weighting calculation correctness and parameter validation.
 
 ---
 
@@ -113,3 +113,4 @@ Provide a seamless recommendation flow for users without a BoardGameGeek profile
 * **Milestone 10: Mobile UI Optimization & Responsive Navigation Menu** (responsive layouts, blurred backdrop mobile drawer)
 * **Milestone 12: Production Observability, Rate Limiting, & Cost Protection** (API limits, structured logging, alarms)
 * **Milestone 13: Serverless Cost Optimization & Glue Crawler Bypass** (Python pandas/pyarrow compaction Lambda, bypass Athena)
+* **Milestone 14: Recommender Personalization via Duration & Complexity Weighting** (Pacing/complexity soft-weighting, Bedrock justifications, frontend selectors)
