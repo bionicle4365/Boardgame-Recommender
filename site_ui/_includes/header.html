@@ -130,8 +130,8 @@
         position: fixed;
         top: 0;
         left: 0;
-        width: 100vw;
-        height: 100vh;
+        right: 0;
+        bottom: 0;
         background-color: rgba(15, 23, 42, 0.45);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
@@ -514,11 +514,13 @@
                 return;
             }
             authModal.style.display = "flex";
+            document.body.style.overflow = "hidden"; // Prevent background scroll
             showLoginView();
         }
 
         function closeModal() {
             authModal.style.display = "none";
+            document.body.style.overflow = ""; // Restore background scroll
             clearErrors();
         }
 
