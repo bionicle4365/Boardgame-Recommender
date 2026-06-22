@@ -82,6 +82,20 @@ This document outlines the next steps and active architecture enhancements for t
  
  ---
  
+ ## Milestone 18: BGG GeekPreview Convention Recommendations
+ 
+ ### Objective
+ Synchronize the recommender database with BoardGameGeek GeekPreviews, allowing users to filter recommendations to only games debuting at upcoming conventions (e.g. Gen Con, SPIEL Essen).
+ 
+ ### Tasks
+ - [ ] **Nightly Scraper:** Implement a nightly scheduled Lambda function that uses a `curl` subprocess to discover and fetch active/upcoming convention lists from BGG's `/api/geekpreviewitems` endpoint.
+ - [ ] **S3 Database Cache:** Persist active preview game ID arrays to `active_previews.json` in S3.
+ - [ ] **Lambda Filter Pipeline:** Update `bgg_recommender.py` to parse `preview_id` query parameters, filter candidates to the allowed preview ID list, and ignore games missing from the offline Parquet catalog.
+ - [ ] **Dropdown Selector:** Build a dynamic frontend select box in the Recommender UI that displays only active conventions (hiding the selector entirely when no conventions are active).
+ - [ ] **Unit Tests:** Author tests to verify preview filtering constraints and graceful fallback behaviors.
+ 
+ ---
+ 
  ## Completed Milestones
  
  * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
