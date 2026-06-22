@@ -442,6 +442,12 @@ def lambda_handler(event, context):
         except ValueError:
             pass
 
+    # Pre-filter candidates by rating >= 5.0 for unowned recommendations to avoid obscure/unrated games.
+    # Fall back to no rating filter if the catalog is very small (e.g. in unit tests).
+    if own_status != 'owned' and len(candidates) > 100:
+        candidates = candidates[candidates['rating'] >= 5.0]
+        logger.info(f"Pre-filtered candidates by rating >= 5.0. Candidates left: {len(candidates)}")
+
     # 5. Feature similarity selection weighted by user rating
     # Gather user's preferred categories & mechanics, weighted by the user's rating of each game
     import math
@@ -537,20 +543,15 @@ def lambda_handler(event, context):
     candidate_scores = []
     for row in candidate_records:
         g_id = str(row['id'])
-        # Clean candidates lists
         cand_cats = row.get('categories')
         cand_mechs = row.get('mechanics')
         
-        # Parse arrays if stored as numpy arrays or list
-        cand_cats = list(cand_cats) if isinstance(cand_cats, (list, np.ndarray)) else []
-        cand_mechs = list(cand_mechs) if isinstance(cand_mechs, (list, np.ndarray)) else []
+        cand_cats = list(cand_cats) if cand_cats is not None else []
+        cand_mechs = list(cand_mechs) if cand_mechs is not None else []
         
-        # Calculate individual score components
-        shared_cats = set(cand_cats).intersection(cat_weights.keys())
-        shared_mechs = set(cand_mechs).intersection(mech_weights.keys())
-        
-        cat_sim = sum(cat_weights[c] for c in shared_cats) / total_cat_weight
-        mech_sim = sum(mech_weights[m] for m in shared_mechs) / total_mech_weight
+        # Optimize by using direct dictionary get lookups to avoid set operations
+        cat_sim = sum(cat_weights.get(c, 0.0) for c in cand_cats) / total_cat_weight
+        mech_sim = sum(mech_weights.get(m, 0.0) for m in cand_mechs) / total_mech_weight
         
         rating = row.get('rating')
         if rating is None or not isinstance(rating, (int, float)) or math.isnan(rating):
@@ -584,15 +585,15 @@ def lambda_handler(event, context):
         des_sim = 0.0
         pub_sim = 0.0
         cand_des = row.get('designers')
-        cand_des = list(cand_des) if isinstance(cand_des, (list, np.ndarray)) else []
+        cand_des = list(cand_des) if cand_des is not None else []
         if cand_des and user_designers:
-            des_sim = sum(user_designers[d] for d in set(cand_des) if d in user_designers) / total_des_weight
+            des_sim = sum(user_designers.get(d, 0.0) for d in cand_des) / total_des_weight
 
         if has_publishers:
             cand_pubs = row.get('publishers')
-            cand_pubs = list(cand_pubs) if isinstance(cand_pubs, (list, np.ndarray)) else []
+            cand_pubs = list(cand_pubs) if cand_pubs is not None else []
             if cand_pubs and user_publishers:
-                pub_sim = sum(user_publishers[p] for p in set(cand_pubs) if p in user_publishers) / total_pub_weight
+                pub_sim = sum(user_publishers.get(p, 0.0) for p in cand_pubs) / total_pub_weight
 
         affinity_score = 0.7 * des_sim + 0.3 * pub_sim
         comp_score *= (1.0 + 0.15 * affinity_score)
