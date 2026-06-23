@@ -16,7 +16,7 @@ graph TD
     Client -->|4. Bypass CORS BGG fetch| APIGW
     
     APIGW -->|Route: /recommendations| ServingLambda[BGG Recommender Lambda]
-    APIGW -->|Route: /preferences (JWT Secure)| PreferencesLambda[BGG Preferences Lambda]
+    APIGW -->|Route: /preferences - JWT Secure| PreferencesLambda[BGG Preferences Lambda]
     APIGW -->|Route: /collection| ProxyLambda[BGG API Proxy Lambda]
     
     PreferencesLambda -->|Read/Write| DynamoDB[(DynamoDB User Preferences)]
