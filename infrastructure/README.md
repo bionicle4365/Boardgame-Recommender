@@ -12,5 +12,8 @@ This directory contains the Terraform configuration files to build and deploy th
 * **`iam/`**: Provisions IAM roles and custom policies for Glue, ECS, Lambda, Bedrock invocation, and SSM parameters access.
 * **`lambda/`**: Provisions API serving Lambdas and SQS-triggered scraper Lambdas, referencing ECR container registry images.
 * **`ecs/`**: Configures ECS task definitions and execution tasks for the continuous Fargate container scraper.
-* **`apigateway.tf`**: Provisions the API Gateway REST APIs and HTTP routes mapping `/recommendations` to the serving Lambda.
-* **`glue/`**: Deploys the Glue Catalog Database, raw crawlers, and scheduled ETL Spark workflow compaction jobs (`boardgame-data-workflow`).
+* **`apigateway.tf`**: Provisions the API Gateway HTTP APIs and routes mapping `/recommendations`, secure `/preferences` endpoints, and `/collection` API proxy.
+* **`cognito.tf`**: Configures the Amazon Cognito User Pool and Client for user registration, login, and JWT-based token generation.
+* **`dynamodb.tf`**: Configures the DynamoDB database table `bgg-user-preferences` to persist user-specific weights, playgroups, and settings.
+* **`glue/`**: *(Deprecated)* Glue catalog database and schemas. Commented out in `main.tf` in favor of the serverless compactor Lambda.
+

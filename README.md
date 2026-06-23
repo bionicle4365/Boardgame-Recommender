@@ -10,8 +10,16 @@ An end-to-end cloud-native serverless system that scrapes board game catalogs an
 
 ```mermaid
 graph TD
-    Client[Jekyll Website UI] -->|Query recommendations| APIGW[AWS API Gateway]
-    APIGW -->|Trigger| ServingLambda[BGG Recommender Lambda]
+    Client[Jekyll Website UI] -->|1. Register / Login| Cognito[Amazon Cognito User Pool]
+    Client -->|2. Query recommendations| APIGW[AWS API Gateway]
+    Client -->|3. Sync preferences & groups| APIGW
+    Client -->|4. Bypass CORS BGG fetch| APIGW
+    
+    APIGW -->|Route: /recommendations| ServingLambda[BGG Recommender Lambda]
+    APIGW -->|Route: /preferences (JWT Secure)| PreferencesLambda[BGG Preferences Lambda]
+    APIGW -->|Route: /collection| ProxyLambda[BGG API Proxy Lambda]
+    
+    PreferencesLambda -->|Read/Write| DynamoDB[(DynamoDB User Preferences)]
     
     ServingLambda -->|Check if profile scraped| S3Users[(S3 User Profiles)]
     
@@ -26,12 +34,12 @@ graph TD
     GameDataScraper -->|Write raw details| S3Raw[(S3 Raw Catalog)]
     
     %% Compaction
-    S3Raw -->|Crawler| GlueCatalog[AWS Glue Catalog]
-    GlueCatalog -->|Compaction Job| GlueETL[Glue Spark ETL]
-    GlueETL -->|Compact into single file| S3Combined[(S3 Combined Catalog)]
+    EventBridge[EventBridge Weekly Trigger] -->|Trigger| CompactorLambda[BGG Compactor Lambda]
+    S3Raw -->|Download raw Parquets| CompactorLambda
+    CompactorLambda -->|Compact Snappy Parquet| S3Combined[(S3 Combined Catalog)]
     
     %% Recommendation retrieval
-    S3Combined -->|Download single Parquet| ServingLambda
+    S3Combined -->|Download catalog.parquet| ServingLambda
     S3Users -->|Download user Parquet| ServingLambda
     ServingLambda -->|Jaccard Similarity Match| Candidates[Top Candidates]
     Candidates -->|Prompt| Bedrock[Amazon Bedrock Nova Micro]
@@ -44,12 +52,14 @@ graph TD
 ## Directory Structure
 
 * **[site_ui/](file:///d:/Git/Boardgame-Recommender/site_ui)**: The frontend Jekyll dashboard, collection browser, and recommendation interface hosted on GitHub Pages.
-* **[bgg_recommender/](file:///d:/Git/Boardgame-Recommender/bgg_recommender)**: Python container-based Lambda served via API Gateway. Extracts catalog & user collections from S3, executes Jaccard matching, and uses Bedrock Amazon Nova Micro for reasoning.
+* **[bgg_recommender/](file:///d:/Git/Boardgame-Recommender/bgg_recommender)**: Python container-based Lambda served via API Gateway. Extracts catalog & user collections from S3, executes Jaccard matching, and uses Bedrock Amazon Nova Micro for reasoning. Also contains the entry point for the weekly compactor Lambda (`combine_raw_to_single_file.py`).
+* **[bgg_preferences/](file:///d:/Git/Boardgame-Recommender/bgg_preferences)**: Python Lambda function that handles storage and synchronization of user preferences, playgroups, and weights in Amazon DynamoDB, secured by Cognito JWT validation.
+* **[bgg_api_proxy/](file:///d:/Git/Boardgame-Recommender/bgg_api_proxy)**: Proxy Lambda function that forwards requests to the BGG XML API v2 collection endpoint to bypass frontend CORS restrictions.
 * **[bgg_game_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_game_scraper)**: Continuous containerized python scraper (run in ECS Fargate) that discovers boardgame IDs and pushes them to SQS.
 * **[bgg_game_data_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_game_data_scraper)**: SQS-triggered Lambda scraper that downloads game details (mechanics, complexity, name, year) and writes them to raw S3 Parquet.
 * **[bgg_user_data_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_user_data_scraper)**: SQS-triggered Lambda scraper that downloads a BGG user's collection, rated games, and ownership status.
-* **[bgg_raw_to_compressed/](file:///d:/Git/Boardgame-Recommender/bgg_raw_to_compressed)**: AWS Glue PySpark ETL scripts that compact thousands of raw JSON/Parquet catalog files into unified, consolidated S3 Parquet tables.
-* **[infrastructure/](file:///d:/Git/Boardgame-Recommender/infrastructure)**: Core Terraform templates provisioning S3, Glue Catalogs, Crawlers, API Gateway routes, Lambda functions, IAM roles, and Glue workflows.
+* **[bgg_raw_to_compressed/](file:///d:/Git/Boardgame-Recommender/bgg_raw_to_compressed)**: *(Deprecated)* Old AWS Glue PySpark ETL scripts, now replaced by the serverless python compactor Lambda located under `bgg_recommender/`.
+* **[infrastructure/](file:///d:/Git/Boardgame-Recommender/infrastructure)**: Core Terraform templates provisioning S3, DynamoDB, Cognito User Pools, API Gateway integrations, Lambda functions, and EventBridge schedules.
 * **[ecr_infrastructure/](file:///d:/Git/Boardgame-Recommender/ecr_infrastructure)**: Terraform templates configuring ECR repositories and repository lifecycle rules.
 * **[ml_engine/](file:///d:/Git/Boardgame-Recommender/ml_engine)**: Experimental LightFM collaborative filtering training script using PyAthena connection logic.
 

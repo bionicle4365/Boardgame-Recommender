@@ -96,6 +96,20 @@ This document outlines the next steps and active architecture enhancements for t
  
  ---
  
+ ## Milestone 19: Cognito Verification Email Delivery Setup
+ 
+ ### Objective
+ Establish reliable verification email delivery for Cognito authentication using AWS Simple Email Service (SES) to ensure sign-up codes/links are successfully received by users.
+ 
+ ### Tasks
+ - [ ] Configure AWS SES (Simple Email Service) verified identity (domain or email).
+ - [ ] Update Cognito User Pool configuration in Terraform to integrate SES for email delivery using the `email_configuration` block.
+ - [ ] Grant Cognito User Pool execution role permission to send emails via SES.
+ - [ ] Customize confirmation code verification email templates (HTML/Text).
+ - [ ] Verify email delivery using verified sandbox emails or requests for SES production access.
+ 
+ ---
+ 
  ## Completed Milestones
  
  * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
