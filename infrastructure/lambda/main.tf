@@ -113,6 +113,12 @@ resource "aws_lambda_function" "bgg_recommender" {
       PYTHONIOENCODING      = "utf-8"
     }
   }
+
+  # Image deployments are handled by GitHub Actions (update-function-code).
+  # Terraform manages infrastructure config only, not the active image tag.
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
 }
 
 resource "aws_lambda_function" "bgg_compactor" {
@@ -128,6 +134,12 @@ resource "aws_lambda_function" "bgg_compactor" {
       S3_BUCKET_NAME   = var.s3_bucket_name
       PYTHONIOENCODING = "utf-8"
     }
+  }
+
+  # Image deployments are handled by GitHub Actions (update-function-code).
+  # Terraform manages infrastructure config only, not the active image tag.
+  lifecycle {
+    ignore_changes = [image_uri]
   }
 }
 
