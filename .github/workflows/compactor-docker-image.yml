@@ -1,16 +1,16 @@
-name: BGG Recommender serving API Docker Image
+name: BGG Compactor Docker Image
 
 on:
   push:
     branches: [ "main" ]
     paths:
-      - bgg_recommender/**
-      - ".github/workflows/recommender-docker-image.yml"
+      - bgg_compactor/**
+      - ".github/workflows/compactor-docker-image.yml"
   pull_request:
     branches: [ "main" ]
     paths:
-      - bgg_recommender/**
-      - ".github/workflows/recommender-docker-image.yml"
+      - bgg_compactor/**
+      - ".github/workflows/compactor-docker-image.yml"
   workflow_dispatch:
 
 env:
@@ -25,7 +25,7 @@ jobs:
     - uses: actions/checkout@v6
     - name: Get ECR URL
       run: |
-        ECR_URL=$(aws ssm get-parameter --name /bgg/ecr/bgg_recommender_repository_url --query Parameter.Value --output text)
+        ECR_URL=$(aws ssm get-parameter --name /bgg/ecr/bgg_compactor_repository_url --query Parameter.Value --output text)
         if [ -z "$ECR_URL" ]; then
           echo "ERROR: ECR_URL is empty. Please verify that the SSM parameter exists."
           exit 1
@@ -38,22 +38,22 @@ jobs:
         docker build . --file Dockerfile --tag $ECR_URL:${{ github.run_number }}
         docker tag $ECR_URL:${{ github.run_number }} $ECR_URL:latest
         docker push $ECR_URL:latest
-      working-directory: ./bgg_recommender
+      working-directory: ./bgg_compactor
   deploy_lambda:
     needs: build_and_push_docker_image
     runs-on: ubuntu-latest
     steps:
     - name: Get ECR URL
       run: |
-        ECR_URL=$(aws ssm get-parameter --name /bgg/ecr/bgg_recommender_repository_url --query Parameter.Value --output text)
+        ECR_URL=$(aws ssm get-parameter --name /bgg/ecr/bgg_compactor_repository_url --query Parameter.Value --output text)
         if [ -z "$ECR_URL" ]; then
           echo "ERROR: ECR_URL is empty. Please verify that the SSM parameter exists."
           exit 1
         fi
         echo "ECR_URL=$ECR_URL" >> $GITHUB_ENV
-    - name: Deploy Lambda Functions
+    - name: Deploy Lambda Function
       run: |
-        if aws lambda get-function --function-name bgg_recommender >/dev/null 2>&1; then
-          echo "Updating bgg_recommender code..."
-          aws lambda update-function-code --function-name bgg_recommender --image-uri ${ECR_URL}:latest
+        if aws lambda get-function --function-name bgg_compactor > /dev/null 2>&1; then
+          echo "Updating bgg_compactor code..."
+          aws lambda update-function-code --function-name bgg_compactor --image-uri ${ECR_URL}:latest
         fi
