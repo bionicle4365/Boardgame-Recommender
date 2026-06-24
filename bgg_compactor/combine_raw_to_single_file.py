@@ -86,6 +86,23 @@ def align_table_to_schema(table, target_schema):
             
     return pa.Table.from_arrays(arrays, schema=target_schema)
 
+def normalize_string_types(table):
+    """
+    Cast all large_string (large_utf8) columns to string (utf8).
+    Different versions of pandas/pyarrow write the same string column as either
+    string or large_string, causing pa.concat_tables to fail with type mismatch errors.
+    """
+    new_columns = []
+    new_fields = []
+    for i, field in enumerate(table.schema):
+        col = table.column(i)
+        if field.type == pa.large_string():
+            col = col.cast(pa.string())
+            field = pa.field(field.name, pa.string())
+        new_columns.append(col)
+        new_fields.append(field)
+    return pa.Table.from_arrays(new_columns, schema=pa.schema(new_fields))
+
 def download_and_parse(s3_client, bucket_name, key):
     try:
         response = s3_client.get_object(Bucket=bucket_name, Key=key)
@@ -94,6 +111,8 @@ def download_and_parse(s3_client, bucket_name, key):
             data = stream.read()
         reader = io.BytesIO(data)
         table = pq.read_table(reader)
+        # Normalize string types to avoid large_string vs string concat failures
+        table = normalize_string_types(table)
         return table
     except Exception as e:
         logger.error(f"Error parsing S3 object at {key}: {e}")
@@ -232,10 +251,7 @@ def lambda_handler(event, context):
         
     except Exception as e:
         logger.error("CRITICAL ERROR during compaction", extra={"error": str(e)})
-        return {
-            'statusCode': 500,
-            'body': f"Compaction failed: {str(e)}"
-        }
+        raise
 
 if __name__ == '__main__':
     os.environ['S3_BUCKET_NAME'] = 'boardgame-app'
