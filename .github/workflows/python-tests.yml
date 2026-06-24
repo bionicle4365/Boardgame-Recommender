@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - "bgg_recommender/**"
+      - "bgg_compactor/**"
       - "bgg_game_data_scraper/**"
       - "bgg_game_scraper/**"
       - "bgg_user_data_scraper/**"
@@ -14,6 +15,7 @@ on:
     branches: [ "main" ]
     paths:
       - "bgg_recommender/**"
+      - "bgg_compactor/**"
       - "bgg_game_data_scraper/**"
       - "bgg_game_scraper/**"
       - "bgg_user_data_scraper/**"

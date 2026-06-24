@@ -139,7 +139,7 @@ def lambda_handler(event, context):
             if 'Contents' in page:
                 for obj in page['Contents']:
                     key = obj['Key']
-                    if key.endswith('.parquet') and not key.endswith('catalog.parquet'):
+                    if key.endswith('.parquet') and not key.endswith(output_filename):
                         keys.append(key)
                         
         num_files = len(keys)
@@ -184,7 +184,9 @@ def lambda_handler(event, context):
             
             # Consolidate this chunk's tables immediately to release single-row table metadata memory
             if chunk_tables:
-                consolidated = pa.concat_tables(chunk_tables)
+                # promote_options='default' resolves type mismatches (e.g. string vs large_string)
+                # that arise from different pandas/pyarrow versions writing the same column differently.
+                consolidated = pa.concat_tables(chunk_tables, promote_options='default')
                 master_tables.append(consolidated)
                 chunk_tables = []  # Clear references for garbage collection
                 
@@ -192,7 +194,7 @@ def lambda_handler(event, context):
             raise ValueError("All raw Parquet file downloads and parses failed.")
             
         logger.info("Merging consolidated tables into final master table...")
-        final_table = pa.concat_tables(master_tables)
+        final_table = pa.concat_tables(master_tables, promote_options='default')
         
         logger.info("Merge complete", extra={
             "num_rows": final_table.num_rows,
@@ -225,7 +227,7 @@ def lambda_handler(event, context):
         
         return {
             'statusCode': 200,
-            'body': f"Successfully compacted {final_table.num_rows} records into catalog.parquet"
+            'body': f"Successfully compacted {final_table.num_rows} records into {output_filename}"
         }
         
     except Exception as e:
