@@ -87,3 +87,32 @@ resource "aws_lambda_permission" "allow_eventbridge_to_call_compactor" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.weekly_bgg_compactor_schedule.arn
 }
+
+# 5. EventBridge rule to trigger the weekly User Compactor Lambda (Sunday 2:30 AM UTC)
+#    Runs 30 minutes after the game compactor to avoid resource contention.
+#    Config is injected as a JSON input payload so the same Lambda handles both schedules.
+resource "aws_cloudwatch_event_rule" "weekly_bgg_user_compactor_schedule" {
+  name                = "weekly-bgg-user-compactor-schedule"
+  description         = "Runs the S3 User Parquet Compactor Lambda every Sunday at 2:30 AM"
+  schedule_expression = "cron(30 2 ? * SUN *)"
+}
+
+resource "aws_cloudwatch_event_target" "run_bgg_user_compactor_lambda" {
+  rule      = aws_cloudwatch_event_rule.weekly_bgg_user_compactor_schedule.name
+  target_id = "run-bgg-user-compactor-lambda"
+  arn       = var.compactor_lambda_arn
+  input     = jsonencode({
+    raw_prefix             = "data/users/"
+    combined_prefix        = "data/users_combined/"
+    output_filename        = "users_combined.parquet"
+    apply_schema_alignment = false
+  })
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_to_call_user_compactor" {
+  statement_id  = "AllowExecutionFromEventBridgeUserCompactor"
+  action        = "lambda:InvokeFunction"
+  function_name = var.compactor_lambda_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.weekly_bgg_user_compactor_schedule.arn
+}

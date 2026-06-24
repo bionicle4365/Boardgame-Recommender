@@ -92,6 +92,10 @@ data "aws_ssm_parameter" "bgg_recommender_ecr_url" {
   name = "/bgg/ecr/bgg_recommender_repository_url"
 }
 
+data "aws_ssm_parameter" "bgg_compactor_ecr_url" {
+  name = "/bgg/ecr/bgg_compactor_repository_url"
+}
+
 resource "aws_lambda_function" "bgg_recommender" {
   function_name = "bgg_recommender"
   role          = var.lambda_execution_role_arn
@@ -115,14 +119,9 @@ resource "aws_lambda_function" "bgg_compactor" {
   function_name = "bgg_compactor"
   role          = var.lambda_execution_role_arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ssm_parameter.bgg_recommender_ecr_url.value}:latest"
+  image_uri     = "${data.aws_ssm_parameter.bgg_compactor_ecr_url.value}:latest"
   timeout       = 900
   memory_size   = 3008
-
-
-  image_config {
-    command = ["combine_raw_to_single_file.lambda_handler"]
-  }
 
   environment {
     variables = {

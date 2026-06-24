@@ -79,3 +79,4 @@ module "eventbridge" {
   compactor_lambda_name       = module.lambda.bgg_compactor_function_name
 }
 
+

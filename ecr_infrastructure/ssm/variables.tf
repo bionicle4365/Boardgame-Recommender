@@ -17,3 +17,8 @@ variable "bgg_recommender_ecr_url" {
   description = "URL of the ECR repository for bgg_recommender"
   type        = string
 }
+
+variable "bgg_compactor_ecr_url" {
+  description = "URL of the ECR repository for bgg_compactor"
+  type        = string
+}

@@ -94,8 +94,6 @@ def download_and_parse(s3_client, bucket_name, key):
             data = stream.read()
         reader = io.BytesIO(data)
         table = pq.read_table(reader)
-        # Align and cast columns dynamically to target_schema
-        table = align_table_to_schema(table, TARGET_SCHEMA)
         return table
     except Exception as e:
         logger.error(f"Error parsing S3 object at {key}: {e}")
@@ -103,10 +101,18 @@ def download_and_parse(s3_client, bucket_name, key):
 
 @logger.inject_lambda_context
 def lambda_handler(event, context):
-    bucket_name = os.environ.get('S3_BUCKET_NAME', 'boardgame-app')
-    raw_prefix = os.environ.get('RAW_PREFIX', 'data/boardgames/')
-    combined_prefix = os.environ.get('COMBINED_PREFIX', 'data/boardgames_combined/')
-    aws_region = os.environ.get('AWS_REGION', 'us-east-1')
+    # Event payload takes precedence over env vars, allowing EventBridge to
+    # inject per-schedule config into a single shared Lambda function.
+    bucket_name = event.get('s3_bucket_name') or os.environ.get('S3_BUCKET_NAME', 'boardgame-app')
+    raw_prefix = event.get('raw_prefix') or os.environ.get('RAW_PREFIX', 'data/boardgames/')
+    combined_prefix = event.get('combined_prefix') or os.environ.get('COMBINED_PREFIX', 'data/boardgames_combined/')
+    output_filename = event.get('output_filename') or os.environ.get('OUTPUT_FILENAME', 'catalog.parquet')
+    apply_schema_alignment_val = event.get('apply_schema_alignment')
+    if apply_schema_alignment_val is None:
+        apply_schema_alignment = os.environ.get('APPLY_SCHEMA_ALIGNMENT', 'true').lower() == 'true'
+    else:
+        apply_schema_alignment = bool(apply_schema_alignment_val)
+    aws_region = event.get('aws_region') or os.environ.get('AWS_REGION', 'us-east-1')
     
     logger.info("Starting optimized multithreaded S3 Parquet compaction", extra={
         "bucket_name": bucket_name,
@@ -148,7 +154,10 @@ def lambda_handler(event, context):
         master_tables = []
         chunk_size = 10000
         
-        logger.info(f"Downloading and merging {num_files} files in chunks of {chunk_size} using ThreadPoolExecutor with {max_workers} workers...")
+        logger.info(f"Downloading and merging {num_files} files in chunks of {chunk_size} using ThreadPoolExecutor with {max_workers} workers...", extra={
+            "apply_schema_alignment": apply_schema_alignment,
+            "output_filename": output_filename
+        })
         
         for chunk_start in range(0, num_files, chunk_size):
             chunk_keys = keys[chunk_start:chunk_start + chunk_size]
@@ -166,6 +175,9 @@ def lambda_handler(event, context):
                     try:
                         table = future.result()
                         if table is not None:
+                            # Apply game-catalog schema alignment only when configured
+                            if apply_schema_alignment:
+                                table = align_table_to_schema(table, TARGET_SCHEMA)
                             chunk_tables.append(table)
                     except Exception as e:
                         logger.error(f"Future execution failed for {key}: {e}")
@@ -198,11 +210,11 @@ def lambda_handler(event, context):
         pq.write_table(final_table, output_file_path, compression="snappy")
         
         # Upload using upload_file (highly memory efficient streaming from disk)
-        logger.info(f"Uploading combined Parquet file to s3://{bucket_name}/{combined_prefix}catalog.parquet")
+        logger.info(f"Uploading combined Parquet file to s3://{bucket_name}/{combined_prefix}{output_filename}")
         s3_client.upload_file(
             Filename=output_file_path,
             Bucket=bucket_name,
-            Key=f"{combined_prefix}catalog.parquet"
+            Key=f"{combined_prefix}{output_filename}"
         )
         
         # Clean up local file

@@ -17,3 +17,8 @@ output "bgg_recommender_ecr_url" {
   description = "URL of the ECR repository for bgg_recommender"
   value       = aws_ecr_repository.bgg_recommender_repo.repository_url
 }
+
+output "bgg_compactor_ecr_url" {
+  description = "URL of the ECR repository for bgg_compactor"
+  value       = aws_ecr_repository.bgg_compactor_repo.repository_url
+}

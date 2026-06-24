@@ -9,7 +9,7 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Copy script handler
-COPY bgg_recommender.py ${LAMBDA_TASK_ROOT}
+COPY combine_raw_to_single_file.py ${LAMBDA_TASK_ROOT}
 
 # Set lambda handler
-CMD ["bgg_recommender.lambda_handler"]
+CMD ["combine_raw_to_single_file.lambda_handler"]
