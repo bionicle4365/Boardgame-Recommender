@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pyarrow as pa
 
-# Add recommender folder to path so we can import the script
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_recommender'))
+# Add compactor folder to path so we can import the script
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_compactor'))
 import combine_raw_to_single_file
 
 @patch('combine_raw_to_single_file.boto3.client')
