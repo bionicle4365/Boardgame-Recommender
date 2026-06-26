@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
   backend "s3" {}
@@ -105,4 +105,84 @@ module "apigateway" {
 
   cognito_user_pool_client_id = module.cognito.cognito_user_pool_client_id
   cognito_user_pool_issuer    = module.cognito.cognito_user_pool_issuer
+}
+
+moved {
+  from = aws_dynamodb_table.bgg_user_preferences
+  to   = module.dynamodb.aws_dynamodb_table.bgg_user_preferences
+}
+
+moved {
+  from = aws_cognito_user_pool.bgg_user_pool
+  to   = module.cognito.aws_cognito_user_pool.bgg_user_pool
+}
+
+moved {
+  from = aws_cognito_user_pool_client.bgg_user_pool_client
+  to   = module.cognito.aws_cognito_user_pool_client.bgg_user_pool_client
+}
+
+moved {
+  from = aws_apigatewayv2_api.bgg_api
+  to   = module.apigateway.aws_apigatewayv2_api.bgg_api
+}
+
+moved {
+  from = aws_apigatewayv2_stage.bgg_api_stage
+  to   = module.apigateway.aws_apigatewayv2_stage.bgg_api_stage
+}
+
+moved {
+  from = aws_apigatewayv2_integration.bgg_api_proxy_integration
+  to   = module.apigateway.aws_apigatewayv2_integration.bgg_api_proxy_integration
+}
+
+moved {
+  from = aws_apigatewayv2_route.bgg_api_proxy_route
+  to   = module.apigateway.aws_apigatewayv2_route.bgg_api_proxy_route
+}
+
+moved {
+  from = aws_apigatewayv2_integration.bgg_recommender_integration
+  to   = module.apigateway.aws_apigatewayv2_integration.bgg_recommender_integration
+}
+
+moved {
+  from = aws_apigatewayv2_route.bgg_recommender_route
+  to   = module.apigateway.aws_apigatewayv2_route.bgg_recommender_route
+}
+
+moved {
+  from = aws_lambda_permission.apigw_lambda
+  to   = module.apigateway.aws_lambda_permission.apigw_lambda
+}
+
+moved {
+  from = aws_lambda_permission.apigw_recommender
+  to   = module.apigateway.aws_lambda_permission.apigw_recommender
+}
+
+moved {
+  from = aws_apigatewayv2_authorizer.cognito_authorizer
+  to   = module.apigateway.aws_apigatewayv2_authorizer.cognito_authorizer
+}
+
+moved {
+  from = aws_apigatewayv2_integration.bgg_preferences_integration
+  to   = module.apigateway.aws_apigatewayv2_integration.bgg_preferences_integration
+}
+
+moved {
+  from = aws_apigatewayv2_route.bgg_get_preferences_route
+  to   = module.apigateway.aws_apigatewayv2_route.bgg_get_preferences_route
+}
+
+moved {
+  from = aws_apigatewayv2_route.bgg_post_preferences_route
+  to   = module.apigateway.aws_apigatewayv2_route.bgg_post_preferences_route
+}
+
+moved {
+  from = aws_lambda_permission.apigw_preferences
+  to   = module.apigateway.aws_lambda_permission.apigw_preferences
 }
