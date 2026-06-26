@@ -77,7 +77,7 @@ resource "aws_lambda_function" "bgg_api_proxy" {
   role             = var.lambda_execution_role_arn
   handler          = "bgg_api_proxy.lambda_handler"
   source_code_hash = data.archive_file.bgg_api_proxy_zip.output_base64sha256
-  runtime          = "python3.14"
+  runtime          = "python3.10"
   timeout          = 30
   memory_size      = 128
 
@@ -155,7 +155,7 @@ resource "aws_lambda_function" "bgg_preferences" {
   role             = var.lambda_execution_role_arn
   handler          = "bgg_preferences_handler.lambda_handler"
   source_code_hash = data.archive_file.bgg_preferences_zip.output_base64sha256
-  runtime          = "python3.14"
+  runtime          = "python3.10"
   timeout          = 30
   memory_size      = 256
 
