@@ -36,3 +36,11 @@ output "bgg_preferences_arn" {
 output "bgg_preferences_function_name" {
   value = aws_lambda_function.bgg_preferences.function_name
 }
+
+output "bgg_taste_analytics_arn" {
+  value = aws_lambda_function.bgg_taste_analytics.arn
+}
+
+output "bgg_taste_analytics_function_name" {
+  value = aws_lambda_function.bgg_taste_analytics.function_name
+}

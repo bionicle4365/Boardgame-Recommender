@@ -22,3 +22,8 @@ output "bgg_compactor_ecr_url" {
   description = "URL of the ECR repository for bgg_compactor"
   value       = aws_ecr_repository.bgg_compactor_repo.repository_url
 }
+
+output "bgg_taste_analytics_ecr_url" {
+  description = "URL of the ECR repository for bgg_taste_analytics"
+  value       = aws_ecr_repository.bgg_taste_analytics_repo.repository_url
+}

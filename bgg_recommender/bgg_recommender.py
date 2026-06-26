@@ -238,6 +238,70 @@ def lambda_handler(event, context):
     
     # Extract query parameters
     query_params = event.get('queryStringParameters') or {}
+    
+    # Check if this is the /profile route
+    path = event.get('rawPath', '') or event.get('requestContext', {}).get('http', {}).get('path', '')
+    if '/profile' in path:
+        username = query_params.get('username')
+        if not username:
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': 'username query parameter is required'})
+            }
+        
+        # Load the taste profile JSON from S3
+        profile_key = f"data/users/{username}_taste_profile.json"
+        local_profile_path = f"/tmp/{username}_taste_profile_api.json"
+        try:
+            logger.info(f"Downloading taste profile from S3 for endpoint: {profile_key}")
+            s3.download_file(bucket, profile_key, local_profile_path)
+            with open(local_profile_path, 'r', encoding='utf-8') as f:
+                profile_data = json.load(f)
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps(profile_data)
+            }
+        except ClientError as ce:
+            if ce.response['Error']['Code'] == '404':
+                logger.info(f"Taste profile not found for user {username}. Triggering background scrape.")
+                trigger_background_scrape(username)
+                return {
+                    'statusCode': 404,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'error': f'Taste profile for user {username} not found. Triggering background scrape.'})
+                }
+            else:
+                logger.error(f"S3 error loading taste profile for endpoint: {ce}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'error': f'S3 error loading taste profile for {username}'})
+                }
+        except Exception as e:
+            logger.error(f"Error loading taste profile for endpoint: {e}")
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': str(e)})
+            }
+
     username = query_params.get('username')
     
     if not username:
@@ -280,10 +344,13 @@ def lambda_handler(event, context):
     # 1. Check if user profiles are scraped and if any are stale (stale TTL = 24 hours)
     scraping_users = []
     profile_last_modified = None
+    user_parquet_modified = {}
     
     for u in usernames:
         try:
             exists, is_stale, u_modified = get_user_profile_status(u, ttl_hours=24)
+            if u_modified:
+                user_parquet_modified[u] = u_modified
         except Exception as s3_check_err:
             logger.error(f"S3 checks failed for {u}: {s3_check_err}")
             return {
@@ -347,6 +414,7 @@ def lambda_handler(event, context):
             s3.download_file(bucket, user_key, local_user_path)
             u_df = pd.read_parquet(local_user_path)
             u_df['id'] = u_df['id'].astype(str)
+            u_df['username'] = u  # Ensure username column is present
             user_dfs.append(u_df)
             
             # Aggregate owned games
@@ -451,37 +519,119 @@ def lambda_handler(event, context):
         logger.info(f"Pre-filtered candidates by rating >= 5.0. Candidates left: {len(candidates)}")
 
     # 5. Feature similarity selection weighted by user rating
-    # Gather user's preferred categories & mechanics, weighted by the user's rating of each game
+    # Gather user's preferred categories, mechanics, designers, publishers, and average complexity
     import math
     mech_weights = {}
     cat_weights = {}
-    for _, row in liked_joined.iterrows():
-        # Get user's rating. If 'N/A' or missing, treat as 7.0 (since it's a liked or owned game)
-        u_rating = row.get('rating_user')
-        try:
-            u_rating = float(u_rating)
-            if math.isnan(u_rating) or u_rating <= 0:
-                u_rating = 7.0
-        except (ValueError, TypeError):
-            u_rating = 7.0
-            
-        # Give higher weight to games the user rated higher (e.g. weight = rating - 5.0, so 10/10 has weight 5.0, 7/10 has 2.0)
-        # Baseline of 5.0 emphasizes differences between good and great games.
-        weight = max(1.0, u_rating - 5.0)
-
-        cats = row.get('categories')
-        mechs = row.get('mechanics')
-        cats = list(cats) if isinstance(cats, (list, np.ndarray)) else []
-        mechs = list(mechs) if isinstance(mechs, (list, np.ndarray)) else []
+    user_designers = {}
+    user_publishers = {}
+    user_avg_complexities = []
+    
+    for u in usernames:
+        profile_loaded = False
+        profile_key = f"data/users/{u}_taste_profile.json"
+        local_profile_path = f"/tmp/{u}_taste_profile.json"
         
-        for c in set(cats):
-            cat_weights[c] = cat_weights.get(c, 0.0) + weight
-        for m in set(mechs):
-            mech_weights[m] = mech_weights.get(m, 0.0) + weight
+        parquet_modified = user_parquet_modified.get(u)
+        try:
+            # Check if taste profile exists in S3
+            s3.head_object(Bucket=bucket, Key=profile_key)
+            s3.download_file(bucket, profile_key, local_profile_path)
+            with open(local_profile_path, 'r', encoding='utf-8') as f:
+                prof_data = json.load(f)
+                
+            generated_at_str = prof_data.get('generated_at')
+            if generated_at_str and parquet_modified:
+                generated_at = datetime.fromisoformat(generated_at_str)
+                # Ensure timezone aware datetime comparison
+                if generated_at.tzinfo is None:
+                    generated_at = generated_at.replace(tzinfo=timezone.utc)
+                if parquet_modified.tzinfo is None:
+                    parquet_modified = parquet_modified.replace(tzinfo=timezone.utc)
+                    
+                if generated_at >= parquet_modified:
+                    logger.info(f"Loaded fresh pre-computed taste profile for {u}")
+                    for m, w in prof_data.get('mech_weights', {}).items():
+                        mech_weights[m] = mech_weights.get(m, 0.0) + w
+                    for c, w in prof_data.get('cat_weights', {}).items():
+                        cat_weights[c] = cat_weights.get(c, 0.0) + w
+                    for d, w in prof_data.get('designer_weights', {}).items():
+                        user_designers[d] = user_designers.get(d, 0.0) + w
+                    for p, w in prof_data.get('publisher_weights', {}).items():
+                        user_publishers[p] = user_publishers.get(p, 0.0) + w
+                    user_avg_complexities.append(float(prof_data.get('avg_complexity', 2.5)))
+                    profile_loaded = True
+                else:
+                    logger.info(f"Pre-computed taste profile for {u} is stale (generated={generated_at}, parquet={parquet_modified})")
+            else:
+                logger.info(f"Pre-computed taste profile for {u} missing generated_at metadata or parquet modification time")
+        except ClientError as ce:
+            if ce.response['Error']['Code'] == '404':
+                logger.info(f"Pre-computed taste profile for {u} not found in S3 (Key: {profile_key})")
+            else:
+                logger.error(f"S3 error loading taste profile for {u}: {ce}")
+        except Exception as e:
+            logger.error(f"Error loading taste profile for {u}: {e}")
+            
+        if not profile_loaded:
+            logger.info(f"Computing taste profile inline for user: {u}")
+            # Filter user dataframe for this specific user
+            u_df = user_df[user_df['username'] == u] if 'username' in user_df.columns else user_df
+            u_liked = u_df[u_df['rating'] >= 7.0]
+            if u_liked.empty:
+                u_liked = u_df[u_df['own'] == True]
+            if u_liked.empty:
+                u_liked = u_df.sort_values(by='rating', ascending=False).head(10)
+                
+            u_joined = u_liked.merge(catalog_df, on='id', how='inner', suffixes=('_user', '_catalog'))
+            
+            if not u_joined.empty:
+                if 'complexity' in u_joined.columns:
+                    u_comp = u_joined['complexity'].dropna()
+                    if not u_comp.empty:
+                        user_avg_complexities.append(float(u_comp.mean()))
+                
+                has_publishers = 'publishers' in u_joined.columns
+                for _, row in u_joined.iterrows():
+                    u_rating = row.get('rating_user')
+                    try:
+                        u_rating = float(u_rating)
+                        if math.isnan(u_rating) or u_rating <= 0:
+                            u_rating = 7.0
+                    except (ValueError, TypeError):
+                        u_rating = 7.0
+                    
+                    weight = max(1.0, u_rating - 5.0)
+                    
+                    cats = row.get('categories')
+                    mechs = row.get('mechanics')
+                    cats = list(cats) if isinstance(cats, (list, np.ndarray)) else []
+                    mechs = list(mechs) if isinstance(mechs, (list, np.ndarray)) else []
+                    for c in set(cats):
+                        cat_weights[c] = cat_weights.get(c, 0.0) + weight
+                    for m in set(mechs):
+                        mech_weights[m] = mech_weights.get(m, 0.0) + weight
+                        
+                    des = row.get('designers')
+                    des = list(des) if isinstance(des, (list, np.ndarray)) else []
+                    for d in des:
+                        user_designers[d] = user_designers.get(d, 0.0) + weight
+                        
+                    if has_publishers:
+                        pubs = row.get('publishers')
+                        pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
+                        for p in pubs:
+                            user_publishers[p] = user_publishers.get(p, 0.0) + weight
+            else:
+                user_avg_complexities.append(2.5)
 
-    # Total sum of feature weights in user profile
+    user_avg_complexity = sum(user_avg_complexities) / len(user_avg_complexities) if user_avg_complexities else 2.5
     total_cat_weight = sum(cat_weights.values()) or 1.0
     total_mech_weight = sum(mech_weights.values()) or 1.0
+    total_des_weight = sum(user_designers.values()) or 1.0
+    total_pub_weight = sum(user_publishers.values()) or 1.0
+    has_complexity = 'complexity' in catalog_df.columns
+    has_publishers = 'publishers' in catalog_df.columns
 
     # Fetch BGG Hotness list
     hot_games = get_bgg_hotness(ttl_hours=2)
@@ -503,44 +653,7 @@ def lambda_handler(event, context):
     columns_to_keep = [col for col in possible_columns if col in candidates.columns]
     candidate_records = candidates[columns_to_keep].to_dict('records')
 
-    # Gather user's preferred designers & publishers, and average complexity
-    user_designers = {}
-    user_publishers = {}
-    user_avg_complexity = 2.5
-    has_complexity = 'complexity' in liked_joined.columns
-    has_publishers = 'publishers' in liked_joined.columns
-    
-    if not liked_joined.empty:
-        # 1. Complexity preference
-        if has_complexity:
-            liked_complexities = liked_joined['complexity'].dropna()
-            if not liked_complexities.empty:
-                user_avg_complexity = liked_complexities.mean()
-        
-        # 2. Designers & Publishers preference
-        for _, row in liked_joined.iterrows():
-            u_rating = row.get('rating_user')
-            try:
-                u_rating = float(u_rating)
-                if math.isnan(u_rating) or u_rating <= 0:
-                    u_rating = 7.0
-            except (ValueError, TypeError):
-                u_rating = 7.0
-            weight = max(1.0, u_rating - 5.0)
-
-            des = row.get('designers')
-            des = list(des) if isinstance(des, (list, np.ndarray)) else []
-            for d in des:
-                user_designers[d] = user_designers.get(d, 0.0) + weight
-                
-            if has_publishers:
-                pubs = row.get('publishers')
-                pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
-                for p in pubs:
-                    user_publishers[p] = user_publishers.get(p, 0.0) + weight
-
-    total_des_weight = sum(user_designers.values()) or 1.0
-    total_pub_weight = sum(user_publishers.values()) or 1.0
+    # Designers, publishers, and average complexity are already computed above
 
     candidate_scores = []
     for row in candidate_records:

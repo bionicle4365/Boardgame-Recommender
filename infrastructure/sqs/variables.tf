@@ -14,3 +14,7 @@ variable "user_sqs_queue_visibility_timeout_seconds" {
   description = "The visibility timeout for the SQS queue in seconds"
   type        = number
 }
+variable "s3_bucket_arn" {
+  description = "The ARN of the S3 bucket"
+  type        = string
+}

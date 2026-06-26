@@ -56,3 +56,8 @@ variable "dynamodb_table_name" {
   description = "The name of the DynamoDB table for user preferences"
   type        = string
 }
+
+variable "taste_analytics_sqs_queue_arn" {
+  description = "The ARN of the SQS queue for the BGG taste analytics"
+  type        = string
+}

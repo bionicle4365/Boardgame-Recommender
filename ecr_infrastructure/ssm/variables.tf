@@ -22,3 +22,8 @@ variable "bgg_compactor_ecr_url" {
   description = "URL of the ECR repository for bgg_compactor"
   type        = string
 }
+
+variable "bgg_taste_analytics_ecr_url" {
+  description = "URL of the ECR repository for bgg_taste_analytics"
+  type        = string
+}

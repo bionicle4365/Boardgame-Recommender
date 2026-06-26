@@ -251,7 +251,10 @@ def lambda_handler(event, context):
         
     except Exception as e:
         logger.error("CRITICAL ERROR during compaction", extra={"error": str(e)})
-        raise
+        return {
+            'statusCode': 500,
+            'body': f"Compaction failed: {e}"
+        }
 
 if __name__ == '__main__':
     os.environ['S3_BUCKET_NAME'] = 'boardgame-app'

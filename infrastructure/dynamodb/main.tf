@@ -13,8 +13,3 @@ resource "aws_dynamodb_table" "bgg_user_preferences" {
     Project     = "Boardgame-Recommender"
   }
 }
-
-output "dynamodb_table_name" {
-  description = "The name of the DynamoDB table"
-  value       = aws_dynamodb_table.bgg_user_preferences.name
-}

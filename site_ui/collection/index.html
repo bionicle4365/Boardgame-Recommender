@@ -434,7 +434,149 @@ title: BGG Collection Browser
         from { opacity: 0; }
         to { opacity: 1; }
     }
-</style>
+
+    /* Tabs styling */
+    .collection-tabs {
+        display: flex;
+        gap: 8px;
+        margin: 20px 0;
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 0px;
+    }
+
+    .tab-btn {
+        padding: 10px 20px;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-family: 'Outfit', sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: -2px;
+    }
+
+    .tab-btn:hover {
+        color: var(--primary-green);
+    }
+
+    .tab-btn.active {
+        color: var(--primary-green);
+        border-bottom-color: var(--primary-green);
+    }
+
+    .tab-panel {
+        display: block;
+    }
+
+    .tab-panel.hidden {
+        display: none !important;
+    }
+
+    /* Glassmorphism Summary Cards */
+    .summary-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .summary-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(16, 185, 129, 0.15);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(16, 185, 129, 0.08);
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .summary-card-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .summary-card-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-main);
+        font-family: 'Outfit', sans-serif;
+    }
+
+    /* Charts Grid */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+        margin-bottom: 30px;
+    }
+
+    @media (min-width: 768px) {
+        .charts-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .chart-container-card {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        display: flex;
+        flex-direction: column;
+        min-height: 320px;
+    }
+
+    .chart-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 15px;
+        font-family: 'Outfit', sans-serif;
+        color: var(--text-main);
+    }
+
+    .chart-wrapper {
+        position: relative;
+        flex-grow: 1;
+        width: 100%;
+        height: 100%;
+    }
+
+    .taste-profile-section {
+        margin-top: 40px;
+        border-top: 1px solid var(--border);
+        padding-top: 30px;
+    }
+
+    .taste-profile-section h2 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .taste-profile-section p {
+        color: var(--text-muted);
+        margin-bottom: 24px;
+    }
 </style>
 
 <div class="collection-container">
@@ -447,30 +589,115 @@ title: BGG Collection Browser
         {% include username_form.html %}
     </div>
 
-    <!-- Browser Controls -->
-    <div id="browser-controls-bar" style="display: none;" class="browser-controls">
-        <div class="search-box-wrapper">
-            <input type="text" id="game-search-input" placeholder="Search games in collection...">
+    <!-- Tabs Navigation (Only show if collection loaded) -->
+    <div id="collection-tabs-nav" class="collection-tabs" style="display: none;">
+        <button class="tab-btn active" id="tab-btn-grid" onclick="switchCollectionTab('grid')">Grid View</button>
+        <button class="tab-btn" id="tab-btn-analytics" onclick="switchCollectionTab('analytics')">Collection Analytics</button>
+    </div>
+
+    <!-- Panel 1: Grid View -->
+    <div id="collection-panel-grid" class="tab-panel">
+        <!-- Browser Controls -->
+        <div id="browser-controls-bar" style="display: none;" class="browser-controls">
+            <div class="search-box-wrapper">
+                <input type="text" id="game-search-input" placeholder="Search games in collection...">
+            </div>
+            <div class="page-size-wrapper">
+                <label for="page-size-select">Show:</label>
+                <select id="page-size-select">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
         </div>
-        <div class="page-size-wrapper">
-            <label for="page-size-select">Show:</label>
-            <select id="page-size-select">
-                <option value="10">10</option>
-                <option value="25" selected>25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="all">All</option>
-            </select>
+
+        <!-- Collection Table -->
+        <div id="collection-data"></div>
+
+        <!-- Pagination Controls -->
+        <div id="pagination-bar" style="display: none;" class="pagination-container">
+            <div class="pagination-info" id="pagination-info-text">Showing 0-0 of 0 games</div>
+            <div class="pagination-buttons" id="pagination-page-list"></div>
         </div>
     </div>
 
-    <!-- Collection Table -->
-    <div id="collection-data"></div>
+    <!-- Panel 2: Collection Analytics -->
+    <div id="collection-panel-analytics" class="tab-panel hidden">
+        <!-- Summary Cards Row -->
+        <div class="summary-cards-grid">
+            <div class="summary-card">
+                <span class="summary-card-title">Total Games</span>
+                <span class="summary-card-value" id="card-total-games">-</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-card-title">User Rating / BGG Avg</span>
+                <span class="summary-card-value" id="card-avg-rating">-</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-card-title">Total Plays</span>
+                <span class="summary-card-value" id="card-total-plays">-</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-card-title">Most Played Game</span>
+                <span class="summary-card-value" id="card-most-played" style="font-size: 1.1rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+            </div>
+        </div>
 
-    <!-- Pagination Controls -->
-    <div id="pagination-bar" style="display: none;" class="pagination-container">
-        <div class="pagination-info" id="pagination-info-text">Showing 0-0 of 0 games</div>
-        <div class="pagination-buttons" id="pagination-page-list"></div>
+        <!-- Charts Grid (Collection stats) -->
+        <div class="charts-grid">
+            <div class="chart-container-card">
+                <span class="chart-title">Playtime Distribution</span>
+                <div class="chart-wrapper">
+                    <canvas id="chart-playtime"></canvas>
+                </div>
+            </div>
+            <div class="chart-container-card">
+                <span class="chart-title">Player Count Support</span>
+                <div class="chart-wrapper">
+                    <canvas id="chart-players"></canvas>
+                </div>
+            </div>
+            <div class="chart-container-card">
+                <span class="chart-title">Rating Distribution</span>
+                <div class="chart-wrapper">
+                    <canvas id="chart-ratings"></canvas>
+                </div>
+            </div>
+            <div class="chart-container-card">
+                <span class="chart-title">Most Played Games</span>
+                <div class="chart-wrapper">
+                    <canvas id="chart-most-played-list"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Taste Profile Section -->
+        <div id="taste-profile-panel" class="taste-profile-section" style="display: none;">
+            <h2>User Taste Profile</h2>
+            <p>Visualizing category and mechanic weights compiled from user ratings and BGG statistics. (Pre-computed / Scraped)</p>
+            <div class="charts-grid">
+                <div class="chart-container-card">
+                    <span class="chart-title">Top Mechanics Affinity</span>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-taste-mechanics"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container-card">
+                    <span class="chart-title">Top Categories Affinity</span>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-taste-categories"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Taste Profile Loading/Status placeholder -->
+        <div id="taste-profile-status" style="margin-top: 20px; padding: 20px; border-radius: 12px; text-align: center; color: var(--text-muted); background: rgba(255,255,255,0.5); border: 1.5px dashed var(--border);">
+            Loading user taste profile...
+        </div>
     </div>
 
     <!-- Faceted Filter Panel -->
@@ -527,6 +754,18 @@ title: BGG Collection Browser
 </div>
 
 <script>
+    // In-memory cache
+    const collectionCache = {};
+    const profileCache = {};
+
+    // Chart references
+    let chartPlaytime = null;
+    let chartPlayers = null;
+    let chartRatings = null;
+    let chartMostPlayed = null;
+    let chartTasteMechanics = null;
+    let chartTasteCategories = null;
+
     let gamesData = []; // Store the fetched game data
     let filteredGamesData = []; // Store the currently filtered data
     let currentSortColumn = null;
@@ -539,6 +778,504 @@ title: BGG Collection Browser
     let activePlayerFilter = 'any';
     let activeTimeFilter = 'any';
     let activeRatingFilter = 'any';
+
+    // Chart.js Theme Defaults
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.font.size = 12;
+        Chart.defaults.color = "#475569"; // Slate 600
+        Chart.defaults.plugins.tooltip.backgroundColor = "rgba(15, 23, 42, 0.9)";
+        Chart.defaults.plugins.tooltip.titleFont = { family: "'Outfit', sans-serif", weight: 'bold' };
+        Chart.defaults.plugins.tooltip.bodyFont = { family: "'Inter', sans-serif" };
+        Chart.defaults.plugins.tooltip.padding = 10;
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    }
+
+    function switchCollectionTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+
+        if (tabName === 'grid') {
+            document.getElementById('tab-btn-grid').classList.add('active');
+            document.getElementById('collection-panel-grid').classList.remove('hidden');
+        } else if (tabName === 'analytics') {
+            document.getElementById('tab-btn-analytics').classList.add('active');
+            document.getElementById('collection-panel-analytics').classList.remove('hidden');
+            // Force charts resize/draw when tab is shown
+            setTimeout(() => {
+                if (chartPlaytime) chartPlaytime.resize();
+                if (chartPlayers) chartPlayers.resize();
+                if (chartRatings) chartRatings.resize();
+                if (chartMostPlayed) chartMostPlayed.resize();
+                if (chartTasteMechanics) chartTasteMechanics.resize();
+                if (chartTasteCategories) chartTasteCategories.resize();
+            }, 50);
+        }
+    }
+
+    function generateFallbackProfile(games) {
+        if (!games || games.length === 0) {
+            return {
+                avg_complexity: 2.2,
+                mech_weights: {},
+                cat_weights: {},
+                designer_weights: {},
+                publisher_weights: {},
+                generated_at: new Date().toISOString(),
+                is_fallback: true
+            };
+        }
+
+        let totalEstimatedComplexity = 0;
+        let complexityCount = 0;
+        
+        let soloCount = 0;
+        let highPlayerCount = 0;
+        let shortTimeCount = 0;
+        let mediumTimeCount = 0;
+        let longTimeCount = 0;
+        let epicTimeCount = 0;
+        let highRatingCount = 0;
+        let mediumRatingCount = 0;
+
+        games.forEach(g => {
+            let estComp = 2.2;
+            const time = parseInt(g.playingTime);
+            if (!isNaN(time) && time > 0) {
+                if (time <= 30) estComp = 1.4;
+                else if (time <= 60) estComp = 2.2;
+                else if (time <= 120) estComp = 2.9;
+                else estComp = 3.8;
+                totalEstimatedComplexity += estComp;
+                complexityCount++;
+            }
+
+            if (parseInt(g.minPlayers) === 1) soloCount++;
+            if (parseInt(g.maxPlayers) >= 5) highPlayerCount++;
+
+            if (!isNaN(time) && time > 0) {
+                if (time <= 30) shortTimeCount++;
+                else if (time <= 60) mediumTimeCount++;
+                else if (time <= 120) longTimeCount++;
+                else epicTimeCount++;
+            }
+
+            const rating = parseFloat(g.userRating !== 'N/A' ? g.userRating : g.bggRating);
+            if (!isNaN(rating)) {
+                if (rating >= 8.0) highRatingCount++;
+                else if (rating >= 6.5) mediumRatingCount++;
+            }
+        });
+
+        const avgComplexity = complexityCount > 0 ? (totalEstimatedComplexity / complexityCount) : 2.2;
+        const n = games.length;
+        const scaleValue = (val) => parseFloat(((val / n) * 5.0).toFixed(1));
+
+        const mech_weights = {
+            "Solo Friendly": scaleValue(soloCount),
+            "High Player Counts": scaleValue(highPlayerCount),
+            "Quick Play / Filler": scaleValue(shortTimeCount),
+            "Medium Weight": scaleValue(mediumTimeCount),
+            "Long Playtime": scaleValue(longTimeCount),
+            "Epic Playtime": scaleValue(epicTimeCount)
+        };
+
+        const cat_weights = {
+            "Highly Rated": scaleValue(highRatingCount),
+            "Well Received": scaleValue(mediumRatingCount),
+            "Casual / Light": scaleValue(shortTimeCount + soloCount),
+            "Heavy Strategy": scaleValue(epicTimeCount + longTimeCount)
+        };
+
+        return {
+            avg_complexity: parseFloat(avgComplexity.toFixed(1)),
+            mech_weights: mech_weights,
+            cat_weights: cat_weights,
+            designer_weights: {},
+            publisher_weights: {},
+            generated_at: new Date().toISOString(),
+            is_fallback: true
+        };
+    }
+
+    async function fetchAndRenderTasteProfile(lowerUsername) {
+        const statusDiv = document.getElementById('taste-profile-status');
+        const panelDiv = document.getElementById('taste-profile-panel');
+        
+        statusDiv.style.display = 'block';
+        panelDiv.style.display = 'none';
+        statusDiv.innerHTML = '<div class="collection-spinner" style="margin: 0 auto 10px auto;"></div><div>Loading user taste profile...</div>';
+
+        let profile = profileCache[lowerUsername];
+        let isFallback = false;
+
+        if (!profile) {
+            const apiBaseUrl = "{{ site.api_url }}";
+            const profileUrl = `${apiBaseUrl}/profile?username=${lowerUsername}`;
+            try {
+                const response = await fetch(profileUrl);
+                if (response.ok) {
+                    profile = await response.json();
+                    profileCache[lowerUsername] = profile;
+                } else if (response.status === 404) {
+                    console.warn(`Profile 404 for ${lowerUsername}, generating fallback client-side.`);
+                    profile = generateFallbackProfile(gamesData);
+                    profileCache[lowerUsername] = profile;
+                    isFallback = true;
+                } else {
+                    throw new Error("HTTP " + response.status);
+                }
+            } catch (e) {
+                console.error("Failed fetching user taste profile:", e);
+                profile = generateFallbackProfile(gamesData);
+                profileCache[lowerUsername] = profile;
+                isFallback = true;
+            }
+        } else {
+            isFallback = profile.is_fallback || false;
+        }
+
+        statusDiv.style.display = 'none';
+        panelDiv.style.display = 'block';
+
+        const sectionTitle = panelDiv.querySelector('h2');
+        if (isFallback) {
+            sectionTitle.textContent = "Taste Profile (Estimated from Collection)";
+            panelDiv.querySelector('p').innerHTML = `⚠️ Profile not found on backend. These weights are estimated client-side from the user's BGG collection XML stats.`;
+        } else {
+            sectionTitle.textContent = "User Taste Profile";
+            panelDiv.querySelector('p').textContent = `Visualizing category and mechanic weights compiled from user ratings and BGG statistics. (Pre-computed / Scraped)`;
+        }
+
+        renderTasteProfileCharts(profile);
+    }
+
+    function renderTasteProfileCharts(profile) {
+        const mechData = profile.mech_weights || {};
+        const sortedMechs = Object.entries(mechData)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
+        
+        const labelsMech = sortedMechs.map(item => item[0]);
+        const dataMech = sortedMechs.map(item => item[1]);
+
+        if (chartTasteMechanics) chartTasteMechanics.destroy();
+        
+        if (labelsMech.length > 0) {
+            const ctxMech = document.getElementById('chart-taste-mechanics').getContext('2d');
+            chartTasteMechanics = new Chart(ctxMech, {
+                type: 'radar',
+                data: {
+                    labels: labelsMech,
+                    datasets: [{
+                        label: 'Affinity Weight',
+                        data: dataMech,
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: 'rgb(16, 185, 129)',
+                        pointBackgroundColor: 'rgb(16, 185, 129)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(16, 185, 129)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { display: true, color: 'rgba(0, 0, 0, 0.05)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                            suggestedMin: 0,
+                            ticks: { backdropColor: 'transparent', color: '#64748b' }
+                        }
+                    }
+                }
+            });
+        }
+
+        const catData = profile.cat_weights || {};
+        const sortedCats = Object.entries(catData)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
+        
+        const labelsCat = sortedCats.map(item => item[0]);
+        const dataCat = sortedCats.map(item => item[1]);
+
+        if (chartTasteCategories) chartTasteCategories.destroy();
+        
+        if (labelsCat.length > 0) {
+            const ctxCat = document.getElementById('chart-taste-categories').getContext('2d');
+            chartTasteCategories = new Chart(ctxCat, {
+                type: 'bar',
+                data: {
+                    labels: labelsCat,
+                    datasets: [{
+                        label: 'Affinity Weight',
+                        data: dataCat,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+    }
+
+    function updateAnalytics() {
+        const totalGames = filteredGamesData.length;
+        document.getElementById('card-total-games').textContent = totalGames;
+
+        const ratedGames = filteredGamesData.filter(g => g.userRating !== 'N/A');
+        const avgUser = ratedGames.length > 0 
+            ? (ratedGames.reduce((sum, g) => sum + g.userRating, 0) / ratedGames.length).toFixed(1) 
+            : '-';
+        const bggRatedGames = filteredGamesData.filter(g => g.bggRating !== 'N/A');
+        const avgBGG = bggRatedGames.length > 0 
+            ? (bggRatedGames.reduce((sum, g) => sum + g.bggRating, 0) / bggRatedGames.length).toFixed(1) 
+            : '-';
+        document.getElementById('card-avg-rating').textContent = `${avgUser} / ${avgBGG}`;
+
+        const totalPlays = filteredGamesData.reduce((sum, g) => sum + g.numPlays, 0);
+        document.getElementById('card-total-plays').textContent = totalPlays;
+
+        const sortedByPlays = [...filteredGamesData].sort((a, b) => b.numPlays - a.numPlays);
+        if (sortedByPlays.length > 0 && sortedByPlays[0].numPlays > 0) {
+            document.getElementById('card-most-played').textContent = `${sortedByPlays[0].name} (${sortedByPlays[0].numPlays})`;
+            document.getElementById('card-most-played').title = `${sortedByPlays[0].name} (${sortedByPlays[0].numPlays} plays)`;
+        } else {
+            document.getElementById('card-most-played').textContent = '-';
+            document.getElementById('card-most-played').title = '';
+        }
+
+        let shortCount = 0, medCount = 0, longCount = 0, epicCount = 0;
+        filteredGamesData.forEach(g => {
+            const time = g.playingTime;
+            if (time !== 'N/A' && time > 0) {
+                if (time < 30) shortCount++;
+                else if (time <= 60) medCount++;
+                else if (time <= 120) longCount++;
+                else epicCount++;
+            }
+        });
+
+        const playtimeData = [shortCount, medCount, longCount, epicCount];
+        if (chartPlaytime) chartPlaytime.destroy();
+        
+        const ctxPlaytime = document.getElementById('chart-playtime').getContext('2d');
+        chartPlaytime = new Chart(ctxPlaytime, {
+            type: 'doughnut',
+            data: {
+                labels: ['Short (<30m)', 'Medium (30-60m)', 'Long (60-120m)', 'Epic (>120m)'],
+                datasets: [{
+                    data: playtimeData,
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(236, 72, 153, 0.7)'
+                    ],
+                    borderColor: '#ffffff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        let solo = 0, twoP = 0, threeFourP = 0, fivePlus = 0;
+        filteredGamesData.forEach(g => {
+            const min = g.minPlayers;
+            const max = g.maxPlayers;
+            if (min !== 'N/A' && max !== 'N/A') {
+                if (min <= 1 && max >= 1) solo++;
+                if (min <= 2 && max >= 2) twoP++;
+                if (min <= 4 && max >= 3) threeFourP++;
+                if (max >= 5) fivePlus++;
+            }
+        });
+
+        if (chartPlayers) chartPlayers.destroy();
+        const ctxPlayers = document.getElementById('chart-players').getContext('2d');
+        chartPlayers = new Chart(ctxPlayers, {
+            type: 'bar',
+            data: {
+                labels: ['Solo', '2-Player', '3-4 Players', '5+ Players'],
+                datasets: [{
+                    label: 'Games Supported',
+                    data: [solo, twoP, threeFourP, fivePlus],
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1.5,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        let rUnder6 = 0, r6to7 = 0, r7to8 = 0, r8to9 = 0, r9Plus = 0;
+        filteredGamesData.forEach(g => {
+            const rating = g.bggRating;
+            if (rating !== 'N/A') {
+                if (rating < 6.0) rUnder6++;
+                else if (rating < 7.0) r6to7++;
+                else if (rating < 8.0) r7to8++;
+                else if (rating < 9.0) r8to9++;
+                else r9Plus++;
+            }
+        });
+
+        if (chartRatings) chartRatings.destroy();
+        const ctxRatings = document.getElementById('chart-ratings').getContext('2d');
+        chartRatings = new Chart(ctxRatings, {
+            type: 'bar',
+            data: {
+                labels: ['<6.0', '6.0-6.9', '7.0-7.9', '8.0-8.9', '9.0+'],
+                datasets: [{
+                    label: 'Games Count',
+                    data: [rUnder6, r6to7, r7to8, r8to9, r9Plus],
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderWidth: 1.5,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const topPlayed = [...filteredGamesData]
+            .filter(g => g.numPlays > 0)
+            .sort((a, b) => b.numPlays - a.numPlays)
+            .slice(0, 6);
+
+        const labelsPlayed = topPlayed.map(g => g.name);
+        const dataPlayed = topPlayed.map(g => g.numPlays);
+
+        if (chartMostPlayed) chartMostPlayed.destroy();
+        const ctxMostPlayed = document.getElementById('chart-most-played-list').getContext('2d');
+        chartMostPlayed = new Chart(ctxMostPlayed, {
+            type: 'bar',
+            data: {
+                labels: labelsPlayed.length > 0 ? labelsPlayed : ['No games played'],
+                datasets: [{
+                    label: 'Plays Count',
+                    data: dataPlayed.length > 0 ? dataPlayed : [0],
+                    backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                    borderColor: 'rgb(245, 158, 11)',
+                    borderWidth: 1.5,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    function processCollectionXml(xmlDoc, lowerUsername) {
+        gamesData = [];
+        const items = xmlDoc.getElementsByTagName('item');
+        for (let i = 0; i < items.length; i++) {
+            const name = items[i].getElementsByTagName('name')[0]?.textContent || 'N/A';
+            const yearPublished = items[i].getElementsByTagName('yearpublished')[0]?.textContent || 'N/A';
+
+            const status = items[i].getElementsByTagName('status')[0];
+            let collectionStatus = '';
+            if (status) {
+                if (status.getAttribute('own') === '1') collectionStatus += 'Own ';
+                if (status.getAttribute('preordered') === '1') collectionStatus += 'Preordered ';
+                if (status.getAttribute('wanttoplay') === '1') collectionStatus += 'Want to Play ';
+                if (status.getAttribute('wanttobuy') === '1') collectionStatus += 'Want to Buy ';
+                if (status.getAttribute('wishlist') === '1') collectionStatus += 'Wishlist ';
+                collectionStatus = collectionStatus.trim() || 'N/A';
+            }
+
+            const numPlays = items[i].getElementsByTagName('numplays')[0]?.textContent || '0';
+
+            const stats = items[i].getElementsByTagName('stats')[0];
+            const minPlayers = stats?.getAttribute('minplayers') || 'N/A';
+            const maxPlayers = stats?.getAttribute('maxplayers') || 'N/A';
+            const playingTime = stats?.getAttribute('playingtime') || 'N/A';
+
+            const userRating = stats?.getElementsByTagName('rating')[0]?.getAttribute('value') || 'N/A';
+            const userAverage = stats?.getElementsByTagName('average')[0]?.getAttribute('value') || 'N/A';
+            const bggAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
+
+            let bggRank = 'N/A';
+            const ranks = stats?.getElementsByTagName('ranks')[0];
+            if (ranks) {
+                const boardgameRank = Array.from(ranks.getElementsByTagName('rank')).find(r => r.getAttribute('name') === 'boardgame');
+                bggRank = boardgameRank?.getAttribute('value') || 'N/A';
+            }
+
+            const item_id = items[i].getAttribute('objectid') || 'N/A';
+
+            gamesData.push({
+                item_id: item_id,
+                name: name,
+                yearPublished: yearPublished === 'N/A' ? 'N/A' : parseInt(yearPublished),
+                bggRating: bggAverage === 'N/A' ? 'N/A' : parseFloat(bggAverage),
+                bggUserRating: userAverage === 'N/A' ? 'N/A' : parseFloat(userAverage),
+                bggRank: bggRank === 'N/A' ? Infinity : parseInt(bggRank),
+                minPlayers: minPlayers === 'N/A' ? 'N/A' : parseInt(minPlayers),
+                maxPlayers: maxPlayers === 'N/A' ? 'N/A' : parseInt(maxPlayers),
+                playingTime: playingTime === 'N/A' ? 'N/A' : parseInt(playingTime),
+                collectionStatus: collectionStatus,
+                numPlays: parseInt(numPlays),
+                userRating: userRating === 'N/A' ? 'N/A' : parseFloat(userRating),
+            });
+        }
+        calculateUserRanks();
+        currentPage = 1;
+        filteredGamesData = [...gamesData];
+        
+        // Show tabs navigation
+        document.getElementById('collection-tabs-nav').style.display = 'flex';
+        switchCollectionTab('grid');
+        
+        renderTable();
+        updateAnalytics();
+        fetchAndRenderTasteProfile(lowerUsername);
+    }
 
     const headers = [
         { name: 'Name', key: 'name', type: 'string' },
@@ -808,6 +1545,7 @@ title: BGG Collection Browser
         }
         
         renderTable();
+        updateAnalytics();
     }
 
     // Set up controls event listeners
@@ -915,10 +1653,17 @@ title: BGG Collection Browser
             return;
         }
 
+        const lowerUsername = username.trim().toLowerCase();
+
+        // Reset navigation and tab states
+        document.getElementById('collection-tabs-nav').style.display = 'none';
+        document.getElementById('collection-panel-grid').classList.remove('hidden');
+        document.getElementById('collection-panel-analytics').classList.add('hidden');
+
         const apiBaseUrl = "{{ site.api_url }}";
         const apiUrl = apiBaseUrl
-            ? `${apiBaseUrl}/collection?username=${username}`
-            : `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
+            ? `${apiBaseUrl}/collection?username=${lowerUsername}`
+            : `https://boardgamegeek.com/xmlapi2/collection?username=${lowerUsername}&stats=1`;
 
         const collectionDataDiv = document.getElementById('collection-data');
         collectionDataDiv.innerHTML = `
@@ -929,9 +1674,16 @@ title: BGG Collection Browser
         `;
         collectionDataDiv.classList.add('has-content');
 
+        // Check cache first
+        if (collectionCache[lowerUsername]) {
+            console.log("Serving collection XML from cache for " + lowerUsername);
+            processCollectionXml(collectionCache[lowerUsername], lowerUsername);
+            return;
+        }
+
         let xmlDoc = null;
         let attempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = 6;
 
         while (attempts < maxAttempts) {
             attempts++;
@@ -955,6 +1707,34 @@ title: BGG Collection Browser
                     document.getElementById('browser-controls-bar').style.display = 'none';
                     renderPagination(0);
                     return;
+                }
+
+                // Check if response is BGG 202 processing queue message
+                const messageTag = xmlDoc.getElementsByTagName('message');
+                if (messageTag.length > 0 && (messageTag[0].textContent.includes('process') || messageTag[0].textContent.includes('queue') || messageTag[0].textContent.includes('accepted'))) {
+                    console.log(`BGG is currently processing the collection for ${lowerUsername}. Retrying...`);
+                    if (attempts < maxAttempts) {
+                        collectionDataDiv.innerHTML = `
+                            <div class="collection-status-card">
+                                <div class="collection-spinner"></div>
+                                <div class="collection-status-text">BGG is processing request, retrying in 5s (Attempt ${attempts}/${maxAttempts})...</div>
+                            </div>
+                        `;
+                        collectionDataDiv.classList.add('has-content');
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        continue;
+                    } else {
+                        collectionDataDiv.innerHTML = `
+                            <div class="collection-message error">
+                                BGG is still processing this collection. Please try again in a few minutes.
+                            </div>
+                        `;
+                        collectionDataDiv.classList.add('has-content');
+                        document.getElementById('faceted-filters').style.display = 'none';
+                        document.getElementById('browser-controls-bar').style.display = 'none';
+                        renderPagination(0);
+                        return;
+                    }
                 }
 
                 break;
@@ -998,62 +1778,12 @@ title: BGG Collection Browser
             return;
         }
 
-        // Process the data and populate gamesData array
-        gamesData = [];
+        // Cache the successful XML doc if it has items
         const items = xmlDoc.getElementsByTagName('item');
-        for (let i = 0; i < items.length; i++) {
-            const name = items[i].getElementsByTagName('name')[0]?.textContent || 'N/A';
-            const yearPublished = items[i].getElementsByTagName('yearpublished')[0]?.textContent || 'N/A';
-
-            const status = items[i].getElementsByTagName('status')[0];
-            let collectionStatus = '';
-            if (status) {
-                if (status.getAttribute('own') === '1') collectionStatus += 'Own ';
-                if (status.getAttribute('preordered') === '1') collectionStatus += 'Preordered ';
-                if (status.getAttribute('wanttoplay') === '1') collectionStatus += 'Want to Play ';
-                if (status.getAttribute('wanttobuy') === '1') collectionStatus += 'Want to Buy ';
-                if (status.getAttribute('wishlist') === '1') collectionStatus += 'Wishlist ';
-                collectionStatus = collectionStatus.trim() || 'N/A';
-            }
-
-            const numPlays = items[i].getElementsByTagName('numplays')[0]?.textContent || '0';
-
-            const stats = items[i].getElementsByTagName('stats')[0];
-            const minPlayers = stats?.getAttribute('minplayers') || 'N/A';
-            const maxPlayers = stats?.getAttribute('maxplayers') || 'N/A';
-            const playingTime = stats?.getAttribute('playingtime') || 'N/A';
-
-            const userRating = stats?.getElementsByTagName('rating')[0]?.getAttribute('value') || 'N/A';
-            const userAverage = stats?.getElementsByTagName('average')[0]?.getAttribute('value') || 'N/A';
-            const bggAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
-
-            let bggRank = 'N/A';
-            const ranks = stats?.getElementsByTagName('ranks')[0];
-            if (ranks) {
-                const boardgameRank = Array.from(ranks.getElementsByTagName('rank')).find(r => r.getAttribute('name') === 'boardgame');
-                bggRank = boardgameRank?.getAttribute('value') || 'N/A';
-            }
-
-            const item_id = items[i].getAttribute('objectid') || 'N/A';
-
-            gamesData.push({
-                item_id: item_id,
-                name: name,
-                yearPublished: yearPublished === 'N/A' ? 'N/A' : parseInt(yearPublished),
-                bggRating: bggAverage === 'N/A' ? 'N/A' : parseFloat(bggAverage),
-                bggUserRating: userAverage === 'N/A' ? 'N/A' : parseFloat(userAverage),
-                bggRank: bggRank === 'N/A' ? Infinity : parseInt(bggRank),
-                minPlayers: minPlayers === 'N/A' ? 'N/A' : parseInt(minPlayers),
-                maxPlayers: maxPlayers === 'N/A' ? 'N/A' : parseInt(maxPlayers),
-                playingTime: playingTime === 'N/A' ? 'N/A' : parseInt(playingTime),
-                collectionStatus: collectionStatus,
-                numPlays: parseInt(numPlays),
-                userRating: userRating === 'N/A' ? 'N/A' : parseFloat(userRating),
-            });
+        if (items.length > 0) {
+            collectionCache[lowerUsername] = xmlDoc;
         }
-        calculateUserRanks(); // Calculate user ranks after populating gamesData
-        currentPage = 1;
-        filteredGamesData = [...gamesData]; // Initialize filtered data
-        renderTable(); // Initial render of the table
+
+        processCollectionXml(xmlDoc, lowerUsername);
     });
 </script>

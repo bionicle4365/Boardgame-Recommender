@@ -1,7 +1,7 @@
 resource "aws_apigatewayv2_api" "bgg_api" {
   name          = "bgg-api-gateway"
   protocol_type = "HTTP"
-  
+
   cors_configuration {
     allow_origins = var.cors_allowed_origins
     allow_methods = ["GET", "OPTIONS"]
@@ -25,8 +25,8 @@ resource "aws_apigatewayv2_integration" "bgg_api_proxy_integration" {
   api_id           = aws_apigatewayv2_api.bgg_api.id
   integration_type = "AWS_PROXY"
 
-  integration_uri    = module.lambda.bgg_api_proxy_arn
-  integration_method = "POST"
+  integration_uri        = var.bgg_api_proxy_lambda_arn
+  integration_method     = "POST"
   payload_format_version = "2.0"
 }
 
@@ -40,8 +40,8 @@ resource "aws_apigatewayv2_integration" "bgg_recommender_integration" {
   api_id           = aws_apigatewayv2_api.bgg_api.id
   integration_type = "AWS_PROXY"
 
-  integration_uri    = module.lambda.bgg_recommender_arn
-  integration_method = "POST"
+  integration_uri        = var.bgg_recommender_lambda_arn
+  integration_method     = "POST"
   payload_format_version = "2.0"
 }
 
@@ -51,10 +51,16 @@ resource "aws_apigatewayv2_route" "bgg_recommender_route" {
   target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_profile_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /profile"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
 resource "aws_lambda_permission" "apigw_lambda" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = module.lambda.bgg_api_proxy_function_name
+  function_name = var.bgg_api_proxy_lambda_function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.bgg_api.execution_arn}/*/*"
 }
@@ -62,7 +68,7 @@ resource "aws_lambda_permission" "apigw_lambda" {
 resource "aws_lambda_permission" "apigw_recommender" {
   statement_id  = "AllowRecommenderExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = module.lambda.bgg_recommender_function_name
+  function_name = var.bgg_recommender_lambda_function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.bgg_api.execution_arn}/*/*"
 }
@@ -74,8 +80,8 @@ resource "aws_apigatewayv2_authorizer" "cognito_authorizer" {
   name             = "cognito-authorizer"
 
   jwt_configuration {
-    audience = [aws_cognito_user_pool_client.bgg_user_pool_client.id]
-    issuer   = "https://cognito-idp.us-east-1.amazonaws.com/${aws_cognito_user_pool.bgg_user_pool.id}"
+    audience = [var.cognito_user_pool_client_id]
+    issuer   = var.cognito_user_pool_issuer
   }
 }
 
@@ -83,8 +89,8 @@ resource "aws_apigatewayv2_integration" "bgg_preferences_integration" {
   api_id           = aws_apigatewayv2_api.bgg_api.id
   integration_type = "AWS_PROXY"
 
-  integration_uri    = module.lambda.bgg_preferences_arn
-  integration_method = "POST"
+  integration_uri        = var.bgg_preferences_lambda_arn
+  integration_method     = "POST"
   payload_format_version = "2.0"
 }
 
@@ -107,12 +113,7 @@ resource "aws_apigatewayv2_route" "bgg_post_preferences_route" {
 resource "aws_lambda_permission" "apigw_preferences" {
   statement_id  = "AllowPreferencesExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = module.lambda.bgg_preferences_function_name
+  function_name = var.bgg_preferences_lambda_function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.bgg_api.execution_arn}/*/*"
-}
-
-output "api_gateway_url" {
-  description = "The endpoint URL of the API Gateway"
-  value       = aws_apigatewayv2_api.bgg_api.api_endpoint
 }

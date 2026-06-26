@@ -22,6 +22,7 @@ variable "cors_allowed_origins" {
   type        = list(string)
   default     = [
     "https://bionicle4365.github.io",
-    "http://localhost:4000"
+    "http://localhost:4000",
+    "http://127.0.0.1:4000"
   ]
 }

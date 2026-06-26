@@ -77,7 +77,7 @@ resource "aws_lambda_function" "bgg_api_proxy" {
   role             = var.lambda_execution_role_arn
   handler          = "bgg_api_proxy.lambda_handler"
   source_code_hash = data.archive_file.bgg_api_proxy_zip.output_base64sha256
-  runtime          = "python3.10"
+  runtime          = "python3.14"
   timeout          = 30
   memory_size      = 128
 
@@ -155,7 +155,7 @@ resource "aws_lambda_function" "bgg_preferences" {
   role             = var.lambda_execution_role_arn
   handler          = "bgg_preferences_handler.lambda_handler"
   source_code_hash = data.archive_file.bgg_preferences_zip.output_base64sha256
-  runtime          = "python3.10"
+  runtime          = "python3.14"
   timeout          = 30
   memory_size      = 256
 
@@ -164,4 +164,36 @@ resource "aws_lambda_function" "bgg_preferences" {
       DYNAMODB_TABLE_NAME = var.dynamodb_table_name
     }
   }
+}
+
+data "aws_ssm_parameter" "bgg_taste_analytics_ecr_url" {
+  name = "/bgg/ecr/bgg_taste_analytics_repository_url"
+}
+
+resource "aws_lambda_function" "bgg_taste_analytics" {
+  function_name = "bgg_taste_analytics"
+  role          = var.lambda_execution_role_arn
+  package_type  = "Image"
+  image_uri     = "${data.aws_ssm_parameter.bgg_taste_analytics_ecr_url.value}:latest"
+  timeout       = 120
+  memory_size   = 1024
+
+  environment {
+    variables = {
+      S3_OUTPUT_BUCKET_NAME = var.s3_bucket_name
+      PYTHONIOENCODING      = "utf-8"
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+}
+
+resource "aws_lambda_event_source_mapping" "bgg_taste_analytics_esm" {
+  event_source_arn        = var.taste_analytics_sqs_queue_arn
+  function_name           = aws_lambda_function.bgg_taste_analytics.arn
+  enabled                 = true
+  batch_size              = 10
+  function_response_types = ["ReportBatchItemFailures"]
 }

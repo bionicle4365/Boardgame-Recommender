@@ -9,3 +9,8 @@ variable "combine_glue_job_script_name" {
   type        = string
   default     = "combine_raw_to_single_file.py"
 }
+
+variable "taste_analytics_sqs_queue_arn" {
+  description = "The ARN of the SQS queue for taste analytics"
+  type        = string
+}

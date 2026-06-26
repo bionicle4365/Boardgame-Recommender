@@ -423,3 +423,122 @@ def test_lambda_handler_duration_and_complexity_preferences(mock_bedrock, mock_h
     assert "Target Play Time Preference: Short" in prompt_text
     assert "Target Complexity/Weight Preference: Low" in prompt_text
     assert "If specific play time or complexity preferences are provided, also mention how this game fits those preferences." in prompt_text
+
+
+@patch('bgg_recommender.s3')
+def test_lambda_handler_get_profile_endpoint(mock_s3):
+    # Mock download_file to mock file download and read
+    def mock_download(bucket, key, local_path):
+        with open(local_path, 'w', encoding='utf-8') as f:
+            json.dump({
+                "mech_weights": {"mech1": 4.0},
+                "cat_weights": {"cat1": 4.0},
+                "avg_complexity": 2.0,
+                "designer_weights": {"des1": 4.0},
+                "publisher_weights": {"pub1": 4.0},
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }, f)
+    mock_s3.download_file.side_effect = mock_download
+
+    event = {
+        'rawPath': '/profile',
+        'queryStringParameters': {
+            'username': 'testuser'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['avg_complexity'] == 2.0
+    assert res_body['cat_weights']['cat1'] == 4.0
+    mock_s3.download_file.assert_called_once_with('test-bucket', 'data/users/testuser_taste_profile.json', '/tmp/testuser_taste_profile_api.json')
+
+
+@patch('bgg_recommender.trigger_background_scrape')
+@patch('bgg_recommender.s3')
+def test_lambda_handler_get_profile_endpoint_404(mock_s3, mock_trigger):
+    err_resp = {'Error': {'Code': '404', 'Message': 'Not Found'}}
+    mock_s3.download_file.side_effect = ClientError(err_resp, 'DownloadFile')
+
+    event = {
+        'rawPath': '/profile',
+        'queryStringParameters': {
+            'username': 'testuser_missing'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 404
+    mock_trigger.assert_called_once_with('testuser_missing')
+
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_lambda_handler_precomputed_taste_profile(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now - timedelta(hours=1)) # parquet modified 1 hour ago
+    mock_cache.return_value = None # cache miss
+
+    # Mock taste profile JSON download
+    def mock_download(bucket, key, local_path):
+        if "_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"mech1": 5.0},
+                    "cat_weights": {"cat1": 5.0},
+                    "avg_complexity": 3.0,
+                    "designer_weights": {"des1": 5.0},
+                    "publisher_weights": {"pub1": 5.0},
+                    "generated_at": now.isoformat() # profile generated now (newer than parquet)
+                }, f)
+        elif ".parquet" in key:
+            # download of user parquet (though we mock pd.read_parquet anyway)
+            pass
+    mock_s3.download_file.side_effect = mock_download
+    mock_s3.head_object.return_value = {} # Profile exists check succeeds
+
+    # Mock user profile DataFrame (needs id column)
+    user_df = pd.DataFrame([
+        {"id": "100", "username": "testuser", "rating": 9.0, "own": True}
+    ])
+    # Mock catalog DataFrame
+    catalog_df = pd.DataFrame([
+        {"id": "100", "name": "Catan", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.0, "year_published": 1995, "max_players": 4, "complexity": 3.0}
+    ])
+    mock_read_parquet.side_effect = [user_df, catalog_df]
+    mock_hotness.return_value = []
+
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"name": "Catan", "reason": "Precomputed matches complexity."}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+
+    event = {
+        'queryStringParameters': {
+            'username': 'testuser',
+            'own_status': 'owned',
+            'w_mech': '0.5',
+            'w_cat': '0.5'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'ready'
+    assert len(res_body['recommendations']) == 1
+    assert res_body['recommendations'][0]['name'] == 'Catan'
+
+    # Verify that S3 downloaded the taste profile
+    mock_s3.download_file.assert_any_call('test-bucket', 'data/users/testuser_taste_profile.json', '/tmp/testuser_taste_profile.json')
+

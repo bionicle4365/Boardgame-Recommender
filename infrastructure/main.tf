@@ -12,12 +12,21 @@ provider "aws" {
   region = "us-east-1"
 }
 
+module "dynamodb" {
+  source = "./dynamodb"
+}
+
+module "cognito" {
+  source = "./cognito"
+}
+
 module "sqs" {
-  source = "./sqs"
-  data_sqs_queue_name = "bgg_game_data_scraper_queue"
+  source                                    = "./sqs"
+  data_sqs_queue_name                       = "bgg_game_data_scraper_queue"
   data_sqs_queue_visibility_timeout_seconds = module.lambda.bgg_game_data_scraper_lambda_timeout
-  user_sqs_queue_name = "bgg_user_data_scraper_queue"
+  user_sqs_queue_name                       = "bgg_user_data_scraper_queue"
   user_sqs_queue_visibility_timeout_seconds = module.lambda.bgg_user_data_scraper_lambda_timeout
+  s3_bucket_arn                             = module.s3.bucket_arn
 }
 
 module "lambda" {
@@ -33,11 +42,12 @@ module "lambda" {
   s3_bucket_name                = module.s3.bucket_name
   data_lambda_concurrency_limit = var.data_lambda_concurrency_limit
   user_lambda_concurrency_limit = var.user_lambda_concurrency_limit
-  dynamodb_table_name           = aws_dynamodb_table.bgg_user_preferences.name
+  dynamodb_table_name           = module.dynamodb.dynamodb_table_name
+  taste_analytics_sqs_queue_arn = module.sqs.taste_analytics_sqs_queue_arn
 }
 
 module "iam" {
-  source = "./iam"
+  source                     = "./iam"
   lambda_execution_role_name = "bgg_game_data_scraper_role"
 }
 
@@ -53,18 +63,20 @@ module "iam" {
 # }
 
 module "s3" {
-  source = "./s3"
-  s3_bucket_name = "boardgame-app"
+  source                        = "./s3"
+  s3_bucket_name                = "boardgame-app"
+  taste_analytics_sqs_queue_arn = module.sqs.taste_analytics_sqs_queue_arn
   # combine_glue_job_script_name = "combine_raw_to_single_file.py"
 }
 
+
 module "ecs" {
-  source          = "./ecs"
-  s3_bucket_name  = module.s3.bucket_name
-  s3_bucket_arn   = module.s3.bucket_arn
-  sqs_queue_name  = module.sqs.data_sqs_queue_name
-  sqs_queue_arn   = module.sqs.data_sqs_queue_arn
-  bgg_api_token   = var.bgg_api_token
+  source         = "./ecs"
+  s3_bucket_name = module.s3.bucket_name
+  s3_bucket_arn  = module.s3.bucket_arn
+  sqs_queue_name = module.sqs.data_sqs_queue_name
+  sqs_queue_arn  = module.sqs.data_sqs_queue_arn
+  bgg_api_token  = var.bgg_api_token
 }
 
 module "eventbridge" {
@@ -79,4 +91,18 @@ module "eventbridge" {
   compactor_lambda_name       = module.lambda.bgg_compactor_function_name
 }
 
+module "apigateway" {
+  source = "./apigateway"
 
+  cors_allowed_origins = var.cors_allowed_origins
+
+  bgg_api_proxy_lambda_arn           = module.lambda.bgg_api_proxy_arn
+  bgg_api_proxy_lambda_function_name = module.lambda.bgg_api_proxy_function_name
+  bgg_recommender_lambda_arn         = module.lambda.bgg_recommender_arn
+  bgg_recommender_lambda_function_name = module.lambda.bgg_recommender_function_name
+  bgg_preferences_lambda_arn         = module.lambda.bgg_preferences_arn
+  bgg_preferences_lambda_function_name = module.lambda.bgg_preferences_function_name
+
+  cognito_user_pool_client_id = module.cognito.cognito_user_pool_client_id
+  cognito_user_pool_issuer    = module.cognito.cognito_user_pool_issuer
+}

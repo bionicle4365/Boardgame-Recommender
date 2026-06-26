@@ -17,6 +17,14 @@ title: Playgroup Organizer
         --danger: #ef4444;
     }
 
+    @media (min-width: 640px) {
+        .group-charts-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 16px !important;
+        }
+    }
+
     .groups-container {
         font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         color: var(--text-main);
@@ -644,6 +652,59 @@ title: Playgroup Organizer
                         <span class="attendee-badge" id="attendance-count-badge">0 players</span>
                     </div>
 
+                    <!-- Playgroup Taste Analytics Container -->
+                    <div id="playgroup-taste-analytics" style="margin-top: 15px; display: none;">
+                        <h3 style="margin-top: 20px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); font-family: 'Outfit', sans-serif;">Playgroup Taste Analytics</h3>
+                        
+                        <!-- Summary Cards Row -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                            <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Total Unique Games</span>
+                                <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-unique-games">-</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Avg Group Complexity</span>
+                                <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-complexity">-</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Avg BGG Rating</span>
+                                <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-rating">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Charts Grid -->
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px;">
+                            <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Group Mechanics Affinity</span>
+                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                        <canvas id="chart-group-mechanics"></canvas>
+                                    </div>
+                                </div>
+                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Group Categories Affinity</span>
+                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                        <canvas id="chart-group-categories"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Attendee Complexity Preferences</span>
+                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                        <canvas id="chart-group-complexity-dist"></canvas>
+                                    </div>
+                                </div>
+                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Unique Games Duration Distribution</span>
+                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                        <canvas id="chart-group-durations"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Pacing & Complexity Preferences -->
                     <div class="form-group" style="margin-top: 15px; margin-bottom: 15px;">
                         <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Pacing & Complexity Preferences (Optional)</label>
@@ -775,6 +836,26 @@ title: Playgroup Organizer
         let isPollingActive = false;
         let pollingTimeout = null;
 
+        // Playgroup caching and chart objects
+        const collectionXmlCache = {};
+        const attendeeProfileCache = {};
+        let chartGroupMechanics = null;
+        let chartGroupCategories = null;
+        let chartGroupComplexity = null;
+        let chartGroupDurations = null;
+
+        // Chart.js Theme Defaults
+        if (typeof Chart !== 'undefined') {
+            Chart.defaults.font.family = "'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            Chart.defaults.font.size = 11;
+            Chart.defaults.color = "#475569";
+            Chart.defaults.plugins.tooltip.backgroundColor = "rgba(15, 23, 42, 0.9)";
+            Chart.defaults.plugins.tooltip.titleFont = { family: "'Outfit', sans-serif", weight: 'bold' };
+            Chart.defaults.plugins.tooltip.bodyFont = { family: "'Inter', sans-serif" };
+            Chart.defaults.plugins.tooltip.padding = 8;
+            Chart.defaults.plugins.tooltip.cornerRadius = 6;
+        }
+
         // 1. Saved groups crud (stored in localStorage)
         let playgroups = [];
         try {
@@ -836,6 +917,7 @@ title: Playgroup Organizer
                 });
                 memberCheckboxesContainer.innerHTML = html;
                 updateAttendanceCount();
+                updateGroupAnalytics();
             }
         };
 
@@ -848,6 +930,7 @@ title: Playgroup Organizer
                 label.classList.remove("checked");
             }
             updateAttendanceCount();
+            updateGroupAnalytics();
         };
 
         function updateAttendanceCount() {
@@ -861,6 +944,7 @@ title: Playgroup Organizer
                 cb.parentElement.classList.add("checked");
             });
             updateAttendanceCount();
+            updateGroupAnalytics();
         });
 
         selectNoneBtn.addEventListener("click", function() {
@@ -869,6 +953,7 @@ title: Playgroup Organizer
                 cb.parentElement.classList.remove("checked");
             });
             updateAttendanceCount();
+            updateGroupAnalytics();
         });
 
         function getCheckedUsernames() {
@@ -1306,6 +1391,460 @@ title: Playgroup Organizer
                 `;
             });
             resultsContainer.innerHTML = html;
+        }
+
+        async function fetchUserXml(username) {
+            const lower = username.toLowerCase();
+            if (collectionXmlCache[lower]) return collectionXmlCache[lower];
+
+            const apiBase = "{{ site.api_url }}";
+            const url = apiBase
+                ? `${apiBase}/collection?username=${username}`
+                : `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
+
+            let xmlDoc = null;
+            let attempts = 0;
+            const maxAttempts = 6;
+
+            while (attempts < maxAttempts) {
+                attempts++;
+                try {
+                    const response = await fetch(url);
+                    const text = await response.text();
+                    const parser = new DOMParser();
+                    xmlDoc = parser.parseFromString(text, "text/xml");
+
+                    // Check for API errors
+                    const errors = xmlDoc.getElementsByTagName('errors');
+                    if (errors.length > 0) {
+                        const errMsg = errors[0].getElementsByTagName('error')[0]?.textContent || 'Unknown API error.';
+                        throw new Error("BGG API Error: " + errMsg);
+                    }
+
+                    // Check for BGG 202 processing queue message
+                    const messageTag = xmlDoc.getElementsByTagName('message');
+                    if (messageTag.length > 0 && (messageTag[0].textContent.includes('process') || messageTag[0].textContent.includes('queue') || messageTag[0].textContent.includes('accepted'))) {
+                        console.log(`BGG is processing collection for attendee ${username}. Retrying in 5s (Attempt ${attempts}/${maxAttempts})...`);
+                        if (attempts < maxAttempts) {
+                            await new Promise(resolve => setTimeout(resolve, 5000));
+                            continue;
+                        } else {
+                            throw new Error("BGG is still processing collection request for " + username);
+                        }
+                    }
+
+                    break; // Success
+                } catch (error) {
+                    console.error(`Attempt ${attempts} to fetch XML for ${username} failed:`, error);
+                    if (attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+
+            const items = xmlDoc.getElementsByTagName('item');
+            if (items.length > 0) {
+                collectionXmlCache[lower] = xmlDoc;
+            }
+            return xmlDoc;
+        }
+
+        async function fetchUserProfile(username, userGames) {
+            const lower = username.toLowerCase();
+            if (attendeeProfileCache[lower]) return attendeeProfileCache[lower];
+
+            const apiBase = "{{ site.api_url }}";
+            if (!apiBase) {
+                const fallback = generateFallbackProfile(userGames);
+                attendeeProfileCache[lower] = fallback;
+                return fallback;
+            }
+
+            try {
+                const response = await fetch(`${apiBase}/profile?username=${lower}`);
+                if (response.ok) {
+                    const profile = await response.json();
+                    attendeeProfileCache[lower] = profile;
+                    return profile;
+                } else if (response.status === 404) {
+                    console.warn(`Profile 404 for playgroup member ${lower}, generating fallback client-side.`);
+                    const fallback = generateFallbackProfile(userGames);
+                    attendeeProfileCache[lower] = fallback;
+                    return fallback;
+                } else {
+                    throw new Error("HTTP " + response.status);
+                }
+            } catch (e) {
+                console.error(`Failed to fetch taste profile for ${username}:`, e);
+                const fallback = generateFallbackProfile(userGames);
+                attendeeProfileCache[lower] = fallback;
+                return fallback;
+            }
+        }
+
+        function parseXmlGames(xmlDoc) {
+            const games = [];
+            const items = xmlDoc.getElementsByTagName('item');
+            for (let i = 0; i < items.length; i++) {
+                const name = items[i].getElementsByTagName('name')[0]?.textContent || 'N/A';
+                const yearPublished = items[i].getElementsByTagName('yearpublished')[0]?.textContent || 'N/A';
+                const status = items[i].getElementsByTagName('status')[0];
+                let own = status && status.getAttribute('own') === '1';
+
+                const stats = items[i].getElementsByTagName('stats')[0];
+                const minPlayers = stats?.getAttribute('minplayers') || 'N/A';
+                const maxPlayers = stats?.getAttribute('maxplayers') || 'N/A';
+                const playingTime = stats?.getAttribute('playingtime') || 'N/A';
+                const userRating = stats?.getElementsByTagName('rating')[0]?.getAttribute('value') || 'N/A';
+                const bggAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
+
+                games.push({
+                    name: name,
+                    own: own,
+                    yearPublished: yearPublished === 'N/A' ? 'N/A' : parseInt(yearPublished),
+                    bggRating: bggAverage === 'N/A' ? 'N/A' : parseFloat(bggAverage),
+                    minPlayers: minPlayers === 'N/A' ? 'N/A' : parseInt(minPlayers),
+                    maxPlayers: maxPlayers === 'N/A' ? 'N/A' : parseInt(maxPlayers),
+                    playingTime: playingTime === 'N/A' ? 'N/A' : parseInt(playingTime),
+                    userRating: userRating === 'N/A' ? 'N/A' : parseFloat(userRating)
+                });
+            }
+            return games;
+        }
+
+        function generateFallbackProfile(games) {
+            if (!games || games.length === 0) {
+                return {
+                    avg_complexity: 2.2,
+                    mech_weights: {},
+                    cat_weights: {},
+                    designer_weights: {},
+                    publisher_weights: {},
+                    generated_at: new Date().toISOString(),
+                    is_fallback: true
+                };
+            }
+
+            let totalEstimatedComplexity = 0;
+            let complexityCount = 0;
+            
+            let soloCount = 0;
+            let highPlayerCount = 0;
+            let shortTimeCount = 0;
+            let mediumTimeCount = 0;
+            let longTimeCount = 0;
+            let epicTimeCount = 0;
+            let highRatingCount = 0;
+            let mediumRatingCount = 0;
+
+            games.forEach(g => {
+                let estComp = 2.2;
+                const time = parseInt(g.playingTime);
+                if (!isNaN(time) && time > 0) {
+                    if (time <= 30) estComp = 1.4;
+                    else if (time <= 60) estComp = 2.2;
+                    else if (time <= 120) estComp = 2.9;
+                    else estComp = 3.8;
+                    totalEstimatedComplexity += estComp;
+                    complexityCount++;
+                }
+
+                if (parseInt(g.minPlayers) === 1) soloCount++;
+                if (parseInt(g.maxPlayers) >= 5) highPlayerCount++;
+
+                if (!isNaN(time) && time > 0) {
+                    if (time <= 30) shortTimeCount++;
+                    else if (time <= 60) mediumTimeCount++;
+                    else if (time <= 120) longTimeCount++;
+                    else epicTimeCount++;
+                }
+
+                const rating = parseFloat(g.userRating !== 'N/A' ? g.userRating : g.bggRating);
+                if (!isNaN(rating)) {
+                    if (rating >= 8.0) highRatingCount++;
+                    else if (rating >= 6.5) mediumRatingCount++;
+                }
+            });
+
+            const avgComplexity = complexityCount > 0 ? (totalEstimatedComplexity / complexityCount) : 2.2;
+            const n = games.length;
+            const scaleValue = (val) => parseFloat(((val / n) * 5.0).toFixed(1));
+
+            const mech_weights = {
+                "Solo Friendly": scaleValue(soloCount),
+                "High Player Counts": scaleValue(highPlayerCount),
+                "Quick Play / Filler": scaleValue(shortTimeCount),
+                "Medium Weight": scaleValue(mediumTimeCount),
+                "Long Playtime": scaleValue(longTimeCount),
+                "Epic Playtime": scaleValue(epicTimeCount)
+            };
+
+            const cat_weights = {
+                "Highly Rated": scaleValue(highRatingCount),
+                "Well Received": scaleValue(mediumRatingCount),
+                "Casual / Light": scaleValue(shortTimeCount + soloCount),
+                "Heavy Strategy": scaleValue(epicTimeCount + longTimeCount)
+            };
+
+            return {
+                avg_complexity: parseFloat(avgComplexity.toFixed(1)),
+                mech_weights: mech_weights,
+                cat_weights: cat_weights,
+                designer_weights: {},
+                publisher_weights: {},
+                generated_at: new Date().toISOString(),
+                is_fallback: true
+            };
+        }
+
+        async function updateGroupAnalytics() {
+            const usernames = getCheckedUsernames();
+            const analyticsDiv = document.getElementById("playgroup-taste-analytics");
+            
+            if (usernames.length === 0) {
+                analyticsDiv.style.display = "none";
+                return;
+            }
+
+            analyticsDiv.style.display = "block";
+            document.getElementById("group-card-unique-games").textContent = "Loading...";
+            document.getElementById("group-card-complexity").textContent = "Loading...";
+            document.getElementById("group-card-rating").textContent = "Loading...";
+
+            try {
+                const userResults = await Promise.all(usernames.map(async (u) => {
+                    try {
+                        const xml = await fetchUserXml(u);
+                        const games = parseXmlGames(xml);
+                        const profile = await fetchUserProfile(u, games);
+                        return { username: u, games, profile };
+                    } catch (e) {
+                        console.error(`Error loading data for attendee ${u}:`, e);
+                        return { username: u, games: [], profile: null };
+                    }
+                }));
+
+                const uniqueGamesMap = new Map();
+                let totalComplexitySum = 0;
+                let attendeeComplexityCount = 0;
+
+                const mergedMechs = {};
+                const mergedCats = {};
+                let profileCount = 0;
+
+                userResults.forEach(res => {
+                    if (!res.profile) return;
+                    profileCount++;
+
+                    if (res.profile.avg_complexity) {
+                        totalComplexitySum += res.profile.avg_complexity;
+                        attendeeComplexityCount++;
+                    }
+
+                    if (res.profile.mech_weights) {
+                        Object.entries(res.profile.mech_weights).forEach(([mech, val]) => {
+                            mergedMechs[mech] = (mergedMechs[mech] || 0) + val;
+                        });
+                    }
+
+                    if (res.profile.cat_weights) {
+                        Object.entries(res.profile.cat_weights).forEach(([cat, val]) => {
+                            mergedCats[cat] = (mergedCats[cat] || 0) + val;
+                        });
+                    }
+
+                    res.games.forEach(g => {
+                        if (g.own) {
+                            const key = g.name.toLowerCase();
+                            if (!uniqueGamesMap.has(key)) {
+                                uniqueGamesMap.set(key, g);
+                            }
+                        }
+                    });
+                });
+
+                if (profileCount > 0) {
+                    Object.keys(mergedMechs).forEach(k => mergedMechs[k] = parseFloat((mergedMechs[k] / profileCount).toFixed(1)));
+                    Object.keys(mergedCats).forEach(k => mergedCats[k] = parseFloat((mergedCats[k] / profileCount).toFixed(1)));
+                }
+
+                const uniqueGames = Array.from(uniqueGamesMap.values());
+                const totalUniqueGamesCount = uniqueGames.length;
+                const avgGroupComplexity = attendeeComplexityCount > 0 
+                    ? (totalComplexitySum / attendeeComplexityCount).toFixed(1) 
+                    : '2.5';
+                
+                const bggRatedGames = uniqueGames.filter(g => g.bggRating !== 'N/A' && !isNaN(g.bggRating));
+                const avgBggRating = bggRatedGames.length > 0 
+                    ? (bggRatedGames.reduce((sum, g) => sum + g.bggRating, 0) / bggRatedGames.length).toFixed(1) 
+                    : 'N/A';
+
+                document.getElementById("group-card-unique-games").textContent = totalUniqueGamesCount;
+                document.getElementById("group-card-complexity").textContent = `${avgGroupComplexity} / 5`;
+                document.getElementById("group-card-rating").textContent = `${avgBggRating} ★`;
+
+                drawPlaygroupCharts(mergedMechs, mergedCats, userResults, uniqueGames);
+
+            } catch (e) {
+                console.error("Error updating playgroup taste analytics:", e);
+                document.getElementById("group-card-unique-games").textContent = "Error";
+                document.getElementById("group-card-complexity").textContent = "Error";
+                document.getElementById("group-card-rating").textContent = "Error";
+            }
+        }
+
+        function drawPlaygroupCharts(mechs, cats, userResults, uniqueGames) {
+            const sortedMechs = Object.entries(mechs)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+            
+            const labelsMech = sortedMechs.map(item => item[0]);
+            const dataMech = sortedMechs.map(item => item[1]);
+
+            if (chartGroupMechanics) chartGroupMechanics.destroy();
+            if (labelsMech.length > 0) {
+                const ctxMech = document.getElementById('chart-group-mechanics').getContext('2d');
+                chartGroupMechanics = new Chart(ctxMech, {
+                    type: 'radar',
+                    data: {
+                        labels: labelsMech,
+                        datasets: [{
+                            label: 'Group Avg Affinity',
+                            data: dataMech,
+                            backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                            borderColor: 'rgb(79, 70, 229)',
+                            pointBackgroundColor: 'rgb(79, 70, 229)',
+                            pointBorderColor: '#fff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                angleLines: { display: true, color: 'rgba(0, 0, 0, 0.05)' },
+                                grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                                suggestedMin: 0,
+                                ticks: { backdropColor: 'transparent', color: '#64748b' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const sortedCats = Object.entries(cats)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+            
+            const labelsCat = sortedCats.map(item => item[0]);
+            const dataCat = sortedCats.map(item => item[1]);
+
+            if (chartGroupCategories) chartGroupCategories.destroy();
+            if (labelsCat.length > 0) {
+                const ctxCat = document.getElementById('chart-group-categories').getContext('2d');
+                chartGroupCategories = new Chart(ctxCat, {
+                    type: 'bar',
+                    data: {
+                        labels: labelsCat,
+                        datasets: [{
+                            label: 'Group Avg Affinity',
+                            data: dataCat,
+                            backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                            borderColor: 'rgb(16, 185, 129)',
+                            borderWidth: 1.5,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                            y: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            let cLight = 0, cMedLight = 0, cMedHeavy = 0, cHeavy = 0;
+            userResults.forEach(res => {
+                if (res.profile && res.profile.avg_complexity) {
+                    const comp = res.profile.avg_complexity;
+                    if (comp < 2.0) cLight++;
+                    else if (comp <= 2.8) cMedLight++;
+                    else if (comp <= 3.5) cMedHeavy++;
+                    else cHeavy++;
+                }
+            });
+
+            if (chartGroupComplexity) chartGroupComplexity.destroy();
+            const ctxComplexity = document.getElementById('chart-group-complexity-dist').getContext('2d');
+            chartGroupComplexity = new Chart(ctxComplexity, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Light (<2.0)', 'Medium-Light (2.0-2.8)', 'Medium-Heavy (2.8-3.5)', 'Heavy (>3.5)'],
+                    datasets: [{
+                        data: [cLight, cMedLight, cMedHeavy, cHeavy],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(245, 158, 11, 0.7)',
+                            'rgba(236, 72, 153, 0.7)'
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            let dShort = 0, dMedium = 0, dLong = 0, dEpic = 0;
+            uniqueGames.forEach(g => {
+                const time = g.playingTime;
+                if (time !== 'N/A' && time > 0) {
+                    if (time < 30) dShort++;
+                    else if (time <= 60) dMedium++;
+                    else if (time <= 120) dLong++;
+                    else dEpic++;
+                }
+            });
+
+            if (chartGroupDurations) chartGroupDurations.destroy();
+            const ctxDurations = document.getElementById('chart-group-durations').getContext('2d');
+            chartGroupDurations = new Chart(ctxDurations, {
+                type: 'bar',
+                data: {
+                    labels: ['Short (<30m)', 'Medium (30-60m)', 'Long (60-120m)', 'Epic (>120m)'],
+                    datasets: [{
+                        label: 'Games Count',
+                        data: [dShort, dMedium, dLong, dEpic],
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
         }
 
         function escapeHTML(str) {

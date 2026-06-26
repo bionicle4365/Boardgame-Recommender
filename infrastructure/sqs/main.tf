@@ -26,3 +26,39 @@ resource "aws_sqs_queue" "bgg_user_data_scraper_queue" {
 resource "aws_sqs_queue" "bgg_user_data_scraper_deadletter" {
   name = "${var.user_sqs_queue_name}_deadletter"
 }
+
+resource "aws_sqs_queue" "taste_analytics_deadletter" {
+  name = "taste_analytics_dlq"
+}
+
+resource "aws_sqs_queue" "taste_analytics_queue" {
+  name                       = "taste_analytics_queue"
+  visibility_timeout_seconds = 720 # 6x Lambda timeout (120s)
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.taste_analytics_deadletter.arn
+    maxReceiveCount     = 3
+  })
+}
+
+resource "aws_sqs_queue_policy" "taste_analytics_queue_policy" {
+  queue_url = aws_sqs_queue.taste_analytics_queue.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.taste_analytics_queue.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = var.s3_bucket_arn
+          }
+        }
+      }
+    ]
+  })
+}

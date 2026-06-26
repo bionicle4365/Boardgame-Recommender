@@ -32,3 +32,10 @@ resource "aws_ssm_parameter" "bgg_compactor_repository_url" {
   type        = "String"
   value       = var.bgg_compactor_ecr_url
 }
+
+resource "aws_ssm_parameter" "bgg_taste_analytics_repository_url" {
+  name        = "/bgg/ecr/bgg_taste_analytics_repository_url"
+  description = "SSM Parameter for ECR repository URL"
+  type        = "String"
+  value       = var.bgg_taste_analytics_ecr_url
+}
