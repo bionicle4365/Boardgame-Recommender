@@ -62,20 +62,20 @@ This document outlines the next steps and active architecture enhancements for t
  ### Tasks
 
  #### Shared Design System (implement first)
- - [ ] **Chart.js Design Tokens:** Define a shared colour palette, font styles, and chart defaults (border radius, gridline opacity, tooltip styles) to be reused across all chart instances on both pages.
- - [ ] **Reusable Card Component:** Implement a glassmorphism summary card pattern (HTML/CSS) that is used consistently on both the collection browser analytics tab and the playgroup dashboard.
+ - [x] **Chart.js Design Tokens:** Define a shared colour palette, font styles, and chart defaults (border radius, gridline opacity, tooltip styles) to be reused across all chart instances on both pages.
+ - [x] **Reusable Card Component:** Implement a glassmorphism summary card pattern (HTML/CSS) that is used consistently on both the collection browser analytics tab and the playgroup dashboard.
 
  #### Collection Browser Analytics Tab
- - [ ] **Tabbed UI Design:** Refactor [index.html](file:///d:/Git/Boardgame-Recommender/site_ui/collection/index.html) to support tab buttons ("Grid View" and "Collection Analytics") with clear view panels.
- - [ ] **Summary Cards:** Render glassmorphism summary cards for key library stats: Total Games, Average Personal vs BGG Rating, Total Plays, #1 Played Game.
- - [ ] **Chart.js Integration:** Implement responsive chart containers for playtime distribution, player count distribution, rating distribution, and most-played leaderboards using the shared design system.
- - [ ] **Taste Profile Charts:** Fetch `GET /profile?username=X` and render a radar chart of top mechanic affinities and a horizontal bar chart of top category affinities for the individual user.
- - [ ] **Dynamic Data Wiring:** Wire Javascript triggers to extract stats from `gamesData` (and optionally react to active filters) to update all Chart.js instances.
+ - [x] **Tabbed UI Design:** Refactor [index.html](file:///d:/Git/Boardgame-Recommender/site_ui/collection/index.html) to support tab buttons ("Grid View" and "Collection Analytics") with clear view panels.
+ - [x] **Summary Cards:** Render glassmorphism summary cards for key library stats: Total Games, Average Personal vs BGG Rating, Total Plays, #1 Played Game.
+ - [x] **Chart.js Integration:** Implement responsive chart containers for playtime distribution, player count distribution, rating distribution, and most-played leaderboards using the shared design system.
+ - [x] **Taste Profile Charts:** Fetch `GET /profile?username=X` and render a radar chart of top mechanic affinities and a horizontal bar chart of top category affinities for the individual user.
+ - [x] **Dynamic Data Wiring:** Wire Javascript triggers to extract stats from `gamesData` (and optionally react to active filters) to update all Chart.js instances.
 
  #### Playgroup Taste Profile Visualizations
- - [ ] **Profile Fetching & Merge:** For each playgroup member, fetch their pre-built taste profile from `GET /profile?username=X`. Merge individual profiles into a combined group affinity view (weighted average of mechanic/category scores). Fall back to client-side frequency counting if a profile is not yet available.
- - [ ] **Taste Profile Charts:** Render a radar chart (top mechanic affinities), horizontal bar chart (top category affinities), doughnut chart (complexity distribution), and vertical bar chart (duration ranges) using the shared design system.
- - [ ] **Group Summary Cards:** Render glassmorphism summary cards for group statistics: Total Unique Games, Average Group Complexity, Average BGG Rating.
+ - [x] **Profile Fetching & Merge:** For each playgroup member, fetch their pre-built taste profile from `GET /profile?username=X`. Merge individual profiles into a combined group affinity view (weighted average of mechanic/category scores). Fall back to client-side frequency counting if a profile is not yet available.
+ - [x] **Taste Profile Charts:** Render a radar chart (top mechanic affinities), horizontal bar chart (top category affinities), doughnut chart (complexity distribution), and vertical bar chart (duration ranges) using the shared design system.
+ - [x] **Group Summary Cards:** Render glassmorphism summary cards for group statistics: Total Unique Games, Average Group Complexity, Average BGG Rating.
 
  ---
  
