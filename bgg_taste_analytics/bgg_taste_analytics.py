@@ -124,17 +124,22 @@ def process_taste_profile(username):
     cat_weights = {}
     designer_weights = {}
     publisher_weights = {}
-    avg_complexity = 2.5
+    complexity_weights = {
+        "Light": 0.0,
+        "Medium-Light": 0.0,
+        "Medium-Heavy": 0.0,
+        "Heavy": 0.0
+    }
 
     if not liked_joined.empty:
-        # 1. Complexity preference
-        if 'complexity' in liked_joined.columns:
-            liked_complexities = liked_joined['complexity'].dropna()
-            if not liked_complexities.empty:
-                avg_complexity = float(liked_complexities.mean())
+        # Default complexity fallback if none of the games have complexity data
+        complexity_weights["Medium-Light"] = 1.0
 
-        # 2. Derive rating-weighted affinities
+        # Derive rating-weighted affinities
         has_publishers = 'publishers' in liked_joined.columns
+        has_complexity = 'complexity' in liked_joined.columns
+        
+        complexity_count = 0
         for _, row in liked_joined.iterrows():
             u_rating = row.get('rating_user')
             try:
@@ -167,11 +172,33 @@ def process_taste_profile(username):
                 for p in pubs:
                     publisher_weights[p] = publisher_weights.get(p, 0.0) + weight
 
+            if has_complexity:
+                comp = row.get('complexity')
+                if comp is not None and not math.isnan(float(comp)):
+                    comp = float(comp)
+                    # Reset the default fallback on first valid complexity game
+                    if complexity_count == 0:
+                        complexity_weights = {
+                            "Light": 0.0,
+                            "Medium-Light": 0.0,
+                            "Medium-Heavy": 0.0,
+                            "Heavy": 0.0
+                        }
+                    complexity_count += 1
+                    if comp < 2.0:
+                        complexity_weights["Light"] += weight
+                    elif comp <= 2.8:
+                        complexity_weights["Medium-Light"] += weight
+                    elif comp <= 3.5:
+                        complexity_weights["Medium-Heavy"] += weight
+                    else:
+                        complexity_weights["Heavy"] += weight
+
     # Write profile JSON
     profile = {
         "mech_weights": mech_weights,
         "cat_weights": cat_weights,
-        "avg_complexity": avg_complexity,
+        "complexity_weights": complexity_weights,
         "designer_weights": designer_weights,
         "publisher_weights": publisher_weights,
         "generated_at": datetime.now(timezone.utc).isoformat()

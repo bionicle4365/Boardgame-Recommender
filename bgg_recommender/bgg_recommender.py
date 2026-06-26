@@ -519,13 +519,18 @@ def lambda_handler(event, context):
         logger.info(f"Pre-filtered candidates by rating >= 5.0. Candidates left: {len(candidates)}")
 
     # 5. Feature similarity selection weighted by user rating
-    # Gather user's preferred categories, mechanics, designers, publishers, and average complexity
+    # Gather user's preferred categories, mechanics, designers, publishers, and complexity weights
     import math
     mech_weights = {}
     cat_weights = {}
     user_designers = {}
     user_publishers = {}
-    user_avg_complexities = []
+    complexity_weights = {
+        "Light": 0.0,
+        "Medium-Light": 0.0,
+        "Medium-Heavy": 0.0,
+        "Heavy": 0.0
+    }
     
     for u in usernames:
         profile_loaded = False
@@ -559,7 +564,9 @@ def lambda_handler(event, context):
                         user_designers[d] = user_designers.get(d, 0.0) + w
                     for p, w in prof_data.get('publisher_weights', {}).items():
                         user_publishers[p] = user_publishers.get(p, 0.0) + w
-                    user_avg_complexities.append(float(prof_data.get('avg_complexity', 2.5)))
+                    for comp_bucket, w in prof_data.get('complexity_weights', {}).items():
+                        if comp_bucket in complexity_weights:
+                            complexity_weights[comp_bucket] = complexity_weights.get(comp_bucket, 0.0) + w
                     profile_loaded = True
                 else:
                     logger.info(f"Pre-computed taste profile for {u} is stale (generated={generated_at}, parquet={parquet_modified})")
@@ -585,13 +592,18 @@ def lambda_handler(event, context):
                 
             u_joined = u_liked.merge(catalog_df, on='id', how='inner', suffixes=('_user', '_catalog'))
             
+            u_complexity_weights = {
+                "Light": 0.0,
+                "Medium-Light": 0.0,
+                "Medium-Heavy": 0.0,
+                "Heavy": 0.0
+            }
+            u_complexity_weights["Medium-Light"] = 1.0
+            complexity_count = 0
+            
             if not u_joined.empty:
-                if 'complexity' in u_joined.columns:
-                    u_comp = u_joined['complexity'].dropna()
-                    if not u_comp.empty:
-                        user_avg_complexities.append(float(u_comp.mean()))
-                
                 has_publishers = 'publishers' in u_joined.columns
+                has_complexity = 'complexity' in u_joined.columns
                 for _, row in u_joined.iterrows():
                     u_rating = row.get('rating_user')
                     try:
@@ -622,10 +634,32 @@ def lambda_handler(event, context):
                         pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
                         for p in pubs:
                             user_publishers[p] = user_publishers.get(p, 0.0) + weight
-            else:
-                user_avg_complexities.append(2.5)
+                            
+                    if has_complexity:
+                        comp = row.get('complexity')
+                        if comp is not None and not math.isnan(float(comp)):
+                            comp = float(comp)
+                            if complexity_count == 0:
+                                u_complexity_weights = {
+                                    "Light": 0.0,
+                                    "Medium-Light": 0.0,
+                                    "Medium-Heavy": 0.0,
+                                    "Heavy": 0.0
+                                }
+                            complexity_count += 1
+                            if comp < 2.0:
+                                u_complexity_weights["Light"] += weight
+                            elif comp <= 2.8:
+                                u_complexity_weights["Medium-Light"] += weight
+                            elif comp <= 3.5:
+                                u_complexity_weights["Medium-Heavy"] += weight
+                            else:
+                                u_complexity_weights["Heavy"] += weight
+            
+            for comp_bucket, w in u_complexity_weights.items():
+                complexity_weights[comp_bucket] = complexity_weights.get(comp_bucket, 0.0) + w
 
-    user_avg_complexity = sum(user_avg_complexities) / len(user_avg_complexities) if user_avg_complexities else 2.5
+    total_complexity_weight = sum(complexity_weights.values()) or 1.0
     total_cat_weight = sum(cat_weights.values()) or 1.0
     total_mech_weight = sum(mech_weights.values()) or 1.0
     total_des_weight = sum(user_designers.values()) or 1.0
@@ -743,9 +777,18 @@ def lambda_handler(event, context):
         elif has_complexity:
             cand_complexity = row.get('complexity')
             if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
-                complexity_delta = abs(cand_complexity - user_avg_complexity)
-                complexity_sim = max(0.0, 1.0 - (complexity_delta / 2.5))
-                comp_score *= (0.5 + 0.5 * complexity_sim)
+                if cand_complexity < 2.0:
+                    comp_bucket = "Light"
+                elif cand_complexity <= 2.8:
+                    comp_bucket = "Medium-Light"
+                elif cand_complexity <= 3.5:
+                    comp_bucket = "Medium-Heavy"
+                else:
+                    comp_bucket = "Heavy"
+                
+                bucket_weight = complexity_weights.get(comp_bucket, 0.0)
+                normalized_bucket_weight = bucket_weight / total_complexity_weight
+                comp_score *= (0.5 + 0.5 * normalized_bucket_weight)
 
         # D. Apply designer/publisher affinity booster (up to 15% bonus)
         des_sim = 0.0

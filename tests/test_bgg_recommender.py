@@ -433,7 +433,7 @@ def test_lambda_handler_get_profile_endpoint(mock_s3):
             json.dump({
                 "mech_weights": {"mech1": 4.0},
                 "cat_weights": {"cat1": 4.0},
-                "avg_complexity": 2.0,
+                "complexity_weights": {"Light": 0.0, "Medium-Light": 4.0, "Medium-Heavy": 0.0, "Heavy": 0.0},
                 "designer_weights": {"des1": 4.0},
                 "publisher_weights": {"pub1": 4.0},
                 "generated_at": datetime.now(timezone.utc).isoformat()
@@ -449,7 +449,7 @@ def test_lambda_handler_get_profile_endpoint(mock_s3):
     response = bgg_recommender.lambda_handler(event, None)
     assert response['statusCode'] == 200
     res_body = json.loads(response['body'])
-    assert res_body['avg_complexity'] == 2.0
+    assert res_body['complexity_weights'] == {"Light": 0.0, "Medium-Light": 4.0, "Medium-Heavy": 0.0, "Heavy": 0.0}
     assert res_body['cat_weights']['cat1'] == 4.0
     mock_s3.download_file.assert_called_once_with('test-bucket', 'data/users/testuser_taste_profile.json', '/tmp/testuser_taste_profile_api.json')
 
@@ -489,7 +489,7 @@ def test_lambda_handler_precomputed_taste_profile(mock_bedrock, mock_hotness, mo
                 json.dump({
                     "mech_weights": {"mech1": 5.0},
                     "cat_weights": {"cat1": 5.0},
-                    "avg_complexity": 3.0,
+                    "complexity_weights": {"Light": 0.0, "Medium-Light": 0.0, "Medium-Heavy": 5.0, "Heavy": 0.0},
                     "designer_weights": {"des1": 5.0},
                     "publisher_weights": {"pub1": 5.0},
                     "generated_at": now.isoformat() # profile generated now (newer than parquet)

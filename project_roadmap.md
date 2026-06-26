@@ -26,7 +26,7 @@ This document outlines the next steps and active architecture enhancements for t
  The taste profile JSON schema captures:
  - `mech_weights` — mechanic name → rating-weighted affinity score
  - `cat_weights` — category name → rating-weighted affinity score
- - `avg_complexity` — user's inferred complexity preference (1–5)
+ - `complexity_weights` — dictionary of rating-weighted complexity bucket affinities (Light, Medium-Light, Medium-Heavy, Heavy)
  - `designer_weights` — designer → affinity score
  - `publisher_weights` — publisher → affinity score
  - `generated_at` — ISO timestamp for staleness checks

@@ -114,7 +114,7 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
 
     assert "mech_weights" in profile_json
     assert "cat_weights" in profile_json
-    assert "avg_complexity" in profile_json
+    assert "complexity_weights" in profile_json
     assert "designer_weights" in profile_json
     assert "publisher_weights" in profile_json
     assert "generated_at" in profile_json
@@ -125,7 +125,7 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
     assert profile_json["mech_weights"]["mech1"] == 4.0
     assert profile_json["designer_weights"]["des1"] == 4.0
     assert profile_json["publisher_weights"]["pub1"] == 4.0
-    assert profile_json["avg_complexity"] == 2.0 # mean complexity of game 100 is 2.0
+    assert profile_json["complexity_weights"] == {"Light": 0.0, "Medium-Light": 4.0, "Medium-Heavy": 0.0, "Heavy": 0.0}
 
 @patch('bgg_taste_analytics.process_taste_profile')
 def test_lambda_handler_success(mock_process):

@@ -816,7 +816,12 @@ title: BGG Collection Browser
     function generateFallbackProfile(games) {
         if (!games || games.length === 0) {
             return {
-                avg_complexity: 2.2,
+                complexity_weights: {
+                    "Light": 0.0,
+                    "Medium-Light": 1.0,
+                    "Medium-Heavy": 0.0,
+                    "Heavy": 0.0
+                },
                 mech_weights: {},
                 cat_weights: {},
                 designer_weights: {},
@@ -826,8 +831,13 @@ title: BGG Collection Browser
             };
         }
 
-        let totalEstimatedComplexity = 0;
         let complexityCount = 0;
+        let complexity_weights = {
+            "Light": 0.0,
+            "Medium-Light": 0.0,
+            "Medium-Heavy": 0.0,
+            "Heavy": 0.0
+        };
         
         let soloCount = 0;
         let highPlayerCount = 0;
@@ -846,9 +856,22 @@ title: BGG Collection Browser
                 else if (time <= 60) estComp = 2.2;
                 else if (time <= 120) estComp = 2.9;
                 else estComp = 3.8;
-                totalEstimatedComplexity += estComp;
-                complexityCount++;
             }
+
+            const ratingVal = parseFloat(g.userRating !== 'N/A' ? g.userRating : g.bggRating);
+            const r = (!isNaN(ratingVal) && ratingVal > 0) ? ratingVal : 7.0;
+            const weight = Math.max(1.0, r - 5.0);
+
+            if (estComp < 2.0) {
+                complexity_weights["Light"] += weight;
+            } else if (estComp <= 2.8) {
+                complexity_weights["Medium-Light"] += weight;
+            } else if (estComp <= 3.5) {
+                complexity_weights["Medium-Heavy"] += weight;
+            } else {
+                complexity_weights["Heavy"] += weight;
+            }
+            complexityCount++;
 
             if (parseInt(g.minPlayers) === 1) soloCount++;
             if (parseInt(g.maxPlayers) >= 5) highPlayerCount++;
@@ -867,7 +890,10 @@ title: BGG Collection Browser
             }
         });
 
-        const avgComplexity = complexityCount > 0 ? (totalEstimatedComplexity / complexityCount) : 2.2;
+        if (complexityCount === 0) {
+            complexity_weights["Medium-Light"] = 1.0;
+        }
+
         const n = games.length;
         const scaleValue = (val) => parseFloat(((val / n) * 5.0).toFixed(1));
 
@@ -888,7 +914,7 @@ title: BGG Collection Browser
         };
 
         return {
-            avg_complexity: parseFloat(avgComplexity.toFixed(1)),
+            complexity_weights: complexity_weights,
             mech_weights: mech_weights,
             cat_weights: cat_weights,
             designer_weights: {},

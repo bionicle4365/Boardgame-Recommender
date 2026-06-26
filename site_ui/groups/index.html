@@ -1517,7 +1517,12 @@ title: Playgroup Organizer
         function generateFallbackProfile(games) {
             if (!games || games.length === 0) {
                 return {
-                    avg_complexity: 2.2,
+                    complexity_weights: {
+                        "Light": 0.0,
+                        "Medium-Light": 1.0,
+                        "Medium-Heavy": 0.0,
+                        "Heavy": 0.0
+                    },
                     mech_weights: {},
                     cat_weights: {},
                     designer_weights: {},
@@ -1527,8 +1532,13 @@ title: Playgroup Organizer
                 };
             }
 
-            let totalEstimatedComplexity = 0;
             let complexityCount = 0;
+            let complexity_weights = {
+                "Light": 0.0,
+                "Medium-Light": 0.0,
+                "Medium-Heavy": 0.0,
+                "Heavy": 0.0
+            };
             
             let soloCount = 0;
             let highPlayerCount = 0;
@@ -1547,9 +1557,22 @@ title: Playgroup Organizer
                     else if (time <= 60) estComp = 2.2;
                     else if (time <= 120) estComp = 2.9;
                     else estComp = 3.8;
-                    totalEstimatedComplexity += estComp;
-                    complexityCount++;
                 }
+
+                const ratingVal = parseFloat(g.userRating !== 'N/A' ? g.userRating : g.bggRating);
+                const r = (!isNaN(ratingVal) && ratingVal > 0) ? ratingVal : 7.0;
+                const weight = Math.max(1.0, r - 5.0);
+
+                if (estComp < 2.0) {
+                    complexity_weights["Light"] += weight;
+                } else if (estComp <= 2.8) {
+                    complexity_weights["Medium-Light"] += weight;
+                } else if (estComp <= 3.5) {
+                    complexity_weights["Medium-Heavy"] += weight;
+                } else {
+                    complexity_weights["Heavy"] += weight;
+                }
+                complexityCount++;
 
                 if (parseInt(g.minPlayers) === 1) soloCount++;
                 if (parseInt(g.maxPlayers) >= 5) highPlayerCount++;
@@ -1568,7 +1591,10 @@ title: Playgroup Organizer
                 }
             });
 
-            const avgComplexity = complexityCount > 0 ? (totalEstimatedComplexity / complexityCount) : 2.2;
+            if (complexityCount === 0) {
+                complexity_weights["Medium-Light"] = 1.0;
+            }
+
             const n = games.length;
             const scaleValue = (val) => parseFloat(((val / n) * 5.0).toFixed(1));
 
@@ -1589,7 +1615,7 @@ title: Playgroup Organizer
             };
 
             return {
-                avg_complexity: parseFloat(avgComplexity.toFixed(1)),
+                complexity_weights: complexity_weights,
                 mech_weights: mech_weights,
                 cat_weights: cat_weights,
                 designer_weights: {},
@@ -1638,7 +1664,15 @@ title: Playgroup Organizer
                     if (!res.profile) return;
                     profileCount++;
 
-                    if (res.profile.avg_complexity) {
+                    if (res.profile.complexity_weights) {
+                        const cw = res.profile.complexity_weights;
+                        const wSum = (cw.Light || 0) * 1.5 + (cw["Medium-Light"] || 0) * 2.4 + (cw["Medium-Heavy"] || 0) * 3.15 + (cw.Heavy || 0) * 4.25;
+                        const wTotal = (cw.Light || 0) + (cw["Medium-Light"] || 0) + (cw["Medium-Heavy"] || 0) + (cw.Heavy || 0);
+                        if (wTotal > 0) {
+                            totalComplexitySum += (wSum / wTotal);
+                            attendeeComplexityCount++;
+                        }
+                    } else if (res.profile.avg_complexity) {
                         totalComplexitySum += res.profile.avg_complexity;
                         attendeeComplexityCount++;
                     }
@@ -1773,12 +1807,19 @@ title: Playgroup Organizer
 
             let cLight = 0, cMedLight = 0, cMedHeavy = 0, cHeavy = 0;
             userResults.forEach(res => {
-                if (res.profile && res.profile.avg_complexity) {
-                    const comp = res.profile.avg_complexity;
-                    if (comp < 2.0) cLight++;
-                    else if (comp <= 2.8) cMedLight++;
-                    else if (comp <= 3.5) cMedHeavy++;
-                    else cHeavy++;
+                if (res.profile) {
+                    if (res.profile.complexity_weights) {
+                        cLight += res.profile.complexity_weights["Light"] || 0;
+                        cMedLight += res.profile.complexity_weights["Medium-Light"] || 0;
+                        cMedHeavy += res.profile.complexity_weights["Medium-Heavy"] || 0;
+                        cHeavy += res.profile.complexity_weights["Heavy"] || 0;
+                    } else if (res.profile.avg_complexity) {
+                        const comp = res.profile.avg_complexity;
+                        if (comp < 2.0) cLight++;
+                        else if (comp <= 2.8) cMedLight++;
+                        else if (comp <= 3.5) cMedHeavy++;
+                        else cHeavy++;
+                    }
                 }
             });
 
