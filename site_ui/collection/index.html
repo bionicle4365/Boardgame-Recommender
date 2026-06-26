@@ -661,7 +661,7 @@ title: BGG Collection Browser
                 </div>
             </div>
             <div class="chart-container-card">
-                <span class="chart-title">Rating Distribution</span>
+                <span class="chart-title">My Rating Distribution</span>
                 <div class="chart-wrapper">
                     <canvas id="chart-ratings"></canvas>
                 </div>
@@ -1164,28 +1164,50 @@ title: BGG Collection Browser
         });
 
         let rUnder6 = 0, r6to7 = 0, r7to8 = 0, r8to9 = 0, r9Plus = 0;
+        let rNotRated = 0;
         filteredGamesData.forEach(g => {
-            const rating = g.bggRating;
-            if (rating !== 'N/A') {
-                if (rating < 6.0) rUnder6++;
-                else if (rating < 7.0) r6to7++;
-                else if (rating < 8.0) r7to8++;
-                else if (rating < 9.0) r8to9++;
+            const rating = g.userRating;
+            if (rating === 'N/A' || rating === null || rating === undefined) {
+                rNotRated++;
+            } else {
+                const r = parseFloat(rating);
+                if (r < 6.0) rUnder6++;
+                else if (r < 7.0) r6to7++;
+                else if (r < 8.0) r7to8++;
+                else if (r < 9.0) r8to9++;
                 else r9Plus++;
             }
         });
 
         if (chartRatings) chartRatings.destroy();
         const ctxRatings = document.getElementById('chart-ratings').getContext('2d');
+        const ratingsLabels = ['<6.0', '6.0-6.9', '7.0-7.9', '8.0-8.9', '9.0+'];
+        if (rNotRated > 0) ratingsLabels.push('Not Rated');
+        const ratingsData = [rUnder6, r6to7, r7to8, r8to9, r9Plus];
+        if (rNotRated > 0) ratingsData.push(rNotRated);
         chartRatings = new Chart(ctxRatings, {
             type: 'bar',
             data: {
-                labels: ['<6.0', '6.0-6.9', '7.0-7.9', '8.0-8.9', '9.0+'],
+                labels: ratingsLabels,
                 datasets: [{
-                    label: 'Games Count',
-                    data: [rUnder6, r6to7, r7to8, r8to9, r9Plus],
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    borderColor: 'rgb(16, 185, 129)',
+                    label: 'Games',
+                    data: ratingsData,
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(139, 92, 246, 0.7)',
+                        'rgba(148, 163, 184, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgb(239, 68, 68)',
+                        'rgb(245, 158, 11)',
+                        'rgb(59, 130, 246)',
+                        'rgb(16, 185, 129)',
+                        'rgb(139, 92, 246)',
+                        'rgb(148, 163, 184)'
+                    ],
                     borderWidth: 1.5,
                     borderRadius: 6
                 }]
@@ -1195,7 +1217,7 @@ title: BGG Collection Browser
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { precision: 0 } },
                     x: { grid: { display: false } }
                 }
             }
