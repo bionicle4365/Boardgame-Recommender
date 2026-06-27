@@ -206,7 +206,7 @@ data "aws_ssm_parameter" "bgg_preview_refresh_ecr_url" {
 # Lambda Function for Daily Preview Refresh
 resource "aws_lambda_function" "bgg_preview_refresh_lambda" {
   function_name = "bgg-preview-refresh"
-  role          = aws_iam_role.lambda_execution_role.arn
+  role          = var.lambda_execution_role_arn
   package_type  = "Image"
   image_uri     = "${data.aws_ssm_parameter.bgg_preview_refresh_ecr_url.value}:latest"
 
