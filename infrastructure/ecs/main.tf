@@ -190,11 +190,46 @@ resource "aws_cloudwatch_event_rule" "weekly_preview_discovery" {
   schedule_expression = "cron(0 6 ? * MON *)"
 }
 
+resource "aws_iam_role" "eventbridge_ecs_role" {
+  name = "bggEventBridgeEcsRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_ecs_policy" {
+  name = "bggEventBridgeEcsPolicy"
+  role = aws_iam_role.eventbridge_ecs_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "ecs:RunTask"
+        Resource = aws_ecs_task_definition.preview_discovery_task.arn
+      },
+      {
+        Effect = "Allow"
+        Action = "iam:PassRole"
+        Resource = [
+          aws_iam_role.ecs_task_execution_role.arn,
+          aws_iam_role.ecs_task_role.arn
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "run_preview_discovery" {
   target_id = "RunPreviewDiscoveryTask"
   rule      = aws_cloudwatch_event_rule.weekly_preview_discovery.name
   arn       = aws_ecs_cluster.scraper_cluster.arn
-  role_arn  = aws_iam_role.ecs_task_execution_role.arn
+  role_arn  = aws_iam_role.eventbridge_ecs_role.arn
 
   ecs_target {
     task_count          = 1
