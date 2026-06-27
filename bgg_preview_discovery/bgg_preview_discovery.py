@@ -19,9 +19,10 @@ def get_active_previews():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         logger.info("Navigating to https://boardgamegeek.com/previews ...")
-        page.goto("https://boardgamegeek.com/previews", wait_until="networkidle")
+        # Just go to the page and wait for the specific selector to appear instead of networkidle
+        page.goto("https://boardgamegeek.com/previews")
         try:
-            page.wait_for_selector('a[href*="/preview/"]', timeout=10000)
+            page.wait_for_selector('a[href*="/preview/"]', timeout=20000)
         except Exception as e:
             logger.warning(f"Timeout waiting for preview links: {e}")
         
