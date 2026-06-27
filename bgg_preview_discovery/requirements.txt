@@ -1,2 +1,2 @@
 boto3
-playwright
+playwright==1.60.0
