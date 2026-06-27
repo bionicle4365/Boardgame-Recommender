@@ -162,6 +162,7 @@ resource "aws_lambda_function" "bgg_preferences" {
   environment {
     variables = {
       DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+      USER_SQS_QUEUE_URL  = var.user_sqs_queue_url
     }
   }
 }

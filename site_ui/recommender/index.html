@@ -692,6 +692,8 @@ title: Boardgame Recommender
                 hot: wHotInput.value
             };
             
+            const bggUsername = document.getElementById("username").value.trim();
+            
             try {
                 await fetch(`${apiUrl}/preferences`, {
                     method: "POST",
@@ -702,7 +704,8 @@ title: Boardgame Recommender
                     body: JSON.stringify({
                         playgroups: playgroups,
                         saved_weights: weights,
-                        user_preferences: {}
+                        user_preferences: {},
+                        bgg_username: bggUsername || null
                     })
                 });
             } catch (e) {
@@ -725,6 +728,9 @@ title: Boardgame Recommender
                 });
                 if (response.ok) {
                     const data = await response.json();
+                    if (data.bgg_username) {
+                        document.getElementById("username").value = data.bgg_username;
+                    }
                     if (data.playgroups && Array.isArray(data.playgroups)) {
                         localStorage.setItem("bgg_playgroups", JSON.stringify(data.playgroups));
                     }
@@ -746,6 +752,11 @@ title: Boardgame Recommender
                 console.error("Error loading preferences from backend:", e);
             }
         }
+
+        // Save username when it changes
+        document.getElementById("username").addEventListener("change", function() {
+            syncPreferencesToBackend();
+        });
 
         // Initialize weights and presets
         initializeWeightsAndPresets();

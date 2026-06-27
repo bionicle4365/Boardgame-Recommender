@@ -56,8 +56,11 @@ def lambda_handler(event, context):
                     'userId': user_id,
                     'playgroups': [],
                     'saved_weights': {},
-                    'user_preferences': {}
+                    'user_preferences': {},
+                    'bgg_username': None
                 }
+            elif 'bgg_username' not in item:
+                item['bgg_username'] = None
             return {
                 'statusCode': 200,
                 'headers': {
@@ -88,6 +91,7 @@ def lambda_handler(event, context):
             playgroups = body.get('playgroups', [])
             saved_weights = body.get('saved_weights', {})
             user_preferences = body.get('user_preferences', {})
+            bgg_username = body.get('bgg_username')
             
             # Helper function to convert float types to Decimals for DynamoDB
             def floats_to_decimals(obj):
@@ -105,8 +109,20 @@ def lambda_handler(event, context):
                 'saved_weights': floats_to_decimals(saved_weights),
                 'user_preferences': floats_to_decimals(user_preferences)
             }
+            if bgg_username:
+                item['bgg_username'] = bgg_username
             
             table.put_item(Item=item)
+
+            # Pre-warm the cache by triggering the user scraper
+            if bgg_username:
+                sqs = boto3.client('sqs', region_name='us-east-1')
+                queue_url = os.environ.get('USER_SQS_QUEUE_URL')
+                if queue_url:
+                    sqs.send_message(
+                        QueueUrl=queue_url,
+                        MessageBody=bgg_username
+                    )
             
             return {
                 'statusCode': 200,
