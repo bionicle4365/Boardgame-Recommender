@@ -57,6 +57,12 @@ resource "aws_apigatewayv2_route" "bgg_profile_route" {
   target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_conventions_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /conventions"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
 resource "aws_lambda_permission" "apigw_lambda" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"

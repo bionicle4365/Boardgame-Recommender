@@ -326,6 +326,17 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': str(e)})
             }
 
+    if '/conventions' in path:
+        active_previews = get_active_previews()
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps(active_previews)
+        }
+
     username = query_params.get('username')
     
     if not username:

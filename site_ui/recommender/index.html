@@ -677,11 +677,10 @@ title: Boardgame Recommender
         // Preferences Sync functions
         const apiUrl = "{{ site.api_url }}";
 
-        // Fetch conventions from S3
-        const S3_BUCKET_URL = "https://boardgame-app.s3.amazonaws.com"; // Adjust if using a different URL
+        // Fetch conventions from Recommender API
         async function fetchConventions() {
             try {
-                const response = await fetch(`${S3_BUCKET_URL}/data/active_previews.json`);
+                const response = await fetch(`${apiUrl}/conventions`);
                 if (response.ok) {
                     const previews = await response.json();
                     if (previews && previews.length > 0) {
