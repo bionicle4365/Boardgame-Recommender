@@ -202,24 +202,6 @@ Train a LightFM hybrid collaborative filtering model using both explicit ratings
 
 ---
 
-## Milestone 22: LLM Prompt Grounding & Deduplication
-
-### Objective
-Address user feedback regarding AI hallucination in explanations and redundant game family recommendations.
-
-### Design Notes
-- **AI Hallucinations:** The LLM sometimes hallucinates mechanics. We must enforce ground-truth grounding by passing the exact mechanic and category list of both the source and target games in the prompt, and instructing the model strictly not to invent themes.
-- **Family Deduplication:** We frequently recommend multiple editions of the same game. We will offload the deduplication to the LLM. The Bedrock prompt will be instructed to identify and filter out redundant versions or expansions of the same base game.
-
-### Architecture Decisions
-- **LLM Grounding:** We will append a JSON block of the candidate's actual mechanics/categories to the Bedrock prompt context window.
-- **Deduplication Logic:** The Bedrock Converse API prompt will include explicit instructions to review the candidate list for variants, new editions, or implementations of the same game family, ensuring only the most relevant or highest-ranked edition is included in the final output.
-
-### Tasks
-- [ ] **Prompt Grounding & Deduplication:** Update `bgg_recommender.py` to include the game's actual mechanics and categories in the Bedrock prompt and add strict instructions against hallucinating themes and to filter out multiple editions/variants of the same game family.
-
----
-
 ## Milestone 23: Affinity Refinement (TF-IDF)
 
 ### Objective
@@ -256,4 +238,5 @@ Address user feedback regarding skewed recommendations caused by overly generic 
 * **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
 * **Milestone 16: Unified Analytics & Taste Profile UI** (Cohesive dashboard experience with glassmorphism layout, dynamic Chart.js visualizations for individual/playgroup collection statistics and taste profiles)
 * **Milestone 18: Varied & Engaging AI Recommendation Explanations** (Prompt example removal, explicit 7-angle rotation instruction, hard opener uniqueness constraint, elevated temperature, Converse system prompt, test coverage)
+* **Milestone 22: LLM Prompt Grounding & Deduplication** (Injected catalog mechanics into Bedrock prompt to eliminate hallucination, and added instructions to deduplicate variants)
 * **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)

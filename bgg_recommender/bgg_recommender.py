@@ -477,7 +477,9 @@ def lambda_handler(event, context):
     # Construct list of liked games for the Bedrock prompt
     liked_games_profile = []
     for _, row in liked_joined.head(20).iterrows():
-        liked_games_profile.append(f"- {row['name']} (User Rating: {row['rating_user'] if pd.notna(row['rating_user']) else 'Owned'})")
+        cats = ", ".join(safe_list(row.get('categories')))
+        mechs = ", ".join(safe_list(row.get('mechanics')))
+        liked_games_profile.append(f"- {row['name']} (User Rating: {row['rating_user'] if pd.notna(row['rating_user']) else 'Owned'}, Categories: {cats}, Mechanics: {mechs})")
     liked_games_str = "\n".join(liked_games_profile)
 
     # 4. Filter Candidates based on user preferences
@@ -822,7 +824,7 @@ def lambda_handler(event, context):
         candidate_scores.append((comp_score, row))
 
     candidate_scores.sort(key=lambda x: x[0], reverse=True)
-    top_candidates = [item[1] for item in candidate_scores[:25]]
+    top_candidates = [item[1] for item in candidate_scores[:30]]
 
     # 6. Build Bedrock Prompt & Invoke
     candidates_str = ""
@@ -883,6 +885,7 @@ Here is a list of candidate board games from our catalog that match the user's p
 {candidates_str}
 
 Please select the best 10 games from the candidates list above. Do NOT select games that are not in the candidates list.
+Review the candidate list for variants, new editions, or implementations of the same game family (e.g., base game vs 2nd edition vs reimplementation). Deduplicate these and only output the most relevant or highest-ranked edition in your final 10 recommendations.
 """
     else:
         user_prompt += f"""
@@ -914,7 +917,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
         # System persona definition
         system_prompts = [
             {
-                "text": "You are a board game recommendation expert. Your job is to select the best games and write highly varied, engaging, and expressive 1-sentence explanations. Avoid repetitive sentence structures (e.g., do not start multiple sentences with 'If you enjoyed...'). Ensure you output raw, valid JSON matching the requested schema."
+                "text": "You are a board game recommendation expert. Your job is to select the best games and write highly varied, engaging, and expressive 1-sentence explanations. Avoid repetitive sentence structures (e.g., do not start multiple sentences with 'If you enjoyed...'). Do NOT hallucinate themes or mechanics that are not explicitly present in the provided context lists. Ensure you output raw, valid JSON matching the requested schema."
             }
         ]
         
