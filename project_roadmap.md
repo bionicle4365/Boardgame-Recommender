@@ -4,19 +4,26 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
-## Milestone 9: Advanced Filter Builder (Hard Exclusions & Designer Weights)
- 
- ### Objective
- Add advanced UI filters to exclude specific categories, mechanics, or designers, and perform dynamic filtering in Python before calling Bedrock.
- 
- ### Tasks
- - [ ] Implement exclusion UI multi-select lists for mechanics, categories, and designers.
- - [ ] Update frontend script to deliver exclusion collections as URL query parameters.
- - [ ] Update serving Lambda backend to dynamically parse exclusions and filter candidates in Python prior to Bedrock invocation.
- 
- ---
- 
- ## Milestone 17: Cold-Start Onboarding (BGG Profile Bypass & Rating Flow)
+## Milestone 9: Crowdfunding Tracker (Kickstarter, Gamefound, & Backerkit Integration)
+
+### Objective
+Sync active board game crowdfunding campaigns (Kickstarter, Gamefound, Backerkit) and recommend them to users based on their existing taste profiles, allowing them to discover upcoming games before they hit retail.
+
+### Design Notes
+**Data Retrieval Strategy:**
+- **Gamefound**: Has a clean, public JSON API (`GET /api/public/projects/getActiveCrowdfundingProjects`) that we can call directly.
+- **Backerkit**: Needs to be investigated for an API. If none exists, we will apply the same scraping strategy used for Kickstarter.
+- **Kickstarter**: Lacks a public API. We will reuse the ECS Fargate Playwright task (already implemented for BGG conventions) to scrape the Tabletop Games Discover page to extract campaign URLs, thumbnails, and funding statistics.
+
+### Tasks
+- [ ] **Crowdfunding Scraper (ECS Fargate):** Implement a weekly scraper to fetch active board game campaigns from Kickstarter, Gamefound, and Backerkit, extracting metadata (mechanics, theme, designer, pledge levels).
+- [ ] **Campaign Persistence:** Store active campaign data in an S3 JSON file or DynamoDB table for rapid frontend access.
+- [ ] **Scoring Integration:** Update the Python Lambda backend to load the active campaign catalog and score it against the user's taste profile, keeping crowdfunding recommendations in a separate "Upcoming/Crowdfunding" UI lane.
+- [ ] **Frontend Crowdfunding Lane:** Build a dedicated horizontal scroll lane or tab in the UI specifically for live crowdfunding campaigns, complete with "Days Remaining" and "Funding Status" badges.
+
+---
+
+## Milestone 17: Cold-Start Onboarding (BGG Profile Bypass & Rating Flow)
 
  ### Objective
  Provide a seamless recommendation flow for users without a BoardGameGeek profile or a profile that doesn't have enough data. The user is walked through a two-round adaptive game rating flow (👍 / 👎 / Haven't played it) that collects enough signal to build a temporary taste profile, which is submitted inline to the existing recommendation API.
@@ -195,6 +202,42 @@ Train a LightFM hybrid collaborative filtering model using both explicit ratings
 
 ---
 
+## Milestone 22: LLM Prompt Grounding & Deduplication
+
+### Objective
+Address user feedback regarding AI hallucination in explanations and redundant game family recommendations.
+
+### Design Notes
+- **AI Hallucinations:** The LLM sometimes hallucinates mechanics. We must enforce ground-truth grounding by passing the exact mechanic and category list of both the source and target games in the prompt, and instructing the model strictly not to invent themes.
+- **Family Deduplication:** We frequently recommend multiple editions of the same game. We will offload the deduplication to the LLM. The Bedrock prompt will be instructed to identify and filter out redundant versions or expansions of the same base game.
+
+### Architecture Decisions
+- **LLM Grounding:** We will append a JSON block of the candidate's actual mechanics/categories to the Bedrock prompt context window.
+- **Deduplication Logic:** The Bedrock Converse API prompt will include explicit instructions to review the candidate list for variants, new editions, or implementations of the same game family, ensuring only the most relevant or highest-ranked edition is included in the final output.
+
+### Tasks
+- [ ] **Prompt Grounding & Deduplication:** Update `bgg_recommender.py` to include the game's actual mechanics and categories in the Bedrock prompt and add strict instructions against hallucinating themes and to filter out multiple editions/variants of the same game family.
+
+---
+
+## Milestone 23: Affinity Refinement (TF-IDF)
+
+### Objective
+Address user feedback regarding skewed recommendations caused by overly generic mechanics.
+
+### Design Notes
+- **Mechanic Weighting Refinement:** Generic tags like "Solo / Solitaire Game" or "Card Game" carry disproportionate weight and skew affinities. We will implement an Inverse Document Frequency (IDF) style down-weighting for ubiquitous tags.
+
+### Architecture Decisions
+- **TF-IDF Weighting:** We'll load the `mechanic_frequencies.json` into the scoring pipeline and apply a logarithmic penalty to mechanics based on how frequently they appear in the catalog.
+
+### Tasks
+- [ ] **Affinity Refinement:** Implement a TF-IDF down-weighting mechanism in the scoring logic in `bgg_recommender.py` for overly generic mechanics.
+
+
+
+---
+ 
  ## Completed Milestones
  
  * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
@@ -213,3 +256,4 @@ Train a LightFM hybrid collaborative filtering model using both explicit ratings
 * **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
 * **Milestone 16: Unified Analytics & Taste Profile UI** (Cohesive dashboard experience with glassmorphism layout, dynamic Chart.js visualizations for individual/playgroup collection statistics and taste profiles)
 * **Milestone 18: Varied & Engaging AI Recommendation Explanations** (Prompt example removal, explicit 7-angle rotation instruction, hard opener uniqueness constraint, elevated temperature, Converse system prompt, test coverage)
+* **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)
