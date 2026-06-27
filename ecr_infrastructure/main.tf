@@ -24,4 +24,6 @@ module "ssm" {
   bgg_recommender_ecr_url = module.ecr.bgg_recommender_ecr_url
   bgg_compactor_ecr_url = module.ecr.bgg_compactor_ecr_url
   bgg_taste_analytics_ecr_url = module.ecr.bgg_taste_analytics_ecr_url
+  bgg_preview_discovery_ecr_url = module.ecr.bgg_preview_discovery_ecr_url
+  bgg_preview_refresh_ecr_url = module.ecr.bgg_preview_refresh_ecr_url
 }

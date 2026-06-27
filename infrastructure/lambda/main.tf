@@ -198,3 +198,54 @@ resource "aws_lambda_event_source_mapping" "bgg_taste_analytics_esm" {
   batch_size              = 10
   function_response_types = ["ReportBatchItemFailures"]
 }
+
+data "aws_ssm_parameter" "bgg_preview_refresh_ecr_url" {
+  name = "/bgg/ecr/bgg_preview_refresh_repository_url"
+}
+
+# Lambda Function for Daily Preview Refresh
+resource "aws_lambda_function" "bgg_preview_refresh_lambda" {
+  function_name = "bgg-preview-refresh"
+  role          = aws_iam_role.lambda_execution_role.arn
+  package_type  = "Image"
+  image_uri     = "${data.aws_ssm_parameter.bgg_preview_refresh_ecr_url.value}:latest"
+
+  timeout     = 300
+  memory_size = 512
+
+  environment {
+    variables = {
+      S3_OUTPUT_BUCKET_NAME = var.s3_bucket_name
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+}
+
+resource "aws_cloudwatch_log_group" "preview_refresh_log_group" {
+  name              = "/aws/lambda/${aws_lambda_function.bgg_preview_refresh_lambda.function_name}"
+  retention_in_days = 7
+}
+
+# EventBridge rule to run daily
+resource "aws_cloudwatch_event_rule" "daily_preview_refresh" {
+  name                = "bgg-daily-preview-refresh"
+  description         = "Trigger BGG GeekPreview refresh daily"
+  schedule_expression = "cron(0 8 * * ? *)" # 8am UTC
+}
+
+resource "aws_cloudwatch_event_target" "run_preview_refresh" {
+  target_id = "RunPreviewRefreshLambda"
+  rule      = aws_cloudwatch_event_rule.daily_preview_refresh.name
+  arn       = aws_lambda_function.bgg_preview_refresh_lambda.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_preview_refresh" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.bgg_preview_refresh_lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.daily_preview_refresh.arn
+}

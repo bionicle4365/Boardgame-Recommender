@@ -450,11 +450,18 @@ title: Boardgame Recommender
                     </select>
                     <select id="complexity_pref" style="flex-grow: 1;">
                         <option value="any" selected>Any Complexity</option>
-                        <option value="low">Low (&lt; 2.0 / 5)</option>
-                        <option value="medium">Medium (2.0 - 3.5 / 5)</option>
-                        <option value="high">High (&gt; 3.5 / 5)</option>
+                        <option value="light">Light (Weight 1-2)</option>
+                        <option value="medium">Medium (Weight 2-3.5)</option>
+                        <option value="heavy">Heavy (Weight 3.5-5)</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="form-group full-width" id="convention-group" style="display: none;">
+                <label for="convention_id">Upcoming Conventions (GeekPreviews)</label>
+                <select id="convention_id">
+                    <option value="" selected>None (Search full catalog)</option>
+                </select>
             </div>
 
             <div class="form-group full-width">
@@ -670,6 +677,38 @@ title: Boardgame Recommender
         // Preferences Sync functions
         const apiUrl = "{{ site.api_url }}";
 
+        // Fetch conventions from S3
+        const S3_BUCKET_URL = "https://boardgame-app.s3.amazonaws.com"; // Adjust if using a different URL
+        async function fetchConventions() {
+            try {
+                const response = await fetch(`${S3_BUCKET_URL}/data/active_previews.json`);
+                if (response.ok) {
+                    const previews = await response.json();
+                    if (previews && previews.length > 0) {
+                        const select = document.getElementById("convention_id");
+                        previews.forEach(p => {
+                            const option = document.createElement("option");
+                            option.value = p.preview_id;
+                            option.textContent = p.name;
+                            select.appendChild(option);
+                        });
+                        document.getElementById("convention-group").style.display = "flex";
+                        
+                        // Restore saved
+                        const savedConv = localStorage.getItem("bgg_rec_convention");
+                        if (savedConv) select.value = savedConv;
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to fetch active conventions", e);
+            }
+        }
+        fetchConventions();
+
+        document.getElementById("convention_id").addEventListener("change", function() {
+            localStorage.setItem("bgg_rec_convention", this.value);
+        });
+
         async function syncPreferencesToBackend() {
             if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
             
@@ -787,8 +826,9 @@ title: Boardgame Recommender
             const own_status = document.getElementById("own_status").value;
             const year_start = document.getElementById("year_start").value;
             const year_end = document.getElementById("year_end").value;
-            const duration_pref = document.getElementById("duration_pref").value;
-            const complexity_pref = document.getElementById("complexity_pref").value;
+            const durationPref = document.getElementById("duration_pref").value;
+            const complexityPref = document.getElementById("complexity_pref").value;
+            const conventionId = document.getElementById("convention_id").value;
 
             // Normalize weights for query parameter and cache key
             const w_mech = (wMechInput.value / 100).toFixed(2);
@@ -797,7 +837,7 @@ title: Boardgame Recommender
             const w_hot = (wHotInput.value / 100).toFixed(2);
 
             // Build unique cache key including weights and preferences
-            const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${duration_pref}_${complexity_pref}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
+            const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${durationPref}_${complexityPref}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
 
             // Check if fresh cache exists (TTL = 7 days)
             const cachedDataStr = localStorage.getItem(cacheKey);
@@ -810,7 +850,7 @@ title: Boardgame Recommender
                         console.log("Serving recommendations from local storage cache.");
                         statusCard.style.display = "none";
                         submitBtn.disabled = false;
-                        renderRecommendations(cachedData.recommendations);
+                        renderRecommendations(cachedData.recommendations, conventionId);
                         return; // Exit and skip calling backend
                     } else {
                         console.log("Cached recommendations are stale. Requesting fresh data.");
@@ -823,7 +863,7 @@ title: Boardgame Recommender
             }
 
             // Build query params
-            let params = new URLSearchParams({
+            let queryParams = new URLSearchParams({
                 username: username,
                 own_status: own_status,
                 w_mech: w_mech,
@@ -831,18 +871,19 @@ title: Boardgame Recommender
                 w_pop: w_pop,
                 w_hot: w_hot
             });
-            if (year_start) params.append("year_start", year_start);
-            if (year_end) params.append("year_end", year_end);
-            if (duration_pref !== "any") params.append("duration_pref", duration_pref);
-            if (complexity_pref !== "any") params.append("complexity_pref", complexity_pref);
+            if (year_start) queryParams.append("year_start", year_start);
+            if (year_end) queryParams.append("year_end", year_end);
+            if (durationPref && durationPref !== 'any') queryParams.append('duration_pref', durationPref);
+            if (complexityPref && complexityPref !== 'any') queryParams.append('complexity_pref', complexityPref);
+            if (conventionId) queryParams.append('convention_id', conventionId);
 
-            const queryUrl = `${apiUrl}/recommendations?${params.toString()}`;
+            const url = `${apiUrl}/recommendations?${queryParams.toString()}`;
             isPollingActive = true;
 
             function pollRecommendations() {
                 if (!isPollingActive) return;
 
-                fetch(queryUrl)
+                fetch(url)
                     .then(response => {
                         if (!response.ok) {
                             throw new Error("Network response error");
@@ -871,7 +912,7 @@ title: Boardgame Recommender
                                 console.error("Error writing to local storage cache:", cacheErr);
                             }
 
-                            renderRecommendations(data.recommendations);
+                            renderRecommendations(data.recommendations, conventionId);
                         } else {
                             throw new Error("Unexpected response status");
                         }
@@ -890,13 +931,20 @@ title: Boardgame Recommender
             pollRecommendations();
         });
 
-        function renderRecommendations(recs) {
+        function renderRecommendations(recs, conventionId) {
             if (!recs || recs.length === 0) {
                 resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: #fff;">No recommendations found matching those criteria. Try relaxing your year filters!</div>`;
                 return;
             }
 
-            let html = "";
+            let conventionBadgeHTML = '';
+            if (conventionId) {
+                const select = document.getElementById("convention_id");
+                const convName = select.options[select.selectedIndex].text;
+                conventionBadgeHTML = `<div style="margin-bottom: 10px;"><span class="badge" style="background-color: #fef08a; color: #854d0e;">🎮 ${convName} Preview</span></div>`;
+            }
+
+            let html = conventionBadgeHTML;
             recs.forEach((rec, index) => {
                 const gameLink = rec.id 
                     ? `https://boardgamegeek.com/boardgame/${rec.id}` 

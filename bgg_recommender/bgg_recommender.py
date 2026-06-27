@@ -53,6 +53,8 @@ bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'amazon.nova-micro-v1:0')
 
 # In-memory global cache for catalog to reuse across container warm starts
 CATALOG_CACHE = None
+PREVIEWS_CACHE = None
+PREVIEWS_CACHE_TIME = None
 
 def safe_list(val):
     """Helper to safely convert array/list/nullable to a Python list without triggering array truth value errors."""
@@ -82,6 +84,28 @@ def get_catalog():
     except Exception as e:
         logger.error(f"Error loading catalog database: {e}")
         return None
+
+def get_active_previews():
+    """
+    Downloads active_previews.json from S3 and caches it in memory with a 24-hour TTL.
+    """
+    global PREVIEWS_CACHE, PREVIEWS_CACHE_TIME
+    
+    if PREVIEWS_CACHE is not None and PREVIEWS_CACHE_TIME is not None:
+        age_hours = (datetime.now(timezone.utc) - PREVIEWS_CACHE_TIME).total_seconds() / 3600.0
+        if age_hours < 24:
+            return PREVIEWS_CACHE
+
+    logger.info("Fetching active previews from S3...")
+    try:
+        key = "data/active_previews.json"
+        response = s3.get_object(Bucket=bucket, Key=key)
+        PREVIEWS_CACHE = json.loads(response['Body'].read().decode('utf-8'))
+        PREVIEWS_CACHE_TIME = datetime.now(timezone.utc)
+        return PREVIEWS_CACHE
+    except Exception as e:
+        logger.error(f"Error loading active previews: {e}")
+        return []
 
 def get_user_profile_status(username, ttl_hours=24):
     """
@@ -320,6 +344,7 @@ def lambda_handler(event, context):
     player_count = query_params.get('player_count')
     duration_pref = query_params.get('duration_pref', 'any').lower()
     complexity_pref = query_params.get('complexity_pref', 'any').lower()
+    convention_id = query_params.get('convention_id')
 
     # Extract dynamic weights
     try:
@@ -394,7 +419,7 @@ def lambda_handler(event, context):
         }
 
     # 2. Check S3 recommendation cache (TTL = 7 days / 168 hours)
-    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
+    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{convention_id or 'none'}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
     cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168)
     if cached_recs is not None:
         return {
@@ -454,6 +479,35 @@ def lambda_handler(event, context):
                 'warning': 'Catalog database currently unavailable.'
             })
         }
+        
+    # If a convention filter is applied, filter the catalog to only include games from that convention
+    if convention_id:
+        active_previews = get_active_previews()
+        convention_game_ids = None
+        for preview in active_previews:
+            if str(preview.get("preview_id")) == str(convention_id):
+                convention_game_ids = preview.get("game_ids", [])
+                break
+                
+        if convention_game_ids is not None:
+            logger.info(f"Filtering catalog to {len(convention_game_ids)} games from convention {convention_id}")
+            catalog_df = catalog_df[catalog_df['id'].isin([str(gid) for gid in convention_game_ids])]
+            if catalog_df.empty:
+                logger.warning(f"Convention {convention_id} has no games in the main catalog.")
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'status': 'ready',
+                        'recommendations': [],
+                        'warning': f'No games found for convention {convention_id} in the local catalog.'
+                    })
+                }
+        else:
+            logger.warning(f"Convention {convention_id} not found in active previews. Ignoring filter.")
 
     # Clean catalog types
     catalog_df['year_published'] = pd.to_numeric(catalog_df['year_published'], errors='coerce')

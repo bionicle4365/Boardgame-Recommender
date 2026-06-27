@@ -39,3 +39,17 @@ resource "aws_ssm_parameter" "bgg_taste_analytics_repository_url" {
   type        = "String"
   value       = var.bgg_taste_analytics_ecr_url
 }
+
+resource "aws_ssm_parameter" "bgg_preview_discovery_repository_url" {
+  name        = "/bgg/ecr/bgg_preview_discovery_repository_url"
+  description = "SSM Parameter for ECR repository URL"
+  type        = "String"
+  value       = var.bgg_preview_discovery_ecr_url
+}
+
+resource "aws_ssm_parameter" "bgg_preview_refresh_repository_url" {
+  name        = "/bgg/ecr/bgg_preview_refresh_repository_url"
+  description = "SSM Parameter for ECR repository URL"
+  type        = "String"
+  value       = var.bgg_preview_refresh_ecr_url
+}

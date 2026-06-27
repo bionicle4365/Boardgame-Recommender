@@ -72,35 +72,6 @@ Sync active board game crowdfunding campaigns (Kickstarter, Gamefound, Backerkit
 
  ---
  
- ## Milestone 18: Varied & Engaging AI Recommendation Explanations
-
- ### Objective
- Eliminate the repetitive sentence structure across the 10 AI-generated recommendation explanations by fixing the specific prompt instructions that cause the model to pattern-match a single template phrase. Each recommendation must use a distinct framing angle while remaining a single punchy sentence.
-
- ### Root Cause
- The current prompt at the explanation instruction step includes a concrete example phrase: *"If you enjoyed Gloomhaven and Mage Knight, you will love this game's use of card-driven hand management."* LLMs pattern-match on examples in their instructions — this single example causes the model to use an identical "If you enjoyed X..." opener for all 10 recommendations. Two compounding factors: temperature is set to `0.3` (too deterministic for varied prose) and there is no system-role message to establish a more expressive writing persona.
-
- ### Tasks
-
- #### Prompt Changes (`bgg_recommender.py`)
- - [x] **Remove the Example Phrase:** Delete the parenthetical example sentence from the explanation instruction. Examples act as templates the model replicates; removing it is the single highest-impact change.
- - [x] **Enumerate Rotation Angles:** Replace the current explanation instruction with an explicit list of 7 framing angles the model must rotate through across the 10 recommendations, using each at least once. Each recommendation must use a different angle — do not repeat the same sentence opener or structure:
-   1. *Mechanical alignment* — how its play mechanics match what they enjoy
-   2. *Thematic/narrative resonance* — shared atmosphere, setting, or tone
-   3. *Complexity fit* — how it matches or meaningfully challenges their weight preference
-   4. *Player count and social dynamic* — how it suits their typical group size or dynamic
-   5. *Novelty and contrast* — what's fresh or distinct from what they already own
-   6. *Session pacing* — how the game's length and flow suit their preferences
-   7. *Designer/publisher lineage* — shared creative DNA with games they rate highly
- - [x] **Hard Ban on Repeated Openers:** Explicitly instruct the model that no two recommendations may begin with the same word or phrase, and that "If you enjoyed..." may be used at most once across all 10.
- - [x] **Raise Temperature:** Increase `temperature` from `0.3` to `0.6` in the Bedrock `inferenceConfig`. Lower temperature is appropriate for JSON structure but suppresses prose variation. If JSON parsing failures increase, add a `system` role message (using Bedrock's `system` parameter in the Converse API) to reinforce structured output at the model level, allowing temperature to stay at `0.6`.
-
- #### Testing
- - [x] **Opener Uniqueness Test:** Add a unit test that asserts no two `reason` strings in a mock Bedrock response share the same first 4 words.
- - [x] **Angle Coverage Test:** Add a unit test that passes a mock response through a keyword classifier and asserts that at least 4 of the 7 angles are represented across the 10 reasons (mechanics, theme, complexity, player count, novelty, pacing, lineage).
-
- ---
- 
  ## Milestone 19: BGG GeekPreview Convention Recommendations
 
  ### Objective
@@ -171,21 +142,7 @@ Sync active board game crowdfunding campaigns (Kickstarter, Gamefound, Backerkit
  #### Testing
  - [ ] **Unit Tests:** Verify the convention filter correctly restricts the candidate pool to the preview game list, that games missing from the preview list are excluded, and that the fallback to the full catalog works when `active_previews.json` is absent or the convention ID is not found.
 
- ---
- 
- ## Milestone 20: Cognito Verification Email Delivery Setup
- 
- ### Objective
- Establish reliable verification email delivery for Cognito authentication using AWS Simple Email Service (SES) to ensure sign-up codes/links are successfully received by users.
- 
- ### Tasks
- - [ ] Configure AWS SES (Simple Email Service) verified identity (domain or email).
- - [ ] Update Cognito User Pool configuration in Terraform to integrate SES for email delivery using the `email_configuration` block.
- - [ ] Grant Cognito User Pool execution role permission to send emails via SES.
- - [ ] Customize confirmation code verification email templates (HTML/Text).
- - [ ] Verify email delivery using verified sandbox emails or requests for SES production access.
- 
- ---
+
  
  ## Milestone 21: Hybrid Collaborative Filtering via LightFM (Pickled Model)
 
@@ -238,5 +195,6 @@ Address user feedback regarding skewed recommendations caused by overly generic 
 * **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
 * **Milestone 16: Unified Analytics & Taste Profile UI** (Cohesive dashboard experience with glassmorphism layout, dynamic Chart.js visualizations for individual/playgroup collection statistics and taste profiles)
 * **Milestone 18: Varied & Engaging AI Recommendation Explanations** (Prompt example removal, explicit 7-angle rotation instruction, hard opener uniqueness constraint, elevated temperature, Converse system prompt, test coverage)
+* **Milestone 20: Cognito Verification Email Delivery Setup** (SES identity created, IAM policies granted, custom HTML email templates added to Terraform)
 * **Milestone 22: LLM Prompt Grounding & Deduplication** (Injected catalog mechanics into Bedrock prompt to eliminate hallucination, and added instructions to deduplicate variants)
 * **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)
