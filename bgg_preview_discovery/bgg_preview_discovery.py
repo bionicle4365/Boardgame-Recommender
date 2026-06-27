@@ -69,7 +69,11 @@ def get_active_previews():
             
             logger.info(f"Visiting preview page: {href}")
             full_url = f"https://boardgamegeek.com{href}"
-            page.goto(full_url, wait_until="domcontentloaded")
+            try:
+                page.goto(full_url, timeout=20000)
+            except Exception as e:
+                logger.warning(f"Timeout loading {full_url}: {e}")
+                continue
             
             preview_id = page.evaluate("""
                 () => {
