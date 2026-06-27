@@ -1,4 +1,4 @@
-variable "email_address" {
-  description = "The email address to verify with SES"
+variable "domain_name" {
+  description = "The custom domain to verify with SES"
   type        = string
 }

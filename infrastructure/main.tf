@@ -17,14 +17,14 @@ module "dynamodb" {
 }
 
 module "ses" {
-  source        = "./ses"
-  email_address = "bionicle4365@gmail.com"
+  source      = "./ses"
+  domain_name = "meeplemanifesto.com"
 }
 
 module "cognito" {
   source                 = "./cognito"
-  ses_source_arn         = module.ses.ses_email_identity_arn
-  ses_from_email_address = "Boardgame Recommender <bionicle4365@gmail.com>"
+  ses_source_arn         = module.ses.ses_domain_identity_arn
+  ses_from_email_address = "Boardgame Recommender <noreply@meeplemanifesto.com>"
 }
 
 module "sqs" {

@@ -1,12 +1,16 @@
-resource "aws_ses_email_identity" "boardgame_app" {
-  email = var.email_address
+resource "aws_ses_domain_identity" "boardgame_app" {
+  domain = var.domain_name
+}
+
+resource "aws_ses_domain_dkim" "boardgame_app" {
+  domain = aws_ses_domain_identity.boardgame_app.domain
 }
 
 # Allow Cognito to send emails using this identity
 data "aws_iam_policy_document" "ses_identity_policy" {
   statement {
     actions   = ["ses:SendEmail", "ses:SendRawEmail"]
-    resources = [aws_ses_email_identity.boardgame_app.arn]
+    resources = [aws_ses_domain_identity.boardgame_app.arn]
 
     principals {
       type        = "Service"
@@ -16,7 +20,7 @@ data "aws_iam_policy_document" "ses_identity_policy" {
 }
 
 resource "aws_ses_identity_policy" "cognito_ses_policy" {
-  identity = aws_ses_email_identity.boardgame_app.arn
+  identity = aws_ses_domain_identity.boardgame_app.arn
   name     = "CognitoSendEmailPolicy"
   policy   = data.aws_iam_policy_document.ses_identity_policy.json
 }
