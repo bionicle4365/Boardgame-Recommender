@@ -663,7 +663,7 @@ title: Playgroup Organizer
                                 <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-unique-games">-</span>
                             </div>
                             <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
-                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Avg Group Complexity</span>
+                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;" id="group-card-complexity-title">Player Count Match</span>
                                 <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-complexity">-</span>
                             </div>
                             <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
@@ -1636,6 +1636,7 @@ title: Playgroup Organizer
 
             analyticsDiv.style.display = "block";
             document.getElementById("group-card-unique-games").textContent = "Loading...";
+            document.getElementById("group-card-complexity-title").textContent = "Player Count Match";
             document.getElementById("group-card-complexity").textContent = "Loading...";
             document.getElementById("group-card-rating").textContent = "Loading...";
 
@@ -1706,17 +1707,21 @@ title: Playgroup Organizer
 
                 const uniqueGames = Array.from(uniqueGamesMap.values());
                 const totalUniqueGamesCount = uniqueGames.length;
-                const avgGroupComplexity = attendeeComplexityCount > 0 
-                    ? (totalComplexitySum / attendeeComplexityCount).toFixed(1) 
-                    : '2.5';
+                const attendeeCount = usernames.length;
+                const matchingPlayerCountGames = uniqueGames.filter(g => {
+                    const min = parseInt(g.minPlayers);
+                    const max = parseInt(g.maxPlayers);
+                    return !isNaN(min) && !isNaN(max) && attendeeCount >= min && attendeeCount <= max;
+                }).length;
                 
                 const bggRatedGames = uniqueGames.filter(g => g.bggRating !== 'N/A' && !isNaN(g.bggRating));
                 const avgBggRating = bggRatedGames.length > 0 
                     ? (bggRatedGames.reduce((sum, g) => sum + g.bggRating, 0) / bggRatedGames.length).toFixed(1) 
                     : 'N/A';
-
+ 
                 document.getElementById("group-card-unique-games").textContent = totalUniqueGamesCount;
-                document.getElementById("group-card-complexity").textContent = `${avgGroupComplexity} / 5`;
+                document.getElementById("group-card-complexity-title").textContent = `Games for ${attendeeCount} Player${attendeeCount !== 1 ? 's' : ''}`;
+                document.getElementById("group-card-complexity").textContent = matchingPlayerCountGames;
                 document.getElementById("group-card-rating").textContent = `${avgBggRating} ★`;
 
                 drawPlaygroupCharts(mergedMechs, mergedCats, userResults, uniqueGames);

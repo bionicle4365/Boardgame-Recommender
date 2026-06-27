@@ -327,14 +327,20 @@ def lambda_handler(event, context):
         w_cat = float(query_params.get('w_cat', '0.5'))
         w_pop = float(query_params.get('w_pop', '0.5'))
         w_hot = float(query_params.get('w_hot', '0.0'))
+        w_comp = float(query_params.get('w_comp', '0.4'))
+        w_des = float(query_params.get('w_des', '0.3'))
+        w_pub = float(query_params.get('w_pub', '0.1'))
     except ValueError:
-        w_mech, w_cat, w_pop, w_hot = 0.5, 0.5, 0.5, 0.0
+        w_mech, w_cat, w_pop, w_hot, w_comp, w_des, w_pub = 0.5, 0.5, 0.5, 0.0, 0.4, 0.3, 0.1
 
     # Clamp weights
     w_mech = max(0.0, min(1.0, w_mech))
     w_cat = max(0.0, min(1.0, w_cat))
     w_pop = max(0.0, min(1.0, w_pop))
     w_hot = max(0.0, min(1.0, w_hot))
+    w_comp = max(0.0, min(1.0, w_comp))
+    w_des = max(0.0, min(1.0, w_des))
+    w_pub = max(0.0, min(1.0, w_pub))
 
     # Parse list of BGG usernames (support groups)
     usernames = [u.strip() for u in username.split(',') if u.strip()]
@@ -388,7 +394,7 @@ def lambda_handler(event, context):
         }
 
     # 2. Check S3 recommendation cache (TTL = 7 days / 168 hours)
-    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}.json"
+    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
     cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168)
     if cached_recs is not None:
         return {
@@ -709,10 +715,68 @@ def lambda_handler(event, context):
         
         hot_score = hotness_scores.get(g_id, 0.0)
         
+        # Compute complexity similarity
+        comp_sim = 0.0
+        cand_complexity = row.get('complexity')
+        if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
+            cand_complexity = float(cand_complexity)
+            if complexity_pref and complexity_pref != 'any':
+                if complexity_pref == 'low':
+                    if cand_complexity <= 2.0:
+                        comp_sim = 1.0
+                    else:
+                        comp_sim = max(0.0, 1.0 - ((cand_complexity - 2.0) / 2.0))
+                elif complexity_pref == 'high':
+                    if cand_complexity >= 3.5:
+                        comp_sim = 1.0
+                    else:
+                        comp_sim = max(0.0, 1.0 - ((3.5 - cand_complexity) / 2.5))
+                elif complexity_pref == 'medium':
+                    if 2.0 <= cand_complexity <= 3.5:
+                        comp_sim = 1.0
+                    elif cand_complexity < 2.0:
+                        comp_sim = max(0.0, 1.0 - ((2.0 - cand_complexity) / 2.0))
+                    else:
+                        comp_sim = max(0.0, 1.0 - ((cand_complexity - 3.5) / 1.5))
+            elif has_complexity and total_complexity_weight > 0:
+                if cand_complexity < 2.0:
+                    comp_bucket = "Light"
+                elif cand_complexity <= 2.8:
+                    comp_bucket = "Medium-Light"
+                elif cand_complexity <= 3.5:
+                    comp_bucket = "Medium-Heavy"
+                else:
+                    comp_bucket = "Heavy"
+                
+                bucket_weight = complexity_weights.get(comp_bucket, 0.0)
+                comp_sim = bucket_weight / total_complexity_weight
+        
+        # Compute designer/publisher similarity
+        des_sim = 0.0
+        cand_des = row.get('designers')
+        cand_des = list(cand_des) if cand_des is not None else []
+        if cand_des and user_designers and total_des_weight > 0:
+            des_sim = sum(user_designers.get(d, 0.0) for d in cand_des) / total_des_weight
+
+        pub_sim = 0.0
+        if has_publishers:
+            cand_pubs = row.get('publishers')
+            cand_pubs = list(cand_pubs) if cand_pubs is not None else []
+            if cand_pubs and user_publishers and total_pub_weight > 0:
+                pub_sim = sum(user_publishers.get(p, 0.0) for p in cand_pubs) / total_pub_weight
+        
         # Compute composite score weighted by dynamic user choices
-        denominator = w_mech + w_cat + w_pop + w_hot
+        denominator = w_mech + w_cat + w_pop + w_hot + w_comp + w_des + w_pub
         if denominator > 0:
-            comp_score = (w_mech * mech_sim + w_cat * cat_sim + w_pop * pop_score + w_hot * hot_score) / denominator
+            comp_score = (
+                w_mech * mech_sim + 
+                w_cat * cat_sim + 
+                w_pop * pop_score + 
+                w_hot * hot_score +
+                w_comp * comp_sim +
+                w_des * des_sim +
+                w_pub * pub_sim
+            ) / denominator
         else:
             comp_score = 0.0
 
@@ -747,65 +811,6 @@ def lambda_handler(event, context):
                 else:
                     dur_mult = 1.0
                 comp_score *= dur_mult
-
-        # C. Apply complexity preference soft scaling (Low <= 2.0, High >= 3.5, Medium 2.0-3.5)
-        # If complexity_pref is set to a specific value, it overrides the default average complexity matching.
-        if complexity_pref and complexity_pref != 'any':
-            cand_complexity = row.get('complexity')
-            if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
-                cand_complexity = float(cand_complexity)
-                if complexity_pref == 'low':
-                    if cand_complexity <= 2.0:
-                        comp_mult = 1.0
-                    else:
-                        comp_mult = max(0.5, 1.0 - ((cand_complexity - 2.0) / 2.0))
-                elif complexity_pref == 'high':
-                    if cand_complexity >= 3.5:
-                        comp_mult = 1.0
-                    else:
-                        comp_mult = max(0.5, 1.0 - ((3.5 - cand_complexity) / 2.5))
-                elif complexity_pref == 'medium':
-                    if 2.0 <= cand_complexity <= 3.5:
-                        comp_mult = 1.0
-                    elif cand_complexity < 2.0:
-                        comp_mult = max(0.6, 1.0 - ((2.0 - cand_complexity) / 2.0))
-                    else:
-                        comp_mult = max(0.6, 1.0 - ((cand_complexity - 3.5) / 1.5))
-                else:
-                    comp_mult = 1.0
-                comp_score *= comp_mult
-        elif has_complexity:
-            cand_complexity = row.get('complexity')
-            if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
-                if cand_complexity < 2.0:
-                    comp_bucket = "Light"
-                elif cand_complexity <= 2.8:
-                    comp_bucket = "Medium-Light"
-                elif cand_complexity <= 3.5:
-                    comp_bucket = "Medium-Heavy"
-                else:
-                    comp_bucket = "Heavy"
-                
-                bucket_weight = complexity_weights.get(comp_bucket, 0.0)
-                normalized_bucket_weight = bucket_weight / total_complexity_weight
-                comp_score *= (0.5 + 0.5 * normalized_bucket_weight)
-
-        # D. Apply designer/publisher affinity booster (up to 15% bonus)
-        des_sim = 0.0
-        pub_sim = 0.0
-        cand_des = row.get('designers')
-        cand_des = list(cand_des) if cand_des is not None else []
-        if cand_des and user_designers:
-            des_sim = sum(user_designers.get(d, 0.0) for d in cand_des) / total_des_weight
-
-        if has_publishers:
-            cand_pubs = row.get('publishers')
-            cand_pubs = list(cand_pubs) if cand_pubs is not None else []
-            if cand_pubs and user_publishers:
-                pub_sim = sum(user_publishers.get(p, 0.0) for p in cand_pubs) / total_pub_weight
-
-        affinity_score = 0.7 * des_sim + 0.3 * pub_sim
-        comp_score *= (1.0 + 0.15 * affinity_score)
             
         candidate_scores.append((comp_score, row))
 
@@ -840,6 +845,9 @@ The user has tuned their preference weights for similarity scoring as follows:
 - Categories Similarity Weight: {w_cat * 100:.0f}%
 - Popularity/Community Rating Weight: {w_pop * 100:.0f}%
 - Hotness/Trending Weight: {w_hot * 100:.0f}%
+- Complexity Similarity Weight: {w_comp * 100:.0f}%
+- Designer Similarity Weight: {w_des * 100:.0f}%
+- Publisher Similarity Weight: {w_pub * 100:.0f}%
 """
     if player_count:
         weight_context += f"- Target Session Player Count: {player_count} players (all candidate games support this player count)\n"

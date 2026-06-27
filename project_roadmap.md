@@ -16,69 +16,6 @@ This document outlines the next steps and active architecture enhancements for t
  
  ---
  
- ## Milestone 11: Taste Analytics Backend
-
- ### Objective
- Build the event-driven backend pipeline that automatically derives and persists a user's taste profile — weighted mechanic/category affinities, complexity preference, and designer/publisher affinity scores — whenever their BGG collection is scraped. Expose the profile via a dedicated API endpoint so downstream UI milestones and the recommendation engine can consume it without recomputing from raw data.
-
- **Architecture:** `S3 PutObject (data/users/*.parquet)` → S3 Event Notification → SQS (`taste_analytics_queue`) → `bgg_taste_analytics` Lambda → S3 (`data/users/{username}_taste_profile.json`)
-
- The taste profile JSON schema captures:
- - `mech_weights` — mechanic name → rating-weighted affinity score
- - `cat_weights` — category name → rating-weighted affinity score
- - `complexity_weights` — dictionary of rating-weighted complexity bucket affinities (Light, Medium-Light, Medium-Heavy, Heavy)
- - `designer_weights` — designer → affinity score
- - `publisher_weights` — publisher → affinity score
- - `generated_at` — ISO timestamp for staleness checks
-
- ### Tasks
-
- #### Taste Analytics Lambda
- - [x] **New Lambda — `bgg_taste_analytics`:** Implement a new Lambda that reads a username from an SQS message, downloads the user's collection parquet and `catalog.parquet` from S3, computes weighted mechanic/category affinities, average complexity, and designer/publisher affinity scores, and saves the result as `data/users/{username}_taste_profile.json` in S3.
-
- #### Event-Driven Pipeline Infrastructure
- - [x] **S3 Event Notification:** Configure an S3 event notification on the `boardgame-app` bucket to publish `ObjectCreated` events for the prefix `data/users/` and suffix `.parquet` to the `taste_analytics_queue` SQS queue.
- - [x] **SQS Queue & DLQ:** Create the `taste_analytics_queue` SQS queue with a dead-letter queue (`taste_analytics_dlq`) and a redrive policy (e.g. `maxReceiveCount = 3`).
- - [x] **CloudWatch Alarm:** Create a CloudWatch alarm on `taste_analytics_dlq` `ApproximateNumberOfMessagesVisible > 0` to alert when a taste profile fails to generate after all retries.
- - [x] **Terraform Module:** Add a new `taste_analytics` Terraform module containing the Lambda, SQS queue, DLQ, S3 event notification, IAM role, and CloudWatch alarm.
-
- #### API & Recommender Integration
- - [x] **Profile API Endpoint:** Add a `GET /profile?username=X` route to the API Gateway that returns the pre-built taste profile JSON directly from S3, for consumption by the analytics dashboard and playgroup page without triggering a full recommendation run.
- - [x] **Recommender Optimisation:** Update `bgg_recommender.py` to load `data/users/{username}_taste_profile.json` from S3 at the start of scoring and use its pre-computed weights directly — skipping the inline derivation step. Fall back to computing inline if the profile is absent or stale (older than the user's collection parquet).
-
- ---
-
-
- ## Milestone 16: Unified Analytics & Taste Profile UI
-
- ### Objective
- Deliver a cohesive analytics experience across two UI surfaces — the Collection Browser and the Playgroup dashboard — using a shared Chart.js design system. Both pages consume the `GET /profile?username=X` endpoint introduced in Milestone 11 to display rating-weighted taste profiles and collection statistics with a consistent visual language.
-
- ### Open Questions
- - **Dynamic Filtering Interaction:** Should the collection analytics charts automatically filter based on active search queries and faceted filters (e.g., clicking "2 Players" filters the table and updates all charts)? Or should they always represent the entire library?
- - **Handling N/A Ratings:** If a user has only rated a few games, the rating distribution chart will have mostly `N/A` values. Should the chart fall back to showing BGG community rating distribution, or only analyze games with valid user ratings?
- - **CSV/JSON Export:** Should the collection browser provide an option to download the parsed collection data as a clean CSV or JSON file for offline analysis?
-
- ### Tasks
-
- #### Shared Design System (implement first)
- - [x] **Chart.js Design Tokens:** Define a shared colour palette, font styles, and chart defaults (border radius, gridline opacity, tooltip styles) to be reused across all chart instances on both pages.
- - [x] **Reusable Card Component:** Implement a glassmorphism summary card pattern (HTML/CSS) that is used consistently on both the collection browser analytics tab and the playgroup dashboard.
-
- #### Collection Browser Analytics Tab
- - [x] **Tabbed UI Design:** Refactor [index.html](file:///d:/Git/Boardgame-Recommender/site_ui/collection/index.html) to support tab buttons ("Grid View" and "Collection Analytics") with clear view panels.
- - [x] **Summary Cards:** Render glassmorphism summary cards for key library stats: Total Games, Average Personal vs BGG Rating, Total Plays, #1 Played Game.
- - [x] **Chart.js Integration:** Implement responsive chart containers for playtime distribution, player count distribution, rating distribution, and most-played leaderboards using the shared design system.
- - [x] **Taste Profile Charts:** Fetch `GET /profile?username=X` and render a radar chart of top mechanic affinities and a horizontal bar chart of top category affinities for the individual user.
- - [x] **Dynamic Data Wiring:** Wire Javascript triggers to extract stats from `gamesData` (and optionally react to active filters) to update all Chart.js instances.
-
- #### Playgroup Taste Profile Visualizations
- - [x] **Profile Fetching & Merge:** For each playgroup member, fetch their pre-built taste profile from `GET /profile?username=X`. Merge individual profiles into a combined group affinity view (weighted average of mechanic/category scores). Fall back to client-side frequency counting if a profile is not yet available.
- - [x] **Taste Profile Charts:** Render a radar chart (top mechanic affinities), horizontal bar chart (top category affinities), doughnut chart (complexity distribution), and vertical bar chart (duration ranges) using the shared design system.
- - [x] **Group Summary Cards:** Render glassmorphism summary cards for group statistics: Total Unique Games, Average Group Complexity, Average BGG Rating.
-
- ---
- 
  ## Milestone 17: Cold-Start Onboarding (BGG Profile Bypass & Rating Flow)
 
  ### Objective
@@ -254,7 +191,9 @@ This document outlines the next steps and active architecture enhancements for t
  * **Milestone 7: Unit Testing & CI/CD Verification** (pytest, GitHub Actions workflows)
  * **Milestone 8: Database Reprocessing & Full Catalog Scrape Execution** (scraper reprocessing, serverless python compactor Lambda)
  * **Milestone 10: Mobile UI Optimization & Responsive Navigation Menu** (responsive layouts, blurred backdrop mobile drawer)
- * **Milestone 12: Production Observability, Rate Limiting, & Cost Protection** (API limits, structured logging, alarms)
- * **Milestone 13: Serverless Cost Optimization & Glue Crawler Bypass** (Python pandas/pyarrow compaction Lambda, bypass Athena)
- * **Milestone 14: Recommender Personalization via Duration & Complexity Weighting** (Pacing/complexity soft-weighting, Bedrock justifications, frontend selectors)
- * **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
+* **Milestone 11: Taste Analytics Backend** (Event-driven pipeline using SQS and Lambda to pre-compute user taste profiles in JSON format)
+* **Milestone 12: Production Observability, Rate Limiting, & Cost Protection** (API limits, structured logging, alarms)
+* **Milestone 13: Serverless Cost Optimization & Glue Crawler Bypass** (Python pandas/pyarrow compaction Lambda, bypass Athena)
+* **Milestone 14: Recommender Personalization via Duration & Complexity Weighting** (Pacing/complexity soft-weighting, Bedrock justifications, frontend selectors)
+* **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
+* **Milestone 16: Unified Analytics & Taste Profile UI** (Cohesive dashboard experience with glassmorphism layout, dynamic Chart.js visualizations for individual/playgroup collection statistics and taste profiles)

@@ -633,8 +633,8 @@ title: BGG Collection Browser
                 <span class="summary-card-value" id="card-total-games">-</span>
             </div>
             <div class="summary-card">
-                <span class="summary-card-title">User Rating / BGG Avg</span>
-                <span class="summary-card-value" id="card-avg-rating">-</span>
+                <span class="summary-card-title">Owned Games</span>
+                <span class="summary-card-value" id="card-owned-games">-</span>
             </div>
             <div class="summary-card">
                 <span class="summary-card-title">Total Plays</span>
@@ -795,12 +795,20 @@ title: BGG Collection Browser
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
 
+        const filtersDiv = document.getElementById('faceted-filters');
+
         if (tabName === 'grid') {
             document.getElementById('tab-btn-grid').classList.add('active');
             document.getElementById('collection-panel-grid').classList.remove('hidden');
+            if (gamesData.length > 0 && filtersDiv) {
+                filtersDiv.style.display = 'block';
+            }
         } else if (tabName === 'analytics') {
             document.getElementById('tab-btn-analytics').classList.add('active');
             document.getElementById('collection-panel-analytics').classList.remove('hidden');
+            if (filtersDiv) {
+                filtersDiv.style.display = 'none';
+            }
             // Force charts resize/draw when tab is shown
             setTimeout(() => {
                 if (chartPlaytime) chartPlaytime.resize();
@@ -1063,15 +1071,8 @@ title: BGG Collection Browser
         const totalGames = filteredGamesData.length;
         document.getElementById('card-total-games').textContent = totalGames;
 
-        const ratedGames = filteredGamesData.filter(g => g.userRating !== 'N/A');
-        const avgUser = ratedGames.length > 0 
-            ? (ratedGames.reduce((sum, g) => sum + g.userRating, 0) / ratedGames.length).toFixed(1) 
-            : '-';
-        const bggRatedGames = filteredGamesData.filter(g => g.bggRating !== 'N/A');
-        const avgBGG = bggRatedGames.length > 0 
-            ? (bggRatedGames.reduce((sum, g) => sum + g.bggRating, 0) / bggRatedGames.length).toFixed(1) 
-            : '-';
-        document.getElementById('card-avg-rating').textContent = `${avgUser} / ${avgBGG}`;
+        const ownedGamesCount = filteredGamesData.filter(g => g.collectionStatus && g.collectionStatus.includes('Own')).length;
+        document.getElementById('card-owned-games').textContent = `${ownedGamesCount} / ${totalGames}`;
 
         const totalPlays = filteredGamesData.reduce((sum, g) => sum + g.numPlays, 0);
         document.getElementById('card-total-plays').textContent = totalPlays;
@@ -1425,7 +1426,14 @@ title: BGG Collection Browser
         }
 
         controlsDiv.style.display = 'flex';
-        filtersDiv.style.display = 'block';
+        
+        // Only show filters on Grid View tab
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab && activeTab.id === 'tab-btn-grid') {
+            filtersDiv.style.display = 'block';
+        } else {
+            filtersDiv.style.display = 'none';
+        }
 
         if (filteredGamesData.length === 0) {
             collectionDataDiv.innerHTML = '<div class="collection-message">No games match the current filters.</div>';
@@ -1707,6 +1715,7 @@ title: BGG Collection Browser
         document.getElementById('collection-tabs-nav').style.display = 'none';
         document.getElementById('collection-panel-grid').classList.remove('hidden');
         document.getElementById('collection-panel-analytics').classList.add('hidden');
+        document.getElementById('faceted-filters').style.display = 'none';
 
         const apiBaseUrl = "{{ site.api_url }}";
         const apiUrl = apiBaseUrl

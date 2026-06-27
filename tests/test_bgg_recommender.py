@@ -542,3 +542,68 @@ def test_lambda_handler_precomputed_taste_profile(mock_bedrock, mock_hotness, mo
     # Verify that S3 downloaded the taste profile
     mock_s3.download_file.assert_any_call('test-bucket', 'data/users/testuser_taste_profile.json', '/tmp/testuser_taste_profile.json')
 
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_lambda_handler_new_first_class_weights(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+
+    user_df = pd.DataFrame([
+        {"id": "100", "username": "testuser", "rating": 9.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {
+            "id": "100", "name": "Catan Heavy", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.0, 
+            "year_published": 1995, "min_players": 2, "max_players": 4, "playing_time": 60, "min_playtime": 45, "max_playtime": 90,
+            "complexity": 4.0, "min_age": 12, "thumbnail": "t1", "image": "i1", "designers": ["Klaus"], "publishers": ["Kosmos"]
+        }
+    ])
+    mock_read_parquet.side_effect = [user_df, catalog_df]
+    mock_hotness.return_value = []
+
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"name": "Catan Heavy", "reason": "Matches your preference weights."}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+
+    # Test with explicit weights for comp, des, and pub
+    event = {
+        'queryStringParameters': {
+            'username': 'testuser',
+            'own_status': 'unowned',
+            'w_mech': '0.2',
+            'w_cat': '0.2',
+            'w_pop': '0.1',
+            'w_hot': '0.1',
+            'w_comp': '0.8',
+            'w_des': '0.6',
+            'w_pub': '0.4'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'ready'
+
+    # Verify that the Bedrock call prompt contains the new weights context
+    mock_bedrock.converse.assert_called_once()
+    args, kwargs = mock_bedrock.converse.call_args
+    prompt_text = kwargs['messages'][0]['content'][0]['text']
+    assert "Complexity Similarity Weight: 80%" in prompt_text
+    assert "Designer Similarity Weight: 60%" in prompt_text
+    assert "Publisher Similarity Weight: 40%" in prompt_text
+
