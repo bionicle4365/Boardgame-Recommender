@@ -19,7 +19,11 @@ def get_active_previews():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         logger.info("Navigating to https://boardgamegeek.com/previews ...")
-        page.goto("https://boardgamegeek.com/previews", wait_until="domcontentloaded")
+        page.goto("https://boardgamegeek.com/previews", wait_until="networkidle")
+        try:
+            page.wait_for_selector('a[href*="/preview/"]', timeout=10000)
+        except Exception as e:
+            logger.warning(f"Timeout waiting for preview links: {e}")
         
         logger.info("Extracting preview data...")
         # Evaluate a JS snippet to extract preview IDs
