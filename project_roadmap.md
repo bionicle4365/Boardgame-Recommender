@@ -180,6 +180,21 @@ This document outlines the next steps and active architecture enhancements for t
  
  ---
  
+ ## Milestone 21: Hybrid Collaborative Filtering via LightFM (Pickled Model)
+
+### Objective
+Train a LightFM hybrid collaborative filtering model using both explicit ratings and implicit item features (mechanics, categories). Serialize the model to S3 to enable matrix factorization recommendations in the serverless Lambda backend, effectively solving the cold-start problem by projecting user tastes into the latent feature space.
+
+### Tasks
+- [ ] Configure `ml_engine` Docker container to pull `users_combined.parquet` and `catalog.parquet` for weekly offline training.
+- [ ] Train LightFM model with $k=30$ latent components, incorporating mechanics and categories as item features.
+- [ ] Serialize the trained LightFM model, dataset mapping, and feature dicts to `.pkl` files and upload to S3.
+- [ ] Update serving Lambda backend to download the LightFM artifacts on warmup (approx. 40MB memory footprint).
+- [ ] Implement scoring logic in Lambda: `model.predict(user_id)` for existing users, and ALS folding-in/feature projection for brand new users based on their selected mechanics/categories.
+- [ ] Incorporate the collaborative ratings prediction into a hybrid composite scoring loop alongside heuristic weights, allowing potential UI "taste slider" tuning.
+
+---
+
  ## Completed Milestones
  
  * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)

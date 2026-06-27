@@ -16,8 +16,15 @@ module "dynamodb" {
   source = "./dynamodb"
 }
 
+module "ses" {
+  source        = "./ses"
+  email_address = "bionicle4365@gmail.com"
+}
+
 module "cognito" {
-  source = "./cognito"
+  source                 = "./cognito"
+  ses_source_arn         = module.ses.ses_email_identity_arn
+  ses_from_email_address = "Boardgame Recommender <bionicle4365@gmail.com>"
 }
 
 module "sqs" {
