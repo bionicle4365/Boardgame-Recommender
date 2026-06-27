@@ -351,6 +351,10 @@ def test_lambda_handler_advanced_scoring(mock_bedrock, mock_hotness, mock_read_p
     assert "Designers: Klaus" in prompt_text
     assert "Players: 1-4" in prompt_text
     assert "Playtime: 120m" in prompt_text
+    
+    assert 'system' in kwargs
+    assert "board game recommendation expert" in kwargs['system'][0]['text']
+    assert kwargs['inferenceConfig']['temperature'] == 0.6
 
 @patch('bgg_recommender.get_user_profile_status')
 @patch('bgg_recommender.get_cached_recommendations')
@@ -606,4 +610,72 @@ def test_lambda_handler_new_first_class_weights(mock_bedrock, mock_hotness, mock
     assert "Complexity Similarity Weight: 80%" in prompt_text
     assert "Designer Similarity Weight: 60%" in prompt_text
     assert "Publisher Similarity Weight: 40%" in prompt_text
+
+
+def test_milestone_18_opener_uniqueness():
+    valid_reasons = [
+        "Since you like Catan, you will enjoy the resource trading here.",
+        "This game features similar draft mechanics to 7 Wonders.",
+        "Perfect for 4 players looking for a quick cooperative session.",
+        "Designed by Uwe Rosenberg, which matches your designer preference.",
+        "A highly thematic space experience that shares elements with Eclipse.",
+        "This offers a great medium-heavy challenge matching your tastes.",
+        "An interesting contrast to abstract games, featuring heavy theme.",
+        "Plays in under 30 minutes, fitting your short playtime request.",
+        "A classic entry from designer Stefan Feld with similar mechanisms.",
+        "If you enjoy hand management, this game handles it brilliantly."
+    ]
+    seen_openers = set()
+    for r in valid_reasons:
+        words = tuple(r.lower().split()[:4])
+        assert words not in seen_openers, f"Duplicate opener detected: {words}"
+        seen_openers.add(words)
+
+    invalid_reasons = [
+        "If you enjoyed Gloomhaven, you will love X.",
+        "If you enjoyed Gloomhaven, you will love Y."
+    ]
+    seen_openers_invalid = set()
+    duplicate_found = False
+    for r in invalid_reasons:
+        words = tuple(r.lower().split()[:4])
+        if words in seen_openers_invalid:
+            duplicate_found = True
+            break
+        seen_openers_invalid.add(words)
+    assert duplicate_found is True
+
+
+def test_milestone_18_angle_coverage():
+    reasons = [
+        "Since you like Catan, you will enjoy the resource trading mechanisms here.",
+        "This game features similar draft card play to 7 Wonders.",
+        "Perfect for 4 players looking for a quick cooperative session.",
+        "Designed by Uwe Rosenberg, which matches your designer preference.",
+        "A highly thematic space experience that shares elements with Eclipse.",
+        "This offers a great medium-heavy challenge matching your complexity tastes.",
+        "An interesting contrast to abstract games, featuring heavy theme.",
+        "Plays in under 30 minutes, fitting your short playtime request.",
+        "A classic entry from publisher Hans im Glück with similar mechanisms.",
+        "If you enjoy worker placement, this game handles it brilliantly."
+    ]
+    
+    angle_keywords = {
+        'mechanics': ['mechanis', 'draft', 'card play', 'worker placement', 'hand management', 'dice', 'trading'],
+        'theme': ['theme', 'thematic', 'atmosphere', 'space experience', 'narrative', 'setting'],
+        'complexity': ['complexity', 'medium-heavy', 'challenge', 'light', 'weight', 'heavy'],
+        'player count': ['player count', 'players', 'group size', 'social'],
+        'novelty': ['contrast', 'fresh', 'distinct', 'different from'],
+        'pacing': ['minute', 'pacing', 'playtime', 'length', 'quick', 'hour'],
+        'lineage': ['designer', 'publisher', 'uwe rosenberg', 'stefan feld', 'hans im glück', 'lineage', 'DNA']
+    }
+    
+    matched_angles = set()
+    for r in reasons:
+        r_lower = r.lower()
+        for angle, keywords in angle_keywords.items():
+            if any(kw in r_lower for kw in keywords):
+                matched_angles.add(angle)
+                
+    assert len(matched_angles) >= 4, f"Only matched angles: {matched_angles}"
 

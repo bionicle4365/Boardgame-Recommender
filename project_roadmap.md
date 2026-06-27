@@ -19,7 +19,7 @@ This document outlines the next steps and active architecture enhancements for t
  ## Milestone 17: Cold-Start Onboarding (BGG Profile Bypass & Rating Flow)
 
  ### Objective
- Provide a seamless recommendation flow for users without a BoardGameGeek profile. The user is walked through a two-round adaptive game rating flow (👍 / 👎 / Haven't played it) that collects enough signal to build a temporary taste profile, which is submitted inline to the existing recommendation API.
+ Provide a seamless recommendation flow for users without a BoardGameGeek profile or a profile that doesn't have enough data. The user is walked through a two-round adaptive game rating flow (👍 / 👎 / Haven't played it) that collects enough signal to build a temporary taste profile, which is submitted inline to the existing recommendation API.
 
  ### Design Notes
 
@@ -76,8 +76,8 @@ This document outlines the next steps and active architecture enhancements for t
  ### Tasks
 
  #### Prompt Changes (`bgg_recommender.py`)
- - [ ] **Remove the Example Phrase:** Delete the parenthetical example sentence from the explanation instruction. Examples act as templates the model replicates; removing it is the single highest-impact change.
- - [ ] **Enumerate Rotation Angles:** Replace the current explanation instruction with an explicit list of 7 framing angles the model must rotate through across the 10 recommendations, using each at least once. Each recommendation must use a different angle — do not repeat the same sentence opener or structure:
+ - [x] **Remove the Example Phrase:** Delete the parenthetical example sentence from the explanation instruction. Examples act as templates the model replicates; removing it is the single highest-impact change.
+ - [x] **Enumerate Rotation Angles:** Replace the current explanation instruction with an explicit list of 7 framing angles the model must rotate through across the 10 recommendations, using each at least once. Each recommendation must use a different angle — do not repeat the same sentence opener or structure:
    1. *Mechanical alignment* — how its play mechanics match what they enjoy
    2. *Thematic/narrative resonance* — shared atmosphere, setting, or tone
    3. *Complexity fit* — how it matches or meaningfully challenges their weight preference
@@ -85,12 +85,12 @@ This document outlines the next steps and active architecture enhancements for t
    5. *Novelty and contrast* — what's fresh or distinct from what they already own
    6. *Session pacing* — how the game's length and flow suit their preferences
    7. *Designer/publisher lineage* — shared creative DNA with games they rate highly
- - [ ] **Hard Ban on Repeated Openers:** Explicitly instruct the model that no two recommendations may begin with the same word or phrase, and that "If you enjoyed..." may be used at most once across all 10.
- - [ ] **Raise Temperature:** Increase `temperature` from `0.3` to `0.6` in the Bedrock `inferenceConfig`. Lower temperature is appropriate for JSON structure but suppresses prose variation. If JSON parsing failures increase, add a `system` role message (using Bedrock's `system` parameter in the Converse API) to reinforce structured output at the model level, allowing temperature to stay at `0.6`.
+ - [x] **Hard Ban on Repeated Openers:** Explicitly instruct the model that no two recommendations may begin with the same word or phrase, and that "If you enjoyed..." may be used at most once across all 10.
+ - [x] **Raise Temperature:** Increase `temperature` from `0.3` to `0.6` in the Bedrock `inferenceConfig`. Lower temperature is appropriate for JSON structure but suppresses prose variation. If JSON parsing failures increase, add a `system` role message (using Bedrock's `system` parameter in the Converse API) to reinforce structured output at the model level, allowing temperature to stay at `0.6`.
 
  #### Testing
- - [ ] **Opener Uniqueness Test:** Add a unit test that asserts no two `reason` strings in a mock Bedrock response share the same first 4 words.
- - [ ] **Angle Coverage Test:** Add a unit test that passes a mock response through a keyword classifier and asserts that at least 4 of the 7 angles are represented across the 10 reasons (mechanics, theme, complexity, player count, novelty, pacing, lineage).
+ - [x] **Opener Uniqueness Test:** Add a unit test that asserts no two `reason` strings in a mock Bedrock response share the same first 4 words.
+ - [x] **Angle Coverage Test:** Add a unit test that passes a mock response through a keyword classifier and asserts that at least 4 of the 7 angles are represented across the 10 reasons (mechanics, theme, complexity, player count, novelty, pacing, lineage).
 
  ---
  
@@ -197,3 +197,4 @@ This document outlines the next steps and active architecture enhancements for t
 * **Milestone 14: Recommender Personalization via Duration & Complexity Weighting** (Pacing/complexity soft-weighting, Bedrock justifications, frontend selectors)
 * **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
 * **Milestone 16: Unified Analytics & Taste Profile UI** (Cohesive dashboard experience with glassmorphism layout, dynamic Chart.js visualizations for individual/playgroup collection statistics and taste profiles)
+* **Milestone 18: Varied & Engaging AI Recommendation Explanations** (Prompt example removal, explicit 7-angle rotation instruction, hard opener uniqueness constraint, elevated temperature, Converse system prompt, test coverage)

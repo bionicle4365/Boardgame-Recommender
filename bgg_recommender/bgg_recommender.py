@@ -780,11 +780,18 @@ def lambda_handler(event, context):
         else:
             comp_score = 0.0
 
-        # A. Apply community suggested player count soft penalty
-        if player_count and 'suggested_players_recommended' in row:
+        # A. Apply community suggested player count penalty/booster
+        if player_count:
+            best_list = safe_list(row.get('suggested_players_best'))
             rec_list = safe_list(row.get('suggested_players_recommended'))
-            if rec_list and str(player_count) not in rec_list:
-                comp_score *= 0.5
+            p_str = str(player_count)
+            
+            if p_str in best_list:
+                comp_score *= 1.10  # 10% boost for community-voted "Best" count
+            elif p_str in rec_list:
+                pass  # Neutral
+            else:
+                comp_score *= 0.75  # 25% penalty for "Not Recommended"
 
         # B. Apply play time duration preference soft penalty (Short <= 45m, Long >= 90m, Medium 45m-90m)
         if duration_pref and duration_pref != 'any':
@@ -885,7 +892,7 @@ Please recommend 10 great board games from your general knowledge.
     user_prompt += """
 For each recommended game:
 1. Provide the exact name of the game.
-2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it. This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements (for example: "If you enjoyed Gloomhaven and Mage Knight, you will love this game's use of card-driven hand management."). If specific play time or complexity preferences are provided, also mention how this game fits those preferences.
+2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it. This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences.
 
 Format your response as a JSON object with a single key "recommendations", which is a list of objects containing "name" and "reason".
 Do not include any introductory or concluding text (e.g. do not say "Here are your recommendations:" or use markdown code blocks). Output only raw, valid JSON.
@@ -904,13 +911,21 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
             }
         ]
         
+        # System persona definition
+        system_prompts = [
+            {
+                "text": "You are a board game recommendation expert. Your job is to select the best games and write highly varied, engaging, and expressive 1-sentence explanations. Avoid repetitive sentence structures (e.g., do not start multiple sentences with 'If you enjoyed...'). Ensure you output raw, valid JSON matching the requested schema."
+            }
+        ]
+        
         logger.info(f"Calling Bedrock Converse API with model {bedrock_model_id}...")
         response = bedrock.converse(
             modelId=bedrock_model_id,
             messages=messages,
+            system=system_prompts,
             inferenceConfig={
                 "maxTokens": 2048,
-                "temperature": 0.3
+                "temperature": 0.6
             }
         )
         
