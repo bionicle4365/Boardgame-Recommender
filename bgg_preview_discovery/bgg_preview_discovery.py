@@ -22,7 +22,7 @@ def get_active_previews():
         # Just go to the page and wait for the specific selector to appear instead of networkidle
         page.goto("https://boardgamegeek.com/previews")
         try:
-            page.wait_for_selector('a[href*="/preview/"]', timeout=20000)
+            page.wait_for_selector('a[href*="/geekpreview/"]', timeout=20000)
         except Exception as e:
             logger.warning(f"Timeout waiting for preview links: {e}")
         
@@ -48,7 +48,7 @@ def get_active_previews():
             logger.info("Found preloaded state, but we fall back to link extraction for resilience.")
             
         # Fallback: extract links
-        links = page.locator('a[href*="/preview/"]').element_handles()
+        links = page.locator('a[href*="/geekpreview/"]').element_handles()
         unique_links = {}
         for link in links:
             href = link.get_attribute("href")
