@@ -116,3 +116,25 @@ resource "aws_lambda_permission" "allow_eventbridge_to_call_user_compactor" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.weekly_bgg_user_compactor_schedule.arn
 }
+
+# 6. EventBridge rule to trigger the daily BGG Preview Refresh Lambda (06:00 UTC)
+resource "aws_cloudwatch_event_rule" "daily_bgg_preview_refresh_schedule" {
+  name                = "daily-bgg-preview-refresh-schedule"
+  description         = "Runs the BGG Preview Daily Refresh Lambda every day"
+  schedule_expression = "cron(0 6 * * ? *)" 
+}
+
+resource "aws_cloudwatch_event_target" "run_bgg_preview_refresh_lambda" {
+  rule      = aws_cloudwatch_event_rule.daily_bgg_preview_refresh_schedule.name
+  target_id = "run-bgg-preview-refresh-lambda"
+  arn       = var.preview_refresh_lambda_arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_to_call_preview_refresh" {
+  statement_id  = "AllowExecutionFromEventBridgePreviewRefresh"
+  action        = "lambda:InvokeFunction"
+  function_name = var.preview_refresh_lambda_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.daily_bgg_preview_refresh_schedule.arn
+}
+

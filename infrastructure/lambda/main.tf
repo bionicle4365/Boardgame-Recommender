@@ -198,3 +198,27 @@ resource "aws_lambda_event_source_mapping" "bgg_taste_analytics_esm" {
   batch_size              = 10
   function_response_types = ["ReportBatchItemFailures"]
 }
+
+data "archive_file" "bgg_preview_refresh_zip" {
+  type        = "zip"
+  source_file = "../bgg_preview_refresh/bgg_preview_refresh.py"
+  output_path = "${path.module}/bgg_preview_refresh.zip"
+}
+
+resource "aws_lambda_function" "bgg_preview_refresh" {
+  filename         = data.archive_file.bgg_preview_refresh_zip.output_path
+  function_name    = "bgg_preview_refresh"
+  role             = var.lambda_execution_role_arn
+  handler          = "bgg_preview_refresh.lambda_handler"
+  source_code_hash = data.archive_file.bgg_preview_refresh_zip.output_base64sha256
+  runtime          = "python3.12"
+  timeout          = 300
+  memory_size      = 256
+
+  environment {
+    variables = {
+      S3_BUCKET_NAME = var.s3_bucket_name
+      BGG_API_TOKEN  = var.bgg_api_token
+    }
+  }
+}

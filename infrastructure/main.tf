@@ -96,6 +96,8 @@ module "eventbridge" {
   ecs_task_role_arn           = module.ecs.ecs_task_role_arn
   compactor_lambda_arn        = module.lambda.bgg_compactor_arn
   compactor_lambda_name       = module.lambda.bgg_compactor_function_name
+  preview_refresh_lambda_arn  = module.lambda.bgg_preview_refresh_arn
+  preview_refresh_lambda_name = module.lambda.bgg_preview_refresh_function_name
 }
 
 module "apigateway" {

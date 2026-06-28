@@ -70,82 +70,70 @@ Sync active board game crowdfunding campaigns (Kickstarter, Gamefound, Backerkit
  - [ ] **Backend Unit Tests:** Verify the recommendation generator executes correctly when provided with an inline profile payload, including edge cases: all thumbs up, mixed ratings, minimum 5-rating payload, and empty dislike exclusion list.
  - [ ] **Dislike Exclusion Tests:** Verify that candidates dominated by disliked mechanics are correctly excluded from the shortlist passed to Bedrock.
 
- ---
- 
- ## [DEFERRED] Milestone 19: BGG GeekPreview Convention Recommendations
- *Note: This milestone has been deferred indefinitely because BoardGameGeek's Cloudflare bot protection blocks automated scraping of the convention list, and the internal `geekpreviewitems` API restricts responses to 10 items unless using undocumented browser-like pagination/headers.*
+---
 
- ### Objective
- Synchronize the recommender with BoardGameGeek GeekPreviews so users can filter recommendations to games debuting at upcoming conventions (e.g. Gen Con, SPIEL Essen). A weekly ECS Fargate task scrapes active convention IDs and fetches full game metadata via BGG's internal `geekpreviewitems` JSON API, persisting results to S3 for the recommender and frontend to consume.
+## Milestone 19: BGG GeekPreview Convention Recommendations
 
- ### API Research Notes
+### Objective
+Synchronize the recommender with BoardGameGeek GeekPreviews so users can filter recommendations to games debuting at upcoming conventions (e.g. Gen Con, SPIEL Essen). Active convention metadata is manually configured, and an initial fetch script retrieves the full game metadata via BGG's internal `geekpreviewitems` JSON API, persisting results to S3 for the recommender and frontend to consume.
 
- **`GET /api/geekpreviewitems?previewid={id}`** — confirmed publicly accessible with no authentication. Accepts plain Python `requests` calls. Returns a JSON array of all games in the given convention preview, including inline:
- - `objectid` — BGG game ID
- - `geekitem.item.links.boardgamemechanic` / `boardgamecategory` / `boardgamedesigner` / `boardgamepublisher` — full metadata
- - `yearpublished`, `minplayers`, `maxplayers`, `minplaytime`, `maxplaytime`, `minage`
- - `primaryname.name` — game name
- - `thumbnail` — cover art URLs
- - `availability_status` — `forsale`, `preorder`, etc.
- - `stats.musthave`, `stats.interested` — community interest signals
- - `showcount=N` is a valid parameter to limit page size
+### API Research Notes
 
- Since the API returns full mechanics/category metadata inline, **no Selenium CSV download and no separate catalog enrichment is needed for game data**. The Selenium/browser requirement is reduced to a single lightweight render of the `/previews` index page, solely to discover active `previewid` integer values. The rest of the pipeline uses plain HTTP.
+**`GET /api/geekpreviewitems?previewid={id}`** — confirmed publicly accessible with no authentication. Accepts plain Python `requests` calls. Returns a JSON array of all games in the given convention preview, including inline:
+- `objectid` — BGG game ID
+- `geekitem.item.links.boardgamemechanic` / `boardgamecategory` / `boardgamedesigner` / `boardgamepublisher` — full metadata
+- `yearpublished`, `minplayers`, `maxplayers`, `minplaytime`, `maxplaytime`, `minage`
+- `primaryname.name` — game name
+- `thumbnail` — cover art URLs
+- `availability_status` — `forsale`, `preorder`, etc.
+- `stats.musthave`, `stats.interested` — community interest signals
+- **Pagination**: This internal API limits responses to 10 items per page by default. Pagination is achieved using the `pageid` query parameter (e.g. `&pageid=1`, `&pageid=2`), incrementing sequentially until an empty JSON list `[]` is returned.
 
- **Convention ID Discovery:** `GET /api/geekpreviews` returns HTTP 400 — no listing endpoint exists. The `/previews` index page requires JavaScript rendering (returns 403 to plain HTTP). A lightweight Playwright render (ECS Fargate, already in infrastructure) of `/previews` extracts the convention list and their numeric IDs from the rendered DOM. This is the **only** browser-dependent step.
+Since the API returns full mechanics/category metadata inline, **no Selenium CSV download and no separate catalog enrichment is needed for game data**.
 
- ### Architecture
+### Architecture
 
- ```
- EventBridge (weekly) → ECS Fargate task
-     1. Playwright render of /previews → extract active convention names + previewid integers
-     2. For each active convention:
-        requests.get(/api/geekpreviewitems?previewid=X) → full game list with metadata
-     3. Save data/active_previews.json to S3
-        Format: [{convention_id, name, date, games: [{objectid, name, mechanics, categories, ...}]}]
+```
+Local Repository & Terraform Deployment
+    1. Define active convention names, dates, and previewid integers manually in data/active_previews.json.
+    2. Deploy via Terraform, which uploads data/active_previews.json to S3.
 
- EventBridge (daily) → Lambda (bgg_preview_refresh)
-     1. Read active_previews.json from S3
-     2. If no active conventions → exit immediately (fast no-op)
-     3. For each active convention, re-call /api/geekpreviewitems?previewid=X
-     4. Merge new games into existing convention entry, overwrite S3
-     (No browser needed — previewid integers are already known)
+EventBridge (daily) → Lambda (bgg_preview_refresh)
+    1. Read active_previews.json from S3.
+    2. If no active conventions → exit immediately.
+    3. For each active convention, query BGG API (/api/geekpreviewitems?previewid=X&pageid=Y) with pagination to get game IDs.
+    4. Write the mapping {convention_id: [game_ids]} to data/active_previews_games.json on S3.
+    (No local scraping or local games files are needed).
 
- GET /recommendations?convention_id=gencon2026
-     → Recommender reads active_previews.json from S3 (cached in-memory, 1-hour TTL)
-     → Builds temporary candidate dataframe from convention game list
-     → Scores against user taste profile as normal
-     → Bedrock selects top 10 with explanations
- ```
+GET /recommendations?convention_id=gencon2026
+    → Recommender reads active_previews.json and active_previews_games.json from S3.
+    → Filters candidates list using game IDs associated with the convention.
+    → Scores filtered candidates against user taste profile.
+```
 
- ### Tasks
+### Tasks
 
- #### Weekly Scraper (ECS Fargate) — Convention Discovery
- Convention lists change infrequently; a weekly run is sufficient for discovering new previews. This is the only step requiring a browser.
- - [ ] **Convention Discovery:** Use Playwright in the existing ECS Fargate task infrastructure to render `https://boardgamegeek.com/previews`, extract all upcoming convention names, dates, and `previewid` integers from the rendered DOM (filtering to conventions with future dates only).
- - [ ] **Initial Game Data Fetch:** For each newly discovered `previewid`, call `GET /api/geekpreviewitems?previewid={id}` with `requests`. Parse the JSON response to extract `objectid`, `primaryname.name`, mechanic names, category names, player counts, playtime, and thumbnail URL per game.
- - [ ] **S3 Persistence:** Save `data/active_previews.json` to S3 in the format `[{convention_id, name, date, games: [{objectid, name, mechanics, categories, min_players, max_players, playing_time, thumbnail}]}]`. Update the file atomically on each weekly run.
- - [ ] **EventBridge Schedule:** Add a weekly EventBridge rule (e.g. every Monday 06:00 UTC) to trigger the ECS Fargate scraper task.
+#### Configuration & EventBridge Integration
+Convention lists change infrequently; manual configuration is preferred over automated discovery.
+- [x] **Manual Metadata Definition:** Create `data/active_previews.json` in the repository, defining active convention names, dates, and BGG `previewid` integers.
+- [x] **Terraform Deployment S3 Object:** Add an `aws_s3_object` resource in `infrastructure/s3/main.tf` to upload the static metadata file to S3.
+- [x] **New Lambda — `bgg_preview_refresh`:** Implement a Lambda that reads active conventions config from S3, fetches BGG paginated game IDs in the cloud, and uploads a map to a separate `data/active_previews_games.json` S3 object.
+- [x] **EventBridge Daily Schedule:** Add a daily EventBridge rule to schedule Lambda executions.
 
- #### Daily Refresh Lambda — Active Convention Game Lists
- Publishers frequently add games to a convention preview once it goes live. The daily refresh re-fetches game lists for currently active conventions. No browser is required since `previewid` integers are already stored in `active_previews.json`.
- - [ ] **New Lambda — `bgg_preview_refresh`:** Implement a Lambda that reads `data/active_previews.json` from S3. If no conventions are currently active (all dates in the past), exit immediately. For each active convention, re-call `GET /api/geekpreviewitems?previewid={id}` and merge any newly added games into the convention's game list. Overwrite `active_previews.json` in S3 atomically.
- - [ ] **EventBridge Daily Schedule:** Add a daily EventBridge rule (e.g. 06:00 UTC) to trigger `bgg_preview_refresh`. The Lambda's fast-exit path means cost is negligible on days with no active conventions.
+#### Recommender Integration
+- [x] **Convention Filter:** Update `bgg_recommender.py` to support `convention_id` and filter candidates based on game lists retrieved from the separate games S3 file.
+- [x] **In-Memory Cache:** Cache active previews configuration and games lists maps with a 1-hour TTL.
 
- #### Recommender Integration
- - [ ] **Convention Filter:** Update `bgg_recommender.py` to accept an optional `convention_id` query parameter. When present, load `data/active_previews.json` from S3 (cache in-memory alongside the catalog), build a temporary candidate dataframe from that convention's game list, and score it against the user's taste profile. Fall back to the full catalog if the convention is not found or the preview file is unavailable.
- - [ ] **In-Memory Cache:** Cache `active_previews.json` in a global Lambda variable (same pattern as `CATALOG_CACHE`) with a 1-hour TTL to avoid re-downloading on every warm invocation.
+#### Frontend
+- [x] **Convention Dropdown:** Fetch active conventions list from `/conventions` to dynamically populate a Debut Convention Filter dropdown when active conventions exist.
+- [x] **Convention Badge:** Prepend an elegant filter header above recommendation results when a convention filter is selected.
 
- #### Frontend
- - [ ] **Convention Dropdown:** On page load, fetch `active_previews.json` from S3 (or via a new `GET /active-previews` API Gateway route) to populate a dropdown of upcoming conventions. Hide the dropdown entirely when no conventions are active. Append `?convention_id=X` to the recommendations request when a convention is selected.
- - [ ] **Convention Badge:** When viewing recommendations filtered by a convention, display a badge or header indicating which convention is being shown (e.g. "Gen Con 2026 Previews").
+#### Testing
+- [x] **Unit Tests:** Verify routing, metadata outputs, and candidate filtering in the recommender test suite.
 
- #### Testing
- - [ ] **Unit Tests:** Verify the convention filter correctly restricts the candidate pool to the preview game list, that games missing from the preview list are excluded, and that the fallback to the full catalog works when `active_previews.json` is absent or the convention ID is not found.
+---
 
-
- 
- ## Milestone 21: Hybrid Collaborative Filtering via LightFM (Pickled Model)
+## Milestone 21: Hybrid Collaborative Filtering via LightFM (Pickled Model)
 
 ### Objective
 Train a LightFM hybrid collaborative filtering model using both explicit ratings and implicit item features (mechanics, categories). Serialize the model to S3 to enable matrix factorization recommendations in the serverless Lambda backend, effectively solving the cold-start problem by projecting user tastes into the latent feature space.
@@ -174,9 +162,28 @@ Address user feedback regarding skewed recommendations caused by overly generic 
 ### Tasks
 - [ ] **Milestone 23: TF-IDF Affinity Refinement**. Load `mechanic_frequencies.json` and apply IDF-based down-weighting to mechanics in affinity scores.
 
+---
 
+## Milestone 25: Offline Relationship-Based Deduplication
+
+### Objective
+Prevent variants, expansions, or duplicate editions of the same game family/series (e.g. *Unmatched* or *The Lord of the Rings* trick-taking games) from cluttering recommendations before candidate games are passed to the Bedrock LLM, utilizing structured BGG relationships while keeping different thematic implementations separate.
+
+### Design Notes
+- **Scraped Relationships**: Instead of resolving duplicates via real-time BGG API requests, the game data scraper will parse and store `boardgamefamily`, `boardgameimplementation`, `boardgameintegration`, and `boardgameexpansion` relationship link lists offline.
+- **Offline Filtering**: The recommender Lambda will inspect candidate relationship fields offline and check for overlap with already-selected games to filter out duplicate system variants.
+
+### Architecture Decisions
+- **Schema Updates**: The game data scraper and compactor will be updated to include relationship array fields in their Parquet schemas.
+
+### Tasks
+- [ ] **Game Data Scraper Update:** Update PyArrow schema and XML parsing in `bgg_game_data_scraper.py` to extract expansion, implementation, integration, and family links.
+- [ ] **Compactor Schema Alignment:** Add the new relationship columns to the Target Schema in `combine_raw_to_single_file.py`.
+- [ ] **Recommender Offline Deduplication:** Update `bgg_recommender.py` to filter candidates offline based on overlaps in their structured relationship keys.
+- [ ] **Unit Testing:** Implement a new test suite verifying relationship-based candidate deduplication.
 
 ---
+
  
  ## Completed Milestones
  

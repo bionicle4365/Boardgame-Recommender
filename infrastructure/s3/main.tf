@@ -20,3 +20,11 @@ resource "aws_s3_bucket_notification" "taste_analytics_notification" {
 #   etag   = filemd5("../bgg_raw_to_compressed/${var.combine_glue_job_script_name}")
 # }
 
+resource "aws_s3_object" "active_previews_json" {
+  bucket = data.aws_s3_bucket.boardgame_app_bucket.id
+  key    = "data/active_previews.json"
+  source = "${path.module}/../../data/active_previews.json"
+  etag   = filemd5("${path.module}/../../data/active_previews.json")
+}
+
+

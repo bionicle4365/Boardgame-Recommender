@@ -44,3 +44,11 @@ output "bgg_taste_analytics_arn" {
 output "bgg_taste_analytics_function_name" {
   value = aws_lambda_function.bgg_taste_analytics.function_name
 }
+
+output "bgg_preview_refresh_arn" {
+  value = aws_lambda_function.bgg_preview_refresh.arn
+}
+
+output "bgg_preview_refresh_function_name" {
+  value = aws_lambda_function.bgg_preview_refresh.function_name
+}

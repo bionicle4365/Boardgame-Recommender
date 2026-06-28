@@ -441,6 +441,13 @@ title: Boardgame Recommender
                 </select>
             </div>
 
+            <div class="form-group" id="convention-group" style="display: none;">
+                <label for="conventionSelect">Convention Filter</label>
+                <select id="conventionSelect">
+                    <option value="">All Games</option>
+                </select>
+            </div>
+
             <div class="form-group full-width">
                 <label>Filter by Publishing Year (Optional)</label>
                 <div class="year-inputs">
@@ -775,9 +782,38 @@ title: Boardgame Recommender
             syncPreferencesToBackend();
         });
 
+        // Fetch active conventions and populate dropdown
+        async function loadConventions() {
+            try {
+                const response = await fetch(`${apiUrl}/conventions`);
+                if (response.ok) {
+                    const conventions = await response.json();
+                    if (conventions && conventions.length > 0) {
+                        const select = document.getElementById("conventionSelect");
+                        const group = document.getElementById("convention-group");
+                        
+                        // Clear any existing options except the first "All Games" one
+                        select.innerHTML = '<option value="">All Games</option>';
+                        
+                        conventions.forEach(conv => {
+                            const opt = document.createElement("option");
+                            opt.value = conv.convention_id;
+                            opt.textContent = `${conv.name} (${conv.game_count} games)`;
+                            select.appendChild(opt);
+                        });
+                        
+                        group.style.display = "flex";
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading active conventions:", e);
+            }
+        }
+
         // Initialize weights and presets
         initializeWeightsAndPresets();
         loadPreferencesFromBackend();
+        loadConventions();
 
         // Listen to custom login event to load preferences immediately upon login
         document.addEventListener("bgg_login_success", function() {
@@ -815,8 +851,11 @@ title: Boardgame Recommender
             const w_pop = (wPopInput.value / 100).toFixed(2);
             const w_hot = (wHotInput.value / 100).toFixed(2);
 
-            // Build unique cache key including weights and preferences
-            const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${durationPref}_${complexityPref}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
+            const conventionSelect = document.getElementById("conventionSelect");
+            const convention_id = conventionSelect ? conventionSelect.value : "";
+
+            // Build unique cache key including weights, preferences and convention filter
+            const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${durationPref}_${complexityPref}_${convention_id || 'any'}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
 
             // Check if fresh cache exists (TTL = 7 days)
             if (!forceRefresh) {
@@ -861,6 +900,7 @@ title: Boardgame Recommender
             if (year_end) queryParams.append("year_end", year_end);
             if (durationPref && durationPref !== 'any') queryParams.append('duration_pref', durationPref);
             if (complexityPref && complexityPref !== 'any') queryParams.append('complexity_pref', complexityPref);
+            if (convention_id) queryParams.append('convention_id', convention_id);
             if (forceRefresh) queryParams.append('refresh', 'true');
 
             const url = `${apiUrl}/recommendations?${queryParams.toString()}`;
@@ -941,6 +981,17 @@ title: Boardgame Recommender
             }
 
             let html = '';
+            const conventionSelect = document.getElementById("conventionSelect");
+            if (conventionSelect && conventionSelect.value) {
+                const selectedText = conventionSelect.options[conventionSelect.selectedIndex].text;
+                html += `
+                    <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px 18px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; width: 100%; box-sizing: border-box;">
+                        <span style="display: inline-block; background-color: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Convention Filter</span>
+                        <span style="font-weight: 600; color: var(--text-main);">${selectedText}</span>
+                    </div>
+                `;
+            }
+
             recs.forEach((rec, index) => {
                 const gameLink = rec.id 
                     ? `https://boardgamegeek.com/boardgame/${rec.id}` 

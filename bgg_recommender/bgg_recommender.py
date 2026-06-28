@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
@@ -53,6 +54,65 @@ bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'amazon.nova-micro-v1:0')
 
 # In-memory global cache for catalog to reuse across container warm starts
 CATALOG_CACHE = None
+
+# In-memory global cache for active previews to reuse across warm starts
+PREVIEWS_CACHE = None
+PREVIEWS_CACHE_TIME = None
+
+# In-memory global cache for active previews games list to reuse across warm starts
+PREVIEWS_GAMES_CACHE = None
+PREVIEWS_GAMES_CACHE_TIME = None
+
+def get_active_previews_games(ttl_seconds=3600):
+    """
+    Downloads active_previews_games.json from S3 and caches it in memory.
+    """
+    global PREVIEWS_GAMES_CACHE, PREVIEWS_GAMES_CACHE_TIME
+    now = time.time()
+    if PREVIEWS_GAMES_CACHE is not None and PREVIEWS_GAMES_CACHE_TIME is not None and (now - PREVIEWS_GAMES_CACHE_TIME) < ttl_seconds:
+        logger.info("Loading active previews games map from in-memory cache.")
+        return PREVIEWS_GAMES_CACHE
+
+    logger.info("Fetching active previews games map from S3...")
+    try:
+        key = "data/active_previews_games.json"
+        local_path = "/tmp/active_previews_games.json"
+        s3.download_file(bucket, key, local_path)
+        with open(local_path, 'r', encoding='utf-8') as f:
+            PREVIEWS_GAMES_CACHE = json.load(f)
+        PREVIEWS_GAMES_CACHE_TIME = now
+        logger.info(f"Successfully loaded and cached active previews games map with {len(PREVIEWS_GAMES_CACHE)} conventions.")
+        return PREVIEWS_GAMES_CACHE
+    except Exception as e:
+        logger.error(f"Error loading active previews games map: {e}")
+        # Return empty dict or previous cache if S3 fetch fails
+        return PREVIEWS_GAMES_CACHE if PREVIEWS_GAMES_CACHE is not None else {}
+
+
+def get_active_previews(ttl_seconds=3600):
+    """
+    Downloads active_previews.json from S3 and caches it in memory.
+    """
+    global PREVIEWS_CACHE, PREVIEWS_CACHE_TIME
+    now = time.time()
+    if PREVIEWS_CACHE is not None and PREVIEWS_CACHE_TIME is not None and (now - PREVIEWS_CACHE_TIME) < ttl_seconds:
+        logger.info("Loading active previews from in-memory cache.")
+        return PREVIEWS_CACHE
+
+    logger.info("Fetching active previews config from S3...")
+    try:
+        key = "data/active_previews.json"
+        local_path = "/tmp/active_previews.json"
+        s3.download_file(bucket, key, local_path)
+        with open(local_path, 'r', encoding='utf-8') as f:
+            PREVIEWS_CACHE = json.load(f)
+        PREVIEWS_CACHE_TIME = now
+        logger.info(f"Successfully loaded and cached {len(PREVIEWS_CACHE)} active previews.")
+        return PREVIEWS_CACHE
+    except Exception as e:
+        logger.error(f"Error loading active previews config: {e}")
+        # Return empty list or previous cache if S3 fetch fails
+        return PREVIEWS_CACHE if PREVIEWS_CACHE is not None else []
 
 def safe_list(val):
     """Helper to safely convert array/list/nullable to a Python list without triggering array truth value errors."""
@@ -302,6 +362,28 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': str(e)})
             }
 
+    elif '/conventions' in path:
+        active_previews = get_active_previews()
+        active_games = get_active_previews_games()
+        conventions_meta = []
+        for conv in active_previews:
+            conv_id = conv.get("convention_id")
+            games_list = active_games.get(conv_id, [])
+            conventions_meta.append({
+                "convention_id": conv_id,
+                "name": conv.get("name"),
+                "date": conv.get("date"),
+                "game_count": len(games_list)
+            })
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps(conventions_meta)
+        }
+
     username = query_params.get('username')
     
     if not username:
@@ -395,7 +477,8 @@ def lambda_handler(event, context):
         }
 
     # 2. Check S3 recommendation cache (TTL = 7 days / 168 hours)
-    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
+    convention_id_cache = query_params.get('convention_id', 'any')
+    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{convention_id_cache}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
     
     if not refresh:
         cached_recs = get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168)
@@ -488,6 +571,19 @@ def lambda_handler(event, context):
     # 4. Filter Candidates based on user preferences
     candidates = catalog_df.copy()
     
+    # Filter candidates by convention games list if requested
+    convention_id = query_params.get('convention_id')
+    if convention_id:
+        active_previews = get_active_previews()
+        matched_conv = next((c for c in active_previews if c.get('convention_id') == convention_id), None)
+        if matched_conv:
+            active_games = get_active_previews_games()
+            conv_game_ids = {str(g_id) for g_id in active_games.get(convention_id, []) if g_id}
+            logger.info(f"Filtering candidates by convention '{convention_id}' ({len(conv_game_ids)} games)")
+            candidates = candidates[candidates['id'].isin(conv_game_ids)]
+        else:
+            logger.warning(f"Convention '{convention_id}' not found in active previews config. Fetching full catalog instead.")
+            
     # filter out games already owned or not owned based on own_status
     if own_status == 'owned':
         candidates = candidates[candidates['id'].isin(owned_ids)]

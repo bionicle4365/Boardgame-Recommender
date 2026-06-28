@@ -693,4 +693,136 @@ def test_milestone_18_angle_coverage():
                 matched_angles.add(angle)
                 
     assert len(matched_angles) >= 4, f"Only matched angles: {matched_angles}"
+@patch('bgg_recommender.s3')
+def test_conventions_endpoint(mock_s3):
+    # Setup mock active_previews.json and active_previews_games.json in S3
+    mock_previews = [
+        {
+            "convention_id": "gencon2026",
+            "name": "Gen Con 2026 Preview",
+            "date": "2026-08-01",
+            "previewid": 92
+        }
+    ]
+    mock_games = {
+        "gencon2026": ["123", "456", "789"]
+    }
+    
+    # We mock local download of files
+    def side_effect(bucket, key, local_path):
+        if "active_previews_games.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump(mock_games, f)
+        elif "active_previews.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump(mock_previews, f)
+            
+    mock_s3.download_file.side_effect = side_effect
+    
+    # Reset caches to force reload
+    bgg_recommender.PREVIEWS_CACHE = None
+    bgg_recommender.PREVIEWS_CACHE_TIME = None
+    bgg_recommender.PREVIEWS_GAMES_CACHE = None
+    bgg_recommender.PREVIEWS_GAMES_CACHE_TIME = None
+    
+    event = {
+        'rawPath': '/conventions',
+        'queryStringParameters': {}
+    }
+    
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert len(res_body) == 1
+    assert res_body[0]['convention_id'] == 'gencon2026'
+    assert res_body[0]['name'] == 'Gen Con 2026 Preview'
+    assert res_body[0]['date'] == '2026-08-01'
+    assert res_body[0]['game_count'] == 3
 
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+@patch('bgg_recommender.get_active_previews')
+@patch('bgg_recommender.get_active_previews_games')
+def test_convention_id_filtering(mock_get_active_previews_games, mock_get_active_previews, mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    # Setup mock active previews & games map
+    mock_get_active_previews.return_value = [
+        {
+            "convention_id": "gencon2026",
+            "name": "Gen Con 2026 Preview",
+            "date": "2026-08-01",
+            "previewid": 92
+        }
+    ]
+    mock_get_active_previews_games.return_value = {
+        "gencon2026": ["456"] # Only Catan (456) in convention
+    }
+    
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now) # profile exists and is fresh
+    mock_cache.return_value = None # cache miss
+    
+    # Mock taste profile JSON download
+    def mock_download(bucket, key, local_path):
+        if "_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Trading": 5.0},
+                    "cat_weights": {"Strategy": 5.0},
+                    "complexity_weights": {"Light": 0.0, "Medium-Light": 5.0, "Medium-Heavy": 0.0, "Heavy": 0.0},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+        elif ".parquet" in key:
+            pass
+            
+    mock_s3.download_file.side_effect = mock_download
+    mock_s3.head_object.return_value = {}
+    
+    # Setup mock catalog with two games (Gloomhaven 123 and Catan 456)
+    user_df = pd.DataFrame([
+        {"id": "456", "username": "testuser", "rating": 8.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "123", "name": "Gloomhaven", "categories": ["Thematic"], "mechanics": ["Cooperative"], "rating": 8.5, "year_published": 2017, "complexity": 3.8},
+        {"id": "456", "name": "Catan", "categories": ["Strategy"], "mechanics": ["Trading"], "rating": 7.1, "year_published": 1995, "complexity": 2.3}
+    ])
+    mock_read_parquet.side_effect = [user_df, catalog_df]
+    mock_hotness.return_value = []
+    
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"name": "Catan", "reason": "Since you like trading in Catan, this matches."}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+    
+    # Test with convention filter
+    event = {
+        'queryStringParameters': {
+            'username': 'testuser',
+            'own_status': 'any',
+            'convention_id': 'gencon2026'
+        }
+    }
+    
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'ready'
+    
+    # Verify recommendation count is 1 (filtered to Catan)
+    recs = res_body['recommendations']
+    assert len(recs) == 1
+    assert recs[0]['name'] == 'Catan'
