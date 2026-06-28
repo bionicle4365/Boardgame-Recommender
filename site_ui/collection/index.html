@@ -605,6 +605,173 @@ title: BGG Collection Browser
         color: var(--text-muted);
         margin-bottom: 24px;
     }
+
+    /* ── Empty State ──────────────────────────────────────────────── */
+    #collection-empty-state {
+        margin-top: 8px;
+        animation: fadeInUp 0.4s ease both;
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Steps strip */
+    .empty-state-steps {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-bottom: 36px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .empty-step-card {
+        flex: 1 1 180px;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        background: var(--glass-bg, rgba(255,255,255,0.75));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(226,232,240,0.8);
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 4px 16px rgba(15,23,42,0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .empty-step-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+    }
+
+    .empty-step-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+
+    .empty-step-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-main, #1e293b);
+        margin: 0 0 4px 0;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .empty-step-desc {
+        font-size: 0.82rem;
+        color: var(--text-muted, #64748b);
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .empty-step-connector {
+        font-size: 1.4rem;
+        color: #cbd5e1;
+        flex-shrink: 0;
+        align-self: center;
+        padding: 0 4px;
+    }
+
+    @media (max-width: 720px) {
+        .empty-step-connector { display: none; }
+        .empty-step-card { flex: 1 1 100%; }
+    }
+
+    /* "What you'll see" label */
+    .empty-state-preview-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted, #64748b);
+        margin-bottom: 14px;
+    }
+
+    /* Skeleton cards */
+    .skeleton-cards-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        overflow: hidden;
+    }
+
+    @media (max-width: 900px) {
+        .skeleton-cards-row { grid-template-columns: repeat(2, 1fr); }
+        .skeleton-card--faded { display: none; }
+    }
+
+    @media (max-width: 500px) {
+        .skeleton-cards-row { grid-template-columns: 1fr; }
+    }
+
+    .skeleton-card {
+        background: #ffffff;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+        opacity: 1;
+        transition: opacity 0.2s ease;
+    }
+
+    .skeleton-card--faded {
+        opacity: 0.45;
+    }
+
+    /* Shimmer animation */
+    @keyframes shimmer {
+        0%   { background-position: -400px 0; }
+        100% { background-position: 400px 0; }
+    }
+
+    .skeleton-img,
+    .skeleton-line,
+    .skeleton-tag {
+        background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+        background-size: 800px 100%;
+        animation: shimmer 1.6s infinite linear;
+        border-radius: 6px;
+    }
+
+    .skeleton-img {
+        width: 100%;
+        height: 120px;
+        border-radius: 0;
+    }
+
+    .skeleton-body {
+        padding: 14px 16px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .skeleton-line {
+        height: 12px;
+    }
+    .skeleton-line.long   { width: 80%; }
+    .skeleton-line.medium { width: 55%; }
+    .skeleton-line.short  { width: 40%; }
+
+    .skeleton-tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .skeleton-tag {
+        height: 20px;
+        width: 60px;
+        border-radius: 20px;
+    }
 </style>
 
 <div class="collection-container">
@@ -615,6 +782,38 @@ title: BGG Collection Browser
 
     <div id="username-form">
         {% include username_form.html %}
+    </div>
+
+    <!-- Empty State: visible before any collection is loaded -->
+    <div id="collection-empty-state">
+
+        <!-- How it Works -->
+        <div class="empty-state-steps">
+            <div class="empty-step-card">
+                <div class="empty-step-icon" style="background: linear-gradient(135deg, #ede9fe, #c4b5fd);">🔍</div>
+                <div class="empty-step-body">
+                    <h3 class="empty-step-title">Enter your BGG Username</h3>
+                    <p class="empty-step-desc">Type your BoardGameGeek username above and click <strong>Load Collection</strong> to pull in your full library.</p>
+                </div>
+            </div>
+            <div class="empty-step-connector">→</div>
+            <div class="empty-step-card">
+                <div class="empty-step-icon" style="background: linear-gradient(135deg, #d1fae5, #6ee7b7);">⚙️</div>
+                <div class="empty-step-body">
+                    <h3 class="empty-step-title">Filter &amp; Explore</h3>
+                    <p class="empty-step-desc">Sort by rating, filter by player count, play time, complexity, and collection status.</p>
+                </div>
+            </div>
+            <div class="empty-step-connector">→</div>
+            <div class="empty-step-card">
+                <div class="empty-step-icon" style="background: linear-gradient(135deg, #fef3c7, #fbbf24);">⭐</div>
+                <div class="empty-step-body">
+                    <h3 class="empty-step-title">Discover &amp; Analyse</h3>
+                    <p class="empty-step-desc">View analytics, taste profiles, and rediscover hidden gems from your own collection.</p>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Tabs Navigation (Only show if collection loaded) -->
@@ -1345,8 +1544,9 @@ title: BGG Collection Browser
         currentPage = 1;
         filteredGamesData = [...gamesData];
         
-        // Show tabs navigation
+        // Show tabs navigation, hide empty state
         document.getElementById('collection-tabs-nav').style.display = 'flex';
+        document.getElementById('collection-empty-state').style.display = 'none';
         switchCollectionTab('grid');
         
         renderTable();
@@ -1739,8 +1939,9 @@ title: BGG Collection Browser
 
         const lowerUsername = username.trim().toLowerCase();
 
-        // Reset navigation and tab states
+        // Reset navigation and tab states; show empty state placeholder again
         document.getElementById('collection-tabs-nav').style.display = 'none';
+        document.getElementById('collection-empty-state').style.display = 'block';
         document.getElementById('collection-panel-grid').classList.remove('hidden');
         document.getElementById('collection-panel-analytics').classList.add('hidden');
         document.getElementById('faceted-filters').style.display = 'none';

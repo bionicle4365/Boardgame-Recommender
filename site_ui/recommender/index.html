@@ -19,7 +19,7 @@ title: Boardgame Recommender
     .recommender-container {
         font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         color: var(--text-main);
-        max-width: 900px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 20px;
     }
@@ -51,16 +51,16 @@ title: Boardgame Recommender
         -webkit-backdrop-filter: var(--glass-blur);
         border: var(--glass-border);
         border-radius: var(--radius-lg);
-        padding: 32px;
+        padding: 28px;
         box-shadow: var(--glass-shadow);
         margin-bottom: 30px;
-        transition: all 0.3s ease;
+        transition: box-shadow 0.3s ease;
     }
 
     .form-sections-grid {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 30px;
+        gap: 16px;
     }
 
     @media (min-width: 768px) {
@@ -69,23 +69,40 @@ title: Boardgame Recommender
         }
     }
 
+    /* Each column gets a subtle inner card */
     .form-section {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 18px;
+        background: rgba(248, 250, 252, 0.7);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 22px;
     }
 
+    /* Section header with coloured icon tile */
     .section-title {
         font-family: 'Outfit', sans-serif;
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         font-weight: 700;
-        margin: 0 0 5px 0;
+        margin: 0 0 6px 0;
         color: var(--text-main);
         display: flex;
         align-items: center;
-        gap: 8px;
-        border-bottom: 1.5px solid var(--border);
-        padding-bottom: 8px;
+        gap: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .section-title-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
     }
 
     .year-inputs {
@@ -100,9 +117,11 @@ title: Boardgame Recommender
     }
 
     .form-group label {
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--text-main);
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .form-group input[type="text"],
@@ -456,7 +475,10 @@ title: Boardgame Recommender
             <div class="form-sections-grid">
                 <!-- Section 1: User & Scope -->
                 <div class="form-section">
-                    <h3 class="section-title">👤 User Profile</h3>
+                    <h3 class="section-title">
+                        <span class="section-title-icon" style="background: linear-gradient(135deg, #ede9fe, #c4b5fd);">👤</span>
+                        User Profile
+                    </h3>
                     <div class="form-group">
                         <label for="username">BoardGameGeek Username</label>
                         <input type="text" id="username" placeholder="e.g. bionicle4365" required>
@@ -481,17 +503,20 @@ title: Boardgame Recommender
 
                 <!-- Section 2: Game Constraints -->
                 <div class="form-section">
-                    <h3 class="section-title">🎯 Game Preferences</h3>
+                    <h3 class="section-title">
+                        <span class="section-title-icon" style="background: linear-gradient(135deg, #d1fae5, #6ee7b7);">🎯</span>
+                        Game Preferences
+                    </h3>
                     <div class="form-group">
-                        <label>Filter by Publishing Year (Optional)</label>
+                        <label>Publishing Year (Optional)</label>
                         <div class="year-inputs">
-                            <input type="number" id="year_start" placeholder="From Year (e.g. 2023)" min="1900" max="2100" style="flex-grow: 1;">
-                            <input type="number" id="year_end" placeholder="To Year (e.g. 2026)" min="1900" max="2100" style="flex-grow: 1;">
+                            <input type="number" id="year_start" placeholder="From (e.g. 2023)" min="1900" max="2100" style="flex-grow: 1;">
+                            <input type="number" id="year_end" placeholder="To (e.g. 2026)" min="1900" max="2100" style="flex-grow: 1;">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Pacing & Complexity (Optional)</label>
+                        <label>Pacing &amp; Complexity (Optional)</label>
                         <div class="year-inputs">
                             <select id="duration_pref" style="flex-grow: 1;">
                                 <option value="any" selected>Any Pacing / Play Time</option>
@@ -511,8 +536,11 @@ title: Boardgame Recommender
             </div>
 
             <!-- Section 3: Recommendation Profile (Full Width) -->
-            <div class="form-section" style="margin-top: 25px; border-top: 1.5px solid var(--border); padding-top: 25px;">
-                <h3 class="section-title">🤖 AI Personalization</h3>
+            <div class="form-section" style="margin-top: 16px;">
+                <h3 class="section-title">
+                    <span class="section-title-icon" style="background: linear-gradient(135deg, #e0e7ff, #a5b4fc);">🤖</span>
+                    AI Personalization
+                </h3>
                 <div class="form-group">
                     <label for="preset_profile">Recommendation Profile Preset</label>
                     <select id="preset_profile">
@@ -840,6 +868,12 @@ title: Boardgame Recommender
                             opt.textContent = `${conv.name} (${conv.game_count} games)`;
                             select.appendChild(opt);
                         });
+                        
+                        // Update label to show active count
+                        const label = group.querySelector("label");
+                        if (label) {
+                            label.innerHTML = `Upcoming Convention Filter <span style="color: var(--success); font-weight: 800; font-size: 0.7rem; background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; text-transform: uppercase;">${conventions.length} Active</span>`;
+                        }
                         
                         group.style.display = "flex";
                     }
