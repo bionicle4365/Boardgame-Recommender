@@ -72,7 +72,8 @@ Sync active board game crowdfunding campaigns (Kickstarter, Gamefound, Backerkit
 
  ---
  
- ## Milestone 19: BGG GeekPreview Convention Recommendations
+ ## [DEFERRED] Milestone 19: BGG GeekPreview Convention Recommendations
+ *Note: This milestone has been deferred indefinitely because BoardGameGeek's Cloudflare bot protection blocks automated scraping of the convention list, and the internal `geekpreviewitems` API restricts responses to 10 items unless using undocumented browser-like pagination/headers.*
 
  ### Objective
  Synchronize the recommender with BoardGameGeek GeekPreviews so users can filter recommendations to games debuting at upcoming conventions (e.g. Gen Con, SPIEL Essen). A weekly ECS Fargate task scrapes active convention IDs and fetches full game metadata via BGG's internal `geekpreviewitems` JSON API, persisting results to S3 for the recommender and frontend to consume.
@@ -171,7 +172,7 @@ Address user feedback regarding skewed recommendations caused by overly generic 
 - **TF-IDF Weighting:** We'll load the `mechanic_frequencies.json` into the scoring pipeline and apply a logarithmic penalty to mechanics based on how frequently they appear in the catalog.
 
 ### Tasks
-- [ ] **Affinity Refinement:** Implement a TF-IDF down-weighting mechanism in the scoring logic in `bgg_recommender.py` for overly generic mechanics.
+- [ ] **Milestone 23: TF-IDF Affinity Refinement**. Load `mechanic_frequencies.json` and apply IDF-based down-weighting to mechanics in affinity scores.
 
 
 

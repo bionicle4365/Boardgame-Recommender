@@ -133,6 +133,16 @@ title: Boardgame Recommender
         transform: translateY(0);
     }
 
+    #refresh-btn {
+        background-color: #6b7280;
+        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.25);
+    }
+
+    #refresh-btn:hover {
+        background-color: #4b5563;
+        box-shadow: 0 6px 16px rgba(75, 85, 99, 0.35);
+    }
+
     /* Loader / Status styles */
     .status-card {
         background-color: #eff6ff;
@@ -457,12 +467,6 @@ title: Boardgame Recommender
                 </div>
             </div>
 
-            <div class="form-group full-width" id="convention-group" style="display: none;">
-                <label for="convention_id">Upcoming Conventions (GeekPreviews)</label>
-                <select id="convention_id">
-                    <option value="" selected>None (Search full catalog)</option>
-                </select>
-            </div>
 
             <div class="form-group full-width">
                 <label for="preset_profile">Recommendation Profile</label>
@@ -515,9 +519,14 @@ title: Boardgame Recommender
                 </div>
             </div>
 
-            <button type="submit" class="submit-btn full-width" id="submit-btn">
-                <span>Get AI Recommendations</span>
-            </button>
+            <div class="form-group full-width" style="display: flex; gap: 12px; margin-top: 8px; align-items: stretch;">
+                <button type="submit" class="submit-btn" id="submit-btn" style="flex: 3; justify-content: center; height: 50px;">
+                    <span>Get AI Recommendations</span>
+                </button>
+                <button type="button" class="submit-btn" id="refresh-btn" style="flex: 1; justify-content: center; height: 50px; display: none;">
+                    <span>Refresh</span>
+                </button>
+            </div>
         </form>
     </div>
 
@@ -538,6 +547,7 @@ title: Boardgame Recommender
         const statusMessage = document.getElementById("status-message");
         const resultsContainer = document.getElementById("recommendations-results");
         const submitBtn = document.getElementById("submit-btn");
+        const refreshBtn = document.getElementById("refresh-btn");
 
         // Slider Elements
         const wMechInput = document.getElementById("w_mech");
@@ -677,37 +687,6 @@ title: Boardgame Recommender
         // Preferences Sync functions
         const apiUrl = "{{ site.api_url }}";
 
-        // Fetch conventions from Recommender API
-        async function fetchConventions() {
-            try {
-                const response = await fetch(`${apiUrl}/conventions`);
-                if (response.ok) {
-                    const previews = await response.json();
-                    if (previews && previews.length > 0) {
-                        const select = document.getElementById("convention_id");
-                        previews.forEach(p => {
-                            const option = document.createElement("option");
-                            option.value = p.preview_id;
-                            option.textContent = p.name;
-                            select.appendChild(option);
-                        });
-                        document.getElementById("convention-group").style.display = "flex";
-                        
-                        // Restore saved
-                        const savedConv = localStorage.getItem("bgg_rec_convention");
-                        if (savedConv) select.value = savedConv;
-                    }
-                }
-            } catch (e) {
-                console.warn("Failed to fetch active conventions", e);
-            }
-        }
-        fetchConventions();
-
-        document.getElementById("convention_id").addEventListener("change", function() {
-            localStorage.setItem("bgg_rec_convention", this.value);
-        });
-
         async function syncPreferencesToBackend() {
             if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
             
@@ -808,9 +787,7 @@ title: Boardgame Recommender
         let pollingTimeout = null;
         let isPollingActive = false;
 
-        form.addEventListener("submit", function (e) {
-            e.preventDefault();
-            
+        function getRecommendations(forceRefresh = false) {
             // Clear existing states and cancel active polling
             isPollingActive = false;
             if (pollingTimeout) {
@@ -820,6 +797,10 @@ title: Boardgame Recommender
             statusCard.style.display = "flex";
             statusMessage.textContent = "Connecting to backend recommender engine...";
             submitBtn.disabled = true;
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.style.display = "flex";
+            }
 
             const username = document.getElementById("username").value.trim();
             const own_status = document.getElementById("own_status").value;
@@ -827,7 +808,6 @@ title: Boardgame Recommender
             const year_end = document.getElementById("year_end").value;
             const durationPref = document.getElementById("duration_pref").value;
             const complexityPref = document.getElementById("complexity_pref").value;
-            const conventionId = document.getElementById("convention_id").value;
 
             // Normalize weights for query parameter and cache key
             const w_mech = (wMechInput.value / 100).toFixed(2);
@@ -839,26 +819,33 @@ title: Boardgame Recommender
             const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${durationPref}_${complexityPref}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
 
             // Check if fresh cache exists (TTL = 7 days)
-            const cachedDataStr = localStorage.getItem(cacheKey);
-            if (cachedDataStr) {
-                try {
-                    const cachedData = JSON.parse(cachedDataStr);
-                    const ageMs = Date.now() - cachedData.timestamp;
-                    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-                    if (ageMs < sevenDaysMs) {
-                        console.log("Serving recommendations from local storage cache.");
-                        statusCard.style.display = "none";
-                        submitBtn.disabled = false;
-                        renderRecommendations(cachedData.recommendations, conventionId);
-                        return; // Exit and skip calling backend
-                    } else {
-                        console.log("Cached recommendations are stale. Requesting fresh data.");
+            if (!forceRefresh) {
+                const cachedDataStr = localStorage.getItem(cacheKey);
+                if (cachedDataStr) {
+                    try {
+                        const cachedData = JSON.parse(cachedDataStr);
+                        const ageMs = Date.now() - cachedData.timestamp;
+                        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+                        if (ageMs < sevenDaysMs) {
+                            console.log("Serving recommendations from local storage cache.");
+                            statusCard.style.display = "none";
+                            submitBtn.disabled = false;
+                            if (refreshBtn) {
+                                refreshBtn.disabled = false;
+                            }
+                            renderRecommendations(cachedData.recommendations);
+                            return; // Exit and skip calling backend
+                        } else {
+                            console.log("Cached recommendations are stale. Requesting fresh data.");
+                            localStorage.removeItem(cacheKey);
+                        }
+                    } catch (e) {
+                        console.error("Error reading from local cache:", e);
                         localStorage.removeItem(cacheKey);
                     }
-                } catch (e) {
-                    console.error("Error reading from local cache:", e);
-                    localStorage.removeItem(cacheKey);
                 }
+            } else {
+                localStorage.removeItem(cacheKey);
             }
 
             // Build query params
@@ -874,7 +861,7 @@ title: Boardgame Recommender
             if (year_end) queryParams.append("year_end", year_end);
             if (durationPref && durationPref !== 'any') queryParams.append('duration_pref', durationPref);
             if (complexityPref && complexityPref !== 'any') queryParams.append('complexity_pref', complexityPref);
-            if (conventionId) queryParams.append('convention_id', conventionId);
+            if (forceRefresh) queryParams.append('refresh', 'true');
 
             const url = `${apiUrl}/recommendations?${queryParams.toString()}`;
             isPollingActive = true;
@@ -899,6 +886,9 @@ title: Boardgame Recommender
                             isPollingActive = false;
                             statusCard.style.display = "none";
                             submitBtn.disabled = false;
+                            if (refreshBtn) {
+                                refreshBtn.disabled = false;
+                            }
 
                             // Cache recommendations to local storage
                             try {
@@ -911,7 +901,7 @@ title: Boardgame Recommender
                                 console.error("Error writing to local storage cache:", cacheErr);
                             }
 
-                            renderRecommendations(data.recommendations, conventionId);
+                            renderRecommendations(data.recommendations);
                         } else {
                             throw new Error("Unexpected response status");
                         }
@@ -922,28 +912,35 @@ title: Boardgame Recommender
                         isPollingActive = false;
                         statusCard.style.display = "none";
                         submitBtn.disabled = false;
+                        if (refreshBtn) {
+                            refreshBtn.disabled = false;
+                        }
                         resultsContainer.innerHTML = `<div style="color: #ef4444; font-weight: bold; padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch recommendations. Ensure that API Gateway CORS and the Lambda function are running correctly.</div>`;
                     });
             }
 
             // Trigger initial call
             pollRecommendations();
+        }
+
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            getRecommendations(false);
         });
 
-        function renderRecommendations(recs, conventionId) {
+        if (refreshBtn) {
+            refreshBtn.addEventListener("click", function () {
+                getRecommendations(true);
+            });
+        }
+
+        function renderRecommendations(recs) {
             if (!recs || recs.length === 0) {
                 resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: #fff;">No recommendations found matching those criteria. Try relaxing your year filters!</div>`;
                 return;
             }
 
-            let conventionBadgeHTML = '';
-            if (conventionId) {
-                const select = document.getElementById("convention_id");
-                const convName = select.options[select.selectedIndex].text;
-                conventionBadgeHTML = `<div style="margin-bottom: 10px;"><span class="badge" style="background-color: #fef08a; color: #854d0e;">🎮 ${convName} Preview</span></div>`;
-            }
-
-            let html = conventionBadgeHTML;
+            let html = '';
             recs.forEach((rec, index) => {
                 const gameLink = rec.id 
                     ? `https://boardgamegeek.com/boardgame/${rec.id}` 

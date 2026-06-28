@@ -211,6 +211,21 @@ def test_lambda_handler_cached_ready(mock_cache, mock_status):
 
 @patch('bgg_recommender.get_user_profile_status')
 @patch('bgg_recommender.get_cached_recommendations')
+def test_lambda_handler_refresh_bypasses_cache(mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = [{"name": "Gloomhaven", "reason": "Sim"}]
+    event = {'queryStringParameters': {'username': 'testuser', 'refresh': 'true'}}
+    
+    # Bypassing the cache will trigger user profile loading, which we trigger a mock fail on to terminate the function.
+    with patch('bgg_recommender.s3') as mock_s3:
+        mock_s3.download_file.side_effect = Exception("Mocked download error to skip bedrock invocation")
+        response = bgg_recommender.lambda_handler(event, None)
+        assert response['statusCode'] == 500
+        assert mock_cache.called is False
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
 @patch('bgg_recommender.s3')
 @patch('pandas.read_parquet')
 @patch('bgg_recommender.get_bgg_hotness')
