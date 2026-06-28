@@ -47,8 +47,9 @@ def lambda_handler(event, context):
             game_ids = []
             for item in data:
                 try:
-                    obj_id = item.get('geekitem', {}).get('item', {}).get('objectid')
-                    if obj_id:
+                    obj_type = item.get('objecttype')
+                    obj_id = item.get('objectid')
+                    if obj_type == 'thing' and obj_id:
                         game_ids.append(int(obj_id))
                 except Exception as ex:
                     continue
