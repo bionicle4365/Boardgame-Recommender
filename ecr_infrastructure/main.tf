@@ -17,13 +17,11 @@ module "ecr" {
 }
 
 module "ssm" {
-  source = "./ssm"
+  source                        = "./ssm"
   bgg_game_data_scraper_ecr_url = module.ecr.bgg_game_data_scraper_ecr_url
-  bgg_game_scraper_ecr_url = module.ecr.bgg_game_scraper_ecr_url
+  bgg_game_scraper_ecr_url      = module.ecr.bgg_game_scraper_ecr_url
   bgg_user_data_scraper_ecr_url = module.ecr.bgg_user_data_scraper_ecr_url
-  bgg_recommender_ecr_url = module.ecr.bgg_recommender_ecr_url
-  bgg_compactor_ecr_url = module.ecr.bgg_compactor_ecr_url
-  bgg_taste_analytics_ecr_url = module.ecr.bgg_taste_analytics_ecr_url
-  bgg_preview_discovery_ecr_url = module.ecr.bgg_preview_discovery_ecr_url
-  bgg_preview_refresh_ecr_url = module.ecr.bgg_preview_refresh_ecr_url
+  bgg_recommender_ecr_url       = module.ecr.bgg_recommender_ecr_url
+  bgg_compactor_ecr_url         = module.ecr.bgg_compactor_ecr_url
+  bgg_taste_analytics_ecr_url   = module.ecr.bgg_taste_analytics_ecr_url
 }

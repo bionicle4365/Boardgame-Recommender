@@ -28,12 +28,4 @@ output "bgg_taste_analytics_ecr_url" {
   value       = aws_ecr_repository.bgg_taste_analytics_repo.repository_url
 }
 
-output "bgg_preview_discovery_ecr_url" {
-  description = "URL of the ECR repository for bgg_preview_discovery"
-  value       = aws_ecr_repository.bgg_preview_discovery_repo.repository_url
-}
 
-output "bgg_preview_refresh_ecr_url" {
-  description = "URL of the ECR repository for bgg_preview_refresh"
-  value       = aws_ecr_repository.bgg_preview_refresh_repo.repository_url
-}

@@ -28,12 +28,4 @@ variable "bgg_taste_analytics_ecr_url" {
   type        = string
 }
 
-variable "bgg_preview_discovery_ecr_url" {
-  description = "URL of the ECR repository for bgg_preview_discovery"
-  type        = string
-}
 
-variable "bgg_preview_refresh_ecr_url" {
-  description = "URL of the ECR repository for bgg_preview_refresh"
-  type        = string
-}
