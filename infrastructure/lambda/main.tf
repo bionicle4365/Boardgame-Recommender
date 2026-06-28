@@ -198,4 +198,3 @@ resource "aws_lambda_event_source_mapping" "bgg_taste_analytics_esm" {
   batch_size              = 10
   function_response_types = ["ReportBatchItemFailures"]
 }
-
