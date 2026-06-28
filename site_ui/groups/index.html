@@ -887,14 +887,14 @@ title: Playgroup Organizer
             playgroups.forEach(g => {
                 const isActive = activeGroup && activeGroup.id === g.id;
                 html += `
-                    <div class="group-item ${isActive ? 'active' : ''}" data-id="${g.id}">
-                        <div class="group-info" onclick="selectGroup('${g.id}')">
+                    <div class="group-item ${isActive ? 'active' : ''}" data-id="${g.id}" onclick="selectGroup('${g.id}')">
+                        <div class="group-info">
                             <span class="group-name">${escapeHTML(g.name)}</span>
                             <span class="group-meta">${g.members.length} members</span>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <button class="delete-btn" onclick="editGroup('${g.id}')" title="Edit Group">✎</button>
-                            <button class="delete-btn" onclick="deleteGroup('${g.id}')" title="Delete Group">🗑</button>
+                            <button class="delete-btn" onclick="event.stopPropagation(); editGroup('${g.id}')" title="Edit Group">✎</button>
+                            <button class="delete-btn" onclick="event.stopPropagation(); deleteGroup('${g.id}')" title="Delete Group">🗑</button>
                         </div>
                     </div>
                 `;

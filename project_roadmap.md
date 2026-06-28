@@ -121,50 +121,50 @@ Prevent variants, expansions, or duplicate editions of the same game family/seri
 - [ ] **Recommender Offline Deduplication:** Update `bgg_recommender.py` to filter candidates offline based on overlaps in their structured relationship keys.
 - [ ] **Unit Testing:** Implement a new test suite verifying relationship-based candidate deduplication.
 
+
 ---
 
-## Milestone 26: UI Redesign & Polish
+## Milestone 27: Interactive User Profile Dashboard & Playground
 
 ### Objective
-Enhance the layout, alignment, and visual polish of all frontend screens to create a highly premium, intuitive, and modern user experience (WOW factor) across desktop and mobile devices. Address layout inconsistencies, cluttered tables, stacked charts, and misaligned form controls.
+Create a user profile page accessible to logged-in users that showcases rich stats, taste profiles, and collection metrics. Incorporate a layout playground allowing users to toggle between different visualization profiles (Overview, Deep Dive, and Rating Analytics) to explore layout options.
 
 ### Design Notes
-- **Grid Alignment Guides:** Establish clean vertical grid lines so all panels, lists, forms, and cards align seamlessly across the Home page, Collection Browser, Recommender, and Playgroup pages.
-- **Visual Depth:** Utilize soft glassmorphism, dynamic gradients, consistent shadows, and refined border treatments to elevate aesthetics.
-- **Information Architecture:** Repackage raw data into clean badge grids and left-aligned headers on card elements, and introduce structured column grids for dashboard charts and filters.
+- **Profile Header Dropdown:** Update `header.html` to convert the logged-in user badge into an interactive dropdown containing links to "View Profile" and "Log Out".
+- **Glassmorphic Multi-View Dashboard:** Design a sleek profile page with glassmorphism panels. Provide a tab/switch at the top to toggle between three visual presets:
+  1. *Overview Dashboard:* High-level KPI cards (Total Games, Complexity Avg, etc.) and Chart.js visualizations for Player Count and Complexity Weight distributions.
+  2. *Deep Dive Metrics:* Detailed charts covering game duration breakdown, year published distributions, and category counts.
+  3. *Rating Analytics:* Comparison scatter/bar plots for User Ratings vs. BGG Ratings, average deviation, and listings of favorite designers and publishers.
+- **Skeletal Shimmer Loading:** Implement CSS/HTML placeholder templates that animate/shimmer during background data fetch processes.
 
 ### Architecture Decisions
-- **Unified CSS Layout Wrapper:** Wrap main sections in standard flex/grid columns to eliminate staggered alignments.
-- **Data Table Optimization:** Allow the BGG Collection grid data table to stretch container width dynamically (e.g. 90-95%) with horizontal scroll on small viewports and minimal min-widths.
+- **Unified Profile Routing:** Create a new endpoint `/profile/index.html` referencing Jekyll layouts and configuration.
+- **Cognito & API Sync:** Fetch `bgg_username` from backend preferences and pull user XML collection and pre-computed `/profile` statistics from the taste analytics API on page load. Fall back to client-side taste profiling in case of network/fetch issues.
 
 ### Tasks
-- [x] **Global CSS Grid Wrapper:** Add standard container classes to `site_ui/_layouts/default.html` to align content elements.
-- [x] **BGG Collection Browser Layout Fixes:**
-  - [x] Expand the Grid View data table to use a full responsive width, preventing text wrapping on the 12 columns.
-  - [x] Convert the vertically stacked Collection Analytics dashboard into a responsive multi-column grid layout for KPI cards and Chart.js canvases.
-- [x] **AI Recommendations Form Realignment:**
-  - [x] Standardize the asymmetric form elements (Username, Ownership Filter, Preset Profile) into a clean, symmetric two-column grid.
-  - [x] Clarify Preset Profile weights description: Remove '%' symbols and describe them as relative weights (each weighted at 50/100).
-- [x] **Playgroup Organizer Panel Realignment:**
-  - [x] Realign the right-hand panel (Member checkboxes, settings dropdowns, recommendation list, and headers) onto unified vertical grid guides.
-  - [x] Introduce visually cohesive loading animations or skeleton components for background BGG scraping and taste analytics processes.
-- [x] **Modern Visual Accents (Glassmorphism):** Apply glassmorphic borders, soft drop shadows, and subtle hover animations to all cards, buttons, and navigation panels.
+- [ ] **Header Dropdown Component:** Modify `site_ui/_includes/header.html` to replace the simple text link with a custom hover/click CSS dropdown for logged-in users.
+- [ ] **Profile Page Creation:** Add `site_ui/profile/index.html` with basic layout framework and sidebar/header integration.
+- [ ] **Multi-View Control & Switcher:** Implement layout switching logic to toggle between Overview, Deep Dive, and Rating Analytics layouts.
+- [ ] **Chart.js Implementations:**
+  - [ ] Add player count and complexity charts to the Overview dashboard.
+  - [ ] Add duration, year, and category charts to the Deep Dive dashboard.
+  - [ ] Add ratings scatter/bar plot and creator listings to the Rating Analytics dashboard.
+- [ ] **Skeletal Shimmer Loading UI:** Add skeleton layouts that display during asynchronous API collection loading.
+- [ ] **Offline Fallbacks & Integration:** Connect Cognito session authentication checks, sync pref loading, and fall back to local parsing for profiles missing computed backend statistics.
 
 ---
 
+## Completed Milestones
 
- 
- ## Completed Milestones
- 
- * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
- * **Milestone 2: Scraper Resilience, Concurrency Limiting, & API Back-off** (SQS rate limiting, exponential backoff/jitter)
- * **Milestone 3: Serving Caching & API Performance Optimization** (S3 and client localStorage caching)
- * **Milestone 4: Recommender Enhancements & Dynamic Personalization UI** (weights, BGG hotness tuning, dynamic parameters)
- * **Milestone 5: Playgroup Organizer & Game Night Planner Page** (attendee filtering, group collection merging)
- * **Milestone 6: Rich Cards & CDN-Cached Image Rendering** (metadata display, visual image cards)
- * **Milestone 7: Unit Testing & CI/CD Verification** (pytest, GitHub Actions workflows)
- * **Milestone 8: Database Reprocessing & Full Catalog Scrape Execution** (scraper reprocessing, serverless python compactor Lambda)
- * **Milestone 10: Mobile UI Optimization & Responsive Navigation Menu** (responsive layouts, blurred backdrop mobile drawer)
+* **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
+* **Milestone 2: Scraper Resilience, Concurrency Limiting, & API Back-off** (SQS rate limiting, exponential backoff/jitter)
+* **Milestone 3: Serving Caching & API Performance Optimization** (S3 and client localStorage caching)
+* **Milestone 4: Recommender Enhancements & Dynamic Personalization UI** (weights, BGG hotness tuning, dynamic parameters)
+* **Milestone 5: Playgroup Organizer & Game Night Planner Page** (attendee filtering, group collection merging)
+* **Milestone 6: Rich Cards & CDN-Cached Image Rendering** (metadata display, visual image cards)
+* **Milestone 7: Unit Testing & CI/CD Verification** (pytest, GitHub Actions workflows)
+* **Milestone 8: Database Reprocessing & Full Catalog Scrape Execution** (scraper reprocessing, serverless python compactor Lambda)
+* **Milestone 10: Mobile UI Optimization & Responsive Navigation Menu** (responsive layouts, blurred backdrop mobile drawer)
 * **Milestone 11: Taste Analytics Backend** (Event-driven pipeline using SQS and Lambda to pre-compute user taste profiles in JSON format)
 * **Milestone 12: Production Observability, Rate Limiting, & Cost Protection** (API limits, structured logging, alarms)
 * **Milestone 13: Serverless Cost Optimization & Glue Crawler Bypass** (Python pandas/pyarrow compaction Lambda, bypass Athena)
@@ -176,3 +176,4 @@ Enhance the layout, alignment, and visual polish of all frontend screens to crea
 * **Milestone 20: Cognito Verification Email Delivery Setup** (SES identity created, IAM policies granted, custom HTML email templates added to Terraform)
 * **Milestone 22: LLM Prompt Grounding & Deduplication** (Injected catalog mechanics into Bedrock prompt to eliminate hallucination, and added instructions to deduplicate variants)
 * **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)
+* **Milestone 26: UI Redesign & Polish** (Standardized grid wrapper alignment, full-width responsive BGG collection grid/analytics table, symmetric AI form layout, realigned playgroup panel with loading animations, glassmorphism visual accents)

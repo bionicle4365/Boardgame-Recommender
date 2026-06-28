@@ -2072,4 +2072,43 @@ title: BGG Collection Browser
 
         processCollectionXml(xmlDoc, lowerUsername);
     });
+
+    // Sync BGG username from backend preferences if logged in
+    async function loadPreferencesBggUsername() {
+        if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+        const token = await Auth.getValidToken();
+        if (!token) return;
+
+        const apiBaseUrl = "{{ site.api_url }}";
+        if (!apiBaseUrl) return;
+
+        try {
+            const response = await fetch(`${apiBaseUrl}/preferences`, {
+                method: "GET",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.bgg_username) {
+                    const input = document.getElementById("bgg_username");
+                    if (input) {
+                        input.value = data.bgg_username;
+                        
+                        // Automatically submit the form to load the collection if the input is pre-populated
+                        // and the collection hasn't been loaded yet.
+                        const form = document.getElementById("bgg-form");
+                        if (form && !document.getElementById("collection-data").classList.contains("has-content")) {
+                            form.dispatchEvent(new Event("submit"));
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to fetch preferences in collection browser:", e);
+        }
+    }
+
+    // Load preferences on DOMContentLoaded and on login success event
+    loadPreferencesBggUsername();
+    document.addEventListener("bgg_login_success", loadPreferencesBggUsername);
 </script>
