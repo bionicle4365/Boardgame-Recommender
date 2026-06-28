@@ -51,4 +51,4 @@ output "bgg_preview_refresh_arn" {
 
 output "bgg_preview_refresh_function_name" {
   value = aws_lambda_function.bgg_preview_refresh.function_name
-}
+}
