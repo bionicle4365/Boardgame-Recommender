@@ -72,67 +72,6 @@ Sync active board game crowdfunding campaigns (Kickstarter, Gamefound, Backerkit
 
 ---
 
-## Milestone 19: BGG GeekPreview Convention Recommendations
-
-### Objective
-Synchronize the recommender with BoardGameGeek GeekPreviews so users can filter recommendations to games debuting at upcoming conventions (e.g. Gen Con, SPIEL Essen). Active convention metadata is manually configured, and an initial fetch script retrieves the full game metadata via BGG's internal `geekpreviewitems` JSON API, persisting results to S3 for the recommender and frontend to consume.
-
-### API Research Notes
-
-**`GET /api/geekpreviewitems?previewid={id}`** — confirmed publicly accessible with no authentication. Accepts plain Python `requests` calls. Returns a JSON array of all games in the given convention preview, including inline:
-- `objectid` — BGG game ID
-- `geekitem.item.links.boardgamemechanic` / `boardgamecategory` / `boardgamedesigner` / `boardgamepublisher` — full metadata
-- `yearpublished`, `minplayers`, `maxplayers`, `minplaytime`, `maxplaytime`, `minage`
-- `primaryname.name` — game name
-- `thumbnail` — cover art URLs
-- `availability_status` — `forsale`, `preorder`, etc.
-- `stats.musthave`, `stats.interested` — community interest signals
-- **Pagination**: This internal API limits responses to 10 items per page by default. Pagination is achieved using the `pageid` query parameter (e.g. `&pageid=1`, `&pageid=2`), incrementing sequentially until an empty JSON list `[]` is returned.
-
-Since the API returns full mechanics/category metadata inline, **no Selenium CSV download and no separate catalog enrichment is needed for game data**.
-
-### Architecture
-
-```
-Local Repository & Terraform Deployment
-    1. Define active convention names, dates, and previewid integers manually in data/active_previews.json.
-    2. Deploy via Terraform, which uploads data/active_previews.json to S3.
-
-EventBridge (daily) → Lambda (bgg_preview_refresh)
-    1. Read active_previews.json from S3.
-    2. If no active conventions → exit immediately.
-    3. For each active convention, query BGG API (/api/geekpreviewitems?previewid=X&pageid=Y) with pagination to get game IDs.
-    4. Write the mapping {convention_id: [game_ids]} to data/active_previews_games.json on S3.
-    (No local scraping or local games files are needed).
-
-GET /recommendations?convention_id=gencon2026
-    → Recommender reads active_previews.json and active_previews_games.json from S3.
-    → Filters candidates list using game IDs associated with the convention.
-    → Scores filtered candidates against user taste profile.
-```
-
-### Tasks
-
-#### Configuration & EventBridge Integration
-Convention lists change infrequently; manual configuration is preferred over automated discovery.
-- [x] **Manual Metadata Definition:** Create `data/active_previews.json` in the repository, defining active convention names, dates, and BGG `previewid` integers.
-- [x] **Terraform Deployment S3 Object:** Add an `aws_s3_object` resource in `infrastructure/s3/main.tf` to upload the static metadata file to S3.
-- [x] **New Lambda — `bgg_preview_refresh`:** Implement a Lambda that reads active conventions config from S3, fetches BGG paginated game IDs in the cloud, and uploads a map to a separate `data/active_previews_games.json` S3 object.
-- [x] **EventBridge Daily Schedule:** Add a daily EventBridge rule to schedule Lambda executions.
-
-#### Recommender Integration
-- [x] **Convention Filter:** Update `bgg_recommender.py` to support `convention_id` and filter candidates based on game lists retrieved from the separate games S3 file.
-- [x] **In-Memory Cache:** Cache active previews configuration and games lists maps with a 1-hour TTL.
-
-#### Frontend
-- [x] **Convention Dropdown:** Fetch active conventions list from `/conventions` to dynamically populate a Debut Convention Filter dropdown when active conventions exist.
-- [x] **Convention Badge:** Prepend an elegant filter header above recommendation results when a convention filter is selected.
-
-#### Testing
-- [x] **Unit Tests:** Verify routing, metadata outputs, and candidate filtering in the recommender test suite.
-
----
-
 ## Milestone 21: Hybrid Collaborative Filtering via LightFM (Pickled Model)
 
 ### Objective
@@ -184,6 +123,36 @@ Prevent variants, expansions, or duplicate editions of the same game family/seri
 
 ---
 
+## Milestone 26: UI Redesign & Polish
+
+### Objective
+Enhance the layout, alignment, and visual polish of all frontend screens to create a highly premium, intuitive, and modern user experience (WOW factor) across desktop and mobile devices. Address layout inconsistencies, cluttered tables, stacked charts, and misaligned form controls.
+
+### Design Notes
+- **Grid Alignment Guides:** Establish clean vertical grid lines so all panels, lists, forms, and cards align seamlessly across the Home page, Collection Browser, Recommender, and Playgroup pages.
+- **Visual Depth:** Utilize soft glassmorphism, dynamic gradients, consistent shadows, and refined border treatments to elevate aesthetics.
+- **Information Architecture:** Repackage raw data into clean badge grids and left-aligned headers on card elements, and introduce structured column grids for dashboard charts and filters.
+
+### Architecture Decisions
+- **Unified CSS Layout Wrapper:** Wrap main sections in standard flex/grid columns to eliminate staggered alignments.
+- **Data Table Optimization:** Allow the BGG Collection grid data table to stretch container width dynamically (e.g. 90-95%) with horizontal scroll on small viewports and minimal min-widths.
+
+### Tasks
+- [x] **Global CSS Grid Wrapper:** Add standard container classes to `site_ui/_layouts/default.html` to align content elements.
+- [x] **BGG Collection Browser Layout Fixes:**
+  - [x] Expand the Grid View data table to use a full responsive width, preventing text wrapping on the 12 columns.
+  - [x] Convert the vertically stacked Collection Analytics dashboard into a responsive multi-column grid layout for KPI cards and Chart.js canvases.
+- [x] **AI Recommendations Form Realignment:**
+  - [x] Standardize the asymmetric form elements (Username, Ownership Filter, Preset Profile) into a clean, symmetric two-column grid.
+  - [x] Clarify Preset Profile weights description: Remove '%' symbols and describe them as relative weights (each weighted at 50/100).
+- [x] **Playgroup Organizer Panel Realignment:**
+  - [x] Realign the right-hand panel (Member checkboxes, settings dropdowns, recommendation list, and headers) onto unified vertical grid guides.
+  - [x] Introduce visually cohesive loading animations or skeleton components for background BGG scraping and taste analytics processes.
+- [x] **Modern Visual Accents (Glassmorphism):** Apply glassmorphic borders, soft drop shadows, and subtle hover animations to all cards, buttons, and navigation panels.
+
+---
+
+
  
  ## Completed Milestones
  
@@ -203,6 +172,7 @@ Prevent variants, expansions, or duplicate editions of the same game family/seri
 * **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
 * **Milestone 16: Unified Analytics & Taste Profile UI** (Cohesive dashboard experience with glassmorphism layout, dynamic Chart.js visualizations for individual/playgroup collection statistics and taste profiles)
 * **Milestone 18: Varied & Engaging AI Recommendation Explanations** (Prompt example removal, explicit 7-angle rotation instruction, hard opener uniqueness constraint, elevated temperature, Converse system prompt, test coverage)
+* **Milestone 19: BGG GeekPreview Convention Recommendations** (Active previews metadata configuration, Lambda daily synchronization of preview game IDs, recommender filter, in-memory TTL caching, frontend convention dropdown, and convention badges)
 * **Milestone 20: Cognito Verification Email Delivery Setup** (SES identity created, IAM policies granted, custom HTML email templates added to Terraform)
 * **Milestone 22: LLM Prompt Grounding & Deduplication** (Injected catalog mechanics into Bedrock prompt to eliminate hallucination, and added instructions to deduplicate variants)
 * **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)

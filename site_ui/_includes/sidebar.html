@@ -126,7 +126,30 @@
                         </a>
                     </li>
                 {% endfor %}
+                <!-- Settings: shown only when logged in (controlled by JS below) -->
+                <li id="settings-nav-item" style="display: none;">
+                    <a href="{{ '/settings/' | relative_url }}" class="nav-item {% if page.url contains '/settings' %}active{% endif %}">
+                        <span>⚙️ Settings</span>
+                    </a>
+                </li>
             </ul>
+
+            <script>
+                (function () {
+                    function applySettingsVisibility() {
+                        const item = document.getElementById('settings-nav-item');
+                        if (!item) return;
+                        const loggedIn = (typeof Auth !== 'undefined') && Auth.isLoggedIn();
+                        item.style.display = loggedIn ? 'block' : 'none';
+                    }
+
+                    // Run once Auth is available (header.html defines it before DOMContentLoaded)
+                    document.addEventListener('DOMContentLoaded', applySettingsVisibility);
+
+                    // Also react to login events fired by header.html
+                    document.addEventListener('bgg_login_success', applySettingsVisibility);
+                }());
+            </script>
         </div>
         <div class="sidebar-footer">
             <a href="http://www.boardgamegeek.com" target="_blank" rel="noopener noreferrer">

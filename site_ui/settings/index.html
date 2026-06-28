@@ -1,0 +1,596 @@
+---
+layout: default
+title: Settings
+---
+
+<style>
+    /* ── Settings Page Styles ── */
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --background: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --success: #10b981;
+        --success-bg: #ecfdf5;
+        --success-border: #6ee7b7;
+        --error: #ef4444;
+        --error-bg: #fef2f2;
+        --error-border: #fca5a5;
+    }
+
+    .settings-container {
+        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-main);
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* ── Page Header ── */
+    .settings-header {
+        margin-bottom: 36px;
+    }
+
+    .settings-header h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .settings-header p {
+        color: var(--text-muted);
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    /* ── Auth Gate ── */
+    .auth-gate {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 48px 32px;
+        text-align: center;
+        box-shadow: var(--glass-shadow);
+    }
+
+    .auth-gate-icon {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        display: block;
+    }
+
+    .auth-gate h2 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--text-main);
+    }
+
+    .auth-gate p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 24px;
+    }
+
+    .auth-gate-btn {
+        background-color: var(--primary);
+        color: #ffffff;
+        border: none;
+        padding: 12px 28px;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
+    }
+
+    .auth-gate-btn:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    /* ── Settings Sections ── */
+    .settings-section {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 28px 32px;
+        box-shadow: var(--glass-shadow);
+        margin-bottom: 24px;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .settings-section:hover {
+        box-shadow: 0 12px 40px rgba(15, 23, 42, 0.07);
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1.5px solid var(--border);
+    }
+
+    .section-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+        flex-shrink: 0;
+    }
+
+    .section-header-text h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 2px 0;
+        color: var(--text-main);
+    }
+
+    .section-header-text p {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* ── Form Controls ── */
+    .settings-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .settings-field:last-child {
+        margin-bottom: 0;
+    }
+
+    .settings-field label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-main);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .settings-field .field-hint {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    .settings-input-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .settings-input {
+        flex-grow: 1;
+        height: 46px;
+        padding: 0 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        color: var(--text-main);
+        background-color: #f8fafc;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .settings-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+        background-color: #ffffff;
+    }
+
+    .settings-input::placeholder {
+        color: #94a3b8;
+    }
+
+    .settings-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .save-btn {
+        height: 46px;
+        padding: 0 24px;
+        background-color: var(--primary);
+        color: #ffffff;
+        border: none;
+        border-radius: 10px;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .save-btn:hover:not(:disabled) {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+    }
+
+    .save-btn:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .save-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .save-btn .btn-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.35);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: none;
+    }
+
+    .save-btn.loading .btn-spinner {
+        display: inline-block;
+    }
+
+    .save-btn.loading .btn-label {
+        display: none;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ── Toast Notification ── */
+    .settings-toast {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        font-weight: 500;
+        margin-top: 16px;
+        opacity: 0;
+        transform: translateY(-6px);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        pointer-events: none;
+    }
+
+    .settings-toast.visible {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    .settings-toast.success {
+        background-color: var(--success-bg);
+        color: #065f46;
+        border: 1px solid var(--success-border);
+    }
+
+    .settings-toast.error {
+        background-color: var(--error-bg);
+        color: #991b1b;
+        border: 1px solid var(--error-border);
+    }
+
+    /* ── Profile Info Strip ── */
+    .profile-info-strip {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 18px;
+        background-color: #f1f5f9;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .profile-info-text {
+        flex-grow: 1;
+        min-width: 0;
+    }
+
+    .profile-info-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .profile-info-email {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @media (max-width: 600px) {
+        .settings-input-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .save-btn {
+            justify-content: center;
+            height: 48px;
+        }
+
+        .settings-section {
+            padding: 20px;
+        }
+    }
+</style>
+
+<div class="settings-container">
+    <div class="settings-header">
+        <h1>⚙️ Settings</h1>
+        <p>Manage your account preferences and linked services.</p>
+    </div>
+
+    <!-- Auth Gate: shown when not logged in -->
+    <div id="settings-auth-gate" class="auth-gate" style="display: none;">
+        <span class="auth-gate-icon">🔒</span>
+        <h2>Login Required</h2>
+        <p>Please log in to manage your settings.</p>
+        <button class="auth-gate-btn" id="settings-login-btn">Log In</button>
+    </div>
+
+    <!-- Settings Content: shown when logged in -->
+    <div id="settings-content" style="display: none;">
+
+        <!-- Account Section -->
+        <div class="settings-section">
+            <div class="section-header">
+                <div class="section-icon">👤</div>
+                <div class="section-header-text">
+                    <h2>Account</h2>
+                    <p>Your logged-in account details</p>
+                </div>
+            </div>
+            <div class="profile-info-strip">
+                <div class="profile-avatar" id="profile-avatar-initials">?</div>
+                <div class="profile-info-text">
+                    <div class="profile-info-label">Logged in as</div>
+                    <div class="profile-info-email" id="profile-email-display">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BGG Integration Section -->
+        <div class="settings-section">
+            <div class="section-header">
+                <div class="section-icon">🎲</div>
+                <div class="section-header-text">
+                    <h2>BoardGameGeek Integration</h2>
+                    <p>Link your BGG account to personalise recommendations</p>
+                </div>
+            </div>
+
+            <div class="settings-field">
+                <label for="settings-bgg-username">BGG Username</label>
+                <div class="settings-input-row">
+                    <input
+                        type="text"
+                        id="settings-bgg-username"
+                        class="settings-input"
+                        placeholder="e.g. bionicle4365"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <button type="button" id="save-bgg-username-btn" class="save-btn">
+                        <span class="btn-spinner"></span>
+                        <span class="btn-label">Save</span>
+                    </button>
+                </div>
+                <span class="field-hint">
+                    Enter your username from
+                    <a href="https://www.boardgamegeek.com" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600; text-decoration: none;">boardgamegeek.com</a>.
+                    This is used to load your collection for recommendations.
+                </span>
+                <div id="bgg-username-toast" class="settings-toast" role="status" aria-live="polite"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const apiUrl = "{{ site.api_url }}";
+
+    document.addEventListener("DOMContentLoaded", async function () {
+        const authGate      = document.getElementById("settings-auth-gate");
+        const settingsContent = document.getElementById("settings-content");
+        const loginBtn      = document.getElementById("settings-login-btn");
+        const emailDisplay  = document.getElementById("profile-email-display");
+        const avatarEl      = document.getElementById("profile-avatar-initials");
+        const bggInput      = document.getElementById("settings-bgg-username");
+        const saveBggBtn    = document.getElementById("save-bgg-username-btn");
+        const bggToast      = document.getElementById("bgg-username-toast");
+
+        // ── Auth State ──────────────────────────────────────────────────────────
+        function initPage() {
+            if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) {
+                authGate.style.display = "block";
+                settingsContent.style.display = "none";
+            } else {
+                authGate.style.display = "none";
+                settingsContent.style.display = "block";
+                renderAccountInfo();
+                loadSettings();
+            }
+        }
+
+        // Wire up the auth gate "Log In" button to open the global modal
+        if (loginBtn) {
+            loginBtn.addEventListener("click", function () {
+                const authLoginBtn = document.getElementById("auth-login-btn");
+                if (authLoginBtn) authLoginBtn.click();
+            });
+        }
+
+        // Re-init after a successful login (fired by header.html)
+        document.addEventListener("bgg_login_success", function () {
+            initPage();
+        });
+
+        // ── Account Info ─────────────────────────────────────────────────────────
+        function renderAccountInfo() {
+            const email = Auth.getEmail() || "";
+            emailDisplay.textContent = email || "Unknown";
+            // Show first letter of the email as avatar initial
+            avatarEl.textContent = email ? email.charAt(0).toUpperCase() : "?";
+        }
+
+        // ── Load Existing Settings ───────────────────────────────────────────────
+        async function loadSettings() {
+            const token = await Auth.getValidToken();
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${apiUrl}/preferences`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.bgg_username) {
+                        bggInput.value = data.bgg_username;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load settings:", e);
+            }
+        }
+
+        // ── Save BGG Username ────────────────────────────────────────────────────
+        saveBggBtn.addEventListener("click", async function () {
+            const username = bggInput.value.trim();
+            hideToast(bggToast);
+
+            setSaving(true);
+
+            const token = await Auth.getValidToken();
+            if (!token) {
+                showToast(bggToast, "error", "⚠️ Session expired. Please log in again.");
+                setSaving(false);
+                return;
+            }
+
+            // Fetch current prefs first so we don't clobber other fields
+            let currentPrefs = {};
+            try {
+                const getRes = await fetch(`${apiUrl}/preferences`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (getRes.ok) currentPrefs = await getRes.json();
+            } catch (e) {
+                // Non-fatal; we'll just overwrite with what we have
+            }
+
+            try {
+                const res = await fetch(`${apiUrl}/preferences`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        ...currentPrefs,
+                        bgg_username: username || null
+                    })
+                });
+
+                if (res.ok) {
+                    showToast(bggToast, "success", "✅ BGG username saved successfully!");
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast(bggToast, "error", `❌ Failed to save: ${err.message || res.statusText}`);
+                }
+            } catch (e) {
+                console.error("Save error:", e);
+                showToast(bggToast, "error", "❌ Network error. Please try again.");
+            }
+
+            setSaving(false);
+        });
+
+        // Allow pressing Enter in the input to trigger save
+        bggInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                saveBggBtn.click();
+            }
+        });
+
+        // ── UI Helpers ───────────────────────────────────────────────────────────
+        function setSaving(loading) {
+            saveBggBtn.disabled = loading;
+            bggInput.disabled   = loading;
+            saveBggBtn.classList.toggle("loading", loading);
+        }
+
+        function showToast(el, type, message) {
+            el.className = `settings-toast ${type} visible`;
+            el.textContent = message;
+            // Auto-hide success toasts after 4 s
+            if (type === "success") {
+                setTimeout(() => hideToast(el), 4000);
+            }
+        }
+
+        function hideToast(el) {
+            el.classList.remove("visible", "success", "error");
+        }
+
+        // ── Init ─────────────────────────────────────────────────────────────────
+        initPage();
+    });
+</script>

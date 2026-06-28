@@ -68,11 +68,13 @@ title: Playgroup Organizer
 
     /* Cards */
     .sidebar-card, .planner-card {
-        background-color: var(--card-bg);
-        border: 1px solid var(--border);
-        border-radius: 16px;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: var(--radius-lg);
         padding: 24px;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        box-shadow: var(--glass-shadow);
         transition: all 0.3s ease;
     }
 
@@ -403,21 +405,24 @@ title: Playgroup Organizer
 
     /* Status progress styling */
     .status-card {
-        background-color: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 12px;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: var(--radius-md);
         padding: 20px;
         display: none;
         align-items: center;
         gap: 15px;
         animation: fadeIn 0.3s ease;
+        box-shadow: var(--glass-shadow);
     }
 
     .spinner {
-        width: 28px;
-        height: 28px;
-        border: 3.5px solid #dbeafe;
-        border-top: 3.5px solid #2563eb;
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(79, 70, 229, 0.15);
+        border-top: 3px solid var(--primary);
         border-radius: 50%;
         animation: spin 1s linear infinite;
         flex-shrink: 0;
@@ -425,7 +430,7 @@ title: Playgroup Organizer
 
     .status-text {
         font-weight: 600;
-        color: #1e40af;
+        color: var(--primary);
         margin: 0;
         font-size: 0.95rem;
         line-height: 1.4;
@@ -439,19 +444,21 @@ title: Playgroup Organizer
     }
 
     .rec-card {
-        background-color: var(--card-bg);
-        border: 1px solid var(--border);
-        border-radius: 14px;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: var(--radius-lg);
         padding: 20px;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        box-shadow: var(--glass-shadow);
         transition: all 0.3s ease;
         animation: slideUp 0.4s ease;
     }
 
     .rec-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-        border-color: #cbd5e1;
+        box-shadow: var(--shadow-lg);
+        border-color: rgba(79, 70, 229, 0.25);
     }
 
     .rec-card-body {
@@ -555,8 +562,13 @@ title: Playgroup Organizer
     .rec-reason {
         line-height: 1.6;
         color: var(--text-muted);
-        margin: 0;
-        font-size: 0.95rem;
+        margin: 12px 0 0 0;
+        font-size: 0.92rem;
+        padding: 10px 14px;
+        background-color: #f8fafc;
+        border-left: 4px solid var(--primary);
+        border-radius: 4px;
+        font-style: italic;
     }
 
     .badge {
