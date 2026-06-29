@@ -785,8 +785,9 @@ def test_convention_id_filtering(mock_get_active_previews_games, mock_get_active
     mock_s3.head_object.return_value = {}
     
     # Setup mock catalog with two games (Gloomhaven 123 and Catan 456)
+    # Mock user owns/rates a different game id (789) so Catan is not filtered out by rated_ids when own_status is 'any'
     user_df = pd.DataFrame([
-        {"id": "456", "username": "testuser", "rating": 8.0, "own": True}
+        {"id": "789", "username": "testuser", "rating": 8.0, "own": True}
     ])
     catalog_df = pd.DataFrame([
         {"id": "123", "name": "Gloomhaven", "categories": ["Thematic"], "mechanics": ["Cooperative"], "rating": 8.5, "year_published": 2017, "complexity": 3.8},
