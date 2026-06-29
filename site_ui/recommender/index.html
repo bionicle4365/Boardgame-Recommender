@@ -767,13 +767,16 @@ title: Boardgame Recommender
             const token = await Auth.getValidToken();
             if (!token) return;
 
-            // Safeguard playgroups from local storage so we don't overwrite them
-            let playgroups = [];
+            // Fetch current preferences first so we don't clobber fields like bgg_username
+            let currentPrefs = {};
             try {
-                const stored = localStorage.getItem("bgg_playgroups");
-                if (stored) playgroups = JSON.parse(stored);
+                const getRes = await fetch(`${apiUrl}/preferences`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (getRes.ok) currentPrefs = await getRes.json();
             } catch (e) {
-                console.error("Failed loading playgroups from local storage:", e);
+                console.error("Failed fetching current preferences:", e);
             }
             
             const weights = {
@@ -783,8 +786,6 @@ title: Boardgame Recommender
                 hot: wHotInput.value
             };
             
-            const bggUsername = document.getElementById("username").value.trim();
-            
             try {
                 await fetch(`${apiUrl}/preferences`, {
                     method: "POST",
@@ -793,10 +794,10 @@ title: Boardgame Recommender
                         "Authorization": `Bearer ${token}`
                     },
                     body: JSON.stringify({
+                        ...currentPrefs,
                         playgroups: playgroups,
                         saved_weights: weights,
-                        user_preferences: {},
-                        bgg_username: bggUsername || null
+                        user_preferences: {}
                     })
                 });
             } catch (e) {
@@ -844,10 +845,6 @@ title: Boardgame Recommender
             }
         }
 
-        // Save username when it changes
-        document.getElementById("username").addEventListener("change", function() {
-            syncPreferencesToBackend();
-        });
 
         // Fetch active conventions and populate dropdown
         async function loadConventions() {

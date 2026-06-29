@@ -1108,6 +1108,18 @@ title: Playgroup Organizer
             const token = await Auth.getValidToken();
             if (!token) return;
             
+            // Fetch current preferences first so we don't clobber fields like bgg_username
+            let currentPrefs = {};
+            try {
+                const getRes = await fetch(`${apiUrl}/preferences`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (getRes.ok) currentPrefs = await getRes.json();
+            } catch (e) {
+                console.error("Failed fetching current preferences:", e);
+            }
+            
             const weights = {
                 mech: wMechInput.value,
                 cat: wCatInput.value,
@@ -1123,6 +1135,7 @@ title: Playgroup Organizer
                         "Authorization": `Bearer ${token}`
                     },
                     body: JSON.stringify({
+                        ...currentPrefs,
                         playgroups: playgroups,
                         saved_weights: weights,
                         user_preferences: {}
