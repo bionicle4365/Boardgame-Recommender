@@ -109,17 +109,23 @@ title: BGG Collection Browser
 
     #bgg-collection-table th,
     #bgg-collection-table td {
-        padding: 14px 18px;
+        padding: 10px 12px;
         text-align: left;
         border-bottom: 1px solid var(--border);
         white-space: nowrap;
+        font-size: 0.82rem;
     }
 
     #bgg-collection-table td:first-child {
-        max-width: 280px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        max-width: 250px;
+        white-space: normal;
+        line-height: 1.4;
+    }
+
+    #bgg-collection-table td:nth-child(9) {
+        max-width: 140px;
+        white-space: normal;
+        line-height: 1.4;
     }
 
     #bgg-collection-table th {
@@ -134,6 +140,10 @@ title: BGG Collection Browser
         transition: background-color 0.2s ease;
         user-select: none;
         border-bottom: 2.5px solid var(--border);
+        white-space: normal;
+        line-height: 1.2;
+        vertical-align: bottom;
+        font-size: 0.85rem;
     }
 
     #bgg-collection-table th:hover {
@@ -767,10 +777,322 @@ title: BGG Collection Browser
         flex-wrap: wrap;
     }
 
-    .skeleton-tag {
-        height: 20px;
-        width: 60px;
+    /* View Toggle Buttons */
+    .view-toggle-wrapper {
+        display: flex;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background-color: var(--card-bg);
+    }
+    
+    .view-toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .view-toggle-btn:hover:not(.active) {
+        color: var(--text-main);
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .view-toggle-btn.active {
+        background-color: var(--primary-green);
+        color: white;
+    }
+    
+    /* Card Grid Styles */
+    .collection-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 24px;
+        padding: 10px 0 30px 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .game-card {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--glass-shadow);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .game-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    .game-card-img-container {
+        height: 180px;
+        width: 100%;
+        overflow: hidden;
+        position: relative;
+        background-color: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .game-card-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    
+    .game-card:hover .game-card-img {
+        transform: scale(1.06);
+    }
+    
+    .game-card-placeholder-img {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        padding: 20px;
+        text-align: center;
+        box-sizing: border-box;
+    }
+    
+    /* Absolute Positioning Badges on Image */
+    .game-card-bgg-rating-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        padding: 5px 9px;
+        border-radius: 8px;
+        color: white;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 0.85rem;
+        box-shadow: var(--shadow-sm);
+        z-index: 2;
+    }
+    
+    .rating-excellent { background-color: #10b981; } /* Green */
+    .rating-good { background-color: #059669; } /* Dark Green */
+    .rating-fine { background-color: #3b82f6; } /* Blue */
+    .rating-average { background-color: #f59e0b; } /* Amber */
+    .rating-poor { background-color: #ef4444; } /* Red */
+    .rating-none { background-color: #94a3b8; } /* Slate */
+    
+    .game-card-status-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 4px 10px;
         border-radius: 20px;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        font-size: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        z-index: 2;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    
+    .status-own { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .status-preorder { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .status-wantplay { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-wantbuy { background-color: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4; }
+    .status-wishlist { background-color: #fdf2f8; color: #be185d; border: 1px solid #fbcfe8; }
+    .status-other { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    
+    .game-card-body {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        gap: 12px;
+    }
+    
+    .game-card-title-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .game-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+        line-height: 1.35;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        height: 2.7rem; /* Fix height for 2 lines */
+    }
+    
+    .game-card-title a {
+        text-decoration: none;
+        color: inherit;
+        transition: color 0.2s ease;
+    }
+
+    .game-card-title a:hover {
+        color: var(--primary-green);
+    }
+
+    .game-card-year {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+    
+    .game-card-divider {
+        height: 1px;
+        background-color: var(--border);
+        margin: 0;
+    }
+    
+    .game-card-details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .game-card-detail-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .game-card-detail-icon {
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    
+    .game-card-detail-text {
+        font-weight: 500;
+        color: var(--text-main);
+    }
+    
+    .game-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px dashed var(--border);
+    }
+    
+    .game-card-user-rating {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #f59e0b; /* Amber */
+    }
+    
+    /* Layout Columns Wrapper */
+    .collection-layout-wrapper {
+        display: flex;
+        gap: 28px;
+        width: 100%;
+        margin-top: 10px;
+        align-items: flex-start;
+        transition: all 0.3s ease;
+    }
+
+    .filters-sidebar-column {
+        flex: 0 0 280px;
+        width: 280px;
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        padding-right: 4px;
+        display: none; /* Only show when collection loads */
+    }
+
+    /* Scrollbar styling for filters sidebar */
+    .filters-sidebar-column::-webkit-scrollbar {
+        width: 6px;
+    }
+    .filters-sidebar-column::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .filters-sidebar-column::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 4px;
+    }
+    .filters-sidebar-column::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
+    }
+
+    .collection-content-column {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Infinite scroll loading indicator */
+    .infinite-scroll-loading {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 24px 0 40px 0;
+        width: 100%;
+        color: var(--text-muted);
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    /* Responsive styling for layout wrapper */
+    @media (max-width: 1023px) {
+        .collection-layout-wrapper {
+            flex-direction: column;
+            gap: 20px;
+        }
+        .filters-sidebar-column {
+            flex: none;
+            width: 100%;
+            position: relative;
+            top: 0;
+            max-height: none;
+            overflow-y: visible;
+            border-right: none;
+            padding-right: 0;
+        }
     }
 </style>
 
@@ -816,166 +1138,189 @@ title: BGG Collection Browser
 
     </div>
 
-    <!-- Tabs Navigation (Only show if collection loaded) -->
-    <div id="collection-tabs-nav" class="collection-tabs" style="display: none;">
-        <button class="tab-btn active" id="tab-btn-grid" onclick="switchCollectionTab('grid')">Grid View</button>
-        <button class="tab-btn" id="tab-btn-analytics" onclick="switchCollectionTab('analytics')">Collection Analytics</button>
-    </div>
-
-    <!-- Panel 1: Grid View -->
-    <div id="collection-panel-grid" class="tab-panel">
-        <!-- Browser Controls -->
-        <div id="browser-controls-bar" style="display: none;" class="browser-controls">
-            <div class="search-box-wrapper">
-                <input type="text" id="game-search-input" placeholder="Search games in collection...">
-            </div>
-            <div class="page-size-wrapper">
-                <label for="page-size-select">Show:</label>
-                <select id="page-size-select">
-                    <option value="10">10</option>
-                    <option value="25" selected>25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="all">All</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Collection Table -->
-        <div id="collection-data"></div>
-
-        <!-- Pagination Controls -->
-        <div id="pagination-bar" style="display: none;" class="pagination-container">
-            <div class="pagination-info" id="pagination-info-text">Showing 0-0 of 0 games</div>
-            <div class="pagination-buttons" id="pagination-page-list"></div>
-        </div>
-    </div>
-
-    <!-- Panel 2: Collection Analytics -->
-    <div id="collection-panel-analytics" class="tab-panel hidden">
-        <!-- Summary Cards Row -->
-        <div class="summary-cards-grid">
-            <div class="summary-card">
-                <span class="summary-card-title">Total Games</span>
-                <span class="summary-card-value" id="card-total-games">-</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-card-title">Owned Games</span>
-                <span class="summary-card-value" id="card-owned-games">-</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-card-title">Total Plays</span>
-                <span class="summary-card-value" id="card-total-plays">-</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-card-title">Most Played Game</span>
-                <span class="summary-card-value" id="card-most-played" style="font-size: 1.1rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-            </div>
-        </div>
-
-        <!-- Charts Grid (Collection stats) -->
-        <div class="charts-grid">
-            <div class="chart-container-card">
-                <span class="chart-title">Playtime Distribution</span>
-                <div class="chart-wrapper">
-                    <canvas id="chart-playtime"></canvas>
-                </div>
-            </div>
-            <div class="chart-container-card">
-                <span class="chart-title">Player Count Support</span>
-                <div class="chart-wrapper">
-                    <canvas id="chart-players"></canvas>
-                </div>
-            </div>
-            <div class="chart-container-card">
-                <span class="chart-title">My Rating Distribution</span>
-                <div class="chart-wrapper">
-                    <canvas id="chart-ratings"></canvas>
-                </div>
-            </div>
-            <div class="chart-container-card">
-                <span class="chart-title">Most Played Games</span>
-                <div class="chart-wrapper">
-                    <canvas id="chart-most-played-list"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Taste Profile Section -->
-        <div id="taste-profile-panel" class="taste-profile-section" style="display: none;">
-            <h2>User Taste Profile</h2>
-            <p>Visualizing category and mechanic weights compiled from user ratings and BGG statistics. (Pre-computed / Scraped)</p>
-            <div class="charts-grid">
-                <div class="chart-container-card">
-                    <span class="chart-title">Top Mechanics Affinity</span>
-                    <div class="chart-wrapper">
-                        <canvas id="chart-taste-mechanics"></canvas>
+    <!-- Layout Wrapper: splits sidebar filters and main content -->
+    <div id="collection-layout-wrap" class="collection-layout-wrapper" style="display: none;">
+        <!-- Left: Filters Column -->
+        <div id="filters-column" class="filters-sidebar-column">
+            <!-- Faceted Filter Panel -->
+            <div id="faceted-filters" style="display: block;">
+                <h3>Filter Collection</h3>
+                
+                <div class="filter-group">
+                    <span class="filter-label">Collection Status:</span>
+                    <div class="filter-options status-options">
+                        <button class="filter-chip status-chip" data-status="Own">Own</button>
+                        <button class="filter-chip status-chip" data-status="Preordered">Preordered</button>
+                        <button class="filter-chip status-chip" data-status="Want to Play">Want to Play</button>
+                        <button class="filter-chip status-chip" data-status="Want to Buy">Want to Buy</button>
+                        <button class="filter-chip status-chip" data-status="Wishlist">Wishlist</button>
                     </div>
                 </div>
-                <div class="chart-container-card">
-                    <span class="chart-title">Top Categories Affinity</span>
-                    <div class="chart-wrapper">
-                        <canvas id="chart-taste-categories"></canvas>
+
+                <div class="filter-group">
+                    <span class="filter-label">Players:</span>
+                    <div class="filter-options player-options">
+                        <button class="filter-btn player-btn active" data-player="any">Any</button>
+                        <button class="filter-btn player-btn" data-player="1">1 (Solo)</button>
+                        <button class="filter-btn player-btn" data-player="2">2 Players</button>
+                        <button class="filter-btn player-btn" data-player="3-4">3-4 Players</button>
+                        <button class="filter-btn player-btn" data-player="5">5+ Players</button>
                     </div>
+                </div>
+
+                <div class="filter-group">
+                    <span class="filter-label">Play Time:</span>
+                    <div class="filter-options time-options">
+                        <button class="filter-btn time-btn active" data-time="any">Any</button>
+                        <button class="filter-btn time-btn" data-time="short">Short (&lt; 30m)</button>
+                        <button class="filter-btn time-btn" data-time="medium">Medium (30-60m)</button>
+                        <button class="filter-btn time-btn" data-time="long">Long (60-120m)</button>
+                        <button class="filter-btn time-btn" data-time="epic">Epic (&gt; 120m)</button>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <span class="filter-label">BGG Rating:</span>
+                    <div class="filter-options rating-options">
+                        <button class="filter-btn rating-btn active" data-rating="any">Any</button>
+                        <button class="filter-btn rating-btn" data-rating="6">6.0+</button>
+                        <button class="filter-btn rating-btn" data-rating="7">7.0+</button>
+                        <button class="filter-btn rating-btn" data-rating="8">8.0+</button>
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button id="clear-all-filters" class="clear-filters-btn">Clear All Filters</button>
                 </div>
             </div>
         </div>
-        
-        <!-- Taste Profile Loading/Status placeholder -->
-        <div id="taste-profile-status" style="margin-top: 20px; padding: 20px; border-radius: 12px; text-align: center; color: var(--text-muted); background: rgba(255,255,255,0.5); border: 1.5px dashed var(--border);">
-            Loading user taste profile...
-        </div>
-    </div>
 
-    <!-- Faceted Filter Panel -->
-    <div id="faceted-filters" style="display: none;">
-        <h3>Filter Collection</h3>
-        
-        <div class="filter-group">
-            <span class="filter-label">Collection Status:</span>
-            <div class="filter-options status-options">
-                <button class="filter-chip status-chip" data-status="Own">Own</button>
-                <button class="filter-chip status-chip" data-status="Preordered">Preordered</button>
-                <button class="filter-chip status-chip" data-status="Want to Play">Want to Play</button>
-                <button class="filter-chip status-chip" data-status="Want to Buy">Want to Buy</button>
-                <button class="filter-chip status-chip" data-status="Wishlist">Wishlist</button>
+        <!-- Right: Content Column -->
+        <div class="collection-content-column">
+            <!-- Tabs Navigation -->
+            <div id="collection-tabs-nav" class="collection-tabs">
+                <button class="tab-btn active" id="tab-btn-grid" onclick="switchCollectionTab('grid')">Grid View</button>
+                <button class="tab-btn" id="tab-btn-analytics" onclick="switchCollectionTab('analytics')">Collection Analytics</button>
             </div>
-        </div>
 
-        <div class="filter-group">
-            <span class="filter-label">Players:</span>
-            <div class="filter-options player-options">
-                <button class="filter-btn player-btn active" data-player="any">Any</button>
-                <button class="filter-btn player-btn" data-player="1">1 (Solo)</button>
-                <button class="filter-btn player-btn" data-player="2">2 Players</button>
-                <button class="filter-btn player-btn" data-player="3-4">3-4 Players</button>
-                <button class="filter-btn player-btn" data-player="5">5+ Players</button>
-            </div>
-        </div>
+            <!-- Panel 1: Grid View -->
+            <div id="collection-panel-grid" class="tab-panel">
+                <!-- Browser Controls -->
+                <div id="browser-controls-bar" style="display: none;" class="browser-controls">
+                    <div class="search-box-wrapper">
+                        <input type="text" id="game-search-input" placeholder="Search games in collection...">
+                    </div>
+                    <div class="page-size-wrapper" id="page-size-controls">
+                        <label for="page-size-select">Show:</label>
+                        <select id="page-size-select">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                    <div class="view-toggle-wrapper">
+                        <button id="view-mode-grid" class="view-toggle-btn" title="Card Grid View">
+                            <span>🎴</span> Card Grid
+                        </button>
+                        <button id="view-mode-list" class="view-toggle-btn" title="Table List View">
+                            <span>📝</span> Table List
+                        </button>
+                    </div>
+                </div>
 
-        <div class="filter-group">
-            <span class="filter-label">Play Time:</span>
-            <div class="filter-options time-options">
-                <button class="filter-btn time-btn active" data-time="any">Any</button>
-                <button class="filter-btn time-btn" data-time="short">Short (&lt; 30m)</button>
-                <button class="filter-btn time-btn" data-time="medium">Medium (30-60m)</button>
-                <button class="filter-btn time-btn" data-time="long">Long (60-120m)</button>
-                <button class="filter-btn time-btn" data-time="epic">Epic (&gt; 120m)</button>
-            </div>
-        </div>
+                <!-- Collection Table -->
+                <div id="collection-data"></div>
 
-        <div class="filter-group">
-            <span class="filter-label">BGG Rating:</span>
-            <div class="filter-options rating-options">
-                <button class="filter-btn rating-btn active" data-rating="any">Any</button>
-                <button class="filter-btn rating-btn" data-rating="6">6.0+</button>
-                <button class="filter-btn rating-btn" data-rating="7">7.0+</button>
-                <button class="filter-btn rating-btn" data-rating="8">8.0+</button>
+                <!-- Infinite Scroll Loading Indicator -->
+                <div id="infinite-scroll-loader" class="infinite-scroll-loading">
+                    <div class="collection-spinner" style="width: 22px; height: 22px; border-width: 2.5px; margin: 0;"></div>
+                    <span>Loading more games...</span>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div id="pagination-bar" style="display: none;" class="pagination-container">
+                    <div class="pagination-info" id="pagination-info-text">Showing 0-0 of 0 games</div>
+                    <div class="pagination-buttons" id="pagination-page-list"></div>
+                </div>
             </div>
-        </div>
-        
-        <div class="filter-actions">
-            <button id="clear-all-filters" class="clear-filters-btn">Clear All Filters</button>
+
+            <!-- Panel 2: Collection Analytics -->
+            <div id="collection-panel-analytics" class="tab-panel hidden">
+                <!-- Summary Cards Row -->
+                <div class="summary-cards-grid">
+                    <div class="summary-card">
+                        <span class="summary-card-title">Total Games</span>
+                        <span class="summary-card-value" id="card-total-games">-</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="summary-card-title">Owned Games</span>
+                        <span class="summary-card-value" id="card-owned-games">-</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="summary-card-title">Total Plays</span>
+                        <span class="summary-card-value" id="card-total-plays">-</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="summary-card-title">Most Played Game</span>
+                        <span class="summary-card-value" id="card-most-played" style="font-size: 1.1rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                    </div>
+                </div>
+
+                <!-- Charts Grid (Collection stats) -->
+                <div class="charts-grid">
+                    <div class="chart-container-card">
+                        <span class="chart-title">Playtime Distribution</span>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-playtime"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container-card">
+                        <span class="chart-title">Player Count Support</span>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-players"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container-card">
+                        <span class="chart-title">My Rating Distribution</span>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-ratings"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container-card">
+                        <span class="chart-title">Most Played Games</span>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-most-played-list"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Taste Profile Section -->
+                <div id="taste-profile-panel" class="taste-profile-section" style="display: none;">
+                    <h2>User Taste Profile</h2>
+                    <p>Visualizing category and mechanic weights compiled from user ratings and BGG statistics. (Pre-computed / Scraped)</p>
+                    <div class="charts-grid">
+                        <div class="chart-container-card">
+                            <span class="chart-title">Top Mechanics Affinity</span>
+                            <div class="chart-wrapper">
+                                <canvas id="chart-taste-mechanics"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container-card">
+                            <span class="chart-title">Top Categories Affinity</span>
+                            <div class="chart-wrapper">
+                                <canvas id="chart-taste-categories"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Taste Profile Loading/Status placeholder -->
+                <div id="taste-profile-status" style="margin-top: 20px; padding: 20px; border-radius: 12px; text-align: center; color: var(--text-muted); background: rgba(255,255,255,0.5); border: 1.5px dashed var(--border);">
+                    Loading user taste profile...
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -999,6 +1344,9 @@ title: BGG Collection Browser
     let currentSortDirection = 'asc';
     let currentPage = 1;
     let pageSize = 25;
+    let currentViewMode = 'grid';
+    let currentLoadedCount = 25;
+    let isInfiniteScrollLoading = false;
 
     // Facet Filter State Variables
     let activeStatuses = []; // Array of active status strings
@@ -1022,19 +1370,19 @@ title: BGG Collection Browser
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
 
-        const filtersDiv = document.getElementById('faceted-filters');
+        const sidebarDiv = document.getElementById('filters-column');
 
         if (tabName === 'grid') {
             document.getElementById('tab-btn-grid').classList.add('active');
             document.getElementById('collection-panel-grid').classList.remove('hidden');
-            if (gamesData.length > 0 && filtersDiv) {
-                filtersDiv.style.display = 'block';
+            if (gamesData.length > 0 && sidebarDiv) {
+                sidebarDiv.style.display = 'block';
             }
         } else if (tabName === 'analytics') {
             document.getElementById('tab-btn-analytics').classList.add('active');
             document.getElementById('collection-panel-analytics').classList.remove('hidden');
-            if (filtersDiv) {
-                filtersDiv.style.display = 'none';
+            if (sidebarDiv) {
+                sidebarDiv.style.display = 'none';
             }
             // Force charts resize/draw when tab is shown
             setTimeout(() => {
@@ -1525,6 +1873,15 @@ title: BGG Collection Browser
 
             const item_id = items[i].getAttribute('objectid') || 'N/A';
 
+            let thumbnail = items[i].getElementsByTagName('thumbnail')[0]?.textContent || '';
+            if (thumbnail.startsWith('//')) {
+                thumbnail = 'https:' + thumbnail;
+            }
+            let image = items[i].getElementsByTagName('image')[0]?.textContent || '';
+            if (image.startsWith('//')) {
+                image = 'https:' + image;
+            }
+
             gamesData.push({
                 item_id: item_id,
                 name: name,
@@ -1538,14 +1895,18 @@ title: BGG Collection Browser
                 collectionStatus: collectionStatus,
                 numPlays: parseInt(numPlays),
                 userRating: userRating === 'N/A' ? 'N/A' : parseFloat(userRating),
+                thumbnail: thumbnail,
+                image: image,
             });
         }
         calculateUserRanks();
         currentPage = 1;
+        currentViewMode = 'grid'; // Default/reset to Card Grid view when collection loads
+        updateViewToggleButtons();
         filteredGamesData = [...gamesData];
         
-        // Show tabs navigation, hide empty state
-        document.getElementById('collection-tabs-nav').style.display = 'flex';
+        // Show layout wrap container, hide empty state
+        document.getElementById('collection-layout-wrap').style.display = 'flex';
         document.getElementById('collection-empty-state').style.display = 'none';
         switchCollectionTab('grid');
         
@@ -1556,17 +1917,17 @@ title: BGG Collection Browser
 
     const headers = [
         { name: 'Name', key: 'name', type: 'string' },
-        { name: 'Year Published', key: 'yearPublished', type: 'number' },
+        { name: 'Year', key: 'yearPublished', type: 'number' },
         { name: 'BGG Rating', key: 'bggRating', type: 'number' },
-        { name: 'BGG User Average', key: 'bggUserRating', type: 'number' },
+        { name: 'BGG User Avg', key: 'bggUserRating', type: 'number' },
         { name: 'BGG Rank', key: 'bggRank', type: 'number' },
         { name: 'Min Players', key: 'minPlayers', type: 'number' },
         { name: 'Max Players', key: 'maxPlayers', type: 'number' },
-        { name: 'Play Time (min)', key: 'playingTime', type: 'number' },
-        { name: 'Collection Status', key: 'collectionStatus', type: 'string' },
-        { name: 'Number of Plays', key: 'numPlays', type: 'number' },
-        { name: 'User Rating', key: 'userRating', type: 'number' },
-        { name: 'User Rank', key: 'userRank', type: 'number' }
+        { name: 'Play Time', key: 'playingTime', type: 'number' },
+        { name: 'Status', key: 'collectionStatus', type: 'string' },
+        { name: 'Plays', key: 'numPlays', type: 'number' },
+        { name: 'My Rating', key: 'userRating', type: 'number' },
+        { name: 'My Rank', key: 'userRank', type: 'number' }
     ];
 
     // Faceted filtering helper functions (previously query builder helper functions)
@@ -1641,13 +2002,13 @@ title: BGG Collection Browser
 
     function renderTable() {
         const collectionDataDiv = document.getElementById('collection-data');
-        const filtersDiv = document.getElementById('faceted-filters');
+        const sidebarDiv = document.getElementById('filters-column');
         const controlsDiv = document.getElementById('browser-controls-bar');
 
         if (gamesData.length === 0) {
             collectionDataDiv.innerHTML = '';
             collectionDataDiv.classList.remove('has-content');
-            filtersDiv.style.display = 'none';
+            if (sidebarDiv) sidebarDiv.style.display = 'none';
             controlsDiv.style.display = 'none';
             renderPagination(0);
             return;
@@ -1655,21 +2016,65 @@ title: BGG Collection Browser
 
         controlsDiv.style.display = 'flex';
         
-        // Only show filters on Grid View tab
+        // Only show sidebar filters on Grid View tab
         const activeTab = document.querySelector('.tab-btn.active');
         if (activeTab && activeTab.id === 'tab-btn-grid') {
-            filtersDiv.style.display = 'block';
+            if (sidebarDiv) sidebarDiv.style.display = 'block';
         } else {
-            filtersDiv.style.display = 'none';
+            if (sidebarDiv) sidebarDiv.style.display = 'none';
         }
 
         if (filteredGamesData.length === 0) {
             collectionDataDiv.innerHTML = '<div class="collection-message">No games match the current filters.</div>';
             collectionDataDiv.classList.add('has-content');
+            const loader = document.getElementById('infinite-scroll-loader');
+            if (loader) loader.style.display = 'none';
             renderPagination(0);
             return;
         }
 
+        const totalGames = filteredGamesData.length;
+
+        if (currentViewMode === 'grid') {
+            // Slicing for infinite scroll
+            const gridGames = filteredGamesData.slice(0, currentLoadedCount);
+            renderCardGrid(gridGames, collectionDataDiv);
+            
+            // Hide page size select and pagination bar
+            const pageSizeControls = document.getElementById('page-size-controls');
+            if (pageSizeControls) pageSizeControls.style.display = 'none';
+            document.getElementById('pagination-bar').style.display = 'none';
+            
+            // Show/hide loader based on whether there are more games to load
+            const loader = document.getElementById('infinite-scroll-loader');
+            if (loader) {
+                loader.style.display = currentLoadedCount < totalGames ? 'flex' : 'none';
+            }
+        } else {
+            // Slicing for pagination
+            const limit = pageSize === 'all' ? totalGames : parseInt(pageSize);
+            const totalPages = Math.ceil(totalGames / limit) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const startOffset = (currentPage - 1) * limit;
+            const endOffset = Math.min(startOffset + limit, totalGames);
+            const listGames = filteredGamesData.slice(startOffset, endOffset);
+
+            renderTableList(listGames, collectionDataDiv);
+            
+            // Show page size select controls
+            const pageSizeControls = document.getElementById('page-size-controls');
+            if (pageSizeControls) pageSizeControls.style.display = 'flex';
+            
+            // Hide infinite scroll loader
+            const loader = document.getElementById('infinite-scroll-loader');
+            if (loader) loader.style.display = 'none';
+
+            // Render numbered pagination list (which shows/hides the pagination-bar itself)
+            renderPagination(totalGames);
+        }
+    }
+
+    function renderTableList(pagedGames, container) {
         let tableHtml = '<table id="bgg-collection-table"><thead><tr>';
 
         headers.forEach(header => {
@@ -1680,15 +2085,6 @@ title: BGG Collection Browser
             tableHtml += `<th data-sort-by="${header.key}" data-sort-type="${header.type}">${header.name}${sortIndicator}</th>`;
         });
         tableHtml += '</tr></thead><tbody>';
-
-        // Slice data for current page
-        const totalGames = filteredGamesData.length;
-        const limit = pageSize === 'all' ? totalGames : parseInt(pageSize);
-        const totalPages = Math.ceil(totalGames / limit) || 1;
-        if (currentPage > totalPages) currentPage = totalPages;
-        const startOffset = (currentPage - 1) * limit;
-        const endOffset = Math.min(startOffset + limit, totalGames);
-        const pagedGames = filteredGamesData.slice(startOffset, endOffset);
 
         pagedGames.forEach(game => {
             tableHtml += `<tr>
@@ -1707,11 +2103,8 @@ title: BGG Collection Browser
             </tr>`;
         });
         tableHtml += '</tbody></table>';
-        collectionDataDiv.innerHTML = tableHtml;
-        collectionDataDiv.classList.add('has-content');
-
-        // Render numbered pagination list
-        renderPagination(totalGames);
+        container.innerHTML = tableHtml;
+        container.classList.add('has-content');
 
         // Add event listeners to new headers
         document.querySelectorAll('#bgg-collection-table th').forEach(header => {
@@ -1721,6 +2114,141 @@ title: BGG Collection Browser
                 sortTable(sortBy, sortType);
             });
         });
+    }
+
+    function renderCardGrid(pagedGames, container) {
+        let gridHtml = '<div class="collection-grid">';
+
+        pagedGames.forEach(game => {
+            // Determine BGG rating class
+            let ratingClass = 'rating-none';
+            let ratingText = 'N/A';
+            if (game.bggRating !== 'N/A') {
+                ratingText = parseFloat(game.bggRating).toFixed(1);
+                const r = parseFloat(game.bggRating);
+                if (r >= 8.0) ratingClass = 'rating-excellent';
+                else if (r >= 7.0) ratingClass = 'rating-good';
+                else if (r >= 6.0) ratingClass = 'rating-fine';
+                else if (r >= 5.0) ratingClass = 'rating-average';
+                else ratingClass = 'rating-poor';
+            }
+
+            // Determine status badge
+            let primaryStatus = '';
+            let statusClass = 'status-other';
+            const statusStr = game.collectionStatus || '';
+            
+            if (statusStr.includes('Own')) {
+                primaryStatus = 'Own';
+                statusClass = 'status-own';
+            } else if (statusStr.includes('Preordered')) {
+                primaryStatus = 'Preordered';
+                statusClass = 'status-preorder';
+            } else if (statusStr.includes('Want to Play')) {
+                primaryStatus = 'Want to Play';
+                statusClass = 'status-wantplay';
+            } else if (statusStr.includes('Want to Buy')) {
+                primaryStatus = 'Want to Buy';
+                statusClass = 'status-wantbuy';
+            } else if (statusStr.includes('Wishlist')) {
+                primaryStatus = 'Wishlist';
+                statusClass = 'status-wishlist';
+            } else if (statusStr !== 'N/A' && statusStr !== '') {
+                primaryStatus = statusStr.split(' ')[0];
+                statusClass = 'status-other';
+            }
+
+            // Players range
+            let playersText = 'N/A';
+            if (game.minPlayers !== 'N/A' && game.maxPlayers !== 'N/A') {
+                if (game.minPlayers === game.maxPlayers) {
+                    playersText = `${game.minPlayers} players`;
+                } else {
+                    playersText = `${game.minPlayers}-${game.maxPlayers} players`;
+                }
+            }
+
+            // Playtime
+            let playtimeText = 'N/A';
+            if (game.playingTime !== 'N/A') {
+                playtimeText = `${game.playingTime} Min`;
+            }
+
+            // Rank
+            let rankText = 'N/A';
+            if (game.bggRank && game.bggRank !== Infinity) {
+                rankText = `#${game.bggRank}`;
+            }
+
+            // User rating & User rank
+            let userRatingHtml = '';
+            if (game.userRating !== 'N/A') {
+                userRatingHtml = `<span class="game-card-user-rating" title="My Rating: ${game.userRating}">⭐ ${parseFloat(game.userRating).toFixed(1)}</span>`;
+            } else {
+                userRatingHtml = `<span class="game-card-user-rating" style="color: var(--text-muted);" title="Not Rated by me">⭐ -</span>`;
+            }
+
+            let playsHtml = '';
+            if (game.numPlays > 0) {
+                playsHtml = `<span class="game-card-plays">${game.numPlays} ${game.numPlays === 1 ? 'play' : 'plays'}</span>`;
+            }
+
+            let imageHtml = '';
+            if (game.thumbnail) {
+                imageHtml = `<img src="${game.thumbnail}" class="game-card-img" alt="${game.name}" loading="lazy">`;
+            } else {
+                imageHtml = `<div class="game-card-placeholder-img">${game.name.substring(0, 2).toUpperCase()}</div>`;
+            }
+
+            let statusBadgeHtml = '';
+            if (primaryStatus) {
+                statusBadgeHtml = `<div class="game-card-status-badge ${statusClass}">${primaryStatus}</div>`;
+            }
+
+            gridHtml += `
+            <div class="game-card">
+                <a href="https://boardgamegeek.com/boardgame/${game.item_id}" target="_blank" style="text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%;">
+                    <div class="game-card-img-container">
+                        ${statusBadgeHtml}
+                        <div class="game-card-bgg-rating-badge ${ratingClass}" title="BGG Rating">${ratingText}</div>
+                        ${imageHtml}
+                    </div>
+                    <div class="game-card-body">
+                        <div class="game-card-title-row">
+                            <h3 class="game-card-title">${game.name}</h3>
+                            <p class="game-card-year">${game.yearPublished !== 'N/A' ? game.yearPublished : ''}</p>
+                        </div>
+                        <div class="game-card-divider"></div>
+                        <div class="game-card-details-grid">
+                            <div class="game-card-detail-item" title="Player Count">
+                                <span class="game-card-detail-icon">👥</span>
+                                <span class="game-card-detail-text">${playersText}</span>
+                            </div>
+                            <div class="game-card-detail-item" title="Play Time">
+                                <span class="game-card-detail-icon">⏱️</span>
+                                <span class="game-card-detail-text">${playtimeText}</span>
+                            </div>
+                            <div class="game-card-detail-item" title="BGG Rank">
+                                <span class="game-card-detail-icon">🏆</span>
+                                <span class="game-card-detail-text">${rankText}</span>
+                            </div>
+                            <div class="game-card-detail-item" title="My Rank">
+                                <span class="game-card-detail-icon">🏅</span>
+                                <span class="game-card-detail-text">${game.userRank !== 'N/A' ? 'Rank #' + game.userRank : 'Unranked'}</span>
+                            </div>
+                        </div>
+                        <div class="game-card-footer">
+                            ${userRatingHtml}
+                            ${playsHtml}
+                        </div>
+                    </div>
+                </a>
+            </div>`;
+        });
+
+        gridHtml += '</div>';
+        container.innerHTML = gridHtml;
+        container.classList.add('has-content');
     }
 
     function sortTable(columnKey, columnType) {
@@ -1735,6 +2263,7 @@ title: BGG Collection Browser
     }
 
     function filterAndRender() {
+        currentLoadedCount = 25; // Reset infinite scroll batch count
         filteredGamesData = [...gamesData]; // Start with all data
         
         // Apply global search filter
@@ -1844,6 +2373,40 @@ title: BGG Collection Browser
         filterAndRender();
     });
 
+    function updateViewToggleButtons() {
+        const gridBtn = document.getElementById('view-mode-grid');
+        const listBtn = document.getElementById('view-mode-list');
+        if (gridBtn && listBtn) {
+            if (currentViewMode === 'grid') {
+                gridBtn.classList.add('active');
+                listBtn.classList.remove('active');
+            } else {
+                gridBtn.classList.remove('active');
+                listBtn.classList.add('active');
+            }
+        }
+    }
+
+    const modeGridBtn = document.getElementById('view-mode-grid');
+    const modeListBtn = document.getElementById('view-mode-list');
+    if (modeGridBtn && modeListBtn) {
+        modeGridBtn.addEventListener('click', function() {
+            if (currentViewMode === 'grid') return;
+            currentViewMode = 'grid';
+            updateViewToggleButtons();
+            renderTable();
+        });
+
+        modeListBtn.addEventListener('click', function() {
+            if (currentViewMode === 'list') return;
+            currentViewMode = 'list';
+            updateViewToggleButtons();
+            renderTable();
+        });
+        
+        updateViewToggleButtons();
+    }
+
     // Set up faceted filter listeners
     function setupFacetedFilters() {
         // Status chips (multi-select)
@@ -1940,11 +2503,10 @@ title: BGG Collection Browser
         const lowerUsername = username.trim().toLowerCase();
 
         // Reset navigation and tab states; show empty state placeholder again
-        document.getElementById('collection-tabs-nav').style.display = 'none';
+        document.getElementById('collection-layout-wrap').style.display = 'none';
         document.getElementById('collection-empty-state').style.display = 'block';
         document.getElementById('collection-panel-grid').classList.remove('hidden');
         document.getElementById('collection-panel-analytics').classList.add('hidden');
-        document.getElementById('faceted-filters').style.display = 'none';
 
         const apiBaseUrl = "{{ site.api_url }}";
         const apiUrl = apiBaseUrl
@@ -2043,7 +2605,8 @@ title: BGG Collection Browser
                         </div>
                     `;
                     collectionDataDiv.classList.add('has-content');
-                    document.getElementById('faceted-filters').style.display = 'none';
+                    const sidebarDiv = document.getElementById('filters-column');
+                    if (sidebarDiv) sidebarDiv.style.display = 'none';
                     document.getElementById('browser-controls-bar').style.display = 'none';
                     renderPagination(0);
                     return;
@@ -2058,7 +2621,8 @@ title: BGG Collection Browser
                 </div>
             `;
             collectionDataDiv.classList.add('has-content');
-            document.getElementById('faceted-filters').style.display = 'none';
+            const sidebarDiv = document.getElementById('filters-column');
+            if (sidebarDiv) sidebarDiv.style.display = 'none';
             document.getElementById('browser-controls-bar').style.display = 'none';
             renderPagination(0);
             return;
@@ -2108,7 +2672,40 @@ title: BGG Collection Browser
         }
     }
 
+    function setupInfiniteScroll() {
+        const collectionDataDiv = document.getElementById('collection-data');
+        if (!collectionDataDiv) return;
+
+        collectionDataDiv.addEventListener('scroll', function() {
+            if (currentViewMode !== 'grid') return;
+            if (isInfiniteScrollLoading) return;
+
+            const threshold = 150; // pixels from the bottom
+            const isNearBottom = collectionDataDiv.scrollHeight - collectionDataDiv.scrollTop - collectionDataDiv.clientHeight <= threshold;
+
+            if (isNearBottom) {
+                loadMoreGames();
+            }
+        });
+    }
+
+    function loadMoreGames() {
+        if (currentLoadedCount >= filteredGamesData.length) return;
+        
+        isInfiniteScrollLoading = true;
+        const loader = document.getElementById('infinite-scroll-loader');
+        if (loader) loader.style.display = 'flex';
+
+        setTimeout(() => {
+            currentLoadedCount += 25;
+            renderTable();
+            if (loader) loader.style.display = 'none';
+            isInfiniteScrollLoading = false;
+        }, 300);
+    }
+
     // Load preferences on DOMContentLoaded and on login success event
     loadPreferencesBggUsername();
     document.addEventListener("bgg_login_success", loadPreferencesBggUsername);
+    setupInfiniteScroll();
 </script>

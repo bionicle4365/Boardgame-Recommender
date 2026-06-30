@@ -12,3 +12,5 @@
 - **Artifact Storage**: When you need to save a working script (e.g. `format_mechanics.py`) or the results of an experiment (`mechanic_frequencies.json`), save it to the `scratch/` directory. Do not save generated artifacts to your workspace or working folders.
 
 - **Testing**: Run unit tests before deploying any changes. For frontend changes, test the changes locally using the Jekyll server. 
+
+- **Agentic Orchestration**: For all complex workspace tasks, reference the `Agentic Orchestrator` skill. Identify the appropriate specialized domains (BGG API, AWS Architecture, Site UI, Recommender System, or Data Engineering) required for the task, load their rules, and coordinate implementation sequentially. 
