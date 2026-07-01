@@ -428,13 +428,13 @@ title: User Profile
 
             <!-- View Switcher Tabs (Playground Mode Selector) -->
             <div class="playground-tabs">
-                <button class="playground-tab-btn active" onclick="switchPreset('overview')">
+                <button class="playground-tab-btn active" onclick="switchPreset(this, 'overview')">
                     📊 Overview
                 </button>
-                <button class="playground-tab-btn" onclick="switchPreset('deepdive')">
+                <button class="playground-tab-btn" onclick="switchPreset(this, 'deepdive')">
                     🔍 Deep Dive
                 </button>
-                <button class="playground-tab-btn" onclick="switchPreset('ratings')">
+                <button class="playground-tab-btn" onclick="switchPreset(this, 'ratings')">
                     ⭐ Ratings
                 </button>
             </div>
@@ -448,9 +448,9 @@ title: User Profile
                         <span class="stat-card-desc">Games in BGG Library</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-card-title">Average Complexity</span>
-                        <span class="stat-card-value" id="stat-ov-complexity">0.0</span>
-                        <span class="stat-card-desc">Scale of 1.0 - 5.0</span>
+                        <span class="stat-card-title" id="stat-ov-complexity-title">Complexity Preference</span>
+                        <span class="stat-card-value" id="stat-ov-complexity">Medium-Light</span>
+                        <span class="stat-card-desc" id="stat-ov-complexity-desc">Most played complexity band</span>
                     </div>
                     <div class="stat-card">
                         <span class="stat-card-title">Average User Rating</span>
@@ -527,10 +527,18 @@ title: User Profile
                     </div>
                 </div>
 
-                <div class="panel-card">
-                    <h3 class="panel-card-title">📈 Rating Correlation (Your Ratings vs BGG Average)</h3>
-                    <div class="chart-container" style="min-height: 320px;">
-                        <canvas id="chart-rt-correlation"></canvas>
+                <div class="charts-row" style="margin-bottom: 24px;">
+                    <div class="panel-card">
+                        <h3 class="panel-card-title">📈 Rating Correlation (Your Ratings vs BGG Average)</h3>
+                        <div class="chart-container" style="min-height: 320px;">
+                            <canvas id="chart-rt-correlation"></canvas>
+                        </div>
+                    </div>
+                    <div class="panel-card">
+                        <h3 class="panel-card-title">📊 Rating Distribution Comparison</h3>
+                        <div class="chart-container" style="min-height: 320px;">
+                            <canvas id="chart-rt-distribution"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -590,7 +598,8 @@ title: User Profile
             ddDuration: null,
             ddCategories: null,
             ddTimeline: null,
-            rtCorrelation: null
+            rtCorrelation: null,
+            rtDistribution: null
         };
 
         const apiUrl = "{{ site.api_url }}";
@@ -653,12 +662,14 @@ title: User Profile
         }
 
         // ── Preset Playground Selector ──────────────────────────────────────
-        window.switchPreset = function(presetName) {
+        window.switchPreset = function(btnEl, presetName) {
             // Reset active tab button
             document.querySelectorAll(".playground-tab-btn").forEach(btn => {
                 btn.classList.remove("active");
             });
-            event.currentTarget.classList.add("active");
+            if (btnEl) {
+                btnEl.classList.add("active");
+            }
 
             // Hide all panels
             document.querySelectorAll(".dashboard-panel").forEach(panel => {
@@ -836,9 +847,17 @@ title: User Profile
             // Metric values
             document.getElementById("stat-ov-games").textContent = games.length;
 
-            // Complexity estimation
-            const avgComplexity = profileAffinities.avg_complexity || 2.4;
-            document.getElementById("stat-ov-complexity").textContent = parseFloat(avgComplexity).toFixed(2);
+            // Complexity band preference based on highest weight
+            const cw = profileAffinities.complexity_weights || { "Light": 0, "Medium-Light": 0, "Medium-Heavy": 0, "Heavy": 0 };
+            let dominantComplexity = "Medium-Light";
+            let maxWeight = -1;
+            for (const [band, weight] of Object.entries(cw)) {
+                if (weight > maxWeight) {
+                    maxWeight = weight;
+                    dominantComplexity = band;
+                }
+            }
+            document.getElementById("stat-ov-complexity").textContent = dominantComplexity;
 
             // Average rating calculation
             const rated = games.filter(g => typeof g.userRating === 'number' && !isNaN(g.userRating));
@@ -885,7 +904,6 @@ title: User Profile
             });
 
             // Compile complexity weights
-            const cw = profileAffinities.complexity_weights || { "Light": 1, "Medium-Light": 2, "Medium-Heavy": 1, "Heavy": 0 };
             charts.ovComplexity = new Chart(chartDomComplexity, {
                 type: 'doughnut',
                 data: {
@@ -1069,6 +1087,56 @@ title: User Profile
                     scales: {
                         x: { min: 4, max: 10, title: { display: true, text: 'BGG average rating' } },
                         y: { min: 1, max: 10, title: { display: true, text: 'Your Rating (1-10)' } }
+                    }
+                }
+            });
+
+            // Draw Grouped Bar Chart for Rating Distribution
+            const chartDomDistribution = document.getElementById("chart-rt-distribution");
+            if (charts.rtDistribution) charts.rtDistribution.destroy();
+
+            const ratingsLabels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+            const userFrequencies = Array(10).fill(0);
+            const bggFrequencies = Array(10).fill(0);
+
+            ratedGames.forEach(g => {
+                const uRating = Math.min(10, Math.max(1, Math.round(g.userRating)));
+                userFrequencies[uRating - 1]++;
+                
+                if (typeof g.bggRating === 'number' && !isNaN(g.bggRating)) {
+                    const bRating = Math.min(10, Math.max(1, Math.round(g.bggRating)));
+                    bggFrequencies[bRating - 1]++;
+                }
+            });
+
+            charts.rtDistribution = new Chart(chartDomDistribution, {
+                type: 'bar',
+                data: {
+                    labels: ratingsLabels,
+                    datasets: [
+                        {
+                            label: 'Your Ratings',
+                            data: userFrequencies,
+                            backgroundColor: '#4f46e5',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'BGG Average Ratings',
+                            data: bggFrequencies,
+                            backgroundColor: '#a855f7',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Rating Value' } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Number of Games' } }
                     }
                 }
             });

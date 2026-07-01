@@ -114,7 +114,7 @@ def process_taste_profile(username):
     # Replicate inline profile selection logic from bgg_recommender.py
     liked_games = user_df[user_df['rating'] >= 7.0]
     if liked_games.empty:
-        liked_games = user_df[user_df['own'] == True]
+        liked_games = user_df[user_df['own']]
     if liked_games.empty:
         liked_games = user_df.sort_values(by='rating', ascending=False).head(10)
 

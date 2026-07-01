@@ -342,7 +342,40 @@ title: Boardgame Recommender
         border-left: 4px solid var(--primary);
         border-radius: 4px;
         font-style: italic;
+        position: relative;
     }
+
+    .rec-reason.loading {
+        color: transparent !important;
+        background-color: #f1f5f9 !important;
+        border-left-color: #cbd5e1 !important;
+        overflow: hidden;
+    }
+
+    .rec-reason.loading::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        transform: translateX(-100%);
+        background-image: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.4) 20%,
+            rgba(255, 255, 255, 0.6) 60%,
+            rgba(255, 255, 255, 0) 100%
+        );
+        animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+        100% {
+            transform: translateX(100%);
+        }
+    }
+
 
     .badge {
         background-color: #e0e7ff;
@@ -942,7 +975,7 @@ title: Boardgame Recommender
                             if (refreshBtn) {
                                 refreshBtn.disabled = false;
                             }
-                            renderRecommendations(cachedData.recommendations);
+                            renderRecommendations(cachedData.recommendations, false); // narration is complete in cache
                             return; // Exit and skip calling backend
                         } else {
                             console.log("Cached recommendations are stale. Requesting fresh data.");
@@ -964,7 +997,8 @@ title: Boardgame Recommender
                 w_mech: w_mech,
                 w_cat: w_cat,
                 w_pop: w_pop,
-                w_hot: w_hot
+                w_hot: w_hot,
+                narrate: 'false'
             });
             if (year_start) queryParams.append("year_start", year_start);
             if (year_end) queryParams.append("year_end", year_end);
@@ -993,25 +1027,62 @@ title: Boardgame Recommender
                             statusMessage.textContent = "First time search! We are currently scraping your collection from BGG. This takes about 30 seconds...";
                             pollingTimeout = setTimeout(pollRecommendations, 5000);
                         } else if (data.status === "ready") {
-                            isPollingActive = false;
+                            // Phase 1: Scored results are ready!
                             statusCard.style.display = "none";
                             submitBtn.disabled = false;
                             if (refreshBtn) {
                                 refreshBtn.disabled = false;
                             }
 
-                            // Cache recommendations to local storage
-                            try {
-                                const cacheVal = {
-                                    timestamp: Date.now(),
-                                    recommendations: data.recommendations
-                                };
-                                localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
-                            } catch (cacheErr) {
-                                console.error("Error writing to local storage cache:", cacheErr);
-                            }
+                            const isPending = data.narration_status === "pending";
+                            renderRecommendations(data.recommendations, isPending);
 
-                            renderRecommendations(data.recommendations);
+                            if (isPending) {
+                                // Start Phase 2: Fetch Bedrock AI narration in the background
+                                const narrateUrl = `${url}&narrate=true`;
+                                console.log("Phase 1 ready. Fetching Phase 2 AI narration in the background...");
+                                fetch(narrateUrl)
+                                    .then(res => {
+                                        if (res.ok) return res.json();
+                                        throw new Error("AI Narration API failed");
+                                    })
+                                    .then(narrateData => {
+                                        if (narrateData.status === "ready" && narrateData.narration_status === "complete") {
+                                            console.log("Phase 2 AI narration received. Updating UI.");
+                                            // Cache final results to local storage
+                                            try {
+                                                const cacheVal = {
+                                                    timestamp: Date.now(),
+                                                    recommendations: narrateData.recommendations
+                                                };
+                                                localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
+                                            } catch (cacheErr) {
+                                                console.error("Error writing to local storage cache:", cacheErr);
+                                            }
+                                            // Update the reason strings in-place with animation
+                                            updateNarrationReasons(narrateData.recommendations);
+                                        }
+                                    })
+                                    .catch(err => {
+                                        console.warn("Failed to load AI narration. Retaining fallback reasons:", err);
+                                        // Remove loading styles to show fallback generic reason
+                                        document.querySelectorAll('.rec-reason.loading').forEach(el => {
+                                            el.classList.remove('loading');
+                                        });
+                                    });
+                            } else {
+                                // Already complete (e.g. refresh=true but cache hit on backend)
+                                isPollingActive = false;
+                                try {
+                                    const cacheVal = {
+                                        timestamp: Date.now(),
+                                        recommendations: data.recommendations
+                                    };
+                                    localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
+                                } catch (cacheErr) {
+                                    console.error("Error writing to cache:", cacheErr);
+                                }
+                            }
                         } else {
                             throw new Error("Unexpected response status");
                         }
@@ -1044,7 +1115,7 @@ title: Boardgame Recommender
             });
         }
 
-        function renderRecommendations(recs) {
+        function renderRecommendations(recs, isPending = false) {
             if (!recs || recs.length === 0) {
                 resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: #fff;">No recommendations found matching those criteria. Try relaxing your year filters!</div>`;
                 return;
@@ -1109,6 +1180,7 @@ title: Boardgame Recommender
 
                 // Fallback placeholder image URL
                 const thumbUrl = rec.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
+                const loadingClass = isPending ? "loading" : "";
                 
                 html += `
                     <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
@@ -1124,13 +1196,30 @@ title: Boardgame Recommender
                                 <div class="rec-stats-container">
                                     ${statsHtml}
                                 </div>
-                                <p class="rec-reason">${escapeHTML(rec.reason)}</p>
+                                <p class="rec-reason ${loadingClass}" data-game-id="${rec.id || ''}">${escapeHTML(rec.reason)}</p>
                             </div>
                         </div>
                     </div>
                 `;
             });
             resultsContainer.innerHTML = html;
+        }
+
+        function updateNarrationReasons(recs) {
+            recs.forEach(rec => {
+                const gameId = rec.id;
+                if (!gameId) return;
+                const reasonEl = document.querySelector(`.rec-reason[data-game-id="${gameId}"]`);
+                if (reasonEl) {
+                    reasonEl.style.transition = "opacity 0.25s ease";
+                    reasonEl.style.opacity = "0";
+                    setTimeout(() => {
+                        reasonEl.textContent = rec.reason;
+                        reasonEl.classList.remove('loading');
+                        reasonEl.style.opacity = "1";
+                    }, 250);
+                }
+            });
         }
 
         function escapeHTML(str) {

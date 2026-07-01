@@ -3,12 +3,12 @@ import requests
 import xml.etree.ElementTree as ET
 import os
 import random
-import time # New import for time.sleep
+import time
 
-import pandas as pd # New import for DataFrame operations
-import pyarrow # Required by pandas for Parquet engine
-import pyarrow.parquet as pq # Explicit import for clarity
-import boto3 # Already imported, ensuring it's available for S3 client
+import pandas as pd
+import pyarrow
+import pyarrow.parquet as pq
+import boto3
 # Initialize Structured Logging with AWS Lambda Powertools or Fallback
 try:
     from aws_lambda_powertools import Logger
@@ -83,20 +83,21 @@ def get_user_data(username):
             if root.text and "accepted" in root.text:
                 raise ValueError(f"BGG API message for {username}: {root.text}")
 
-            if items is None:
+            if not items:
                 logger.warning(f"No collection items found for user {username}.")
                 return None
 
+            def safe_float(val):
+                try:
+                    return float(val) if val is not None else None
+                except (ValueError, TypeError):
+                    return None
+
             user_data = []
             for item in items:
-                
-                def safe_float(val):
-                    try:
-                        return float(val) if val is not None else None
-                    except (ValueError, TypeError):
-                        return None
                 rating = safe_float(_get_element_value(item, ".//stats/rating", attribute='value'))
-                own = True if _get_element_value(item, ".//status", attribute='own') == '1' else False
+                own = _get_element_value(item, ".//status", attribute='own') == '1'
+                # rating=0.0 is falsy; on BGG this means "not rated", so we intentionally skip it
                 if rating or own:
                     user_data.append({
                         'id': item.get('objectid'),

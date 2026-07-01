@@ -119,7 +119,8 @@
         transition: transform 0.2s ease;
     }
 
-    .header-user-badge.open::after {
+    .header-user-badge.open::after,
+    .header-user-badge:hover::after {
         transform: rotate(180deg);
     }
 
@@ -140,7 +141,8 @@
         animation: slideUp 0.15s ease;
     }
 
-    .header-user-badge.open .header-user-dropdown {
+    .header-user-badge.open .header-user-dropdown,
+    .header-user-badge:hover .header-user-dropdown {
         display: flex;
     }
 

@@ -200,7 +200,7 @@ def get_batch_game_data(game_ids, max_retries=5, base_delay=2):
             logger.info(f"BGG batch response: {len(results)} of {len(game_ids)} IDs found.")
             return results
 
-        except (requests.exceptions.RequestException, ET.ParseError, Exception) as e:
+        except Exception as e:
             logger.error(f"Error in batch BGG API call (attempt {attempt + 1}): {e}")
             if attempt < max_retries - 1:
                 delay = min(60, base_delay * (2 ** attempt))

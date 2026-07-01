@@ -124,36 +124,6 @@ Prevent variants, expansions, or duplicate editions of the same game family/seri
 
 ---
 
-## Milestone 27: Interactive User Profile Dashboard & Playground
-
-### Objective
-Create a user profile page accessible to logged-in users that showcases rich stats, taste profiles, and collection metrics. Incorporate a layout playground allowing users to toggle between different visualization profiles (Overview, Deep Dive, and Rating Analytics) to explore layout options.
-
-### Design Notes
-- **Profile Header Dropdown:** Update `header.html` to convert the logged-in user badge into an interactive dropdown containing links to "View Profile" and "Log Out".
-- **Glassmorphic Multi-View Dashboard:** Design a sleek profile page with glassmorphism panels. Provide a tab/switch at the top to toggle between three visual presets:
-  1. *Overview Dashboard:* High-level KPI cards (Total Games, Complexity Avg, etc.) and Chart.js visualizations for Player Count and Complexity Weight distributions.
-  2. *Deep Dive Metrics:* Detailed charts covering game duration breakdown, year published distributions, and category counts.
-  3. *Rating Analytics:* Comparison scatter/bar plots for User Ratings vs. BGG Ratings, average deviation, and listings of favorite designers and publishers.
-- **Skeletal Shimmer Loading:** Implement CSS/HTML placeholder templates that animate/shimmer during background data fetch processes.
-
-### Architecture Decisions
-- **Unified Profile Routing:** Create a new endpoint `/profile/index.html` referencing Jekyll layouts and configuration.
-- **Cognito & API Sync:** Fetch `bgg_username` from backend preferences and pull user XML collection and pre-computed `/profile` statistics from the taste analytics API on page load. Fall back to client-side taste profiling in case of network/fetch issues.
-
-### Tasks
-- [ ] **Header Dropdown Component:** Modify `site_ui/_includes/header.html` to replace the simple text link with a custom hover/click CSS dropdown for logged-in users.
-- [ ] **Profile Page Creation:** Add `site_ui/profile/index.html` with basic layout framework and sidebar/header integration.
-- [ ] **Multi-View Control & Switcher:** Implement layout switching logic to toggle between Overview, Deep Dive, and Rating Analytics layouts.
-- [ ] **Chart.js Implementations:**
-  - [ ] Add player count and complexity charts to the Overview dashboard.
-  - [ ] Add duration, year, and category charts to the Deep Dive dashboard.
-  - [ ] Add ratings scatter/bar plot and creator listings to the Rating Analytics dashboard.
-- [ ] **Skeletal Shimmer Loading UI:** Add skeleton layouts that display during asynchronous API collection loading.
-- [ ] **Offline Fallbacks & Integration:** Connect Cognito session authentication checks, sync pref loading, and fall back to local parsing for profiles missing computed backend statistics.
-
----
-
 ## Completed Milestones
 
 * **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
@@ -177,3 +147,4 @@ Create a user profile page accessible to logged-in users that showcases rich sta
 * **Milestone 22: LLM Prompt Grounding & Deduplication** (Injected catalog mechanics into Bedrock prompt to eliminate hallucination, and added instructions to deduplicate variants)
 * **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)
 * **Milestone 26: UI Redesign & Polish** (Standardized grid wrapper alignment, full-width responsive BGG collection grid/analytics table, symmetric AI form layout, realigned playgroup panel with loading animations, glassmorphism visual accents)
+* **Milestone 27: Interactive User Profile Dashboard & Playground** (Cognito profile syncing, Overview, Deep Dive, and Rating Analytics layouts, hover/click user header dropdown, and grouped rating distribution bar charts)

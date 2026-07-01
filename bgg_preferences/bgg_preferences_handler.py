@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import boto3
 from decimal import Decimal
 
@@ -83,7 +84,6 @@ def lambda_handler(event, context):
         try:
             body_str = event.get('body', '{}')
             if event.get('isBase64Encoded', False):
-                import base64
                 body_str = base64.b64decode(body_str).decode('utf-8')
             body = json.loads(body_str)
             

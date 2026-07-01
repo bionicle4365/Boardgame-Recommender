@@ -126,6 +126,12 @@
                         </a>
                     </li>
                 {% endfor %}
+                <!-- Profile: shown only when logged in (controlled by JS below) -->
+                <li id="profile-nav-item" style="display: none;">
+                    <a href="{{ '/profile/' | relative_url }}" class="nav-item {% if page.url contains '/profile' %}active{% endif %}">
+                        <span>👤 View Profile</span>
+                    </a>
+                </li>
                 <!-- Settings: shown only when logged in (controlled by JS below) -->
                 <li id="settings-nav-item" style="display: none;">
                     <a href="{{ '/settings/' | relative_url }}" class="nav-item {% if page.url contains '/settings' %}active{% endif %}">
@@ -136,18 +142,19 @@
 
             <script>
                 (function () {
-                    function applySettingsVisibility() {
-                        const item = document.getElementById('settings-nav-item');
-                        if (!item) return;
+                    function applyNavVisibility() {
+                        const profileItem = document.getElementById('profile-nav-item');
+                        const settingsItem = document.getElementById('settings-nav-item');
                         const loggedIn = (typeof Auth !== 'undefined') && Auth.isLoggedIn();
-                        item.style.display = loggedIn ? 'block' : 'none';
+                        if (profileItem) profileItem.style.display = loggedIn ? 'block' : 'none';
+                        if (settingsItem) settingsItem.style.display = loggedIn ? 'block' : 'none';
                     }
 
                     // Run once Auth is available (header.html defines it before DOMContentLoaded)
-                    document.addEventListener('DOMContentLoaded', applySettingsVisibility);
+                    document.addEventListener('DOMContentLoaded', applyNavVisibility);
 
                     // Also react to login events fired by header.html
-                    document.addEventListener('bgg_login_success', applySettingsVisibility);
+                    document.addEventListener('bgg_login_success', applyNavVisibility);
                 }());
             </script>
         </div>
