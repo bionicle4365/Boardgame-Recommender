@@ -357,44 +357,29 @@ def _handle_recommendations(query_params):
         complexity_weights, hotness_scores, catalog_df, query_params
     )
 
-    # 7. Phase 1 vs Phase 2 response
-    if narrate:
-        # Phase 2: Call Bedrock for personalized narration
-        weight_context = build_weight_context(query_params)
-        narrated_recs = narrate_recommendations(top_candidates, liked_games_str, weight_context, query_params)
+    # 7. Call Bedrock for personalized narration
+    weight_context = build_weight_context(query_params)
+    narrated_recs = narrate_recommendations(top_candidates[:25], liked_games_str, weight_context, query_params)
 
-        if narrated_recs is not None:
-            recs_list = narrated_recs
-        else:
-            # Bedrock failed, return fallback
-            recs_list = build_fallback_recommendations(top_candidates)
-
-        # Save narrated recommendations to cache
-        if recs_list:
-            bgg_rec.save_recommendations_to_cache(cache_key, recs_list)
-
-        return {
-            'statusCode': 200,
-            'headers': _cors_headers(),
-            'body': json.dumps({
-                'status': 'ready',
-                'narration_status': 'complete',
-                'recommendations': recs_list
-            })
-        }
+    if narrated_recs is not None:
+        recs_list = narrated_recs
     else:
-        # Phase 1: Return scored candidates immediately with generic reasons
+        # Bedrock failed, return fallback
         recs_list = build_fallback_recommendations(top_candidates)
 
-        return {
-            'statusCode': 200,
-            'headers': _cors_headers(),
-            'body': json.dumps({
-                'status': 'ready',
-                'narration_status': 'pending',
-                'recommendations': recs_list
-            })
-        }
+    # Save narrated recommendations to cache
+    if recs_list:
+        bgg_rec.save_recommendations_to_cache(cache_key, recs_list)
+
+    return {
+        'statusCode': 200,
+        'headers': _cors_headers(),
+        'body': json.dumps({
+            'status': 'ready',
+            'narration_status': 'complete',
+            'recommendations': recs_list
+        })
+    }
 
 
 @logger.inject_lambda_context

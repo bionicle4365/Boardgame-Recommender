@@ -925,6 +925,7 @@ title: Boardgame Recommender
 
         let pollingTimeout = null;
         let isPollingActive = false;
+        let activeSearchKey = null;
 
         function getRecommendations(forceRefresh = false) {
             // Clear existing states and cancel active polling
@@ -959,6 +960,7 @@ title: Boardgame Recommender
 
             // Build unique cache key including weights, preferences and convention filter
             const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${durationPref}_${complexityPref}_${convention_id || 'any'}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
+            activeSearchKey = cacheKey;
 
             // Check if fresh cache exists (TTL = 7 days)
             if (!forceRefresh) {
@@ -998,7 +1000,7 @@ title: Boardgame Recommender
                 w_cat: w_cat,
                 w_pop: w_pop,
                 w_hot: w_hot,
-                narrate: 'false'
+                narrate: 'true'
             });
             if (year_start) queryParams.append("year_start", year_start);
             if (year_end) queryParams.append("year_end", year_end);
@@ -1027,61 +1029,23 @@ title: Boardgame Recommender
                             statusMessage.textContent = "First time search! We are currently scraping your collection from BGG. This takes about 30 seconds...";
                             pollingTimeout = setTimeout(pollRecommendations, 5000);
                         } else if (data.status === "ready") {
-                            // Phase 1: Scored results are ready!
                             statusCard.style.display = "none";
                             submitBtn.disabled = false;
                             if (refreshBtn) {
                                 refreshBtn.disabled = false;
                             }
+                            isPollingActive = false;
 
-                            const isPending = data.narration_status === "pending";
-                            renderRecommendations(data.recommendations, isPending);
+                            renderRecommendations(data.recommendations, false);
 
-                            if (isPending) {
-                                // Start Phase 2: Fetch Bedrock AI narration in the background
-                                const narrateUrl = `${url}&narrate=true`;
-                                console.log("Phase 1 ready. Fetching Phase 2 AI narration in the background...");
-                                fetch(narrateUrl)
-                                    .then(res => {
-                                        if (res.ok) return res.json();
-                                        throw new Error("AI Narration API failed");
-                                    })
-                                    .then(narrateData => {
-                                        if (narrateData.status === "ready" && narrateData.narration_status === "complete") {
-                                            console.log("Phase 2 AI narration received. Updating UI.");
-                                            // Cache final results to local storage
-                                            try {
-                                                const cacheVal = {
-                                                    timestamp: Date.now(),
-                                                    recommendations: narrateData.recommendations
-                                                };
-                                                localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
-                                            } catch (cacheErr) {
-                                                console.error("Error writing to local storage cache:", cacheErr);
-                                            }
-                                            // Update the reason strings in-place with animation
-                                            updateNarrationReasons(narrateData.recommendations);
-                                        }
-                                    })
-                                    .catch(err => {
-                                        console.warn("Failed to load AI narration. Retaining fallback reasons:", err);
-                                        // Remove loading styles to show fallback generic reason
-                                        document.querySelectorAll('.rec-reason.loading').forEach(el => {
-                                            el.classList.remove('loading');
-                                        });
-                                    });
-                            } else {
-                                // Already complete (e.g. refresh=true but cache hit on backend)
-                                isPollingActive = false;
-                                try {
-                                    const cacheVal = {
-                                        timestamp: Date.now(),
-                                        recommendations: data.recommendations
-                                    };
-                                    localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
-                                } catch (cacheErr) {
-                                    console.error("Error writing to cache:", cacheErr);
-                                }
+                            try {
+                                const cacheVal = {
+                                    timestamp: Date.now(),
+                                    recommendations: data.recommendations
+                                };
+                                localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
+                            } catch (cacheErr) {
+                                console.error("Error writing to cache:", cacheErr);
                             }
                         } else {
                             throw new Error("Unexpected response status");
