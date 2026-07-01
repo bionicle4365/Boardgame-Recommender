@@ -14,3 +14,5 @@
 - **Testing**: Run unit tests before deploying any changes. For frontend changes, test the changes locally using the Jekyll server. 
 
 - **Agentic Orchestration**: For all complex workspace tasks, reference the `Agentic Orchestrator` skill. Identify the appropriate specialized domains (BGG API, AWS Architecture, Site UI, Recommender System, or Data Engineering) required for the task, load their rules, and coordinate implementation sequentially. 
+
+- **Docker Images**: Never build or push Docker images directly. Deployment processes and image builds should only be run via designated CI/CD pipelines (e.g. GitHub Actions).

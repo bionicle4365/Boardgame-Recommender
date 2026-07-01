@@ -8,8 +8,8 @@ COPY requirements.txt ${LAMBDA_TASK_ROOT}
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Copy script handler
-COPY bgg_recommender.py ${LAMBDA_TASK_ROOT}
+# Copy script handlers
+COPY *.py ${LAMBDA_TASK_ROOT}/
 
 # Set lambda handler
 CMD ["bgg_recommender.lambda_handler"]
