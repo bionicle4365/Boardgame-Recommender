@@ -5,6 +5,7 @@ import os
 import json
 import time
 import math
+import re
 from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
@@ -344,3 +345,13 @@ def get_bgg_hotness(ttl_hours=2):
     except Exception as fallback_e:
         logger.error(f"Stale hotness cache fallback failed: {fallback_e}")
         return []
+
+
+def validate_username(username):
+    """
+    Validates BGG username query parameter using regular expressions.
+    Ensures the username is between 1 and 25 characters and alphanumeric plus underscores only.
+    """
+    if not username:
+        return False
+    return bool(re.match(r'^[a-zA-Z0-9_]{1,25}$', username))

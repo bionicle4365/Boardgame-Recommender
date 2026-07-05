@@ -33,6 +33,11 @@ jobs:
         uses: actions/checkout@v6
       - name: Setup Pages
         uses: actions/configure-pages@v6
+      - name: Inject Production Configurations
+        run: |
+          sed -i 's|api_url: "PLACEHOLDER_API_URL"|api_url: "${{ secrets.PROD_API_URL }}"|g' site_ui/_config.yml
+          sed -i 's|cognito_client_id: "PLACEHOLDER_COGNITO_CLIENT_ID"|cognito_client_id: "${{ secrets.PROD_COGNITO_CLIENT_ID }}"|g' site_ui/_config.yml
+          sed -i 's|cognito_user_pool_id: "PLACEHOLDER_COGNITO_USER_POOL_ID"|cognito_user_pool_id: "${{ secrets.PROD_COGNITO_USER_POOL_ID }}"|g' site_ui/_config.yml
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:

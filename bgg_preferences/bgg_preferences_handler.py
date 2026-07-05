@@ -25,7 +25,6 @@ def lambda_handler(event, context):
         return {
             'statusCode': 204,
             'headers': {
-                'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Headers': 'content-type,authorization',
                 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
                 'Access-Control-Max-Age': '300'
@@ -41,8 +40,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': 401,
             'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Content-Type': 'application/json'
             },
             'body': json.dumps({'error': 'Unauthorized: Missing user sub claim'})
         }
@@ -65,8 +63,7 @@ def lambda_handler(event, context):
             return {
                 'statusCode': 200,
                 'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Content-Type': 'application/json'
                 },
                 'body': json.dumps(item, cls=DecimalEncoder)
             }
@@ -74,8 +71,7 @@ def lambda_handler(event, context):
             return {
                 'statusCode': 500,
                 'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Content-Type': 'application/json'
                 },
                 'body': json.dumps({'error': f'Failed to retrieve preferences: {str(e)}'})
             }
@@ -127,8 +123,7 @@ def lambda_handler(event, context):
             return {
                 'statusCode': 200,
                 'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Content-Type': 'application/json'
                 },
                 'body': json.dumps({'status': 'success', 'userId': user_id})
             }
@@ -136,8 +131,7 @@ def lambda_handler(event, context):
             return {
                 'statusCode': 500,
                 'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Content-Type': 'application/json'
                 },
                 'body': json.dumps({'error': f'Failed to save preferences: {str(e)}'})
             }
@@ -145,8 +139,7 @@ def lambda_handler(event, context):
     return {
         'statusCode': 405,
         'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+            'Content-Type': 'application/json'
         },
         'body': json.dumps({'error': 'Method Not Allowed'})
     }

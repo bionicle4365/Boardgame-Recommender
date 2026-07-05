@@ -146,6 +146,225 @@ Integrate Gamefound's public API to discover actively crowdfunding board games a
 
 ---
 
+## Milestone 36: Security Hardening & CORS Fixes
+
+### Objective
+Address critical security vulnerabilities in CORS configuration, input validation, and credential exposure that could allow unauthorized cross-origin access to authenticated endpoints or S3 key traversal via unsanitized inputs.
+
+### Design Notes
+- **CORS Override Bug:** Every Lambda handler returns `Access-Control-Allow-Origin: *`, including the JWT-authenticated preferences endpoint. This wildcard overrides the properly scoped API Gateway CORS config (`var.cors_allowed_origins`), meaning any website can make cross-origin requests to the API. The Lambda-level headers take precedence over API Gateway CORS headers for non-preflight requests.
+- **Missing POST Method:** The API Gateway CORS `allow_methods` only includes `["GET", "OPTIONS"]`, but the preferences endpoint requires `POST`. This currently works only because the Lambda wildcard CORS overrides it — fixing the wildcard without adding `POST` will break preference saving.
+- **Username Injection:** The `username` query parameter is used directly in S3 key construction (`data/users/{username}.parquet`), SQS messages, and API calls with no sanitization. BGG usernames are alphanumeric plus underscores with a max length of ~20 characters — anything outside this pattern should be rejected.
+- **Cognito Credentials:** `_config.yml` contains the Cognito Client ID, User Pool ID, and API Gateway URL in plaintext. While Cognito Client IDs are public-facing by design in SPA flows, combining all three in a public repo gives attackers a complete target surface for brute-force or enumeration attacks.
+
+### Architecture Decisions
+- **CORS Strategy:** Remove `Access-Control-Allow-Origin` from all Lambda response headers entirely. Let API Gateway handle CORS exclusively via its `cors_configuration` block, which already references `var.cors_allowed_origins`. This is the cleanest approach and prevents future Lambda/APIGW header conflicts.
+- **Input Validation:** Add a `validate_username(username)` function in `cache_utils.py` that rejects usernames not matching `^[a-zA-Z0-9_]{1,25}$`. Call it at the top of `_handle_recommendations` and `_handle_profile` before any S3/SQS operations.
+- **Config Injection:** Move `cognito_client_id`, `cognito_user_pool_id`, and `api_url` out of `_config.yml` and inject them at build time via GitHub Actions secrets into the Jekyll build environment.
+
+### Tasks
+- [ ] **Remove Lambda CORS Headers:** Remove the `Access-Control-Allow-Origin: *` header from `_cors_headers()` in `bgg_recommender.py`, from all responses in `bgg_preferences_handler.py`, and from `bgg_api_proxy`.
+- [ ] **Add POST to API Gateway CORS:** Update `allow_methods` in `infrastructure/apigateway/main.tf` CORS config to `["GET", "POST", "OPTIONS"]`.
+- [ ] **Username Validation Function:** Add `validate_username(username)` to `cache_utils.py` with regex `^[a-zA-Z0-9_]{1,25}$`. Return a 400 error for invalid usernames in `_handle_recommendations` and `_handle_profile`.
+- [ ] **Jekyll Config Injection:** Move `api_url`, `cognito_client_id`, and `cognito_user_pool_id` to GitHub Actions secrets. Update `jekyll-gh-pages.yml` to inject them as environment variables during the Jekyll build step. Update `_config.yml` to reference environment variables or provide safe defaults for local development.
+- [ ] **Unit Tests:** Test that invalid usernames (path traversal, special characters, excessive length) are rejected with 400 responses.
+
+---
+
+## Milestone 37: DynamoDB Preferences Safety & Backend DRY Refactor
+
+### Objective
+Eliminate a data-loss race condition in preference persistence, remove triple-duplicated weight parsing logic across the recommendation pipeline, and simplify the overly complex AWS client delegate/mock pattern.
+
+### Design Notes
+- **`put_item` Data Loss:** The preferences handler uses `table.put_item(Item=item)` which replaces the entire DynamoDB item on every save. If the frontend `POST /preferences` payload is missing a field (e.g., `playgroups` is omitted), previously saved playgroups are silently deleted. The frontend does a `GET` first to merge fields, but this is fragile — any race condition between tabs, devices, or concurrent preference syncs (e.g., slider change fires `syncPreferencesToBackend` while another save is in flight) will cause data loss.
+- **Weight Parsing DRY Violation:** The exact same weight extraction and clamping logic (`w_mech`, `w_cat`, `w_pop`, `w_hot`, `w_comp`, `w_des`, `w_pub` → float conversion → `max(0.0, min(1.0, value))`) is independently implemented in `bgg_recommender.py`, `scoring.py`, and `narration.py`. Any change to weight defaults or range constraints must be synchronized across three files.
+- **Delegate Pattern Complexity:** `S3Delegate`, `SQSDelegate`, and `BedrockDelegate` classes use circular imports (`import bgg_recommender` inside every method call) purely to support test mocking via `bgg_rec.s3 = mock_s3`. This creates fragile import ordering, the `sys.modules[__name__]` hack in the handler, and confusing debugging behavior.
+
+### Architecture Decisions
+- **`update_item` Migration:** Replace `table.put_item(Item=item)` with `table.update_item()` using `SET` update expressions that only modify the fields present in the request body. This makes each save atomic and field-level — saving weights cannot clobber playgroups.
+- **Shared `WeightConfig`:** Extract a `parse_weights(query_params) → dict` function into `cache_utils.py` (or a new `config.py` module) that returns a standardized weights dictionary. All three consumers (`bgg_recommender.py`, `scoring.py`, `narration.py`) import and call this single function.
+- **Standard Mocking:** Replace the delegate classes with standard `unittest.mock.patch` targeting `cache_utils._default_s3`, `cache_utils._default_sqs`, etc. Remove the `S3Delegate`, `SQSDelegate`, `BedrockDelegate` classes and the `sys.modules[__name__]` hack. Update all test files to use `@mock.patch('cache_utils._default_s3')` instead of `bgg_rec.s3 = mock`.
+
+### Tasks
+- [ ] **DynamoDB `update_item` Migration:** Replace `table.put_item()` in `bgg_preferences_handler.py` with `table.update_item()` using `SET` expressions for each provided field. Only update fields present in the request body.
+- [ ] **Extract `parse_weights()`:** Create a `parse_weights(query_params)` function in `cache_utils.py` that returns a dict of clamped float weights. Remove the duplicate parsing from `bgg_recommender.py`, `scoring.py`, and `narration.py`.
+- [ ] **Thread `WeightConfig` Through Pipeline:** Update `score_candidates()` and `build_weight_context()` to accept the parsed weights dict instead of raw `query_params`.
+- [ ] **Remove Delegate Classes:** Remove `S3Delegate`, `SQSDelegate`, `BedrockDelegate` and the `sys.modules[__name__]` hack. Replace with direct module-level clients that tests mock via `unittest.mock.patch`.
+- [ ] **Update All Tests:** Migrate test mocking from `bgg_rec.s3 = mock_s3` pattern to `@mock.patch('cache_utils._default_s3')` pattern across all test files.
+- [ ] **Unit Tests:** Verify `update_item` partial updates work correctly (saving weights alone does not clobber playgroups, and vice versa).
+
+---
+
+## Milestone 38: Repository Hygiene & Code Quality
+
+### Objective
+Remove deprecated/dead code directories, extract monolithic frontend JavaScript into maintainable modules, clean up Terraform state artifacts, and harden the test configuration to prevent accidental real AWS calls.
+
+### Design Notes
+- **Deprecated Directories:** `bgg_raw_to_compressed/` is marked as *(Deprecated)* in the README, replaced by `bgg_compactor/`. `ml_engine/` contains two experimental LightFM scripts with no integration to the pipeline and a filename typo (`light_fm_model_with_item_featues.py`). Both clutter the repository and confuse the project structure.
+- **Monolithic Recommender Page:** `site_ui/recommender/index.html` is a 696-line file containing inline `<style>`, form HTML, and ~450 lines of JavaScript. This makes the JS untestable, unreviewable in diffs, and impossible to reuse across pages.
+- **Terraform `moved` Blocks:** `infrastructure/main.tf` contains 15+ `moved` blocks from a prior module refactoring. Once `terraform apply` has been run post-move, these blocks are inert and only add visual noise.
+- **Test Environment Safety:** `conftest.py` sets `AWS_ACCESS_KEY_ID = 'mock-key'` and `AWS_SECRET_ACCESS_KEY = 'mock-secret'` globally. These are plausible-looking values that boto3 will happily accept, meaning any test that forgets to mock an AWS client will silently attempt real API calls.
+
+### Tasks
+- [ ] **Delete `bgg_raw_to_compressed/`:** Remove the deprecated Glue PySpark directory. Update the README directory listing to remove its entry.
+- [ ] **Archive `ml_engine/`:** Move `ml_engine/` to a `deprecated/ml_engine/` directory or remove it from `main` entirely (preserve on a `feature/ml-engine` branch if desired). Update README.
+- [ ] **Extract Recommender JavaScript:** Move the `<script>` contents from `site_ui/recommender/index.html` into a new `site_ui/assets/js/recommender.js` file. Reference it via a `<script src>` tag in the HTML template.
+- [ ] **Extract Inline Styles:** Move the `<style>` block from `site_ui/recommender/index.html` into the shared `design-system.css` or a page-specific `recommender.css` stylesheet.
+- [ ] **Clean Up Terraform `moved` Blocks:** Verify all moves are complete via `terraform state list`, then remove all `moved` blocks from `infrastructure/main.tf`.
+- [ ] **Harden `conftest.py`:** Replace mock AWS credentials with obviously invalid values (e.g., `AWS_ACCESS_KEY_ID = 'TESTING_DO_NOT_USE'`) and consider adding `moto` for isolated AWS service mocking.
+
+---
+
+## Milestone 39: Test Coverage Expansion
+
+### Objective
+Close critical gaps in unit test coverage for the caching layer, Bedrock narration pipeline, and frontend JavaScript, and add an integration smoke test for the full recommendation flow.
+
+### Design Notes
+- **Current State:** The test suite has 8 test files covering scrapers, the recommender handler, compactor, preferences, and taste analytics. However, several high-complexity, high-risk modules have zero isolated test coverage.
+- **`cache_utils.py` (347 lines, untested):** Contains the S3 caching logic, TTL calculations, cache invalidation (profile-updated-since-cache), hotness API fetching with stale fallback, and catalog loading. These are complex multi-branch flows where bugs silently serve stale data.
+- **`narration.py` (241 lines, untested):** Contains Bedrock prompt construction, JSON response parsing (including markdown block cleanup), case-insensitive name matching with partial-match fallback, and the fill-in logic when the LLM returns fewer than 10 valid results. Each of these has subtle edge cases.
+- **Frontend JS:** No test framework exists. The `utils.js` shared module (Auth, fetchApi, renderRecommendationCard, renderSkeletonCards, escapeHTML) and the recommender page JavaScript contain business logic that should be unit tested.
+- **`bgg_preferences` test path list**: The `python-tests.yml` CI workflow does not include `bgg_preferences/` in its trigger paths, meaning changes to the preferences handler do not trigger CI tests.
+
+### Tasks
+- [ ] **`cache_utils` Unit Tests:** Add `tests/test_cache_utils.py` covering: `get_cached_recommendations` TTL expiration, smart invalidation (profile newer than cache), cache miss, `get_bgg_hotness` S3 cache hit/miss/stale fallback, `get_catalog` cold start and warm cache, `get_user_profile_status` exists/stale/missing, `safe_list` edge cases.
+- [ ] **`narration` Unit Tests:** Add `tests/test_narration.py` covering: Bedrock prompt construction (verify liked games and weight context are injected), JSON response parsing (valid JSON, markdown-wrapped JSON, malformed JSON), name-to-ID matching (exact match, case mismatch, partial match, no match), fill-in logic when LLM returns <10 results, `build_fallback_recommendations` output format.
+- [ ] **Frontend Test Framework:** Add a lightweight JS test framework (e.g., Vitest or Jest) for `utils.js`. Write tests for `escapeHTML`, `renderRecommendationCard` output structure, `renderSkeletonCards` count, and `Auth.isLoggedIn` state detection.
+- [ ] **CI Trigger Path Fix:** Add `bgg_preferences/**` to the `paths` trigger list in `.github/workflows/python-tests.yml`.
+
+---
+
+## Milestone 40: Game Night Optimizer — Cross-Collection Owned-Game Matching
+
+### Objective
+Build a "What should we play tonight?" feature that analyzes a playgroup's combined owned-game collection and ranks games by aggregate taste-match across all members, surfacing the top recommendations with per-member affinity breakdowns.
+
+### Design Notes
+- **Use Case:** The existing playgroup feature merges collections to recommend *new* games to buy. The highest-value question for an actual game night is different: "Which games do we already own that everyone at the table will enjoy?" This feature answers that question using the existing taste profile infrastructure.
+- **Scoring Approach:** For each owned game in the group's combined collection, compute a per-member taste-match score using the same Jaccard mechanic/category similarity used by the recommender. The aggregate score is the harmonic mean of member scores (not arithmetic mean), which penalizes games that one member dislikes even if others love it — critical for group consensus.
+- **Player Count Awareness:** Filter the combined collection to games that support the current group size before scoring. A 2-player game should never be suggested for a 5-person game night.
+
+### Architecture Decisions
+- **New Route:** Add a `GET /game-night?usernames=u1,u2,u3&player_count=4` route to the existing Lambda handler routing in `bgg_recommender.py`, handled by a new `_handle_game_night(query_params)` function.
+- **Scoring:** Reuse `compute_taste_profile_inline` to build per-member taste profiles, then score each owned game against each member's profile independently. Combine using harmonic mean. Return top 10 with per-member affinity scores (0-100%) so the UI can render affinity bars.
+- **Caching:** Cache results in S3 keyed by sorted username list + player count, with a 24-hour TTL (shorter than recommendations because collection changes are more frequent).
+
+### Tasks
+- [ ] **Game Night Scoring Function:** Implement `score_game_night(owned_games, member_profiles, player_count)` in `scoring.py`. For each owned game, compute per-member Jaccard similarity against their taste profile, combine via harmonic mean, and return sorted results with per-member affinity scores.
+- [ ] **Lambda Route Handler:** Add `_handle_game_night(query_params)` to `bgg_recommender.py` that loads all member profiles, builds owned-game intersection, filters by player count, scores, and returns top 10 with per-member breakdowns.
+- [ ] **Lambda Handler Routing:** Update `lambda_handler` to route `/game-night` paths to `_handle_game_night`.
+- [ ] **API Gateway Route:** Add a `GET /game-night` route in the API Gateway Terraform configuration.
+- [ ] **Frontend Page:** Create `site_ui/game-night/index.html` with a playgroup selector, player count input, and results display showing game cards with per-member affinity bar visualizations.
+- [ ] **S3 Response Caching:** Cache game-night results in S3 (`data/game_night_cache/{username_key}_{player_count}.json`) with a 24-hour TTL.
+- [ ] **Unit Tests:** Test harmonic mean scoring, player count filtering, edge cases (no owned overlap, single-member group), and cache hit/miss paths.
+
+---
+
+## Milestone 41: Shareable Recommendation Links
+
+### Objective
+Enable users to generate a unique shareable URL for their recommendation results that others can view without logging in, driving organic discovery and social sharing.
+
+### Design Notes
+- **Social Value:** Board gaming is inherently social. Enabling "here are my recommendations — what do you think?" sharing creates organic traffic, enables community discussion, and adds a viral growth mechanism with zero marketing spend.
+- **Snapshot Model:** Shared links display a frozen snapshot of the recommendation results at the time of sharing, not a live re-computation. This avoids exposing the user's BGG credentials to viewers and keeps the share page fast (no Lambda cold start).
+- **Privacy:** The shared page shows recommendation results only — game names, reasons, and metadata. It does not expose the sharer's BGG username, collection, taste profile, or weight configuration.
+
+### Architecture Decisions
+- **Storage:** Store recommendation snapshots in DynamoDB (new `bgg-shared-recommendations` table) keyed by a short hash (8-char base62). Each item contains: `hash_id`, `recommendations` (list of game objects), `created_at`, and `ttl` (DynamoDB TTL attribute, set to 90 days).
+- **Share Endpoint:** Add a `POST /share` route (authenticated) that accepts a recommendations payload, generates the hash, stores in DynamoDB, and returns the share URL. Add a `GET /share/{hash}` route (unauthenticated) that retrieves and returns the snapshot.
+- **Frontend Flow:** Add a "Share Results" button to the recommendation results area. On click, POST the current recommendations to `/share`, receive the short URL, and display a copy-to-clipboard modal. The share URL renders a read-only recommendation card layout.
+
+### Tasks
+- [ ] **DynamoDB Table:** Add a `bgg-shared-recommendations` DynamoDB table to the Terraform `dynamodb` module with `hash_id` as partition key and a TTL attribute on `expires_at`.
+- [ ] **Share API Lambda:** Add `POST /share` and `GET /share/{hash_id}` route handlers. `POST` generates an 8-char base62 hash, stores the snapshot, and returns the URL. `GET` retrieves the snapshot by hash.
+- [ ] **API Gateway Routes:** Add `/share` POST (authenticated) and GET (unauthenticated) routes in the API Gateway Terraform configuration.
+- [ ] **Share Button UI:** Add a "Share Results ↗" button below the recommendation results. On click, call `POST /share` with the current recommendations, display a modal with the shareable URL, and provide a "Copy Link" button.
+- [ ] **Shared Results Page:** Create `site_ui/shared/index.html` that reads the hash from the URL query parameter, fetches the snapshot via `GET /share/{hash}`, and renders read-only recommendation cards with a "Get your own recommendations →" CTA.
+- [ ] **Unit Tests:** Test hash generation uniqueness, DynamoDB storage/retrieval, TTL expiration behavior, and graceful handling of invalid/expired hash lookups.
+
+---
+
+## Milestone 42: WebSocket Recommendation Streaming
+
+### Objective
+Replace the polling-based recommendation flow with API Gateway WebSocket connections that stream scored recommendation cards individually as they are generated, transforming perceived latency from "wait 10-30s for everything" to "first card in <2s."
+
+### Design Notes
+- **Current UX Problem:** Users submit a recommendation request and wait 10-30 seconds seeing only a spinner. The backend spends ~2-3s on scoring and ~8-15s on Bedrock narration. Users have no feedback during this time, leading to uncertainty, repeated submissions, and perceived slowness.
+- **Streaming Model:** With WebSockets, the Lambda can push scored candidates (with fallback reasons) to the client immediately as Phase 1, then push individual narrated cards as Bedrock responses arrive in Phase 2. The user sees cards appearing one by one — dramatically better perceived performance.
+- **Fallback:** If WebSocket connection fails (corporate firewalls, older browsers), fall back to the existing polling-based HTTP flow automatically.
+
+### Architecture Decisions
+- **API Gateway WebSocket API:** Create a separate WebSocket API in API Gateway (`wss://` endpoint) with `$connect`, `$disconnect`, and `$default` routes. The `$connect` route validates optional JWT auth. The `$default` route accepts recommendation request payloads.
+- **Connection Management:** Store active WebSocket connection IDs in a lightweight DynamoDB table (`bgg-ws-connections`) with a 1-hour TTL. The recommendation Lambda posts messages to connection IDs via the API Gateway Management API.
+- **Message Protocol:** Define a simple JSON message protocol: `{type: "candidate", index: N, data: {...}}` for individual cards, `{type: "narration", id: "game_id", reason: "..."}` for narrated reasons, `{type: "complete"}` for end-of-stream.
+
+### Tasks
+- [ ] **WebSocket API Gateway:** Create a new WebSocket API (`bgg-ws-api`) in the Terraform API Gateway module with `$connect`, `$disconnect`, and `$default` routes.
+- [ ] **Connection DynamoDB Table:** Add a `bgg-ws-connections` table with `connectionId` partition key and TTL attribute.
+- [ ] **WebSocket Lambda Handler:** Implement connection management (`$connect` stores connectionId, `$disconnect` removes it) and request routing (`$default` triggers recommendation flow with streaming output).
+- [ ] **Streaming Recommendation Pipeline:** Modify `_handle_recommendations` to accept an optional WebSocket connection ID. When present, push each scored candidate individually via the API Gateway Management API, then push narrated reasons as they arrive from Bedrock.
+- [ ] **Frontend WebSocket Client:** Update `recommender/index.html` (or the extracted `recommender.js`) to establish a WebSocket connection, render cards as they stream in, and fall back to HTTP polling if WebSocket connection fails.
+- [ ] **Unit Tests:** Test connection lifecycle, message serialization, and HTTP fallback behavior.
+
+---
+
+## Milestone 43: Collaborative Filtering Hybrid Model
+
+### Objective
+Train a collaborative filtering (CF) model on the full BGG ratings matrix and blend CF-based scores with the existing content-based Jaccard scores, dramatically improving recommendation diversity and surfacing games that content similarity alone cannot discover.
+
+### Design Notes
+- **Content-Based Ceiling:** The current scoring pipeline uses Jaccard similarity on mechanics, categories, designers, and publishers — all content features. This works well for finding mechanically similar games, but it cannot discover "users who liked X also liked Y" patterns where X and Y share no visible content features. CF captures these latent preference dimensions.
+- **Existing `ml_engine/` Foundation:** The repository already contains experimental LightFM scripts. This milestone productionizes that work into a recurring training pipeline with proper model serving.
+- **Hybrid Blend:** The composite score becomes `α * content_score + (1-α) * cf_score`, where α is a configurable weight (default 0.6 content, 0.4 CF). For cold-start users with <5 rated games, α defaults to 1.0 (pure content) since CF has insufficient signal.
+
+### Architecture Decisions
+- **Training Pipeline:** Weekly SageMaker Processing Job (or a high-memory Lambda) that reads the full user ratings data from S3, trains a LightFM or Implicit ALS model, serializes the model artifact to S3 (`data/models/cf_model.pkl`), and generates a precomputed score matrix for the top 5000 games.
+- **Serving:** The recommender Lambda loads the precomputed CF score lookup from S3 (a JSON/Parquet file mapping `{user_id: {game_id: cf_score}}`). For known users, blend CF scores with content scores. For unknown users, skip CF.
+- **EventBridge Trigger:** Add a weekly EventBridge rule to trigger the training job, similar to the existing compactor schedule.
+
+### Tasks
+- [ ] **Training Script:** Productionize the LightFM training script from `ml_engine/` into a clean, tested module. Accept S3 paths for input ratings data and output model artifact. Include hyperparameter tuning for embedding dimensions and regularization.
+- [ ] **Score Matrix Generation:** After training, generate a precomputed CF score lookup (top 500 candidate scores per user) and save to S3 as a compressed Parquet file.
+- [ ] **SageMaker / Lambda Training Job:** Configure either a SageMaker Processing Job or a high-memory (10GB, 15-min timeout) Lambda to run the training script weekly.
+- [ ] **EventBridge Schedule:** Add a weekly EventBridge trigger in the Terraform `eventbridge` module to invoke the training job.
+- [ ] **Recommender Integration:** Update `scoring.py` to load CF scores from S3, blend with content scores using configurable weight α, and fall back to pure content scoring when CF scores are unavailable for a user.
+- [ ] **Frontend Weight Slider:** Add a "Collaborative vs. Content" slider to the custom weights panel, controlling the α blend factor.
+- [ ] **Unit Tests:** Test hybrid blending, cold-start fallback, model loading failure graceful degradation, and score normalization.
+
+---
+
+## Milestone 44: Progressive Web App & Offline Support
+
+### Objective
+Make the Jekyll site installable as a mobile app with offline caching, enabling users to browse cached recommendations and collection data without connectivity — particularly useful at board game stores and conventions.
+
+### Design Notes
+- **Use Case:** Board gamers frequently browse recommendations at game stores (deciding what to buy) or conventions (checking recommendations between sessions) where Wi-Fi is spotty or unavailable. Having the last set of recommendations and collection data available offline is genuinely useful.
+- **PWA Requirements:** A valid PWA needs a `manifest.json` (app metadata, icons, theme colors), a registered service worker (caching strategy), and HTTPS (already satisfied via GitHub Pages).
+- **Caching Strategy:** Cache-first for static assets (HTML, CSS, JS, images). Network-first with stale fallback for API responses (recommendations, collection data). The service worker stores the last successful API response for each cached endpoint in the Cache API.
+
+### Architecture Decisions
+- **Service Worker Scope:** Register the service worker at the site root (`/Boardgame-Recommender/sw.js`). Cache the app shell (all HTML pages, `design-system.css`, `utils.js`, and page-specific JS) on install. Intercept API fetch requests and cache successful responses for offline fallback.
+- **Manifest:** Define a `manifest.json` with app name, short name, theme color matching the glassmorphism palette, background color, start URL, display mode `standalone`, and generated icons at 192px and 512px.
+- **Install Prompt:** Show a subtle "Install App" banner on the first visit (dismissible, tracked via `localStorage`). Don't interrupt the user flow — the banner appears below the header, not as a modal.
+
+### Tasks
+- [ ] **Web Manifest:** Create `site_ui/manifest.json` with app metadata, theme colors aligned to the existing glassmorphism palette, and icon references.
+- [ ] **App Icons:** Generate PWA icons at 192x192 and 512x512 sizes in the site assets directory.
+- [ ] **Service Worker:** Create `site_ui/sw.js` implementing cache-first for static assets and network-first-with-stale-fallback for API responses. Include cache versioning for cache-busting on deploys.
+- [ ] **Service Worker Registration:** Add service worker registration script to the default Jekyll layout (`_layouts/default.html`) with feature detection fallback.
+- [ ] **Install Prompt UI:** Add a dismissible "Install App" banner to the site header area, shown only when the `beforeinstallprompt` event fires. Track dismissal in `localStorage`.
+- [ ] **Offline Indicator:** When the service worker detects no connectivity, display a subtle "Offline — showing cached data" banner at the top of the page.
+- [ ] **Verification:** Test install flow on Android Chrome and iOS Safari. Verify offline browsing shows cached recommendations and collection data. Verify the app updates correctly when new content is deployed.
+
+---
+
 ## Completed Milestones
 
 

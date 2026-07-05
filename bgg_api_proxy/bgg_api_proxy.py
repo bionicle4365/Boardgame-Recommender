@@ -2,6 +2,7 @@ import os
 import urllib.request
 import urllib.error
 import json
+import re
 
 def lambda_handler(event, context):
     query_params = event.get('queryStringParameters') or {}
@@ -10,10 +11,19 @@ def lambda_handler(event, context):
         return {
             'statusCode': 400,
             'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Content-Type': 'application/json'
             },
             'body': json.dumps({'error': 'username query parameter is required'})
+        }
+
+    # Validate username format
+    if not re.match(r'^[a-zA-Z0-9_]{1,25}$', username):
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps({'error': 'Invalid username format'})
         }
 
     bgg_api_token = os.environ.get('BGG_API_TOKEN')
@@ -33,8 +43,7 @@ def lambda_handler(event, context):
             return {
                 'statusCode': status_code,
                 'headers': {
-                    'Content-Type': 'application/xml',
-                    'Access-Control-Allow-Origin': '*'
+                    'Content-Type': 'application/xml'
                 },
                 'body': content
             }
@@ -44,8 +53,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': e.code,
             'headers': {
-                'Content-Type': 'application/xml',
-                'Access-Control-Allow-Origin': '*'
+                'Content-Type': 'application/xml'
             },
             'body': content
         }
@@ -53,8 +61,8 @@ def lambda_handler(event, context):
         return {
             'statusCode': 500,
             'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Content-Type': 'application/json'
             },
             'body': json.dumps({'error': str(e)})
         }
+

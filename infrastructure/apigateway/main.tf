@@ -4,7 +4,7 @@ resource "aws_apigatewayv2_api" "bgg_api" {
 
   cors_configuration {
     allow_origins = var.cors_allowed_origins
-    allow_methods = ["GET", "OPTIONS"]
+    allow_methods = ["GET", "POST", "OPTIONS"]
     allow_headers = ["content-type", "authorization"]
     max_age       = 300
   }

@@ -25,7 +25,7 @@ from cache_utils import (
     safe_list, get_catalog, get_active_previews, get_active_previews_games,
     get_bgg_hotness, get_user_profile_status, trigger_background_scrape,
     get_cached_recommendations, save_recommendations_to_cache,
-    build_game_metadata,
+    build_game_metadata, validate_username,
 )
 from scoring import compute_taste_profile_inline, score_candidates
 from narration import bedrock, narrate_recommendations, build_fallback_recommendations, build_weight_context
@@ -40,8 +40,7 @@ bgg_rec = sys.modules[__name__]
 
 def _cors_headers(content_type='application/json'):
     return {
-        'Content-Type': content_type,
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': content_type
     }
 
 
@@ -53,6 +52,13 @@ def _handle_profile(query_params):
             'statusCode': 400,
             'headers': _cors_headers(),
             'body': json.dumps({'error': 'username query parameter is required'})
+        }
+
+    if not validate_username(username):
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'Invalid username format'})
         }
 
     refresh = query_params.get('refresh', 'false').lower() == 'true'
@@ -156,6 +162,23 @@ def _handle_recommendations(query_params):
             'body': json.dumps({'error': 'username query parameter is required'})
         }
 
+    # Split and validate usernames
+    usernames = [u.strip() for u in username.split(',') if u.strip()]
+    if not usernames:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'username query parameter is required'})
+        }
+
+    for u in usernames:
+        if not validate_username(u):
+            return {
+                'statusCode': 400,
+                'headers': _cors_headers(),
+                'body': json.dumps({'error': f'Invalid username format: {u}'})
+            }
+
     own_status = query_params.get('own_status', 'unowned').lower()
     year_start = query_params.get('year_start')
     year_end = query_params.get('year_end')
@@ -164,7 +187,6 @@ def _handle_recommendations(query_params):
     narrate = query_params.get('narrate', 'true').lower() == 'true'
 
     # Parse list of BGG usernames (support groups)
-    usernames = [u.strip() for u in username.split(',') if u.strip()]
     sorted_usernames = sorted([u.lower() for u in usernames])
     username_key = "_".join(sorted_usernames)
 

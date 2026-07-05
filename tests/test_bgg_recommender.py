@@ -954,3 +954,34 @@ def test_primary_publisher_only():
     assert scores[0]["id"] == "200"
     assert scores[1]["id"] == "300"
 
+
+def test_validate_username():
+    from cache_utils import validate_username
+    assert validate_username("bionicle4365") is True
+    assert validate_username("user_123") is True
+    assert validate_username("A") is True
+    assert validate_username("a" * 25) is True
+    
+    assert validate_username("a" * 26) is False
+    assert validate_username("") is False
+    assert validate_username(None) is False
+    assert validate_username("user-123") is False
+    assert validate_username("user name") is False
+    assert validate_username("../path") is False
+    assert validate_username("user$") is False
+
+
+def test_handle_profile_invalid_username():
+    query_params = {'username': 'user-123'}
+    response = bgg_recommender._handle_profile(query_params)
+    assert response['statusCode'] == 400
+    assert 'Invalid username' in response['body']
+
+
+def test_handle_recommendations_invalid_username():
+    query_params = {'username': 'bionicle4365,user-123'}
+    response = bgg_recommender._handle_recommendations(query_params)
+    assert response['statusCode'] == 400
+    assert 'Invalid username' in response['body']
+
+
