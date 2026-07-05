@@ -1013,6 +1013,12 @@ title: Playgroup Organizer
                 "Medium-Heavy": 0.0,
                 "Heavy": 0.0
             };
+            let complexityCounts = {
+                "Light": 0,
+                "Medium-Light": 0,
+                "Medium-Heavy": 0,
+                "Heavy": 0
+            };
             
             let soloCount = 0;
             let highPlayerCount = 0;
@@ -1037,15 +1043,18 @@ title: Playgroup Organizer
                 const r = (!isNaN(ratingVal) && ratingVal > 0) ? ratingVal : 7.0;
                 const weight = Math.max(1.0, r - 5.0);
 
+                let bucket = "Medium-Light";
                 if (estComp < 2.0) {
-                    complexity_weights["Light"] += weight;
+                    bucket = "Light";
                 } else if (estComp <= 2.8) {
-                    complexity_weights["Medium-Light"] += weight;
+                    bucket = "Medium-Light";
                 } else if (estComp <= 3.5) {
-                    complexity_weights["Medium-Heavy"] += weight;
+                    bucket = "Medium-Heavy";
                 } else {
-                    complexity_weights["Heavy"] += weight;
+                    bucket = "Heavy";
                 }
+                complexity_weights[bucket] += weight;
+                complexityCounts[bucket]++;
                 complexityCount++;
 
                 if (parseInt(g.minPlayers) === 1) soloCount++;
@@ -1067,6 +1076,14 @@ title: Playgroup Organizer
 
             if (complexityCount === 0) {
                 complexity_weights["Medium-Light"] = 1.0;
+            } else {
+                for (let bucket in complexity_weights) {
+                    if (complexityCounts[bucket] > 0) {
+                        complexity_weights[bucket] = parseFloat((complexity_weights[bucket] / complexityCounts[bucket]).toFixed(2));
+                    } else {
+                        complexity_weights[bucket] = 0.0;
+                    }
+                }
             }
 
             const n = games.length;

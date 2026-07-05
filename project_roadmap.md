@@ -4,69 +4,7 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
-## Milestone 28: Shared CSS Design System & JS Utilities Extraction
 
-### Objective
-Eliminate duplicated CSS variables, component styles, and JavaScript logic across all site pages by extracting shared code into centralised design-system and utility files, reducing maintenance burden and ensuring visual consistency.
-
-### Design Notes
-- **CSS Duplication:** Every page (`recommender`, `collection`, `groups`, `profile`, `settings`) re-declares `:root` CSS variables and duplicates common styles (header sections, card patterns, form inputs, spinner/loading animations, glassmorphism tokens). Extracting these into a single `assets/css/design-system.css` file and linking it from `default.html` will cut ~30-40% of duplicated CSS.
-- **JS Duplication:** API call logic, `localStorage` helpers (username get/set), auth state checks, and card-rendering functions are copy-pasted across page `<script>` blocks. A shared `assets/js/utils.js` module will consolidate these into reusable functions.
-
-### Architecture Decisions
-- **CSS Strategy:** Create `assets/css/design-system.css` containing all shared `:root` variables, glassmorphism tokens, typography, base card/form/spinner component styles, and responsive breakpoints. Include it via `<link>` in `_layouts/default.html`. Each page retains only its unique styles.
-- **JS Strategy:** Create `assets/js/utils.js` exporting common helpers: `fetchApi(endpoint, params)` with error handling, `getStoredUsername()` / `setStoredUsername()`, and shared card-rendering functions. Include it via `<script>` in `_layouts/default.html`.
-
-### Tasks
-- [x] **Audit Shared Styles:** Catalogue all duplicated CSS across page files and identify the shared superset of variables, tokens, and component classes.
-- [x] **Create `design-system.css`:** Extract shared `:root` variables, glassmorphism tokens, typography, header-section, form-card, spinner, card, and button component styles into `site_ui/assets/css/design-system.css`.
-- [x] **Link Design System in Layout:** Add `<link>` to `design-system.css` in `_layouts/default.html` and remove duplicated declarations from each page file.
-- [x] **Create `utils.js`:** Extract shared JavaScript helpers (API fetch wrapper, localStorage username helpers, auth state checks) into `site_ui/assets/js/utils.js`.
-- [x] **Link Utils in Layout:** Add `<script>` to `utils.js` in `_layouts/default.html` and refactor each page to use the shared helpers instead of inline duplicates.
-- [x] **Visual Regression Check:** Verify all pages render identically after extraction using local Jekyll server.
-
----
-
-## Milestone 29: Dark Mode Toggle
-
-### Objective
-Add a user-togglable dark mode to the site, leveraging the existing CSS custom property design system for minimal implementation effort with high visual impact.
-
-### Design Notes
-- **Variable-Driven Approach:** The site already uses CSS custom properties (`--background`, `--card-bg`, `--text-main`, `--text-muted`, `--border`, `--sidebar-bg`, etc.) defined in `:root`. Dark mode requires only a second set of variable overrides applied when a `data-theme="dark"` attribute is set on `<html>`.
-- **Persistence:** The user's theme preference is saved to `localStorage` and applied on page load before first paint to avoid a flash of the wrong theme.
-- **Toggle Placement:** A sun/moon icon toggle button in `header.html`, next to the existing auth badge.
-
-### Architecture Decisions
-- **CSS Scope:** Dark mode variables are defined under `html[data-theme="dark"]` in the shared design system CSS file (depends on Milestone 28, or can be added to `default.html` `<style>` block if done independently).
-- **Sidebar:** The sidebar already uses a dark palette (`--sidebar-bg: #0f172a`), so it requires minimal or no changes.
-
-### Tasks
-- [x] **Define Dark Palette:** Create a `html[data-theme="dark"]` rule overriding all `:root` colour variables (`--background`, `--card-bg`, `--text-main`, `--text-muted`, `--border`, `--header-bg`, `--glass-bg`, shadows, etc.) with appropriate dark equivalents.
-- [x] **Toggle Button UI:** Add a sun/moon toggle button in `_includes/header.html` with smooth icon transition animation.
-- [x] **Toggle Logic:** Implement JS in `header.html` to toggle `data-theme` on `<html>`, persist to `localStorage`, and restore on page load (before DOM renders to prevent flash).
-- [x] **Page-Specific Overrides:** Audit page-level colour overrides (e.g. collection green accents, profile purple accents) and ensure they work against the dark background.
-- [x] **Visual Verification:** Test all pages (home, collection, recommender, groups, profile, settings) in both light and dark mode on desktop and mobile.
-
----
-
-## Milestone 30: Skeleton Loading States
-
-### Objective
-Replace spinner-based loading indicators with animated skeleton placeholder UI that mirrors the final content layout, improving perceived performance and creating a more premium feel.
-
-### Design Notes
-- **Current State:** The collection browser, recommender, and groups pages use green spinner cards during loading. Skeleton loaders (pulsing grey placeholder rows/cards matching the final layout shape) provide better spatial context and feel significantly faster.
-- **Implementation:** Pure CSS approach using `@keyframes` pulse animation on placeholder `<div>` elements styled to match card/row dimensions. No JS library needed.
-
-### Tasks
-- [x] **Skeleton CSS Component:** Create reusable `.skeleton-card`, `.skeleton-row`, and `.skeleton-text` CSS classes with a subtle pulse animation (`background: linear-gradient` shimmer effect).
-- [x] **Recommender Skeleton:** Replace the recommender loading spinner with 4-6 skeleton recommendation cards matching the final card layout (image placeholder, title bar, description lines).
-- [x] **Collection Skeleton:** Replace the collection loading spinner with skeleton table rows matching the column layout.
-- [x] **Groups Skeleton:** Replace the playgroup loading states with skeleton cards matching the group panel layout.
-- [x] **Visual Verification:** Confirm skeleton layouts align with final rendered content on desktop and mobile viewports.
-
----
 
 ## Milestone 31: Similar Games API Endpoint
 
@@ -235,3 +173,4 @@ Integrate Gamefound's public API to discover actively crowdfunding board games a
 * **Milestone 27: Interactive User Profile Dashboard & Playground** (Cognito profile syncing, Overview, Deep Dive, and Rating Analytics layouts, hover/click user header dropdown, and grouped rating distribution bar charts)
 * **Milestone 28: Shared CSS Design System & JS Utilities Extraction** (Extracted shared CSS variables, layout configurations, component classes, and Cognito Auth/fetch wrappers into centralized files)
 * **Milestone 29: Dark Mode Toggle** (User-togglable dark mode, custom property variables, transition animations, localStorage persistence, blocking pre-render script, page styling audits)
+* **Milestone 30: Skeleton Loading States** (Replaced spinner-based loading indicators with animated shimmering skeleton placeholder tables and cards in Recommender, Collection Browser, and Playgroup Organizer)

@@ -270,16 +270,22 @@ title: User Profile
     }
 
     .pref-tag {
-        background: #f1f5f9;
+        background: var(--btn-secondary-bg, #f1f5f9);
         border: 1px solid var(--border);
         color: var(--text-main);
-        padding: 6px 12px;
-        border-radius: 8px;
+        padding: 6px 16px;
+        border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 600;
         display: flex;
         align-items: center;
         gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .pref-tag:hover {
+        background: var(--btn-secondary-hover-bg, #e2e8f0);
+        transform: translateY(-1px);
     }
 
     /* ── Auth Gate ── */
@@ -460,10 +466,19 @@ title: User Profile
 
             <!-- ── DEEP DIVE PANEL ── -->
             <div id="deepdive-panel" class="dashboard-panel">
-                <div class="panel-card">
-                    <h3 class="panel-card-title">⏳ Time & Playability Preferences</h3>
-                    <div class="preference-tag-grid" id="deepdive-preference-tags">
-                        <!-- Populated by JS -->
+
+                <div class="charts-row" style="margin-bottom: 24px;">
+                    <div class="panel-card">
+                        <h3 class="panel-card-title">⚙️ Top 5 Mechanics</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-dd-mechanics"></canvas>
+                        </div>
+                    </div>
+                    <div class="panel-card">
+                        <h3 class="panel-card-title">🏷️ Top 5 Categories</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-dd-categories"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -475,17 +490,10 @@ title: User Profile
                         </div>
                     </div>
                     <div class="panel-card">
-                        <h3 class="panel-card-title">🏷️ Category Affinities</h3>
+                        <h3 class="panel-card-title">📅 Timeline: Year Published Profile</h3>
                         <div class="chart-container">
-                            <canvas id="chart-dd-categories"></canvas>
+                            <canvas id="chart-dd-timeline"></canvas>
                         </div>
-                    </div>
-                </div>
-
-                <div class="panel-card">
-                    <h3 class="panel-card-title">📅 Timeline: Year Published Profile</h3>
-                    <div class="chart-container" style="min-height: 250px;">
-                        <canvas id="chart-dd-timeline"></canvas>
                     </div>
                 </div>
             </div>
@@ -578,6 +586,7 @@ title: User Profile
         const charts = {
             ovPlayers: null,
             ovComplexity: null,
+            ddMechanics: null,
             ddDuration: null,
             ddCategories: null,
             ddTimeline: null,
@@ -589,6 +598,48 @@ title: User Profile
         let bggUsername = "";
         let collectionData = [];
         let profileAffinities = null;
+
+        function updateChartTheme() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#f8fafc' : '#0f172a';
+            const mutedColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)';
+
+            // Set global defaults
+            Chart.defaults.color = mutedColor;
+            Chart.defaults.font.family = "'Outfit', 'Inter', sans-serif";
+            
+            Object.values(charts).forEach(chart => {
+                if (chart) {
+                    if (chart.options.scales) {
+                        Object.keys(chart.options.scales).forEach(scaleKey => {
+                            const scale = chart.options.scales[scaleKey];
+                            if (scale.ticks) {
+                                if (scaleKey === 'y' && chart.options.indexAxis === 'y') {
+                                    scale.ticks.color = textColor;
+                                } else {
+                                    scale.ticks.color = mutedColor;
+                                }
+                            }
+                            if (scale.grid) {
+                                scale.grid.color = gridColor;
+                            }
+                            if (scale.title) {
+                                scale.title.color = textColor;
+                            }
+                        });
+                    }
+                    if (chart.options.plugins && chart.options.plugins.legend) {
+                        if (!chart.options.plugins.legend.labels) chart.options.plugins.legend.labels = {};
+                        chart.options.plugins.legend.labels.color = textColor;
+                    }
+                    chart.update();
+                }
+            });
+        }
+
+        const observer = new MutationObserver(updateChartTheme);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
         // Load statistics
         try {
@@ -899,25 +950,129 @@ title: User Profile
                     plugins: { legend: { position: 'bottom' } }
                 }
             });
+            updateChartTheme();
         }
 
         function drawDeepDiveDashboard() {
             const owned = collectionData.filter(g => g.own);
             const games = owned.length > 0 ? owned : collectionData;
 
-            // Generate Tags
-            const tagContainer = document.getElementById("deepdive-preference-tags");
-            tagContainer.innerHTML = "";
-            
-            const sortedMechs = Object.entries(profileAffinities.mech_weights || {})
-                .sort((a,b) => b[1] - a[1])
-                .slice(0, 4);
+            // Draw Mechanics Chart (Top 5 Mechanics) with progressive coloring and custom typography
+            const chartDomMechanics = document.getElementById("chart-dd-mechanics");
+            if (charts.ddMechanics) charts.ddMechanics.destroy();
 
-            sortedMechs.forEach(([mech, weight]) => {
-                const tag = document.createElement("span");
-                tag.className = "pref-tag";
-                tag.innerHTML = `⚙️ ${mech} <span style="color:var(--primary); font-weight:800;">${weight}</span>`;
-                tagContainer.appendChild(tag);
+            const mechWeights = profileAffinities.mech_weights || {};
+            const topMechs = Object.entries(mechWeights)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const mechLabels = topMechs.map(m => m[0]);
+            const mechValues = topMechs.map(m => m[1]);
+
+            charts.ddMechanics = new Chart(chartDomMechanics, {
+                type: 'bar',
+                data: {
+                    labels: mechLabels,
+                    datasets: [{
+                        data: mechValues,
+                        backgroundColor: ['#4f46e5', '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe'],
+                        borderColor: ['#4338ca', '#4f46e5', '#6366f1', '#818cf8', '#a5b4fc'],
+                        borderWidth: 1.5,
+                        borderRadius: { topRight: 6, bottomRight: 6, topLeft: 0, bottomLeft: 0 },
+                        borderSkipped: 'start'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { family: 'Outfit', weight: 600 },
+                            bodyFont: { family: 'Inter' },
+                            cornerRadius: 8,
+                            padding: 10
+                        }
+                    },
+                    scales: { 
+                        x: { 
+                            beginAtZero: true, 
+                            grid: { color: "rgba(226, 232, 240, 0.08)" },
+                            ticks: {
+                                font: { family: 'Inter', weight: 500 },
+                                color: 'var(--text-muted)'
+                            }
+                        }, 
+                        y: { 
+                            grid: { display: false },
+                            ticks: {
+                                font: { family: 'Outfit', weight: 600, size: 12 },
+                                color: 'var(--text-main)'
+                            }
+                        } 
+                    }
+                }
+            });
+
+            // Draw Category Affinities Chart (Top 5 Categories) with progressive coloring
+            const chartDomCategories = document.getElementById("chart-dd-categories");
+            if (charts.ddCategories) charts.ddCategories.destroy();
+
+            const catWeights = profileAffinities.cat_weights || {};
+            const topCats = Object.entries(catWeights)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const catLabels = topCats.map(c => c[0]);
+            const catValues = topCats.map(c => c[1]);
+
+            charts.ddCategories = new Chart(chartDomCategories, {
+                type: 'bar',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catValues,
+                        backgroundColor: ['#ec4899', '#f472b6', '#f9a8d4', '#fbcfe8', '#ffe4e6'],
+                        borderColor: ['#db2777', '#ec4899', '#f472b6', '#fbcfe8', '#ffd3d9'],
+                        borderWidth: 1.5,
+                        borderRadius: { topRight: 6, bottomRight: 6, topLeft: 0, bottomLeft: 0 },
+                        borderSkipped: 'start'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { family: 'Outfit', weight: 600 },
+                            bodyFont: { family: 'Inter' },
+                            cornerRadius: 8,
+                            padding: 10
+                        }
+                    },
+                    scales: { 
+                        x: { 
+                            beginAtZero: true, 
+                            grid: { color: "rgba(226, 232, 240, 0.08)" },
+                            ticks: {
+                                font: { family: 'Inter', weight: 500 },
+                                color: 'var(--text-muted)'
+                            }
+                        }, 
+                        y: { 
+                            grid: { display: false },
+                            ticks: {
+                                font: { family: 'Outfit', weight: 600, size: 12 },
+                                color: 'var(--text-main)'
+                            }
+                        } 
+                    }
+                }
             });
 
             // Draw Duration Chart
@@ -951,37 +1106,14 @@ title: User Profile
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: "rgba(226, 232, 240, 0.1)" } }, 
+                        x: { grid: { display: false } } 
+                    }
                 }
             });
 
-            // Draw Category Affinities
-            const chartDomCategories = document.getElementById("chart-dd-categories");
-            if (charts.ddCategories) charts.ddCategories.destroy();
-
-            const catWeights = profileAffinities.cat_weights || {};
-            charts.ddCategories = new Chart(chartDomCategories, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(catWeights),
-                    datasets: [{
-                        data: Object.values(catWeights),
-                        backgroundColor: '#c084fc',
-                        borderColor: '#9333ea',
-                        borderWidth: 1.5,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { x: { beginAtZero: true, max: 5 }, y: { grid: { display: false } } }
-                }
-            });
-
-            // Draw Timeline Year Published Chart
+            // Draw Timeline Year Published Chart (rendered as a BAR chart)
             const chartDomTimeline = document.getElementById("chart-dd-timeline");
             if (charts.ddTimeline) charts.ddTimeline.destroy();
 
@@ -997,26 +1129,29 @@ title: User Profile
             const yearCounts = sortedYears.map(y => yearsMap[y]);
 
             charts.ddTimeline = new Chart(chartDomTimeline, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: sortedYears,
                     datasets: [{
                         label: 'Games Published',
                         data: yearCounts,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.3
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#2563eb',
+                        borderWidth: 1.5,
+                        borderRadius: 6
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: "rgba(226, 232, 240, 0.1)" } }, 
+                        x: { grid: { display: false } } 
+                    }
                 }
             });
+            updateChartTheme();
         }
 
         function drawRatingsDashboard() {
@@ -1149,6 +1284,7 @@ title: User Profile
                         </div>
                     `).join("");
             }
+            updateChartTheme();
         }
 
     });

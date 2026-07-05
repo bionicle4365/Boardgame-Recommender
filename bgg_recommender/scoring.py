@@ -103,6 +103,12 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                 "Medium-Heavy": 0.0,
                 "Heavy": 0.0
             }
+            u_complexity_counts = {
+                "Light": 0,
+                "Medium-Light": 0,
+                "Medium-Heavy": 0,
+                "Heavy": 0
+            }
             u_complexity_weights["Medium-Light"] = 1.0
             complexity_count = 0
 
@@ -151,15 +157,30 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                                     "Medium-Heavy": 0.0,
                                     "Heavy": 0.0
                                 }
+                                u_complexity_counts = {
+                                    "Light": 0,
+                                    "Medium-Light": 0,
+                                    "Medium-Heavy": 0,
+                                    "Heavy": 0
+                                }
                             complexity_count += 1
                             if comp < 2.0:
-                                u_complexity_weights["Light"] += weight
+                                comp_bucket = "Light"
                             elif comp <= 2.8:
-                                u_complexity_weights["Medium-Light"] += weight
+                                comp_bucket = "Medium-Light"
                             elif comp <= 3.5:
-                                u_complexity_weights["Medium-Heavy"] += weight
+                                comp_bucket = "Medium-Heavy"
                             else:
-                                u_complexity_weights["Heavy"] += weight
+                                comp_bucket = "Heavy"
+                            u_complexity_weights[comp_bucket] += weight
+                            u_complexity_counts[comp_bucket] += 1
+
+            if complexity_count > 0:
+                for b in u_complexity_weights:
+                    if u_complexity_counts[b] > 0:
+                        u_complexity_weights[b] = round(u_complexity_weights[b] / u_complexity_counts[b], 2)
+                    else:
+                        u_complexity_weights[b] = 0.0
 
             for comp_bucket, w in u_complexity_weights.items():
                 complexity_weights[comp_bucket] = complexity_weights.get(comp_bucket, 0.0) + w
@@ -238,9 +259,9 @@ def score_candidates(candidates, mech_weights, cat_weights, user_designers, user
         if cand_complexity is not None and isinstance(cand_complexity, (int, float)) and not math.isnan(cand_complexity):
             cand_complexity = float(cand_complexity)
             if complexity_pref and complexity_pref != 'any':
-                if complexity_pref == 'low':
+                if complexity_pref in ('low', 'light'):
                     comp_sim = 1.0 if cand_complexity <= 2.0 else max(0.0, 1.0 - ((cand_complexity - 2.0) / 2.0))
-                elif complexity_pref == 'high':
+                elif complexity_pref in ('high', 'heavy'):
                     comp_sim = 1.0 if cand_complexity >= 3.5 else max(0.0, 1.0 - ((3.5 - cand_complexity) / 2.5))
                 elif complexity_pref == 'medium':
                     if 2.0 <= cand_complexity <= 3.5:

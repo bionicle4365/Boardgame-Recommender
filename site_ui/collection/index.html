@@ -440,7 +440,7 @@ title: BGG Collection Browser
 
     .clear-filters-btn {
         padding: 8px 16px;
-        background-color: #f1f5f9;
+        background-color: var(--btn-secondary-bg);
         color: var(--text-main);
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -451,7 +451,7 @@ title: BGG Collection Browser
     }
 
     .clear-filters-btn:hover {
-        background-color: #e2e8f0;
+        background-color: var(--btn-secondary-hover-bg);
     }
 
     /* Sliders styling */
@@ -1095,8 +1095,8 @@ title: BGG Collection Browser
         flex: 0 0 280px;
         width: 280px;
         position: sticky;
-        top: 20px;
-        max-height: calc(100vh - 40px);
+        top: 90px;
+        max-height: calc(100vh - 110px);
         overflow-y: auto;
         padding-right: 4px;
         display: none; /* Only show when collection loads */
@@ -1574,6 +1574,12 @@ title: BGG Collection Browser
             "Medium-Heavy": 0.0,
             "Heavy": 0.0
         };
+        let complexityCounts = {
+            "Light": 0,
+            "Medium-Light": 0,
+            "Medium-Heavy": 0,
+            "Heavy": 0
+        };
         
         let soloCount = 0;
         let highPlayerCount = 0;
@@ -1598,15 +1604,18 @@ title: BGG Collection Browser
             const r = (!isNaN(ratingVal) && ratingVal > 0) ? ratingVal : 7.0;
             const weight = Math.max(1.0, r - 5.0);
 
+            let bucket = "Medium-Light";
             if (estComp < 2.0) {
-                complexity_weights["Light"] += weight;
+                bucket = "Light";
             } else if (estComp <= 2.8) {
-                complexity_weights["Medium-Light"] += weight;
+                bucket = "Medium-Light";
             } else if (estComp <= 3.5) {
-                complexity_weights["Medium-Heavy"] += weight;
+                bucket = "Medium-Heavy";
             } else {
-                complexity_weights["Heavy"] += weight;
+                bucket = "Heavy";
             }
+            complexity_weights[bucket] += weight;
+            complexityCounts[bucket]++;
             complexityCount++;
 
             if (parseInt(g.minPlayers) === 1) soloCount++;
@@ -1628,6 +1637,14 @@ title: BGG Collection Browser
 
         if (complexityCount === 0) {
             complexity_weights["Medium-Light"] = 1.0;
+        } else {
+            for (let bucket in complexity_weights) {
+                if (complexityCounts[bucket] > 0) {
+                    complexity_weights[bucket] = parseFloat((complexity_weights[bucket] / complexityCounts[bucket]).toFixed(2));
+                } else {
+                    complexity_weights[bucket] = 0.0;
+                }
+            }
         }
 
         const n = games.length;

@@ -84,12 +84,14 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
     # Mock user collection dataframe
     user_df = pd.DataFrame([
         {"id": "100", "rating": 9.0, "own": True},
-        {"id": "200", "rating": 5.0, "own": False}
+        {"id": "200", "rating": 5.0, "own": False},
+        {"id": "300", "rating": 7.0, "own": True}
     ])
     # Mock catalog dataframe
     catalog_df = pd.DataFrame([
         {"id": "100", "name": "Catan", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.0, "complexity": 2.0, "designers": ["des1"], "publishers": ["pub1"]},
-        {"id": "200", "name": "Gloomhaven", "categories": ["cat2"], "mechanics": ["mech2"], "rating": 9.0, "complexity": 4.5, "designers": ["des2"], "publishers": ["pub2"]}
+        {"id": "200", "name": "Gloomhaven", "categories": ["cat2"], "mechanics": ["mech2"], "rating": 9.0, "complexity": 4.5, "designers": ["des2"], "publishers": ["pub2"]},
+        {"id": "300", "name": "Ticket to Ride", "categories": ["cat1"], "mechanics": ["mech3"], "rating": 7.5, "complexity": 2.5, "designers": ["des3"], "publishers": ["pub3"]}
     ])
     # Side effects for read_parquet calls
     mock_read_parquet.side_effect = [user_df, catalog_df]
@@ -119,13 +121,17 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
     assert "publisher_weights" in profile_json
     assert "generated_at" in profile_json
 
-    # Since user only liked game ID 100 (rating 9.0 >= 7.0), the weights should reflect that
-    # u_rating of 9.0 gives a weight of 9.0 - 5.0 = 4.0
-    assert profile_json["cat_weights"]["cat1"] == 4.0
+    # Since user liked game ID 100 (rating 9.0 -> weight 4.0) and ID 300 (rating 7.0 -> weight 2.0),
+    # categories/mechanics/designers/publishers accumulate:
+    assert profile_json["cat_weights"]["cat1"] == 6.0
     assert profile_json["mech_weights"]["mech1"] == 4.0
+    assert profile_json["mech_weights"]["mech3"] == 2.0
     assert profile_json["designer_weights"]["des1"] == 4.0
+    assert profile_json["designer_weights"]["des3"] == 2.0
     assert profile_json["publisher_weights"]["pub1"] == 4.0
-    assert profile_json["complexity_weights"] == {"Light": 0.0, "Medium-Light": 4.0, "Medium-Heavy": 0.0, "Heavy": 0.0}
+    assert profile_json["publisher_weights"]["pub3"] == 2.0
+    # Complexity weights are averaged: (4.0 + 2.0) / 2 = 3.0
+    assert profile_json["complexity_weights"] == {"Light": 0.0, "Medium-Light": 3.0, "Medium-Heavy": 0.0, "Heavy": 0.0}
 
 @patch('bgg_taste_analytics.process_taste_profile')
 def test_lambda_handler_success(mock_process):

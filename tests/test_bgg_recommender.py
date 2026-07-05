@@ -444,6 +444,43 @@ def test_lambda_handler_duration_and_complexity_preferences(mock_bedrock, mock_h
     assert "If specific play time or complexity preferences are provided, also mention how this game fits those preferences." in prompt_text
 
 
+def test_lambda_handler_complexity_pref_light_heavy():
+    # Verify that passing 'light' and 'heavy' maps correctly to 'low' and 'high' logic
+    import scoring
+    candidates_df = pd.DataFrame([
+        {"id": "100", "name": "Carcassonne Light", "categories": [], "mechanics": [], "rating": 8.0, "complexity": 1.5},
+        {"id": "200", "name": "Gloomhaven Heavy", "categories": [], "mechanics": [], "rating": 8.0, "complexity": 4.5}
+    ])
+    
+    # Test scoring with complexity_pref='light'
+    results_light = scoring.score_candidates(
+        candidates=candidates_df,
+        mech_weights={},
+        cat_weights={},
+        user_designers={},
+        user_publishers={},
+        complexity_weights={},
+        hotness_scores={},
+        catalog_df=candidates_df,
+        query_params={'complexity_pref': 'light', 'w_mech': '0', 'w_cat': '0', 'w_pop': '0', 'w_comp': '1.0'}
+    )
+    assert results_light[0]['name'] == 'Carcassonne Light'
+    
+    # Test scoring with complexity_pref='heavy'
+    results_heavy = scoring.score_candidates(
+        candidates=candidates_df,
+        mech_weights={},
+        cat_weights={},
+        user_designers={},
+        user_publishers={},
+        complexity_weights={},
+        hotness_scores={},
+        catalog_df=candidates_df,
+        query_params={'complexity_pref': 'heavy', 'w_mech': '0', 'w_cat': '0', 'w_pop': '0', 'w_comp': '1.0'}
+    )
+    assert results_heavy[0]['name'] == 'Gloomhaven Heavy'
+
+
 @patch('bgg_recommender.s3')
 def test_lambda_handler_get_profile_endpoint(mock_s3):
     # Mock download_file to mock file download and read

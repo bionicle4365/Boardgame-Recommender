@@ -130,6 +130,12 @@ def process_taste_profile(username):
         "Medium-Heavy": 0.0,
         "Heavy": 0.0
     }
+    complexity_counts = {
+        "Light": 0,
+        "Medium-Light": 0,
+        "Medium-Heavy": 0,
+        "Heavy": 0
+    }
 
     if not liked_joined.empty:
         # Default complexity fallback if none of the games have complexity data
@@ -184,15 +190,31 @@ def process_taste_profile(username):
                             "Medium-Heavy": 0.0,
                             "Heavy": 0.0
                         }
+                        complexity_counts = {
+                            "Light": 0,
+                            "Medium-Light": 0,
+                            "Medium-Heavy": 0,
+                            "Heavy": 0
+                        }
                     complexity_count += 1
                     if comp < 2.0:
-                        complexity_weights["Light"] += weight
+                        comp_bucket = "Light"
                     elif comp <= 2.8:
-                        complexity_weights["Medium-Light"] += weight
+                        comp_bucket = "Medium-Light"
                     elif comp <= 3.5:
-                        complexity_weights["Medium-Heavy"] += weight
+                        comp_bucket = "Medium-Heavy"
                     else:
-                        complexity_weights["Heavy"] += weight
+                        comp_bucket = "Heavy"
+                    complexity_weights[comp_bucket] += weight
+                    complexity_counts[comp_bucket] += 1
+
+        # Compute averages for complexity weights if we had valid complexity data
+        if complexity_count > 0:
+            for b in complexity_weights:
+                if complexity_counts[b] > 0:
+                    complexity_weights[b] = round(complexity_weights[b] / complexity_counts[b], 2)
+                else:
+                    complexity_weights[b] = 0.0
 
     # Write profile JSON
     profile = {
