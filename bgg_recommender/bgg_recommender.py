@@ -21,14 +21,14 @@ PREVIEWS_GAMES_CACHE = None
 PREVIEWS_GAMES_CACHE_TIME = None
 
 from cache_utils import (
-    logger, s3, sqs, bucket,
+    logger, bucket,
     safe_list, get_catalog, get_active_previews, get_active_previews_games,
     get_bgg_hotness, get_user_profile_status, trigger_background_scrape,
     get_cached_recommendations, save_recommendations_to_cache,
-    build_game_metadata, validate_username,
+    build_game_metadata, validate_username, parse_weights,
 )
 from scoring import compute_taste_profile_inline, score_candidates
-from narration import bedrock, narrate_recommendations, build_fallback_recommendations, build_weight_context
+from narration import narrate_recommendations, build_fallback_recommendations, build_weight_context
 
 from botocore.exceptions import ClientError
 
@@ -191,24 +191,14 @@ def _handle_recommendations(query_params):
     username_key = "_".join(sorted_usernames)
 
     # Extract and clamp dynamic weights
-    try:
-        w_mech = float(query_params.get('w_mech', '0.5'))
-        w_cat = float(query_params.get('w_cat', '0.5'))
-        w_pop = float(query_params.get('w_pop', '0.5'))
-        w_hot = float(query_params.get('w_hot', '0.0'))
-        w_comp = float(query_params.get('w_comp', '0.4'))
-        w_des = float(query_params.get('w_des', '0.3'))
-        w_pub = float(query_params.get('w_pub', '0.1'))
-    except ValueError:
-        w_mech, w_cat, w_pop, w_hot, w_comp, w_des, w_pub = 0.5, 0.5, 0.5, 0.0, 0.4, 0.3, 0.1
-
-    w_mech = max(0.0, min(1.0, w_mech))
-    w_cat = max(0.0, min(1.0, w_cat))
-    w_pop = max(0.0, min(1.0, w_pop))
-    w_hot = max(0.0, min(1.0, w_hot))
-    w_comp = max(0.0, min(1.0, w_comp))
-    w_des = max(0.0, min(1.0, w_des))
-    w_pub = max(0.0, min(1.0, w_pub))
+    weights = parse_weights(query_params)
+    w_mech = weights['w_mech']
+    w_cat = weights['w_cat']
+    w_pop = weights['w_pop']
+    w_hot = weights['w_hot']
+    w_comp = weights['w_comp']
+    w_des = weights['w_des']
+    w_pub = weights['w_pub']
 
     duration_pref = query_params.get('duration_pref', 'any').lower()
     complexity_pref = query_params.get('complexity_pref', 'any').lower()
@@ -404,11 +394,11 @@ def _handle_recommendations(query_params):
 
     top_candidates = score_candidates(
         candidates, mech_weights, cat_weights, user_designers, user_publishers,
-        complexity_weights, hotness_scores, catalog_df, query_params
+        complexity_weights, hotness_scores, catalog_df, query_params, weights
     )
 
     # 7. Call Bedrock for personalized narration
-    weight_context = build_weight_context(query_params)
+    weight_context = build_weight_context(query_params, weights)
     narrated_recs = narrate_recommendations(top_candidates[:25], liked_games_str, weight_context, query_params)
 
     if narrated_recs is not None:
@@ -445,3 +435,20 @@ def lambda_handler(event, context):
         return _handle_conventions()
     else:
         return _handle_recommendations(query_params)
+
+
+def __getattr__(name):
+    """
+    Dynamic attribute loader for S3, SQS, and Bedrock.
+    Provides backwards compatibility with test mock patching.
+    """
+    if name == 's3':
+        import cache_utils
+        return cache_utils.s3
+    if name == 'sqs':
+        import cache_utils
+        return cache_utils.sqs
+    if name == 'bedrock':
+        import narration
+        return narration.bedrock
+    raise AttributeError(f"module {__name__} has no attribute {name}")

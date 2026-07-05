@@ -99,16 +99,26 @@ def lambda_handler(event, context):
                     return [floats_to_decimals(x) for x in obj]
                 return obj
 
-            item = {
-                'userId': user_id,
-                'playgroups': floats_to_decimals(playgroups),
-                'saved_weights': floats_to_decimals(saved_weights),
-                'user_preferences': floats_to_decimals(user_preferences)
-            }
-            if bgg_username:
-                item['bgg_username'] = bgg_username
+            update_parts = []
+            expression_attribute_values = {}
+            expression_attribute_names = {}
             
-            table.put_item(Item=item)
+            allowed_fields = ['playgroups', 'saved_weights', 'user_preferences', 'bgg_username']
+            for field in allowed_fields:
+                if field in body:
+                    val = floats_to_decimals(body[field])
+                    update_parts.append(f"#{field} = :{field}")
+                    expression_attribute_values[f":{field}"] = val
+                    expression_attribute_names[f"#{field}"] = field
+
+            if update_parts:
+                update_expression = "SET " + ", ".join(update_parts)
+                table.update_item(
+                    Key={'userId': user_id},
+                    UpdateExpression=update_expression,
+                    ExpressionAttributeValues=expression_attribute_values,
+                    ExpressionAttributeNames=expression_attribute_names
+                )
 
             # Pre-warm the cache by triggering the user scraper
             if bgg_username:

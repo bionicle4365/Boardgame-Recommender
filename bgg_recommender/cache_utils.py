@@ -51,33 +51,30 @@ _default_sqs = boto3.client('sqs')
 def _s3():
     try:
         import bgg_recommender
-        val = getattr(bgg_recommender, 's3', _default_s3)
-        if isinstance(val, S3Delegate):
-            return _default_s3
-        return val
-    except ImportError:
-        return _default_s3
+        if 's3' in bgg_recommender.__dict__:
+            return bgg_recommender.__dict__['s3']
+    except (ImportError, AttributeError):
+        pass
+    return _default_s3
 
 def _sqs():
     try:
         import bgg_recommender
-        val = getattr(bgg_recommender, 'sqs', _default_sqs)
-        if isinstance(val, SQSDelegate):
-            return _default_sqs
-        return val
-    except ImportError:
-        return _default_sqs
+        if 'sqs' in bgg_recommender.__dict__:
+            return bgg_recommender.__dict__['sqs']
+    except (ImportError, AttributeError):
+        pass
+    return _default_sqs
 
-class S3Delegate:
-    def __getattr__(self, name):
-        return getattr(_s3(), name)
-
-class SQSDelegate:
-    def __getattr__(self, name):
-        return getattr(_sqs(), name)
-
-s3 = S3Delegate()
-sqs = SQSDelegate()
+def __getattr__(name):
+    """
+    Dynamic attribute loader for s3 and sqs to support test patching of bgg_recommender.s3 / bgg_recommender.sqs.
+    """
+    if name == 's3':
+        return _s3()
+    if name == 'sqs':
+        return _sqs()
+    raise AttributeError(f"module {__name__} has no attribute {name}")
 
 # Read environment variables
 bucket = os.environ.get('S3_OUTPUT_BUCKET_NAME', 'boardgame-app')
@@ -246,7 +243,7 @@ def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168):
         logger.info(f"Cache hit: recommendations are fresh ({age_hours:.2f} hours old). Downloading.")
         local_path = f"/tmp/{os.path.basename(cache_key)}"
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        s3.download_file(bucket, cache_key, local_path)
+        _s3().download_file(bucket, cache_key, local_path)
         with open(local_path, 'r', encoding='utf-8') as f:
             return json.load(f)
 
@@ -293,7 +290,7 @@ def get_bgg_hotness(ttl_hours=2):
         if age_hours < ttl_hours:
             logger.info(f"Hotness cache hit: file is {age_hours:.2f} hours old. Downloading from S3.")
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
-            s3.download_file(bucket, cache_key, local_path)
+            _s3().download_file(bucket, cache_key, local_path)
             with open(local_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
     except ClientError as e:
@@ -355,3 +352,28 @@ def validate_username(username):
     if not username:
         return False
     return bool(re.match(r'^[a-zA-Z0-9_]{1,25}$', username))
+
+
+def parse_weights(query_params):
+    """
+    Parses dynamic preference weights from query parameters.
+    Applies default values and clamps each weight to the [0.0, 1.0] range.
+    """
+    defaults = {
+        'w_mech': 0.5,
+        'w_cat': 0.5,
+        'w_pop': 0.5,
+        'w_hot': 0.0,
+        'w_comp': 0.4,
+        'w_des': 0.3,
+        'w_pub': 0.1
+    }
+    weights = {}
+    for key, default_val in defaults.items():
+        try:
+            val = float(query_params.get(key, str(default_val)))
+        except (ValueError, TypeError):
+            val = default_val
+        weights[key] = max(0.0, min(1.0, val))
+    return weights
+

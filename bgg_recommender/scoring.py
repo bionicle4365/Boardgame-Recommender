@@ -12,8 +12,9 @@ import pandas as pd
 import numpy as np
 from botocore.exceptions import ClientError
 
+import cache_utils
 from cache_utils import (
-    logger, s3, bucket,
+    logger, bucket,
     safe_list, get_catalog, get_active_previews, get_active_previews_games,
     get_bgg_hotness, get_user_profile_status, trigger_background_scrape,
     build_game_metadata,
@@ -47,8 +48,8 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
 
         parquet_modified = user_parquet_modified.get(u)
         try:
-            s3.head_object(Bucket=bucket, Key=profile_key)
-            s3.download_file(bucket, profile_key, local_profile_path)
+            cache_utils.s3.head_object(Bucket=bucket, Key=profile_key)
+            cache_utils.s3.download_file(bucket, profile_key, local_profile_path)
             with open(local_profile_path, 'r', encoding='utf-8') as f:
                 prof_data = json.load(f)
 
@@ -190,28 +191,23 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
 
 
 def score_candidates(candidates, mech_weights, cat_weights, user_designers, user_publishers,
-                     complexity_weights, hotness_scores, catalog_df, query_params):
+                     complexity_weights, hotness_scores, catalog_df, query_params, weights=None):
     """
     Scores candidate games against user taste profiles and returns top-30 ranked results.
 
     Returns list of dicts (each being a candidate row from the catalog).
     """
-    w_mech = float(query_params.get('w_mech', '0.5'))
-    w_cat = float(query_params.get('w_cat', '0.5'))
-    w_pop = float(query_params.get('w_pop', '0.5'))
-    w_hot = float(query_params.get('w_hot', '0.0'))
-    w_comp = float(query_params.get('w_comp', '0.4'))
-    w_des = float(query_params.get('w_des', '0.3'))
-    w_pub = float(query_params.get('w_pub', '0.1'))
+    if weights is None:
+        from cache_utils import parse_weights
+        weights = parse_weights(query_params)
 
-    # Clamp weights
-    w_mech = max(0.0, min(1.0, w_mech))
-    w_cat = max(0.0, min(1.0, w_cat))
-    w_pop = max(0.0, min(1.0, w_pop))
-    w_hot = max(0.0, min(1.0, w_hot))
-    w_comp = max(0.0, min(1.0, w_comp))
-    w_des = max(0.0, min(1.0, w_des))
-    w_pub = max(0.0, min(1.0, w_pub))
+    w_mech = weights.get('w_mech', 0.5)
+    w_cat = weights.get('w_cat', 0.5)
+    w_pop = weights.get('w_pop', 0.5)
+    w_hot = weights.get('w_hot', 0.0)
+    w_comp = weights.get('w_comp', 0.4)
+    w_des = weights.get('w_des', 0.3)
+    w_pub = weights.get('w_pub', 0.1)
 
     player_count = query_params.get('player_count')
     duration_pref = query_params.get('duration_pref', 'any').lower()

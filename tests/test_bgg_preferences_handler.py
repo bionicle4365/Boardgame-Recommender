@@ -119,10 +119,51 @@ def test_lambda_handler_post_success(mock_table):
     body = json.loads(response['body'])
     assert body['status'] == 'success'
     
-    # Verify put_item call details
-    mock_table.put_item.assert_called_once()
-    args, kwargs = mock_table.put_item.call_args
-    item = kwargs['Item']
-    assert item['userId'] == 'user-123'
-    assert item['saved_weights']['mech'] == Decimal('0.5')
-    assert item['saved_weights']['cat'] == Decimal('0.8')
+    # Verify update_item call details
+    mock_table.update_item.assert_called_once()
+    args, kwargs = mock_table.update_item.call_args
+    assert kwargs['Key'] == {'userId': 'user-123'}
+    assert '#playgroups' in kwargs['UpdateExpression']
+    assert '#saved_weights' in kwargs['UpdateExpression']
+    assert kwargs['ExpressionAttributeValues'][':saved_weights']['mech'] == Decimal('0.5')
+    assert kwargs['ExpressionAttributeValues'][':saved_weights']['cat'] == Decimal('0.8')
+
+
+@patch('bgg_preferences_handler.table')
+@patch('boto3.client')
+def test_lambda_handler_post_partial_update(mock_boto_client, mock_table):
+    mock_sqs = MagicMock()
+    mock_boto_client.return_value = mock_sqs
+    
+    event = {
+        'requestContext': {
+            'http': {
+                'method': 'POST'
+            },
+            'authorizer': {
+                'jwt': {
+                    'claims': {
+                        'sub': 'user-123'
+                    }
+                }
+            }
+        },
+        'body': json.dumps({
+            'bgg_username': 'bionicle4365'
+        })
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    
+    mock_table.update_item.assert_called_once()
+    args, kwargs = mock_table.update_item.call_args
+    assert kwargs['Key'] == {'userId': 'user-123'}
+    assert kwargs['UpdateExpression'] == 'SET #bgg_username = :bgg_username'
+    assert kwargs['ExpressionAttributeValues'] == {':bgg_username': 'bionicle4365'}
+    assert kwargs['ExpressionAttributeNames'] == {'#bgg_username': 'bgg_username'}
+    
+    # Verify SQS trigger
+    mock_boto_client.assert_called_once_with('sqs', region_name='us-east-1')
+    mock_sqs.send_message.assert_called_once()
+
+

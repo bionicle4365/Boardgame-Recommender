@@ -19,18 +19,19 @@ bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'amazon.nova-micro-v1:0')
 def _bedrock():
     try:
         import bgg_recommender
-        val = getattr(bgg_recommender, 'bedrock', _default_bedrock)
-        if isinstance(val, BedrockDelegate):
-            return _default_bedrock
-        return val
-    except ImportError:
-        return _default_bedrock
+        if 'bedrock' in bgg_recommender.__dict__:
+            return bgg_recommender.__dict__['bedrock']
+    except (ImportError, AttributeError):
+        pass
+    return _default_bedrock
 
-class BedrockDelegate:
-    def __getattr__(self, name):
-        return getattr(_bedrock(), name)
-
-bedrock = BedrockDelegate()
+def __getattr__(name):
+    """
+    Dynamic attribute loader for bedrock to support test patching of bgg_recommender.bedrock.
+    """
+    if name == 'bedrock':
+        return _bedrock()
+    raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
 def narrate_recommendations(top_candidates, liked_games_str, weight_context, query_params):
@@ -199,17 +200,17 @@ def build_fallback_recommendations(top_candidates):
     return recs
 
 
-def build_weight_context(query_params):
+def build_weight_context(query_params, weights):
     """
-    Builds the weight context string for the Bedrock prompt from query parameters.
+    Builds the weight context string for the Bedrock prompt from query parameters and parsed weights.
     """
-    w_mech = float(query_params.get('w_mech', '0.5'))
-    w_cat = float(query_params.get('w_cat', '0.5'))
-    w_pop = float(query_params.get('w_pop', '0.5'))
-    w_hot = float(query_params.get('w_hot', '0.0'))
-    w_comp = float(query_params.get('w_comp', '0.4'))
-    w_des = float(query_params.get('w_des', '0.3'))
-    w_pub = float(query_params.get('w_pub', '0.1'))
+    w_mech = weights.get('w_mech', 0.5)
+    w_cat = weights.get('w_cat', 0.5)
+    w_pop = weights.get('w_pop', 0.5)
+    w_hot = weights.get('w_hot', 0.0)
+    w_comp = weights.get('w_comp', 0.4)
+    w_des = weights.get('w_des', 0.3)
+    w_pub = weights.get('w_pub', 0.1)
     player_count = query_params.get('player_count')
     duration_pref = query_params.get('duration_pref', 'any').lower()
     complexity_pref = query_params.get('complexity_pref', 'any').lower()
