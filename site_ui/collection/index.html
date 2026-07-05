@@ -1227,6 +1227,12 @@ title: BGG Collection Browser
 
     </div>
 
+    <!-- Tabs Navigation -->
+    <div id="collection-tabs-nav" class="collection-tabs" style="display: none;">
+        <button class="tab-btn active" id="tab-btn-grid" onclick="switchCollectionTab('grid')">Grid View</button>
+        <button class="tab-btn" id="tab-btn-analytics" onclick="switchCollectionTab('analytics')">Collection Analytics</button>
+    </div>
+
     <!-- Layout Wrapper: splits sidebar filters and main content -->
     <div id="collection-layout-wrap" class="collection-layout-wrapper" style="display: none;">
         <!-- Left: Filters Column -->
@@ -1292,11 +1298,6 @@ title: BGG Collection Browser
 
         <!-- Right: Content Column -->
         <div class="collection-content-column">
-            <!-- Tabs Navigation -->
-            <div id="collection-tabs-nav" class="collection-tabs">
-                <button class="tab-btn active" id="tab-btn-grid" onclick="switchCollectionTab('grid')">Grid View</button>
-                <button class="tab-btn" id="tab-btn-analytics" onclick="switchCollectionTab('analytics')">Collection Analytics</button>
-            </div>
 
             <!-- Panel 1: Grid View -->
             <div id="collection-panel-grid" class="tab-panel">
@@ -2075,7 +2076,9 @@ title: BGG Collection Browser
         updateViewToggleButtons();
         filteredGamesData = [...gamesData];
         
-        // Show layout wrap container, hide empty state
+        // Show tabs navigation and layout wrap container, hide empty state
+        const tabsNav = document.getElementById('collection-tabs-nav');
+        if (tabsNav) tabsNav.style.display = 'flex';
         document.getElementById('collection-layout-wrap').style.display = 'flex';
         document.getElementById('collection-empty-state').style.display = 'none';
         switchCollectionTab('grid');
@@ -2797,6 +2800,8 @@ title: BGG Collection Browser
         const lowerUsername = username.trim().toLowerCase();
 
         // Reset navigation and tab states; show collection layout, hide empty state immediately
+        const tabsNav = document.getElementById('collection-tabs-nav');
+        if (tabsNav) tabsNav.style.display = 'flex';
         document.getElementById('collection-layout-wrap').style.display = 'flex';
         document.getElementById('collection-empty-state').style.display = 'none';
         document.getElementById('collection-panel-grid').classList.remove('hidden');
