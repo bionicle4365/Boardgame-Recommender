@@ -46,11 +46,11 @@ title: Home
     }
 
     .feature-card {
-        background: white;
+        background: var(--card-bg);
         border: 1px solid var(--border);
         border-radius: 16px;
         padding: 32px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        box-shadow: var(--shadow-sm);
         transition: all 0.3s ease;
         text-decoration: none;
         color: inherit;
@@ -61,8 +61,8 @@ title: Home
 
     .feature-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.1);
-        border-color: #cbd5e1;
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary);
     }
 
     .feature-icon {

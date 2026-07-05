@@ -18,12 +18,12 @@ Eliminate duplicated CSS variables, component styles, and JavaScript logic acros
 - **JS Strategy:** Create `assets/js/utils.js` exporting common helpers: `fetchApi(endpoint, params)` with error handling, `getStoredUsername()` / `setStoredUsername()`, and shared card-rendering functions. Include it via `<script>` in `_layouts/default.html`.
 
 ### Tasks
-- [ ] **Audit Shared Styles:** Catalogue all duplicated CSS across page files and identify the shared superset of variables, tokens, and component classes.
-- [ ] **Create `design-system.css`:** Extract shared `:root` variables, glassmorphism tokens, typography, header-section, form-card, spinner, card, and button component styles into `site_ui/assets/css/design-system.css`.
-- [ ] **Link Design System in Layout:** Add `<link>` to `design-system.css` in `_layouts/default.html` and remove duplicated declarations from each page file.
-- [ ] **Create `utils.js`:** Extract shared JavaScript helpers (API fetch wrapper, localStorage username helpers, auth state checks) into `site_ui/assets/js/utils.js`.
-- [ ] **Link Utils in Layout:** Add `<script>` to `utils.js` in `_layouts/default.html` and refactor each page to use the shared helpers instead of inline duplicates.
-- [ ] **Visual Regression Check:** Verify all pages render identically after extraction using local Jekyll server.
+- [x] **Audit Shared Styles:** Catalogue all duplicated CSS across page files and identify the shared superset of variables, tokens, and component classes.
+- [x] **Create `design-system.css`:** Extract shared `:root` variables, glassmorphism tokens, typography, header-section, form-card, spinner, card, and button component styles into `site_ui/assets/css/design-system.css`.
+- [x] **Link Design System in Layout:** Add `<link>` to `design-system.css` in `_layouts/default.html` and remove duplicated declarations from each page file.
+- [x] **Create `utils.js`:** Extract shared JavaScript helpers (API fetch wrapper, localStorage username helpers, auth state checks) into `site_ui/assets/js/utils.js`.
+- [x] **Link Utils in Layout:** Add `<script>` to `utils.js` in `_layouts/default.html` and refactor each page to use the shared helpers instead of inline duplicates.
+- [x] **Visual Regression Check:** Verify all pages render identically after extraction using local Jekyll server.
 
 ---
 
@@ -42,11 +42,11 @@ Add a user-togglable dark mode to the site, leveraging the existing CSS custom p
 - **Sidebar:** The sidebar already uses a dark palette (`--sidebar-bg: #0f172a`), so it requires minimal or no changes.
 
 ### Tasks
-- [ ] **Define Dark Palette:** Create a `html[data-theme="dark"]` rule overriding all `:root` colour variables (`--background`, `--card-bg`, `--text-main`, `--text-muted`, `--border`, `--header-bg`, `--glass-bg`, shadows, etc.) with appropriate dark equivalents.
-- [ ] **Toggle Button UI:** Add a sun/moon toggle button in `_includes/header.html` with smooth icon transition animation.
-- [ ] **Toggle Logic:** Implement JS in `header.html` to toggle `data-theme` on `<html>`, persist to `localStorage`, and restore on page load (before DOM renders to prevent flash).
-- [ ] **Page-Specific Overrides:** Audit page-level colour overrides (e.g. collection green accents, profile purple accents) and ensure they work against the dark background.
-- [ ] **Visual Verification:** Test all pages (home, collection, recommender, groups, profile, settings) in both light and dark mode on desktop and mobile.
+- [x] **Define Dark Palette:** Create a `html[data-theme="dark"]` rule overriding all `:root` colour variables (`--background`, `--card-bg`, `--text-main`, `--text-muted`, `--border`, `--header-bg`, `--glass-bg`, shadows, etc.) with appropriate dark equivalents.
+- [x] **Toggle Button UI:** Add a sun/moon toggle button in `_includes/header.html` with smooth icon transition animation.
+- [x] **Toggle Logic:** Implement JS in `header.html` to toggle `data-theme` on `<html>`, persist to `localStorage`, and restore on page load (before DOM renders to prevent flash).
+- [x] **Page-Specific Overrides:** Audit page-level colour overrides (e.g. collection green accents, profile purple accents) and ensure they work against the dark background.
+- [x] **Visual Verification:** Test all pages (home, collection, recommender, groups, profile, settings) in both light and dark mode on desktop and mobile.
 
 ---
 
@@ -60,11 +60,11 @@ Replace spinner-based loading indicators with animated skeleton placeholder UI t
 - **Implementation:** Pure CSS approach using `@keyframes` pulse animation on placeholder `<div>` elements styled to match card/row dimensions. No JS library needed.
 
 ### Tasks
-- [ ] **Skeleton CSS Component:** Create reusable `.skeleton-card`, `.skeleton-row`, and `.skeleton-text` CSS classes with a subtle pulse animation (`background: linear-gradient` shimmer effect).
-- [ ] **Recommender Skeleton:** Replace the recommender loading spinner with 4-6 skeleton recommendation cards matching the final card layout (image placeholder, title bar, description lines).
-- [ ] **Collection Skeleton:** Replace the collection loading spinner with skeleton table rows matching the column layout.
-- [ ] **Groups Skeleton:** Replace the playgroup loading states with skeleton cards matching the group panel layout.
-- [ ] **Visual Verification:** Confirm skeleton layouts align with final rendered content on desktop and mobile viewports.
+- [x] **Skeleton CSS Component:** Create reusable `.skeleton-card`, `.skeleton-row`, and `.skeleton-text` CSS classes with a subtle pulse animation (`background: linear-gradient` shimmer effect).
+- [x] **Recommender Skeleton:** Replace the recommender loading spinner with 4-6 skeleton recommendation cards matching the final card layout (image placeholder, title bar, description lines).
+- [x] **Collection Skeleton:** Replace the collection loading spinner with skeleton table rows matching the column layout.
+- [x] **Groups Skeleton:** Replace the playgroup loading states with skeleton cards matching the group panel layout.
+- [x] **Visual Verification:** Confirm skeleton layouts align with final rendered content on desktop and mobile viewports.
 
 ---
 
@@ -184,6 +184,28 @@ Replace blank/empty page states with visually polished onboarding guidance and p
 - [ ] **Dislike Exclusion Tests:** Verify that candidates dominated by disliked mechanics are correctly excluded from the shortlist passed to Bedrock.
 - [ ] **Visual Verification:** Verify all empty states look polished on desktop and mobile, and disappear correctly after engagement.
 
+## Milestone 35: Gamefound Crowdfunding Recommendations
+
+### Objective
+Integrate Gamefound's public API to discover actively crowdfunding board games and allow users to receive personalized recommendations for campaigns currently funding, bypassing BoardGameGeek's data lags and paid-widget limitations.
+
+### Design Notes
+- **Source Selection**: While Kickstarter lacks a developer API, Gamefound provides a structured, public JSON endpoint (`getActiveCrowdfundingProjects`). 
+- **Entity Resolution**: Gamefound projects do not contain BGG IDs. We will map projects to the BGG catalog by querying BGG's search API (`xmlapi2/search?query=NAME&exact=1`) using the project name.
+- **Filtering Lag**: To prevent outdated campaigns, we will store campaign start and end dates and cross-reference them against the current system time to guarantee only *active* campaigns are recommended.
+
+### Architecture Decisions
+- **Data Sync**: Implement a daily scheduled EventBridge rule triggering a Lambda function (`bgg_gamefound_sync`) that fetches active Gamefound projects, queries BGG's search API to resolve IDs, and writes the mapped JSON list to S3 (`data/gamefound_campaigns.json`).
+- **Recommender Integration**: Extend the recommender Lambda (`bgg_recommender.py`) to load the JSON list from S3, enabling users to filter or boost recommendation scoring for games that are actively crowdfunding.
+- **Frontend UI**: Add a "Crowdfunding Only" filter to the recommender parameters on the site, and display a "Crowdfunding" badge on recommendation cards with a direct link to the Gamefound campaign page.
+
+### Tasks
+- [ ] **Gamefound Sync Lambda**: Implement `bgg_gamefound_sync.py` to query the Gamefound API, resolve project titles to BGG IDs via the BGG XML API2 search endpoint, and write the active campaigns map to S3.
+- [ ] **Terraform Infrastructure**: Add Terraform resource definitions for the new Lambda function, IAM policies, and a daily CloudWatch EventBridge Trigger.
+- [ ] **Recommender Scoring Update**: Update `bgg_recommender/scoring.py` and `bgg_recommender.py` to load active campaign IDs from S3 and support an `actively_crowdfunding` filter.
+- [ ] **Frontend Checkbox & Card Badge**: Add a "Crowdfunding Only" toggle checkbox to `site_ui/recommender/index.html` and render a stylized visual badge linking to the Gamefound project on matching game cards.
+- [ ] **Verification**: Add unit tests for Gamefound endpoint parsing, BGG name matching logic (handling title normalization and expansions), and recommender integration.
+
 ---
 
 ## Completed Milestones
@@ -211,3 +233,5 @@ Replace blank/empty page states with visually polished onboarding guidance and p
 * **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)
 * **Milestone 26: UI Redesign & Polish** (Standardized grid wrapper alignment, full-width responsive BGG collection grid/analytics table, symmetric AI form layout, realigned playgroup panel with loading animations, glassmorphism visual accents)
 * **Milestone 27: Interactive User Profile Dashboard & Playground** (Cognito profile syncing, Overview, Deep Dive, and Rating Analytics layouts, hover/click user header dropdown, and grouped rating distribution bar charts)
+* **Milestone 28: Shared CSS Design System & JS Utilities Extraction** (Extracted shared CSS variables, layout configurations, component classes, and Cognito Auth/fetch wrappers into centralized files)
+* **Milestone 29: Dark Mode Toggle** (User-togglable dark mode, custom property variables, transition animations, localStorage persistence, blocking pre-render script, page styling audits)

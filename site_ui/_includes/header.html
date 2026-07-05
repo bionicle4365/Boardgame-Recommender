@@ -97,7 +97,7 @@
         gap: 6px;
         font-size: 0.85rem;
         color: var(--text-muted);
-        background-color: #f1f5f9;
+        background-color: var(--badge-bg);
         padding: 6px 14px;
         border-radius: 20px;
         border: 1px solid var(--border);
@@ -107,8 +107,63 @@
     }
 
     .header-user-badge:hover {
-        background-color: #e2e8f0;
+        background-color: var(--badge-hover-bg);
         border-color: var(--primary);
+    }
+
+    /* Modern clean theme toggle button */
+    .header-theme-toggle-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: 8px;
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .header-theme-toggle-btn:hover {
+        background-color: var(--theme-toggle-hover-bg);
+        color: var(--text-main);
+        border-color: var(--text-main);
+    }
+
+    .header-theme-toggle-btn svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        stroke: currentColor;
+    }
+
+    .header-theme-toggle-btn:hover svg {
+        transform: rotate(15deg);
+    }
+
+    /* Toggle visibility of sun/moon icons based on html data-theme */
+    html[data-theme="dark"] .header-theme-toggle-btn .moon-icon {
+        display: none;
+    }
+    html[data-theme="dark"] .header-theme-toggle-btn .sun-icon {
+        display: block;
+    }
+    html[data-theme="light"] .header-theme-toggle-btn .moon-icon {
+        display: block;
+    }
+    html[data-theme="light"] .header-theme-toggle-btn .sun-icon {
+        display: none;
+    }
+    /* Fallback in case theme is unset (defaults to moon/light) */
+    html:not([data-theme]) .header-theme-toggle-btn .moon-icon {
+        display: block;
+    }
+    html:not([data-theme]) .header-theme-toggle-btn .sun-icon {
+        display: none;
     }
 
     .header-user-badge::after {
@@ -129,7 +184,7 @@
         position: absolute;
         top: calc(100% + 8px);
         right: 0;
-        background: #ffffff;
+        background: var(--card-bg);
         border: 1px solid var(--border);
         border-radius: 12px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
@@ -170,7 +225,7 @@
     }
 
     .header-dropdown-item:hover {
-        background-color: #f1f5f9;
+        background-color: var(--dropdown-hover-bg);
         color: var(--primary);
     }
 
@@ -198,7 +253,7 @@
     }
 
     .auth-modal-card {
-        background-color: #ffffff;
+        background-color: var(--card-bg);
         border-radius: 16px;
         padding: 30px;
         width: 90%;
@@ -309,9 +364,9 @@
     }
 
     .auth-error-msg {
-        background-color: #fef2f2;
-        color: #ef4444;
-        border: 1px solid #fca5a5;
+        background-color: var(--danger-bg);
+        color: var(--danger);
+        border: 1px solid var(--danger-border);
         border-radius: 8px;
         padding: 10px;
         font-size: 0.85rem;
@@ -341,6 +396,24 @@
 </div>
 
 <div class="header-right">
+    <button id="theme-toggle" class="header-theme-toggle-btn" aria-label="Toggle Theme" title="Toggle Theme">
+        <!-- Sun icon -->
+        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <!-- Moon icon -->
+        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
     <div id="auth-status-container">
         <!-- Will be dynamically populated by JS -->
         <button id="auth-login-btn" class="header-auth-button">Log In</button>
@@ -350,75 +423,26 @@
 
 
 <script>
-    // Cognito configuration values compiled by Jekyll
-    const COGNITO_CLIENT_ID = "{{ site.cognito_client_id }}";
-    const COGNITO_REGION = "{{ site.cognito_region }}";
-
-    // Authentication Helper Methods
-    window.Auth = {
-        isLoggedIn() {
-            return !!localStorage.getItem("bgg_auth_id_token");
-        },
-        async getValidToken() {
-            const idToken = localStorage.getItem("bgg_auth_id_token");
-            const expiry = localStorage.getItem("bgg_auth_token_expiry");
-            const refreshToken = localStorage.getItem("bgg_auth_refresh_token");
-            
-            if (!idToken || !refreshToken) return null;
-            
-            // Refresh token 5 minutes before expiry
-            if (Date.now() > (parseInt(expiry) - 5 * 60 * 1000)) {
-                try {
-                    const res = await this.cognitoRequest("AWSCognitoIdentityProviderService.InitiateAuth", {
-                        ClientId: COGNITO_CLIENT_ID,
-                        AuthFlow: "REFRESH_TOKEN_AUTH",
-                        AuthParameters: {
-                            REFRESH_TOKEN: refreshToken
-                        }
-                    });
-                    if (res.AuthenticationResult) {
-                        const newId = res.AuthenticationResult.IdToken;
-                        localStorage.setItem("bgg_auth_id_token", newId);
-                        localStorage.setItem("bgg_auth_token_expiry", (Date.now() + 3600 * 1000).toString());
-                        return newId;
-                    }
-                } catch (e) {
-                    console.error("Token refresh failed:", e);
-                    this.logout();
-                    return null;
-                }
-            }
-            return idToken;
-        },
-        getEmail() {
-            return localStorage.getItem("bgg_auth_email");
-        },
-        logout() {
-            localStorage.removeItem("bgg_auth_id_token");
-            localStorage.removeItem("bgg_auth_refresh_token");
-            localStorage.removeItem("bgg_auth_email");
-            localStorage.removeItem("bgg_auth_token_expiry");
-            window.location.reload();
-        },
-        async cognitoRequest(target, payload) {
-            const url = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-amz-json-1.1",
-                    "X-Amz-Target": target
-                },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || "Cognito request failed");
-            }
-            return data;
-        }
-    };
-
     document.addEventListener('DOMContentLoaded', function() {
+        // Theme Toggle Logic
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+        }
+
+        // Listen for OS/System theme changes and apply them dynamically if no override is set
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            if (!localStorage.getItem('theme')) {
+                const newTheme = e.matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', newTheme);
+            }
+        });
+
         // Elements for Sidebar
         const sidebarToggle = document.getElementById('sidebar-toggle');
         const backdrop = document.getElementById('sidebar-backdrop');

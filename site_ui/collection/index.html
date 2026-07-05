@@ -10,6 +10,16 @@ title: BGG Collection Browser
         --primary-green-light: #ecfdf5;
         --primary-green-border: #a7f3d0;
         --primary-green-glow: rgba(16, 185, 129, 0.15);
+        --primary-green-text: #065f46;
+    }
+
+    html[data-theme="dark"] {
+        --primary-green: #34d399;
+        --primary-green-hover: #10b981;
+        --primary-green-light: rgba(6, 78, 59, 0.4);
+        --primary-green-border: rgba(52, 211, 153, 0.2);
+        --primary-green-glow: rgba(52, 211, 153, 0.15);
+        --primary-green-text: #34d399;
     }
 
     .collection-container {
@@ -41,8 +51,8 @@ title: BGG Collection Browser
     }
 
     #collection-data {
-        max-height: 65vh;
-        overflow: auto;
+        max-height: none;
+        overflow: visible;
         margin-bottom: 30px;
         transition: all 0.3s ease;
         width: 100%;
@@ -64,16 +74,16 @@ title: BGG Collection Browser
     }
 
     .collection-message.error {
-        color: #ef4444;
-        background-color: #fef2f2;
-        border: 1px solid #fca5a5;
+        color: var(--danger);
+        background-color: var(--danger-bg);
+        border: 1px solid var(--danger-border);
         border-radius: 12px;
         margin: 20px;
     }
 
     .collection-status-card {
-        background-color: #ecfdf5;
-        border: 1px solid #a7f3d0;
+        background-color: var(--primary-green-light);
+        border: 1px solid var(--primary-green-border);
         border-radius: 12px;
         padding: 28px;
         display: flex;
@@ -87,15 +97,15 @@ title: BGG Collection Browser
     .collection-spinner {
         width: 28px;
         height: 28px;
-        border: 3.5px solid #d1fae5;
-        border-top: 3.5px solid #10b981;
+        border: 3.5px solid var(--primary-green-border);
+        border-top: 3.5px solid var(--primary-green);
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
 
     .collection-status-text {
         font-weight: 600;
-        color: #065f46;
+        color: var(--primary-green-text);
         margin: 0;
         font-family: 'Outfit', sans-serif;
     }
@@ -130,7 +140,7 @@ title: BGG Collection Browser
 
     #bgg-collection-table th {
         cursor: pointer;
-        background-color: #f8fafc;
+        background-color: var(--th-bg);
         color: var(--text-main);
         font-weight: 600;
         font-family: 'Outfit', sans-serif;
@@ -147,8 +157,8 @@ title: BGG Collection Browser
     }
 
     #bgg-collection-table th:hover {
-        background-color: #f1f5f9;
-        color: #059669;
+        background-color: var(--th-hover-bg);
+        color: var(--primary-green-hover);
     }
 
     #bgg-collection-table tr:hover td {
@@ -444,15 +454,121 @@ title: BGG Collection Browser
         background-color: #e2e8f0;
     }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    /* Sliders styling */
+    .filter-sliders-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: 100%;
+        margin-top: 15px;
     }
 
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+    .slider-group {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px !important;
+        width: 100%;
+        margin-bottom: 0 !important;
     }
+
+    .slider-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+
+    .slider-value-display {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #10b981;
+        background-color: #ecfdf5;
+        padding: 2px 8px;
+        border-radius: 12px;
+        border: 1px solid #a7f3d0;
+        min-width: 45px;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+
+    /* Dual Range Slider container */
+    .dual-range-slider-container {
+        position: relative;
+        width: 100%;
+        height: 24px;
+        display: flex;
+        align-items: center;
+    }
+
+    .slider-track {
+        position: absolute;
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--border);
+        z-index: 1;
+    }
+
+    .slider-range-input {
+        position: absolute;
+        width: 100%;
+        height: 6px;
+        -webkit-appearance: none;
+        background: none;
+        pointer-events: none;
+        z-index: 2;
+        margin: 0;
+        outline: none;
+    }
+
+    /* Style the thumbs */
+    .slider-range-input::-webkit-slider-thumb {
+        height: 18px;
+        width: 18px;
+        border-radius: 50%;
+        background: #10b981;
+        cursor: pointer;
+        -webkit-appearance: none;
+        pointer-events: auto; /* Enable dragging for thumbs! */
+        position: relative;
+        z-index: 3;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        transition: all 0.15s ease-in-out;
+        border: 2px solid white;
+    }
+
+    .slider-range-input::-webkit-slider-thumb:hover {
+        transform: scale(1.15);
+        background: #059669;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+    }
+
+    .slider-range-input::-webkit-slider-thumb:active {
+        transform: scale(1.2);
+        background: #047857;
+    }
+
+    /* Firefox thumbs */
+    .slider-range-input::-moz-range-thumb {
+        height: 14px;
+        width: 14px;
+        border-radius: 50%;
+        background: #10b981;
+        cursor: pointer;
+        pointer-events: auto;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        transition: all 0.15s ease-in-out;
+    }
+
+    .slider-range-input::-moz-range-thumb:hover {
+        transform: scale(1.15);
+        background: #059669;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+    }
+
+
 
     /* Tabs styling */
     .collection-tabs {
@@ -720,61 +836,6 @@ title: BGG Collection Browser
 
     @media (max-width: 500px) {
         .skeleton-cards-row { grid-template-columns: 1fr; }
-    }
-
-    .skeleton-card {
-        background: #ffffff;
-        border: 1px solid var(--border, #e2e8f0);
-        border-radius: 14px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(15,23,42,0.04);
-        opacity: 1;
-        transition: opacity 0.2s ease;
-    }
-
-    .skeleton-card--faded {
-        opacity: 0.45;
-    }
-
-    /* Shimmer animation */
-    @keyframes shimmer {
-        0%   { background-position: -400px 0; }
-        100% { background-position: 400px 0; }
-    }
-
-    .skeleton-img,
-    .skeleton-line,
-    .skeleton-tag {
-        background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-        background-size: 800px 100%;
-        animation: shimmer 1.6s infinite linear;
-        border-radius: 6px;
-    }
-
-    .skeleton-img {
-        width: 100%;
-        height: 120px;
-        border-radius: 0;
-    }
-
-    .skeleton-body {
-        padding: 14px 16px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .skeleton-line {
-        height: 12px;
-    }
-    .skeleton-line.long   { width: 80%; }
-    .skeleton-line.medium { width: 55%; }
-    .skeleton-line.short  { width: 40%; }
-
-    .skeleton-tags {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
     }
 
     /* View Toggle Buttons */
@@ -1093,6 +1154,34 @@ title: BGG Collection Browser
             border-right: none;
             padding-right: 0;
         }
+        #faceted-filters {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            padding: 20px;
+        }
+        #faceted-filters h3 {
+            grid-column: span 2;
+            margin-bottom: 10px;
+        }
+        .filter-sliders-container {
+            margin-top: 0;
+        }
+        .filter-actions {
+            grid-column: span 2;
+            margin-top: 4px;
+            padding-top: 8px;
+        }
+    }
+
+    @media (max-width: 640px) {
+        #faceted-filters {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        #faceted-filters h3, .filter-actions {
+            grid-column: span 1;
+        }
     }
 </style>
 
@@ -1157,35 +1246,41 @@ title: BGG Collection Browser
                     </div>
                 </div>
 
-                <div class="filter-group">
-                    <span class="filter-label">Players:</span>
-                    <div class="filter-options player-options">
-                        <button class="filter-btn player-btn active" data-player="any">Any</button>
-                        <button class="filter-btn player-btn" data-player="1">1 (Solo)</button>
-                        <button class="filter-btn player-btn" data-player="2">2 Players</button>
-                        <button class="filter-btn player-btn" data-player="3-4">3-4 Players</button>
-                        <button class="filter-btn player-btn" data-player="5">5+ Players</button>
+                <div class="filter-sliders-container">
+                    <div class="filter-group slider-group">
+                        <div class="slider-header">
+                            <span class="filter-label">Players Range:</span>
+                            <span id="player-slider-value" class="slider-value-display">Any</span>
+                        </div>
+                        <div class="dual-range-slider-container">
+                            <div class="slider-track" id="player-slider-track"></div>
+                            <input type="range" id="player-min-input" min="1" max="8" value="1" class="slider-range-input">
+                            <input type="range" id="player-max-input" min="1" max="8" value="8" class="slider-range-input">
+                        </div>
                     </div>
-                </div>
 
-                <div class="filter-group">
-                    <span class="filter-label">Play Time:</span>
-                    <div class="filter-options time-options">
-                        <button class="filter-btn time-btn active" data-time="any">Any</button>
-                        <button class="filter-btn time-btn" data-time="short">Short (&lt; 30m)</button>
-                        <button class="filter-btn time-btn" data-time="medium">Medium (30-60m)</button>
-                        <button class="filter-btn time-btn" data-time="long">Long (60-120m)</button>
-                        <button class="filter-btn time-btn" data-time="epic">Epic (&gt; 120m)</button>
+                    <div class="filter-group slider-group">
+                        <div class="slider-header">
+                            <span class="filter-label">Play Time Range:</span>
+                            <span id="time-slider-value" class="slider-value-display">Any</span>
+                        </div>
+                        <div class="dual-range-slider-container">
+                            <div class="slider-track" id="time-slider-track"></div>
+                            <input type="range" id="time-min-input" min="0" max="15" value="0" class="slider-range-input">
+                            <input type="range" id="time-max-input" min="0" max="15" value="15" class="slider-range-input">
+                        </div>
                     </div>
-                </div>
 
-                <div class="filter-group">
-                    <span class="filter-label">BGG Rating:</span>
-                    <div class="filter-options rating-options">
-                        <button class="filter-btn rating-btn active" data-rating="any">Any</button>
-                        <button class="filter-btn rating-btn" data-rating="6">6.0+</button>
-                        <button class="filter-btn rating-btn" data-rating="7">7.0+</button>
-                        <button class="filter-btn rating-btn" data-rating="8">8.0+</button>
+                    <div class="filter-group slider-group">
+                        <div class="slider-header">
+                            <span class="filter-label">User Rating Range:</span>
+                            <span id="rating-slider-value" class="slider-value-display">Any</span>
+                        </div>
+                        <div class="dual-range-slider-container">
+                            <div class="slider-track" id="rating-slider-track"></div>
+                            <input type="range" id="rating-min-input" min="1.0" max="10.0" step="0.5" value="1.0" class="slider-range-input">
+                            <input type="range" id="rating-max-input" min="1.0" max="10.0" step="0.5" value="10.0" class="slider-range-input">
+                        </div>
                     </div>
                 </div>
                 
@@ -1233,11 +1328,7 @@ title: BGG Collection Browser
                 <!-- Collection Table -->
                 <div id="collection-data"></div>
 
-                <!-- Infinite Scroll Loading Indicator -->
-                <div id="infinite-scroll-loader" class="infinite-scroll-loading">
-                    <div class="collection-spinner" style="width: 22px; height: 22px; border-width: 2.5px; margin: 0;"></div>
-                    <span>Loading more games...</span>
-                </div>
+
 
                 <!-- Pagination Controls -->
                 <div id="pagination-bar" style="display: none;" class="pagination-container">
@@ -1339,6 +1430,65 @@ title: BGG Collection Browser
     let chartTasteCategories = null;
 
     let gamesData = []; // Store the fetched game data
+
+    function showCollectionSkeletons(message) {
+        const collectionDataDiv = document.getElementById('collection-data');
+        const sidebarDiv = document.getElementById('filters-column');
+        const controlsDiv = document.getElementById('browser-controls-bar');
+        const paginationBar = document.getElementById('pagination-bar');
+
+        if (sidebarDiv) sidebarDiv.style.display = 'none';
+        if (controlsDiv) controlsDiv.style.display = 'none';
+        if (paginationBar) paginationBar.style.display = 'none';
+
+        let skeletonRows = '';
+        for (let i = 0; i < 10; i++) {
+            skeletonRows += `
+                <tr class="skeleton-row">
+                    <td><div class="skeleton skeleton-text" style="width: 80%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 50%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 45%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 50%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 70%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                </tr>
+            `;
+        }
+
+        collectionDataDiv.innerHTML = `
+            <div class="collection-status-card" style="margin: 0 0 20px 0;">
+                <div class="collection-status-text">${message}</div>
+            </div>
+            <table id="bgg-collection-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Year</th>
+                        <th>BGG Rating</th>
+                        <th>BGG User Avg</th>
+                        <th>BGG Rank</th>
+                        <th>Min Players</th>
+                        <th>Max Players</th>
+                        <th>Play Time</th>
+                        <th>Status</th>
+                        <th>Plays</th>
+                        <th>My Rating</th>
+                        <th>My Rank</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${skeletonRows}
+                </tbody>
+            </table>
+        `;
+        collectionDataDiv.classList.add('has-content');
+    }
     let filteredGamesData = []; // Store the currently filtered data
     let currentSortColumn = null;
     let currentSortDirection = 'asc';
@@ -1350,9 +1500,12 @@ title: BGG Collection Browser
 
     // Facet Filter State Variables
     let activeStatuses = []; // Array of active status strings
-    let activePlayerFilter = 'any';
-    let activeTimeFilter = 'any';
-    let activeRatingFilter = 'any';
+    let activeMinPlayers = 1;
+    let activeMaxPlayers = 8;
+    let activeMinPlaytime = 0;
+    let activeMaxPlaytime = 15;
+    let activeMinRating = 1.0;
+    let activeMaxRating = 10.0;
 
     // Chart.js Theme Defaults
     if (typeof Chart !== 'undefined') {
@@ -2038,18 +2191,13 @@ title: BGG Collection Browser
         if (currentViewMode === 'grid') {
             // Slicing for infinite scroll
             const gridGames = filteredGamesData.slice(0, currentLoadedCount);
-            renderCardGrid(gridGames, collectionDataDiv);
+            const showLoader = currentLoadedCount < totalGames;
+            renderCardGrid(gridGames, collectionDataDiv, showLoader);
             
             // Hide page size select and pagination bar
             const pageSizeControls = document.getElementById('page-size-controls');
             if (pageSizeControls) pageSizeControls.style.display = 'none';
             document.getElementById('pagination-bar').style.display = 'none';
-            
-            // Show/hide loader based on whether there are more games to load
-            const loader = document.getElementById('infinite-scroll-loader');
-            if (loader) {
-                loader.style.display = currentLoadedCount < totalGames ? 'flex' : 'none';
-            }
         } else {
             // Slicing for pagination
             const limit = pageSize === 'all' ? totalGames : parseInt(pageSize);
@@ -2064,10 +2212,6 @@ title: BGG Collection Browser
             // Show page size select controls
             const pageSizeControls = document.getElementById('page-size-controls');
             if (pageSizeControls) pageSizeControls.style.display = 'flex';
-            
-            // Hide infinite scroll loader
-            const loader = document.getElementById('infinite-scroll-loader');
-            if (loader) loader.style.display = 'none';
 
             // Render numbered pagination list (which shows/hides the pagination-bar itself)
             renderPagination(totalGames);
@@ -2116,7 +2260,7 @@ title: BGG Collection Browser
         });
     }
 
-    function renderCardGrid(pagedGames, container) {
+    function renderCardGrid(pagedGames, container, showLoader) {
         let gridHtml = '<div class="collection-grid">';
 
         pagedGames.forEach(game => {
@@ -2247,6 +2391,15 @@ title: BGG Collection Browser
         });
 
         gridHtml += '</div>';
+
+        if (showLoader) {
+            gridHtml += `
+            <div id="infinite-scroll-loader" class="infinite-scroll-loading" style="display: flex;">
+                <div class="collection-spinner" style="width: 22px; height: 22px; border-width: 2.5px; margin: 0;"></div>
+                <span>Loading more games...</span>
+            </div>`;
+        }
+
         container.innerHTML = gridHtml;
         container.classList.add('has-content');
     }
@@ -2285,48 +2438,42 @@ title: BGG Collection Browser
             });
         }
 
-        // 2. Player Count Filter
-        if (activePlayerFilter !== 'any') {
-            const p = parseInt(activePlayerFilter);
+        // 2. Player Count Range Filter
+        if (activeMinPlayers !== 1 || activeMaxPlayers !== 8) {
             filteredGamesData = filteredGamesData.filter(game => {
                 const min = parseInt(game.minPlayers);
                 const max = parseInt(game.maxPlayers);
-                if (activePlayerFilter === '3-4') {
-                    // Check if range [min, max] overlaps with [3, 4]
-                    return !isNaN(min) && !isNaN(max) && min <= 4 && max >= 3;
-                } else if (activePlayerFilter === '5') {
-                    return !isNaN(max) && max >= 5;
+                if (isNaN(min) || isNaN(max)) return false;
+                if (activeMaxPlayers === 8) {
+                    return max >= activeMinPlayers;
                 } else {
-                    return !isNaN(min) && !isNaN(max) && min <= p && max >= p;
+                    return min <= activeMaxPlayers && max >= activeMinPlayers;
                 }
             });
         }
 
-        // 3. Play Time Filter
-        if (activeTimeFilter !== 'any') {
+        // 3. Play Time Range Filter
+        if (activeMinPlaytime !== 0 || activeMaxPlaytime !== 15) {
+            const playtimeValues = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240];
+            const minTime = playtimeValues[activeMinPlaytime];
+            const maxTime = playtimeValues[activeMaxPlaytime];
             filteredGamesData = filteredGamesData.filter(game => {
                 const time = parseInt(game.playingTime);
-                if (isNaN(time)) return false;
-                if (activeTimeFilter === 'short') {
-                    return time > 0 && time < 30;
-                } else if (activeTimeFilter === 'medium') {
-                    return time >= 30 && time <= 60;
-                } else if (activeTimeFilter === 'long') {
-                    return time >= 60 && time <= 120;
-                } else if (activeTimeFilter === 'epic') {
-                    return time > 120;
+                if (isNaN(time) || time <= 0) return false;
+                if (activeMaxPlaytime === 15) {
+                    return time >= minTime;
+                } else {
+                    return time >= minTime && time <= maxTime;
                 }
-                return true;
             });
         }
 
-        // 4. Rating Filter
-        if (activeRatingFilter !== 'any') {
-            const minRating = parseFloat(activeRatingFilter);
+        // 4. Rating Range Filter (User Rating)
+        if (activeMinRating !== 1.0 || activeMaxRating !== 10.0) {
             filteredGamesData = filteredGamesData.filter(game => {
-                const rating = parseFloat(game.bggRating);
+                const rating = parseFloat(game.userRating);
                 if (isNaN(rating)) return false;
-                return rating >= minRating;
+                return rating >= activeMinRating && rating <= activeMaxRating;
             });
         }
 
@@ -2407,6 +2554,14 @@ title: BGG Collection Browser
         updateViewToggleButtons();
     }
 
+    function updateTrackHighlight(minInput, maxInput, trackId, rangeMin, rangeMax) {
+        const track = document.getElementById(trackId);
+        if (!track) return;
+        const percent1 = ((parseFloat(minInput.value) - rangeMin) / (rangeMax - rangeMin)) * 100;
+        const percent2 = ((parseFloat(maxInput.value) - rangeMin) / (rangeMax - rangeMin)) * 100;
+        track.style.background = `linear-gradient(to right, var(--border) ${percent1}%, #10b981 ${percent1}%, #10b981 ${percent2}%, var(--border) ${percent2}%)`;
+    }
+
     // Set up faceted filter listeners
     function setupFacetedFilters() {
         // Status chips (multi-select)
@@ -2426,58 +2581,180 @@ title: BGG Collection Browser
             });
         });
 
-        // Player buttons (single-select)
-        document.querySelectorAll('.player-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                activePlayerFilter = this.dataset.player;
-                currentPage = 1;
-                filterAndRender();
-            });
-        });
+        // Helper to update players slider UI & state
+        const playerMin = document.getElementById('player-min-input');
+        const playerMax = document.getElementById('player-max-input');
+        const playerVal = document.getElementById('player-slider-value');
+        
+        function updatePlayersUI() {
+            let minVal = parseInt(playerMin.value);
+            let maxVal = parseInt(playerMax.value);
+            activeMinPlayers = minVal;
+            activeMaxPlayers = maxVal;
+            
+            updateTrackHighlight(playerMin, playerMax, 'player-slider-track', 1, 8);
+            
+            if (minVal === 1 && maxVal === 8) {
+                playerVal.textContent = 'Any';
+            } else if (minVal === maxVal) {
+                if (minVal === 8) {
+                    playerVal.textContent = '8+ Players';
+                } else if (minVal === 1) {
+                    playerVal.textContent = '1 (Solo)';
+                } else {
+                    playerVal.textContent = `${minVal} Players`;
+                }
+            } else {
+                if (maxVal === 8) {
+                    playerVal.textContent = `${minVal} - 8+ Players`;
+                } else {
+                    playerVal.textContent = `${minVal} - ${maxVal} Players`;
+                }
+            }
+        }
 
-        // Time buttons (single-select)
-        document.querySelectorAll('.time-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                activeTimeFilter = this.dataset.time;
+        if (playerMin && playerMax) {
+            playerMin.addEventListener('input', function() {
+                if (parseInt(playerMin.value) > parseInt(playerMax.value)) {
+                    playerMin.value = playerMax.value;
+                }
+                updatePlayersUI();
                 currentPage = 1;
                 filterAndRender();
             });
-        });
+            playerMax.addEventListener('input', function() {
+                if (parseInt(playerMax.value) < parseInt(playerMin.value)) {
+                    playerMax.value = playerMin.value;
+                }
+                updatePlayersUI();
+                currentPage = 1;
+                filterAndRender();
+            });
+            updatePlayersUI();
+        }
 
-        // Rating buttons (single-select)
-        document.querySelectorAll('.rating-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                activeRatingFilter = this.dataset.rating;
+        // Helper to update playtime slider UI & state
+        const timeMin = document.getElementById('time-min-input');
+        const timeMax = document.getElementById('time-max-input');
+        const timeVal = document.getElementById('time-slider-value');
+        const playtimeValues = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240];
+
+        function updatePlaytimeUI() {
+            let minStep = parseInt(timeMin.value);
+            let maxStep = parseInt(timeMax.value);
+            activeMinPlaytime = minStep;
+            activeMaxPlaytime = maxStep;
+
+            updateTrackHighlight(timeMin, timeMax, 'time-slider-track', 0, 15);
+
+            if (minStep === 0 && maxStep === 15) {
+                timeVal.textContent = 'Any';
+            } else if (minStep === maxStep) {
+                if (minStep === 15) {
+                    timeVal.textContent = '240+ Min';
+                } else {
+                    timeVal.textContent = `${playtimeValues[minStep]} Min`;
+                }
+            } else {
+                if (maxStep === 15) {
+                    timeVal.textContent = `${playtimeValues[minStep]} - 240+ Min`;
+                } else {
+                    timeVal.textContent = `${playtimeValues[minStep]} - ${playtimeValues[maxStep]} Min`;
+                }
+            }
+        }
+
+        if (timeMin && timeMax) {
+            timeMin.addEventListener('input', function() {
+                if (parseInt(timeMin.value) > parseInt(timeMax.value)) {
+                    timeMin.value = timeMax.value;
+                }
+                updatePlaytimeUI();
                 currentPage = 1;
                 filterAndRender();
             });
-        });
+            timeMax.addEventListener('input', function() {
+                if (parseInt(timeMax.value) < parseInt(timeMin.value)) {
+                    timeMax.value = timeMin.value;
+                }
+                updatePlaytimeUI();
+                currentPage = 1;
+                filterAndRender();
+            });
+            updatePlaytimeUI();
+        }
+
+        // Helper to update rating slider UI & state
+        const ratingMin = document.getElementById('rating-min-input');
+        const ratingMax = document.getElementById('rating-max-input');
+        const ratingValDisplay = document.getElementById('rating-slider-value');
+
+        function updateRatingUI() {
+            let minV = parseFloat(ratingMin.value);
+            let maxV = parseFloat(ratingMax.value);
+            activeMinRating = minV;
+            activeMaxRating = maxV;
+
+            updateTrackHighlight(ratingMin, ratingMax, 'rating-slider-track', 1.0, 10.0);
+
+            if (minV === 1.0 && maxV === 10.0) {
+                ratingValDisplay.textContent = 'Any';
+            } else if (minV === maxV) {
+                ratingValDisplay.textContent = minV.toFixed(1);
+            } else {
+                ratingValDisplay.textContent = `${minV.toFixed(1)} - ${maxV.toFixed(1)}`;
+            }
+        }
+
+        if (ratingMin && ratingMax) {
+            ratingMin.addEventListener('input', function() {
+                if (parseFloat(ratingMin.value) > parseFloat(ratingMax.value)) {
+                    ratingMin.value = ratingMax.value;
+                }
+                updateRatingUI();
+                currentPage = 1;
+                filterAndRender();
+            });
+            ratingMax.addEventListener('input', function() {
+                if (parseFloat(ratingMax.value) < parseFloat(ratingMin.value)) {
+                    ratingMax.value = ratingMin.value;
+                }
+                updateRatingUI();
+                currentPage = 1;
+                filterAndRender();
+            });
+            updateRatingUI();
+        }
 
         // Clear all filters button
         const clearBtn = document.getElementById('clear-all-filters');
         if (clearBtn) {
             clearBtn.addEventListener('click', function() {
                 activeStatuses = [];
-                activePlayerFilter = 'any';
-                activeTimeFilter = 'any';
-                activeRatingFilter = 'any';
+                activeMinPlayers = 1;
+                activeMaxPlayers = 8;
+                activeMinPlaytime = 0;
+                activeMaxPlaytime = 15;
+                activeMinRating = 1.0;
+                activeMaxRating = 10.0;
 
                 document.querySelectorAll('.status-chip').forEach(chip => chip.classList.remove('active'));
                 
-                document.querySelectorAll('.player-btn').forEach(btn => btn.classList.remove('active'));
-                document.querySelector('.player-btn[data-player="any"]').classList.add('active');
-                
-                document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
-                document.querySelector('.time-btn[data-time="any"]').classList.add('active');
-                
-                document.querySelectorAll('.rating-btn').forEach(btn => btn.classList.remove('active'));
-                document.querySelector('.rating-btn[data-rating="any"]').classList.add('active');
+                if (playerMin && playerMax) {
+                    playerMin.value = 1;
+                    playerMax.value = 8;
+                    updatePlayersUI();
+                }
+                if (timeMin && timeMax) {
+                    timeMin.value = 0;
+                    timeMax.value = 15;
+                    updatePlaytimeUI();
+                }
+                if (ratingMin && ratingMax) {
+                    ratingMin.value = 1.0;
+                    ratingMax.value = 10.0;
+                    updateRatingUI();
+                }
 
                 const searchInput = document.getElementById('game-search-input');
                 if (searchInput) searchInput.value = '';
@@ -2502,9 +2779,9 @@ title: BGG Collection Browser
 
         const lowerUsername = username.trim().toLowerCase();
 
-        // Reset navigation and tab states; show empty state placeholder again
-        document.getElementById('collection-layout-wrap').style.display = 'none';
-        document.getElementById('collection-empty-state').style.display = 'block';
+        // Reset navigation and tab states; show collection layout, hide empty state immediately
+        document.getElementById('collection-layout-wrap').style.display = 'flex';
+        document.getElementById('collection-empty-state').style.display = 'none';
         document.getElementById('collection-panel-grid').classList.remove('hidden');
         document.getElementById('collection-panel-analytics').classList.add('hidden');
 
@@ -2514,13 +2791,7 @@ title: BGG Collection Browser
             : `https://boardgamegeek.com/xmlapi2/collection?username=${lowerUsername}&stats=1`;
 
         const collectionDataDiv = document.getElementById('collection-data');
-        collectionDataDiv.innerHTML = `
-            <div class="collection-status-card">
-                <div class="collection-spinner"></div>
-                <div class="collection-status-text">Fetching collection data from BGG...</div>
-            </div>
-        `;
-        collectionDataDiv.classList.add('has-content');
+        showCollectionSkeletons("Fetching collection data from BGG...");
 
         // Check cache first
         if (collectionCache[lowerUsername]) {
@@ -2562,13 +2833,7 @@ title: BGG Collection Browser
                 if (messageTag.length > 0 && (messageTag[0].textContent.includes('process') || messageTag[0].textContent.includes('queue') || messageTag[0].textContent.includes('accepted'))) {
                     console.log(`BGG is currently processing the collection for ${lowerUsername}. Retrying...`);
                     if (attempts < maxAttempts) {
-                        collectionDataDiv.innerHTML = `
-                            <div class="collection-status-card">
-                                <div class="collection-spinner"></div>
-                                <div class="collection-status-text">BGG is processing request, retrying in 5s (Attempt ${attempts}/${maxAttempts})...</div>
-                            </div>
-                        `;
-                        collectionDataDiv.classList.add('has-content');
+                        showCollectionSkeletons(`BGG is processing request, retrying in 5s (Attempt ${attempts}/${maxAttempts})...`);
                         await new Promise(resolve => setTimeout(resolve, 5000));
                         continue;
                     } else {
@@ -2590,13 +2855,7 @@ title: BGG Collection Browser
             } catch (error) {
                 console.error(`Attempt ${attempts}: Error fetching BGG collection:`, error);
                 if (attempts < maxAttempts) {
-                    collectionDataDiv.innerHTML = `
-                        <div class="collection-status-card">
-                            <div class="collection-spinner"></div>
-                            <div class="collection-status-text">Attempt ${attempts}: Network error fetching collection data. Retrying...</div>
-                        </div>
-                    `;
-                    collectionDataDiv.classList.add('has-content');
+                    showCollectionSkeletons(`Attempt ${attempts}: Network error fetching collection data. Retrying...`);
                     await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
                 } else {
                     collectionDataDiv.innerHTML = `
@@ -2640,17 +2899,9 @@ title: BGG Collection Browser
     // Sync BGG username from backend preferences if logged in
     async function loadPreferencesBggUsername() {
         if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
-        const token = await Auth.getValidToken();
-        if (!token) return;
-
-        const apiBaseUrl = "{{ site.api_url }}";
-        if (!apiBaseUrl) return;
 
         try {
-            const response = await fetch(`${apiBaseUrl}/preferences`, {
-                method: "GET",
-                headers: { "Authorization": `Bearer ${token}` }
-            });
+            const response = await fetchApi('/preferences');
             if (response.ok) {
                 const data = await response.json();
                 if (data.bgg_username) {
@@ -2673,15 +2924,15 @@ title: BGG Collection Browser
     }
 
     function setupInfiniteScroll() {
-        const collectionDataDiv = document.getElementById('collection-data');
-        if (!collectionDataDiv) return;
+        const scrollContainer = document.getElementById('main-wrapper');
+        if (!scrollContainer) return;
 
-        collectionDataDiv.addEventListener('scroll', function() {
+        scrollContainer.addEventListener('scroll', function() {
             if (currentViewMode !== 'grid') return;
             if (isInfiniteScrollLoading) return;
 
-            const threshold = 150; // pixels from the bottom
-            const isNearBottom = collectionDataDiv.scrollHeight - collectionDataDiv.scrollTop - collectionDataDiv.clientHeight <= threshold;
+            const threshold = 250; // pixels from the bottom
+            const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight <= threshold;
 
             if (isNearBottom) {
                 loadMoreGames();
@@ -2693,13 +2944,10 @@ title: BGG Collection Browser
         if (currentLoadedCount >= filteredGamesData.length) return;
         
         isInfiniteScrollLoading = true;
-        const loader = document.getElementById('infinite-scroll-loader');
-        if (loader) loader.style.display = 'flex';
-
+        // The loader is appended dynamically by renderTable() -> renderCardGrid()
         setTimeout(() => {
             currentLoadedCount += 25;
             renderTable();
-            if (loader) loader.style.display = 'none';
             isInfiniteScrollLoading = false;
         }, 300);
     }

@@ -5,13 +5,6 @@ title: User Profile
 
 <style>
     :root {
-        --primary: #4f46e5;
-        --primary-hover: #4338ca;
-        --background: #f8fafc;
-        --card-bg: #ffffff;
-        --text-main: #1e293b;
-        --text-muted: #64748b;
-        --border: #e2e8f0;
         --accent-purple: #8b5cf6;
         --accent-pink: #ec4899;
         --accent-blue: #3b82f6;
@@ -99,7 +92,7 @@ title: User Profile
     .playground-tabs {
         display: flex;
         gap: 8px;
-        background-color: #f1f5f9;
+        background-color: var(--playground-tabs-bg);
         padding: 6px;
         border-radius: 12px;
         margin-bottom: 24px;
@@ -132,8 +125,8 @@ title: User Profile
 
     .playground-tab-btn.active {
         color: var(--primary);
-        background-color: #ffffff;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        background-color: var(--card-bg);
+        box-shadow: var(--shadow-sm);
     }
 
     /* ── Main Layout Panels ── */
@@ -155,11 +148,11 @@ title: User Profile
     }
 
     .stat-card {
-        background: #ffffff;
+        background: var(--card-bg);
         border: 1px solid var(--border);
         border-radius: 16px;
         padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+        box-shadow: var(--shadow-sm);
         display: flex;
         flex-direction: column;
         gap: 4px;
@@ -168,7 +161,7 @@ title: User Profile
 
     .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        box-shadow: var(--shadow-md);
     }
 
     .stat-card-title {
@@ -192,12 +185,12 @@ title: User Profile
 
     /* ── Cards and Layout Panels ── */
     .panel-card {
-        background: #ffffff;
+        background: var(--card-bg);
         border: 1px solid var(--border);
         border-radius: 16px;
         padding: 24px;
         margin-bottom: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+        box-shadow: var(--shadow-sm);
     }
 
     .panel-card-title {
@@ -373,16 +366,6 @@ title: User Profile
         animation: shimmer 1.5s infinite;
         border-radius: 16px;
         margin-bottom: 24px;
-    }
-
-    @keyframes shimmer {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 
@@ -610,14 +593,9 @@ title: User Profile
         // Load statistics
         try {
             // Retrieve Linked BGG Username
-            const token = await Auth.getValidToken();
-            if (!token) throw new Error("No active Cognito token");
-
             document.getElementById("header-email-span").textContent = `📧 ${Auth.getEmail()}`;
 
-            const prefRes = await fetch(`${apiUrl}/preferences`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
+            const prefRes = await fetchApi('/preferences');
 
             if (prefRes.ok) {
                 const prefs = await prefRes.json();
@@ -698,7 +676,7 @@ title: User Profile
             }
 
             const fetchUrl = apiUrl 
-                ? `${apiUrl}/collection?username=${lower}` 
+                ? `/collection?username=${lower}` 
                 : `https://boardgamegeek.com/xmlapi2/collection?username=${lower}&stats=1`;
 
             let attempts = 0;
@@ -707,7 +685,7 @@ title: User Profile
 
             while (attempts < maxAttempts) {
                 attempts++;
-                const response = await fetch(fetchUrl);
+                const response = await fetchApi(fetchUrl);
                 const text = await response.text();
                 const parser = new DOMParser();
                 xmlDoc = parser.parseFromString(text, "text/xml");
@@ -778,7 +756,7 @@ title: User Profile
             }
 
             try {
-                const res = await fetch(`${apiUrl}/profile?username=${lower}`);
+                const res = await fetchApi(`/profile?username=${lower}`);
                 if (res.ok) {
                     const data = await res.json();
                     sessionStorage.setItem(`profile_taste_${lower}`, JSON.stringify(data));
@@ -1173,11 +1151,5 @@ title: User Profile
             }
         }
 
-        function escapeHTML(str) {
-            if (!str) return '';
-            return str.replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-            );
-        }
     });
 </script>

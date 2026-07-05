@@ -4,57 +4,12 @@ title: Boardgame Recommender
 ---
 
 <style>
-    /* Premium Modern Styles */
-    :root {
-        --primary: #4f46e5;
-        --primary-hover: #4338ca;
-        --background: #f8fafc;
-        --card-bg: #ffffff;
-        --text-main: #1e293b;
-        --text-muted: #64748b;
-        --border: #e2e8f0;
-        --success: #10b981;
-    }
-
     .recommender-container {
         font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         color: var(--text-main);
         max-width: 1100px;
         margin: 0 auto;
         padding: 20px;
-    }
-
-    .header-section {
-        margin-bottom: 30px;
-        text-align: left;
-    }
-
-    .header-section h1 {
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin-bottom: 10px;
-        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .header-section p {
-        color: var(--text-muted);
-        font-size: 1.1rem;
-        margin: 0;
-    }
-
-    /* Form Styles */
-    .form-card {
-        background: var(--glass-bg);
-        backdrop-filter: var(--glass-blur);
-        -webkit-backdrop-filter: var(--glass-blur);
-        border: var(--glass-border);
-        border-radius: var(--radius-lg);
-        padding: 28px;
-        box-shadow: var(--glass-shadow);
-        margin-bottom: 30px;
-        transition: box-shadow 0.3s ease;
     }
 
     .form-sections-grid {
@@ -74,7 +29,7 @@ title: Boardgame Recommender
         display: flex;
         flex-direction: column;
         gap: 18px;
-        background: rgba(248, 250, 252, 0.7);
+        background: var(--section-bg);
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 20px 22px;
@@ -110,67 +65,6 @@ title: Boardgame Recommender
         gap: 15px;
     }
 
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .form-group label {
-        font-weight: 700;
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .form-group input[type="text"],
-    .form-group input[type="number"],
-    .form-group select {
-        padding: 12px 16px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        background-color: rgba(255, 255, 255, 0.65);
-        color: var(--text-main);
-        outline: none;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
-        background-color: #fff;
-    }
-
-    .submit-btn {
-        background-color: var(--primary);
-        color: white;
-        padding: 14px 28px;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .submit-btn:hover {
-        background-color: var(--primary-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
-    }
-
-    .submit-btn:active {
-        transform: translateY(0);
-    }
-
     #refresh-btn {
         background-color: #6b7280;
         box-shadow: 0 4px 12px rgba(107, 114, 128, 0.25);
@@ -179,320 +73,6 @@ title: Boardgame Recommender
     #refresh-btn:hover {
         background-color: #4b5563;
         box-shadow: 0 6px 16px rgba(75, 85, 99, 0.35);
-    }
-
-    /* Loader / Status styles */
-    .status-card {
-        background-color: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 12px;
-        padding: 20px;
-        display: none;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 30px;
-        animation: fadeIn 0.3s ease;
-    }
-
-    .spinner {
-        width: 28px;
-        height: 28px;
-        border: 3.5px solid #dbeafe;
-        border-top: 3.5px solid #2563eb;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    .status-text {
-        font-weight: 600;
-        color: #1e40af;
-        margin: 0;
-    }
-
-    /* Results layout */
-    .results-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 25px;
-    }
-
-    .rec-card {
-        background: var(--glass-bg);
-        backdrop-filter: var(--glass-blur);
-        -webkit-backdrop-filter: var(--glass-blur);
-        border: var(--glass-border);
-        border-radius: var(--radius-lg);
-        padding: 24px;
-        box-shadow: var(--glass-shadow);
-        transition: all 0.3s ease;
-        animation: slideUp 0.4s ease;
-    }
-
-    .rec-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
-        border-color: rgba(79, 70, 229, 0.25);
-    }
-
-    .rec-card-body {
-        display: flex;
-        gap: 20px;
-        flex-direction: column;
-    }
-
-    @media (min-width: 640px) {
-        .rec-card-body {
-            flex-direction: row;
-            align-items: flex-start;
-        }
-    }
-
-    .rec-card-thumbnail {
-        width: 80px;
-        height: 80px;
-        flex-shrink: 0;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid var(--border);
-        background-color: #f1f5f9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .rec-card-thumbnail img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .rec-card-content {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .rec-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .rec-title {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: var(--text-main);
-        text-decoration: none;
-    }
-
-    .rec-title:hover {
-        color: var(--primary);
-    }
-
-    .rec-stats-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 2px;
-        margin-bottom: 6px;
-    }
-
-    .stat-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 4px 10px;
-        border-radius: 6px;
-        background-color: #f1f5f9;
-        color: #475569;
-    }
-
-    .stat-badge.rating {
-        background-color: #fef3c7;
-        color: #b45309;
-    }
-
-    .stat-badge.complexity {
-        background-color: #fae8ff;
-        color: #86198f;
-    }
-
-    .stat-badge.playtime {
-        background-color: #e0f2fe;
-        color: #0369a1;
-    }
-
-    .stat-badge.players {
-        background-color: #dcfce7;
-        color: #15803d;
-    }
-
-    .rec-reason {
-        line-height: 1.6;
-        color: var(--text-muted);
-        margin: 12px 0 0 0;
-        font-size: 0.98rem;
-        padding: 12px 18px;
-        background-color: #f8fafc;
-        border-left: 4px solid var(--primary);
-        border-radius: 4px;
-        font-style: italic;
-        position: relative;
-    }
-
-    .rec-reason.loading {
-        color: transparent !important;
-        background-color: #f1f5f9 !important;
-        border-left-color: #cbd5e1 !important;
-        overflow: hidden;
-    }
-
-    .rec-reason.loading::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        transform: translateX(-100%);
-        background-image: linear-gradient(
-            90deg,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 0.4) 20%,
-            rgba(255, 255, 255, 0.6) 60%,
-            rgba(255, 255, 255, 0) 100%
-        );
-        animation: shimmer 1.5s infinite;
-    }
-
-    @keyframes shimmer {
-        100% {
-            transform: translateX(100%);
-        }
-    }
-
-
-    .badge {
-        background-color: #e0e7ff;
-        color: #3730a3;
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 9999px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        flex-shrink: 0;
-    }
-
-    /* Animations */
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    @keyframes slideUp {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Slider Styles */
-    .sliders-container {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 20px;
-        background-color: #f8fafc;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 20px;
-        margin-top: 5px;
-    }
-
-    @media (min-width: 640px) {
-        .sliders-container {
-            grid-template-columns: 1fr 1fr;
-        }
-    }
-
-    .slider-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .slider-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: 600;
-        font-size: 0.95rem;
-    }
-
-    .slider-badge {
-        background-color: #e0e7ff;
-        color: var(--primary);
-        font-size: 0.8rem;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 6px;
-    }
-
-    .slider-desc {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    /* Range slider custom styling */
-    .weight-slider {
-        -webkit-appearance: none;
-        width: 100%;
-        height: 6px;
-        border-radius: 9999px;
-        background: #cbd5e1;
-        outline: none;
-        transition: background 0.15s ease-in-out;
-    }
-
-    .weight-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: var(--primary);
-        cursor: pointer;
-        transition: transform 0.1s ease, background 0.15s ease;
-        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
-    }
-
-    .weight-slider::-webkit-slider-thumb:hover {
-        transform: scale(1.2);
-        background: var(--primary-hover);
-    }
-
-    .weight-slider::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
-        border: 0;
-        border-radius: 50%;
-        background: var(--primary);
-        cursor: pointer;
-        transition: transform 0.1s ease, background 0.15s ease;
-        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
-    }
-
-    .weight-slider::-moz-range-thumb:hover {
-        transform: scale(1.2);
-        background: var(--primary-hover);
     }
 </style>
 
@@ -627,10 +207,10 @@ title: Boardgame Recommender
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 25px; align-items: stretch; width: 100%;">
-                <button type="submit" class="submit-btn" id="submit-btn" style="flex: 3; justify-content: center; height: 50px;">
+                <button type="submit" class="btn btn-submit" id="submit-btn" style="flex: 3; justify-content: center; height: 50px;">
                     <span>Get AI Recommendations</span>
                 </button>
-                <button type="button" class="submit-btn" id="refresh-btn" style="flex: 1; justify-content: center; height: 50px; display: none;">
+                <button type="button" class="btn btn-submit" id="refresh-btn" style="flex: 1; justify-content: center; height: 50px; display: none;">
                     <span>Refresh</span>
                 </button>
             </div>
@@ -797,16 +377,10 @@ title: Boardgame Recommender
         async function syncPreferencesToBackend() {
             if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
             
-            const token = await Auth.getValidToken();
-            if (!token) return;
-
             // Fetch current preferences first so we don't clobber fields like bgg_username
             let currentPrefs = {};
             try {
-                const getRes = await fetch(`${apiUrl}/preferences`, {
-                    method: "GET",
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const getRes = await fetchApi('/preferences');
                 if (getRes.ok) currentPrefs = await getRes.json();
             } catch (e) {
                 console.error("Failed fetching current preferences:", e);
@@ -820,11 +394,10 @@ title: Boardgame Recommender
             };
             
             try {
-                await fetch(`${apiUrl}/preferences`, {
+                await fetchApi('/preferences', {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
+                        "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
                         ...currentPrefs,
@@ -841,16 +414,8 @@ title: Boardgame Recommender
         async function loadPreferencesFromBackend() {
             if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
             
-            const token = await Auth.getValidToken();
-            if (!token) return;
-            
             try {
-                const response = await fetch(`${apiUrl}/preferences`, {
-                    method: "GET",
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
+                const response = await fetchApi('/preferences');
                 if (response.ok) {
                     const data = await response.json();
                     if (data.bgg_username) {
@@ -882,7 +447,7 @@ title: Boardgame Recommender
         // Fetch active conventions and populate dropdown
         async function loadConventions() {
             try {
-                const response = await fetch(`${apiUrl}/conventions`);
+                const response = await fetchApi('/conventions');
                 if (response.ok) {
                     const conventions = await response.json();
                     if (conventions && conventions.length > 0) {
@@ -933,7 +498,15 @@ title: Boardgame Recommender
             if (pollingTimeout) {
                 clearTimeout(pollingTimeout);
             }
-            resultsContainer.innerHTML = "";
+            if (window.renderSkeletonCards) {
+                window.renderSkeletonCards(resultsContainer, 4);
+            } else {
+                resultsContainer.innerHTML = "";
+            }
+            
+            const spinner = statusCard.querySelector(".spinner");
+            if (spinner) spinner.style.display = "none";
+
             statusCard.style.display = "flex";
             statusMessage.textContent = "Connecting to backend recommender engine...";
             submitBtn.disabled = true;
@@ -1009,13 +582,13 @@ title: Boardgame Recommender
             if (convention_id) queryParams.append('convention_id', convention_id);
             if (forceRefresh) queryParams.append('refresh', 'true');
 
-            const url = `${apiUrl}/recommendations?${queryParams.toString()}`;
+            const url = `/recommendations?${queryParams.toString()}`;
             isPollingActive = true;
 
             function pollRecommendations() {
                 if (!isPollingActive) return;
 
-                fetch(url)
+                fetchApi(url)
                     .then(response => {
                         if (!response.ok) {
                             throw new Error("Network response error");
@@ -1098,73 +671,7 @@ title: Boardgame Recommender
             }
 
             recs.forEach((rec, index) => {
-                const gameLink = rec.id 
-                    ? `https://boardgamegeek.com/boardgame/${rec.id}` 
-                    : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(rec.name)}`;
-                
-                // Formulate stats badges
-                let statsHtml = "";
-                if (rec.rating) {
-                    statsHtml += `
-                        <span class="stat-badge rating" title="BGG Geek Rating (Bayesian Average)">
-                            <span style="color: #b45309; font-weight: bold; margin-right: 2px;">★</span> ${rec.rating.toFixed(1)}
-                        </span>`;
-                }
-                if (rec.complexity) {
-                    statsHtml += `
-                        <span class="stat-badge complexity" title="Weight / Complexity (1.0 = Lightest, 5.0 = Heaviest)">
-                            <span style="color: #86198f; font-weight: bold; margin-right: 2px;">⚙</span> ${rec.complexity.toFixed(1)}/5
-                        </span>`;
-                }
-                if (rec.min_players && rec.max_players) {
-                    const playersStr = rec.min_players === rec.max_players ? `${rec.min_players}` : `${rec.min_players}-${rec.max_players}`;
-                    statsHtml += `
-                        <span class="stat-badge players" title="Supported Player Count">
-                            <span style="color: #15803d; font-weight: bold; margin-right: 2px;">👥</span> ${playersStr} Players
-                        </span>`;
-                }
-                if (rec.playing_time || (rec.min_playtime && rec.max_playtime)) {
-                    let playStr = "";
-                    if (rec.min_playtime && rec.max_playtime && rec.min_playtime !== rec.max_playtime) {
-                        playStr = `${rec.min_playtime}-${rec.max_playtime}`;
-                    } else {
-                        playStr = `${rec.playing_time || rec.min_playtime}`;
-                    }
-                    statsHtml += `
-                        <span class="stat-badge playtime" title="Estimated Playing Time">
-                            <span style="color: #0369a1; font-weight: bold; margin-right: 2px;">🕒</span> ${playStr} Min
-                        </span>`;
-                }
-                if (rec.year_published) {
-                    statsHtml += `
-                        <span class="stat-badge year" title="Year Published">
-                            <span style="color: #475569; font-weight: bold; margin-right: 2px;">📅</span> ${rec.year_published}
-                        </span>`;
-                }
-
-                // Fallback placeholder image URL
-                const thumbUrl = rec.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
-                const loadingClass = isPending ? "loading" : "";
-                
-                html += `
-                    <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
-                        <div class="rec-card-body">
-                            <div class="rec-card-thumbnail">
-                                <img src="${thumbUrl}" alt="${escapeHTML(rec.name)}" loading="lazy" onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
-                            </div>
-                            <div class="rec-card-content">
-                                <div class="rec-card-header">
-                                    <a href="${gameLink}" target="_blank" class="rec-title">${escapeHTML(rec.name)}</a>
-                                    <span class="badge">Match #${index + 1}</span>
-                                </div>
-                                <div class="rec-stats-container">
-                                    ${statsHtml}
-                                </div>
-                                <p class="rec-reason ${loadingClass}" data-game-id="${rec.id || ''}">${escapeHTML(rec.reason)}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                html += window.renderRecommendationCard(rec, index, isPending);
             });
             resultsContainer.innerHTML = html;
         }
@@ -1184,15 +691,6 @@ title: Boardgame Recommender
                     }, 250);
                 }
             });
-        }
-
-        function escapeHTML(str) {
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
         }
     });
 </script>
