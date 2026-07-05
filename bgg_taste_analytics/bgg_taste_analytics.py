@@ -175,8 +175,9 @@ def process_taste_profile(username):
             if has_publishers:
                 pubs = row.get('publishers')
                 pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
-                for p in pubs:
-                    publisher_weights[p] = publisher_weights.get(p, 0.0) + weight
+                if pubs:
+                    primary_pub = pubs[0]
+                    publisher_weights[primary_pub] = publisher_weights.get(primary_pub, 0.0) + weight
 
             if has_complexity:
                 comp = row.get('complexity')

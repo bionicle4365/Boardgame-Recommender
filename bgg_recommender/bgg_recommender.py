@@ -55,6 +55,34 @@ def _handle_profile(query_params):
             'body': json.dumps({'error': 'username query parameter is required'})
         }
 
+    refresh = query_params.get('refresh', 'false').lower() == 'true'
+
+    if refresh:
+        logger.info(f"Forced refresh requested for user {username}. Triggering background scrape.")
+        bgg_rec.trigger_background_scrape(username)
+        return {
+            'statusCode': 202,
+            'headers': _cors_headers(),
+            'body': json.dumps({'status': 'scraping'})
+        }
+
+    # Check profile status
+    try:
+        exists, is_stale, u_modified = bgg_rec.get_user_profile_status(username, ttl_hours=24)
+        if not exists:
+            logger.info(f"User profile for '{username}' not found. Queueing scrape job.")
+            bgg_rec.trigger_background_scrape(username)
+            return {
+                'statusCode': 202,
+                'headers': _cors_headers(),
+                'body': json.dumps({'status': 'scraping'})
+            }
+        elif is_stale:
+            logger.info(f"User profile for '{username}' is stale. Queueing background update scrape job.")
+            bgg_rec.trigger_background_scrape(username)
+    except Exception as s3_check_err:
+        logger.error(f"S3 checks failed for {username}: {s3_check_err}")
+
     profile_key = f"data/users/{username}_taste_profile.json"
     local_profile_path = f"/tmp/{username}_taste_profile_api.json"
     try:
@@ -72,9 +100,9 @@ def _handle_profile(query_params):
             logger.info(f"Taste profile not found for user {username}. Triggering background scrape.")
             bgg_rec.trigger_background_scrape(username)
             return {
-                'statusCode': 404,
+                'statusCode': 202,
                 'headers': _cors_headers(),
-                'body': json.dumps({'error': f'Taste profile for user {username} not found. Triggering background scrape.'})
+                'body': json.dumps({'status': 'scraping'})
             }
         else:
             logger.error(f"S3 error loading taste profile for endpoint: {ce}")
@@ -171,7 +199,7 @@ def _handle_recommendations(query_params):
 
     for u in usernames:
         try:
-            exists, is_stale, u_modified = bgg_rec.get_user_profile_status(u, ttl_hours=24)
+            exists, is_stale, u_modified = bgg_rec.get_user_profile_status(u, ttl_hours=0 if refresh else 24)
             if u_modified:
                 user_parquet_modified[u] = u_modified
         except Exception as s3_check_err:

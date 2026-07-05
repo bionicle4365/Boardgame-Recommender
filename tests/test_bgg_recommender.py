@@ -510,9 +510,11 @@ def test_lambda_handler_get_profile_endpoint(mock_s3):
     mock_s3.download_file.assert_called_once_with('test-bucket', 'data/users/testuser_taste_profile.json', '/tmp/testuser_taste_profile_api.json')
 
 
+@patch('bgg_recommender.get_user_profile_status')
 @patch('bgg_recommender.trigger_background_scrape')
 @patch('bgg_recommender.s3')
-def test_lambda_handler_get_profile_endpoint_404(mock_s3, mock_trigger):
+def test_lambda_handler_get_profile_endpoint_404(mock_s3, mock_trigger, mock_status):
+    mock_status.return_value = (False, False, None)
     err_resp = {'Error': {'Code': '404', 'Message': 'Not Found'}}
     mock_s3.download_file.side_effect = ClientError(err_resp, 'DownloadFile')
 
@@ -523,7 +525,7 @@ def test_lambda_handler_get_profile_endpoint_404(mock_s3, mock_trigger):
         }
     }
     response = bgg_recommender.lambda_handler(event, None)
-    assert response['statusCode'] == 404
+    assert response['statusCode'] == 202
     mock_trigger.assert_called_once_with('testuser_missing')
 
 
@@ -864,3 +866,91 @@ def test_convention_id_filtering(mock_get_active_previews_games, mock_get_active
     recs = res_body['recommendations']
     assert len(recs) == 1
     assert recs[0]['name'] == 'Catan'
+
+
+def test_primary_publisher_only():
+    import scoring
+    
+    # 1. Test compute_taste_profile_inline with multiple publishers
+    user_df = pd.DataFrame([
+        {"id": "100", "username": "testuser", "rating": 9.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {
+            "id": "100",
+            "name": "Catan",
+            "categories": [],
+            "mechanics": [],
+            "rating": 8.0,
+            "complexity": 2.0,
+            "designers": [],
+            "publishers": ["pub1", "pub_local1"]
+        }
+    ])
+    
+    # Run inline taste profile computation
+    mech_weights, cat_weights, user_designers, user_publishers, complexity_weights = scoring.compute_taste_profile_inline(
+        user_df=user_df,
+        catalog_df=catalog_df,
+        usernames=["testuser"],
+        user_parquet_modified={}
+    )
+    
+    # Assert that only the primary publisher "pub1" is included in user_publishers
+    assert "pub1" in user_publishers
+    assert user_publishers["pub1"] == 4.0
+    assert "pub_local1" not in user_publishers
+    
+    # 2. Test score_candidates matches only on primary publisher
+    candidates_df = pd.DataFrame([
+        {
+            "id": "200",
+            "name": "Match Primary",
+            "categories": [],
+            "mechanics": [],
+            "rating": 8.0,
+            "complexity": 2.0,
+            "designers": [],
+            "publishers": ["pub1", "pub_local2"]
+        },
+        {
+            "id": "300",
+            "name": "Mismatch Primary (Local is pub1)",
+            "categories": [],
+            "mechanics": [],
+            "rating": 8.0,
+            "complexity": 2.0,
+            "designers": [],
+            "publishers": ["pub_local1", "pub1"]
+        }
+    ])
+    
+    # Run scoring with w_pub=1.0 and others at 0.0
+    scores = scoring.score_candidates(
+        candidates=candidates_df,
+        mech_weights={},
+        cat_weights={},
+        user_designers={},
+        user_publishers=user_publishers,
+        complexity_weights={},
+        hotness_scores={},
+        catalog_df=candidates_df,
+        query_params={'w_mech': '0', 'w_cat': '0', 'w_pop': '0', 'w_comp': '0', 'w_pub': '1.0'}
+    )
+    
+    # Match Primary should have pub_sim = 1.0 (since it starts with pub1)
+    # Mismatch Primary should have pub_sim = 0.0 (since it starts with pub_local1)
+    match_primary = next(c for c in scores if c["id"] == "200")
+    mismatch_primary = next(c for c in scores if c["id"] == "300")
+    
+    # Let's verify that the composite score matches the expectations:
+    # Match Primary has pub_sim=1.0, denominator = 1.0 -> comp_score = 1.0
+    # Mismatch Primary has pub_sim=0.0, denominator = 1.0 -> comp_score = 0.0
+    assert match_primary["id"] == "200"
+    assert mismatch_primary["id"] == "300"
+    
+    # In scores, the candidates are returned sorted by score.
+    # Therefore, "Match Primary" should be first and "Mismatch Primary" second.
+    assert scores[0]["id"] == "200"
+    assert scores[1]["id"] == "300"
+

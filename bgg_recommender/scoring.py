@@ -143,8 +143,9 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                     if has_publishers:
                         pubs = row.get('publishers')
                         pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
-                        for p in pubs:
-                            user_publishers[p] = user_publishers.get(p, 0.0) + weight
+                        if pubs:
+                            primary_pub = pubs[0]
+                            user_publishers[primary_pub] = user_publishers.get(primary_pub, 0.0) + weight
 
                     if has_complexity:
                         comp = row.get('complexity')
@@ -294,7 +295,8 @@ def score_candidates(candidates, mech_weights, cat_weights, user_designers, user
             cand_pubs = row.get('publishers')
             cand_pubs = list(cand_pubs) if cand_pubs is not None else []
             if cand_pubs and user_publishers and total_pub_weight > 0:
-                pub_sim = sum(user_publishers.get(p, 0.0) for p in cand_pubs) / total_pub_weight
+                primary_cand_pub = cand_pubs[0]
+                pub_sim = user_publishers.get(primary_cand_pub, 0.0) / total_pub_weight
 
         # Compute composite score
         denominator = w_mech + w_cat + w_pop + w_hot + w_comp + w_des + w_pub

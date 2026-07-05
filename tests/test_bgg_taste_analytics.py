@@ -89,7 +89,7 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
     ])
     # Mock catalog dataframe
     catalog_df = pd.DataFrame([
-        {"id": "100", "name": "Catan", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.0, "complexity": 2.0, "designers": ["des1"], "publishers": ["pub1"]},
+        {"id": "100", "name": "Catan", "categories": ["cat1"], "mechanics": ["mech1"], "rating": 8.0, "complexity": 2.0, "designers": ["des1"], "publishers": ["pub1", "pub_local1"]},
         {"id": "200", "name": "Gloomhaven", "categories": ["cat2"], "mechanics": ["mech2"], "rating": 9.0, "complexity": 4.5, "designers": ["des2"], "publishers": ["pub2"]},
         {"id": "300", "name": "Ticket to Ride", "categories": ["cat1"], "mechanics": ["mech3"], "rating": 7.5, "complexity": 2.5, "designers": ["des3"], "publishers": ["pub3"]}
     ])
@@ -130,6 +130,7 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
     assert profile_json["designer_weights"]["des3"] == 2.0
     assert profile_json["publisher_weights"]["pub1"] == 4.0
     assert profile_json["publisher_weights"]["pub3"] == 2.0
+    assert "pub_local1" not in profile_json["publisher_weights"]
     # Complexity weights are averaged: (4.0 + 2.0) / 2 = 3.0
     assert profile_json["complexity_weights"] == {"Light": 0.0, "Medium-Light": 3.0, "Medium-Heavy": 0.0, "Heavy": 0.0}
 

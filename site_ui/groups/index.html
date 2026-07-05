@@ -7,17 +7,9 @@ title: Playgroup Organizer
     .groups-container {
         font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         color: var(--text-main);
-        max-width: 98%;
+        max-width: 100%;
         margin: 0 auto;
-        padding: 20px;
-    }
-
-    @media (min-width: 640px) {
-        .group-charts-grid {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 16px !important;
-        }
+        padding: 0px;
     }
 
     .header-section {
@@ -32,6 +24,7 @@ title: Playgroup Organizer
         background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
     .header-section p {
@@ -44,20 +37,28 @@ title: Playgroup Organizer
         display: grid;
         grid-template-columns: 1fr;
         gap: 30px;
+        align-items: start;
     }
 
-    @media (min-width: 768px) {
+    @media (min-width: 992px) {
         .dashboard-layout {
-            grid-template-columns: 1fr 2fr;
+            grid-template-columns: 320px 1fr;
         }
     }
 
+    /* Cards styling */
     .sidebar-card, .planner-card {
         background: var(--card-bg);
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 16px;
         padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-md);
+        transition: all 0.3s ease;
+    }
+
+    .sidebar-card {
+        position: sticky;
+        top: 20px;
     }
 
     .card-title-container {
@@ -65,24 +66,59 @@ title: Playgroup Organizer
         justify-content: space-between;
         align-items: center;
         border-bottom: 1px solid var(--border);
-        padding-bottom: 15px;
+        padding-bottom: 16px;
+        margin-bottom: 20px;
     }
 
     .card-title {
-        font-size: 1.25rem;
-        font-weight: 700;
+        font-size: 1.3rem;
+        font-weight: 800;
         margin: 0;
+        letter-spacing: -0.02em;
     }
 
+    /* Group creation form container */
     .group-form-container {
         display: none;
         flex-direction: column;
-        gap: 15px;
-        padding: 15px;
-        background-color: var(--background);
+        gap: 16px;
+        padding: 16px;
+        background-color: var(--section-bg);
         border: 1.5px dashed var(--border);
-        border-radius: 10px;
-        animation: fadeIn 0.2s ease;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        animation: fadeIn 0.25s ease;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .form-group input, .form-group textarea {
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        background-color: var(--input-bg);
+        color: var(--text-main);
+        outline: none;
+        transition: all 0.2s ease;
+    }
+
+    .form-group input:focus, .form-group textarea:focus {
+        border-color: var(--primary);
+        background-color: var(--input-focus-bg);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
     }
 
     .form-actions {
@@ -97,11 +133,23 @@ title: Playgroup Organizer
         font-weight: 600;
         border-radius: 6px;
         cursor: pointer;
+        transition: all 0.15s ease;
         border: none;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        outline: none;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
     }
 
     .btn-primary { background-color: var(--primary); color: white; }
-    .btn-secondary { background-color: #e2e8f0; color: var(--text-main); }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-secondary { background-color: var(--btn-secondary-bg); color: var(--text-main); }
+    .btn-secondary:hover { background-color: var(--btn-secondary-hover-bg); }
     .btn-outline { background-color: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
 
     .planner-section {
@@ -110,13 +158,297 @@ title: Playgroup Organizer
         gap: 24px;
     }
 
+    /* Group List Styling */
+    .group-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 10px;
+    }
+
+    .group-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        background-color: var(--background);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .group-item:hover {
+        transform: translateY(-2px);
+        border-color: var(--primary);
+        box-shadow: var(--shadow-sm);
+        background-color: var(--dropdown-hover-bg);
+    }
+
+    .group-item.active {
+        background-color: var(--dropdown-hover-bg);
+        border-color: var(--primary);
+        border-width: 1.5px;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    .group-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .group-name {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--text-main);
+    }
+
+    .group-meta {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .group-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .group-action-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 6px;
+        color: var(--text-muted);
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+    }
+
+    .group-action-btn:hover {
+        background-color: rgba(79, 70, 229, 0.15);
+        color: var(--primary);
+    }
+
+    .group-action-btn.delete:hover {
+        background-color: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    /* Member Selection Grid */
+    .member-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+    }
+
+    .member-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background-color: var(--input-bg);
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+
+    .member-checkbox-label:hover {
+        border-color: var(--primary);
+        background-color: var(--dropdown-hover-bg);
+    }
+
+    .member-checkbox-label.checked {
+        background-color: rgba(79, 70, 229, 0.08);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .member-checkbox-label input[type="checkbox"] {
+        accent-color: var(--primary);
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+    /* Attendee summary count badge */
+    .attendee-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        background-color: var(--section-bg);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+    }
+
+    .attendee-badge {
+        background-color: var(--primary);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+    }
+
+    /* Fine-tune Recommendation Priorities (weights accordion) */
+    .weights-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        background-color: var(--section-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+
+    .weights-toggle:hover {
+        border-color: var(--primary);
+        background-color: var(--dropdown-hover-bg);
+    }
+
+    .weights-content {
+        display: none;
+        padding: 20px;
+        border: 1px solid var(--border);
+        border-top: none;
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+        background-color: var(--card-bg);
+        animation: fadeIn 0.2s ease;
+    }
+
+    .sliders-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .slider-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .slider-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
     .slider-badge {
-        background-color: #e0e7ff;
+        background-color: rgba(79, 70, 229, 0.1);
         color: var(--primary);
         font-size: 0.75rem;
         font-weight: 700;
-        padding: 1px 6px;
-        border-radius: 4px;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+
+    .weight-slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--border);
+        outline: none;
+        margin: 6px 0;
+        transition: background 0.2s;
+    }
+
+    .weight-slider::-webkit-slider-thumb {
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+        -webkit-appearance: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        transition: transform 0.1s ease;
+    }
+
+    .weight-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+    }
+
+    /* Analytics metrics card styling */
+    .metric-card {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: var(--glass-shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: transform 0.2s ease;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .metric-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--text-main);
+        font-family: 'Outfit', sans-serif;
+    }
+
+    /* Charts wrapper card styling */
+    .chart-container-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        min-height: 260px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+        font-family: 'Outfit', sans-serif;
+        color: var(--text-main);
+    }
+
+    .chart-wrapper {
+        position: relative;
+        flex-grow: 1;
+        height: 100%;
     }
 </style>
 
@@ -189,47 +521,47 @@ title: Playgroup Organizer
                         <h3 style="margin-top: 20px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); font-family: 'Outfit', sans-serif;">Playgroup Taste Analytics</h3>
                         
                         <!-- Summary Cards Row -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
-                            <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
-                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Total Unique Games</span>
-                                <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-unique-games">-</span>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <div class="metric-card">
+                                <span class="metric-title">Total Unique Games</span>
+                                <span class="metric-value" id="group-card-unique-games">-</span>
                             </div>
-                            <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
-                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;" id="group-card-complexity-title">Player Count Match</span>
-                                <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-complexity">-</span>
+                            <div class="metric-card">
+                                <span class="metric-title" id="group-card-complexity-title">Player Count Match</span>
+                                <span class="metric-value" id="group-card-complexity">-</span>
                             </div>
-                            <div style="background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
-                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Avg BGG Rating</span>
-                                <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif;" id="group-card-rating">-</span>
+                            <div class="metric-card">
+                                <span class="metric-title">Avg BGG Rating</span>
+                                <span class="metric-value" id="group-card-rating">-</span>
                             </div>
                         </div>
 
                         <!-- Charts Grid -->
                         <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px;">
                             <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
-                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Group Mechanics Affinity</span>
-                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                <div class="chart-container-card">
+                                    <span class="chart-title">Group Mechanics Affinity</span>
+                                    <div class="chart-wrapper">
                                         <canvas id="chart-group-mechanics"></canvas>
                                     </div>
                                 </div>
-                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Group Categories Affinity</span>
-                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                <div class="chart-container-card">
+                                    <span class="chart-title">Group Categories Affinity</span>
+                                    <div class="chart-wrapper">
                                         <canvas id="chart-group-categories"></canvas>
                                     </div>
                                 </div>
                             </div>
                             <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
-                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Attendee Complexity Preferences</span>
-                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                <div class="chart-container-card">
+                                    <span class="chart-title">Attendee Complexity Preferences</span>
+                                    <div class="chart-wrapper">
                                         <canvas id="chart-group-complexity-dist"></canvas>
                                     </div>
                                 </div>
-                                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 250px; display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">Unique Games Duration Distribution</span>
-                                    <div style="position: relative; flex-grow: 1; height: 100%;">
+                                <div class="chart-container-card">
+                                    <span class="chart-title">Unique Games Duration Distribution</span>
+                                    <div class="chart-wrapper">
                                         <canvas id="chart-group-durations"></canvas>
                                     </div>
                                 </div>
@@ -241,13 +573,13 @@ title: Playgroup Organizer
                     <div class="form-group" style="margin-top: 15px; margin-bottom: 15px;">
                         <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Pacing & Complexity Preferences (Optional)</label>
                         <div class="year-inputs" style="display: flex; gap: 15px; margin-top: 8px;">
-                            <select id="duration_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: #f8fafc; color: var(--text-main); font-size: 0.95rem;">
+                            <select id="duration_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
                                 <option value="any" selected>Any Pacing / Play Time</option>
                                 <option value="short">Short (&lt; 45 mins)</option>
                                 <option value="medium">Medium (45 - 90 mins)</option>
                                 <option value="long">Long (&gt; 90 mins)</option>
                             </select>
-                            <select id="complexity_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: #f8fafc; color: var(--text-main); font-size: 0.95rem;">
+                            <select id="complexity_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
                                 <option value="any" selected>Any Complexity</option>
                                 <option value="low">Low (&lt; 2.0 / 5)</option>
                                 <option value="medium">Medium (2.0 - 3.5 / 5)</option>
@@ -376,17 +708,59 @@ title: Playgroup Organizer
         let chartGroupComplexity = null;
         let chartGroupDurations = null;
 
-        // Chart.js Theme Defaults
-        if (typeof Chart !== 'undefined') {
-            Chart.defaults.font.family = "'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-            Chart.defaults.font.size = 11;
-            Chart.defaults.color = "#475569";
-            Chart.defaults.plugins.tooltip.backgroundColor = "rgba(15, 23, 42, 0.9)";
-            Chart.defaults.plugins.tooltip.titleFont = { family: "'Outfit', sans-serif", weight: 'bold' };
-            Chart.defaults.plugins.tooltip.bodyFont = { family: "'Inter', sans-serif" };
-            Chart.defaults.plugins.tooltip.padding = 8;
-            Chart.defaults.plugins.tooltip.cornerRadius = 6;
+        // Chart.js Theme Defaults & Dynamic Theme Updating
+        function updateChartTheme() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#f8fafc' : '#0f172a';
+            const mutedColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)';
+
+            if (typeof Chart !== 'undefined') {
+                Chart.defaults.color = mutedColor;
+                Chart.defaults.font.family = "'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+                Chart.defaults.font.size = 11;
+                Chart.defaults.plugins.tooltip.backgroundColor = isDark ? "rgba(15, 23, 42, 0.95)" : "rgba(15, 23, 42, 0.9)";
+                Chart.defaults.plugins.tooltip.titleFont = { family: "'Outfit', sans-serif", weight: 'bold' };
+                Chart.defaults.plugins.tooltip.bodyFont = { family: "'Inter', sans-serif" };
+                Chart.defaults.plugins.tooltip.padding = 8;
+                Chart.defaults.plugins.tooltip.cornerRadius = 6;
+            }
+
+            const activeCharts = [chartGroupMechanics, chartGroupCategories, chartGroupComplexity, chartGroupDurations];
+            activeCharts.forEach(chart => {
+                if (chart) {
+                    if (chart.options.scales) {
+                        Object.keys(chart.options.scales).forEach(scaleKey => {
+                            const scale = chart.options.scales[scaleKey];
+                            if (scale.ticks) {
+                                scale.ticks.color = mutedColor;
+                            }
+                            if (scale.grid) {
+                                scale.grid.color = gridColor;
+                            }
+                            if (scale.angleLines) {
+                                scale.angleLines.color = gridColor;
+                            }
+                            if (scale.pointLabels) {
+                                scale.pointLabels.color = textColor;
+                            }
+                        });
+                    }
+                    if (chart.options.plugins && chart.options.plugins.legend) {
+                        if (!chart.options.plugins.legend.labels) chart.options.plugins.legend.labels = {};
+                        chart.options.plugins.legend.labels.color = textColor;
+                    }
+                    chart.update();
+                }
+            });
         }
+
+        if (typeof Chart !== 'undefined') {
+            updateChartTheme();
+        }
+
+        const themeObserver = new MutationObserver(updateChartTheme);
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
         // 1. Saved groups crud (stored in localStorage)
         let playgroups = [];
@@ -412,9 +786,9 @@ title: Playgroup Organizer
                             <span class="group-name">${escapeHTML(g.name)}</span>
                             <span class="group-meta">${g.members.length} members</span>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="delete-btn" onclick="event.stopPropagation(); editGroup('${g.id}')" title="Edit Group">✎</button>
-                            <button class="delete-btn" onclick="event.stopPropagation(); deleteGroup('${g.id}')" title="Delete Group">🗑</button>
+                        <div class="group-actions">
+                            <button class="group-action-btn" onclick="event.stopPropagation(); editGroup('${g.id}')" title="Edit Group">✎</button>
+                            <button class="group-action-btn delete" onclick="event.stopPropagation(); deleteGroup('${g.id}')" title="Delete Group">🗑</button>
                         </div>
                     </div>
                 `;
@@ -847,7 +1221,7 @@ title: Playgroup Organizer
                         isPollingActive = false;
                         statusCard.style.display = "none";
                         generatePlanBtn.disabled = false;
-                        resultsContainer.innerHTML = `<div style="color: #ef4444; font-weight: bold; padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch playgroup recommendations. Check AWS Lambda logs.</div>`;
+                        resultsContainer.innerHTML = `<div style="color: var(--danger); font-weight: bold; padding: 20px; background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch playgroup recommendations. Check AWS Lambda logs.</div>`;
                     });
             }
 
@@ -856,7 +1230,7 @@ title: Playgroup Organizer
 
         function renderRecommendations(recs) {
             if (!recs || recs.length === 0) {
-                resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: #fff; width: 100%;">No recommendations found matching the attendees collection. Try adding more users with rated games or relaxing year filters!</div>`;
+                resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: var(--card-bg); width: 100%;">No recommendations found matching the attendees collection. Try adding more users with rated games or relaxing year filters!</div>`;
                 return;
             }
 
@@ -1226,6 +1600,14 @@ title: Playgroup Organizer
         }
 
         function drawPlaygroupCharts(mechs, cats, userResults, uniqueGames) {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#f8fafc' : '#0f172a';
+            const mutedColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)';
+            const radarBg = isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(79, 70, 229, 0.2)';
+            const radarBorder = isDark ? 'rgb(99, 102, 241)' : 'rgb(79, 70, 229)';
+            const cardBg = isDark ? '#1e293b' : '#ffffff';
+
             const sortedMechs = Object.entries(mechs)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 8);
@@ -1243,22 +1625,28 @@ title: Playgroup Organizer
                         datasets: [{
                             label: 'Group Avg Affinity',
                             data: dataMech,
-                            backgroundColor: 'rgba(79, 70, 229, 0.2)',
-                            borderColor: 'rgb(79, 70, 229)',
-                            pointBackgroundColor: 'rgb(79, 70, 229)',
-                            pointBorderColor: '#fff',
+                            backgroundColor: radarBg,
+                            borderColor: radarBorder,
+                            pointBackgroundColor: radarBorder,
+                            pointBorderColor: cardBg,
                             borderWidth: 2
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: textColor }
+                            }
+                        },
                         scales: {
                             r: {
-                                angleLines: { display: true, color: 'rgba(0, 0, 0, 0.05)' },
-                                grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                                angleLines: { display: true, color: gridColor },
+                                grid: { color: gridColor },
                                 suggestedMin: 0,
-                                ticks: { backdropColor: 'transparent', color: '#64748b' }
+                                ticks: { backdropColor: 'transparent', color: mutedColor },
+                                pointLabels: { color: textColor }
                             }
                         }
                     }
@@ -1272,6 +1660,9 @@ title: Playgroup Organizer
             const labelsCat = sortedCats.map(item => item[0]);
             const dataCat = sortedCats.map(item => item[1]);
 
+            const catBg = isDark ? 'rgba(52, 211, 153, 0.7)' : 'rgba(16, 185, 129, 0.7)';
+            const catBorder = isDark ? 'rgb(52, 211, 153)' : 'rgb(16, 185, 129)';
+
             if (chartGroupCategories) chartGroupCategories.destroy();
             if (labelsCat.length > 0) {
                 const ctxCat = document.getElementById('chart-group-categories').getContext('2d');
@@ -1282,8 +1673,8 @@ title: Playgroup Organizer
                         datasets: [{
                             label: 'Group Avg Affinity',
                             data: dataCat,
-                            backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                            borderColor: 'rgb(16, 185, 129)',
+                            backgroundColor: catBg,
+                            borderColor: catBorder,
                             borderWidth: 1.5,
                             borderRadius: 6
                         }]
@@ -1294,8 +1685,15 @@ title: Playgroup Organizer
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
-                            x: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
-                            y: { grid: { display: false } }
+                            x: { 
+                                beginAtZero: true, 
+                                grid: { color: gridColor },
+                                ticks: { color: mutedColor }
+                            },
+                            y: { 
+                                grid: { display: false },
+                                ticks: { color: mutedColor }
+                            }
                         }
                     }
                 });
@@ -1333,7 +1731,7 @@ title: Playgroup Organizer
                             'rgba(245, 158, 11, 0.7)',
                             'rgba(236, 72, 153, 0.7)'
                         ],
-                        borderColor: '#ffffff',
+                        borderColor: cardBg,
                         borderWidth: 2
                     }]
                 },
@@ -1341,7 +1739,10 @@ title: Playgroup Organizer
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: { 
+                            position: 'bottom',
+                            labels: { color: textColor }
+                        }
                     }
                 }
             });
@@ -1357,6 +1758,9 @@ title: Playgroup Organizer
                 }
             });
 
+            const durBg = isDark ? 'rgba(99, 102, 241, 0.7)' : 'rgba(59, 130, 246, 0.7)';
+            const durBorder = isDark ? 'rgb(99, 102, 241)' : 'rgb(59, 130, 246)';
+
             if (chartGroupDurations) chartGroupDurations.destroy();
             const ctxDurations = document.getElementById('chart-group-durations').getContext('2d');
             chartGroupDurations = new Chart(ctxDurations, {
@@ -1366,8 +1770,8 @@ title: Playgroup Organizer
                     datasets: [{
                         label: 'Games Count',
                         data: [dShort, dMedium, dLong, dEpic],
-                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: durBg,
+                        borderColor: durBorder,
                         borderWidth: 1.5,
                         borderRadius: 6
                     }]
@@ -1377,8 +1781,15 @@ title: Playgroup Organizer
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
-                        x: { grid: { display: false } }
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: gridColor },
+                            ticks: { color: mutedColor }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: mutedColor }
+                        }
                     }
                 }
             });

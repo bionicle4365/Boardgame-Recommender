@@ -88,6 +88,33 @@ title: User Profile
         border-radius: 12px;
     }
 
+    .profile-refresh-btn {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--primary, #4f46e5);
+        background-color: var(--primary-bg, #e0e7ff);
+        border: 1px solid var(--primary-border, #c7d2fe);
+        padding: 5px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .profile-refresh-btn:hover {
+        background-color: var(--primary, #4f46e5);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+
+    .profile-refresh-btn:active {
+        transform: translateY(0);
+    }
+
     /* ── Switcher Navigation Bar ── */
     .playground-tabs {
         display: flex;
@@ -391,6 +418,9 @@ title: User Profile
         <!-- Skeletal Shimmer Wrapper -->
         <div id="profile-skeleton">
             <div class="skeleton-header"></div>
+            <div id="profile-skeleton-message" style="margin-top: 10px; margin-bottom: 20px; font-weight: 500; color: var(--text-muted);">
+                Analyzing user profile data...
+            </div>
             <div class="skeleton-grid">
                 <div class="skeleton-card"></div>
                 <div class="skeleton-card"></div>
@@ -412,7 +442,12 @@ title: User Profile
                         <span id="header-sync-span">🔄 Synced</span>
                     </div>
                 </div>
-                <div class="profile-sync-badge">API Synced</div>
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div class="profile-sync-badge">API Synced</div>
+                    <button id="profile-refresh-btn" class="profile-refresh-btn" onclick="loadProfileData(true)">
+                        🔄 Sync Profile
+                    </button>
+                </div>
             </div>
 
             <!-- View Switcher Tabs (Playground Mode Selector) -->
@@ -642,53 +677,87 @@ title: User Profile
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
         // Load statistics
-        try {
-            // Retrieve Linked BGG Username
-            document.getElementById("header-email-span").textContent = `📧 ${Auth.getEmail()}`;
-
-            const prefRes = await fetchApi('/preferences');
-
-            if (prefRes.ok) {
-                const prefs = await prefRes.json();
-                bggUsername = prefs.bgg_username || "";
+        window.loadProfileData = async function(force = false) {
+            const skeletonMessage = document.getElementById("profile-skeleton-message");
+            if (skeletonMessage) {
+                skeletonMessage.textContent = force ? "Syncing with BoardGameGeek..." : "Analyzing user profile data...";
             }
+            
+            // Show skeleton and hide main content
+            profileSkeleton.style.display = "block";
+            mainContent.style.display = "none";
 
-            if (!bggUsername) {
-                // No linked username. Display onboarding guide cards
+            try {
+                // Retrieve Linked BGG Username
+                document.getElementById("header-email-span").textContent = `📧 ${Auth.getEmail()}`;
+
+                const prefRes = await fetchApi('/preferences');
+
+                if (prefRes.ok) {
+                    const prefs = await prefRes.json();
+                    bggUsername = prefs.bgg_username || "";
+                }
+
+                if (!bggUsername) {
+                    // No linked username. Display onboarding guide cards
+                    profileSkeleton.style.display = "none";
+                    mainContent.style.display = "block";
+                    renderEmptyOnboardingState();
+                    return;
+                }
+
+                // Sync Header details
+                document.getElementById("header-bgg-name").textContent = bggUsername;
+                document.getElementById("user-avatar-initials").textContent = bggUsername.substring(0, 2).toUpperCase();
+
+                const lower = bggUsername.trim().toLowerCase();
+                if (force) {
+                    sessionStorage.removeItem(`profile_bgg_coll_${lower}`);
+                    sessionStorage.removeItem(`profile_taste_${lower}`);
+                }
+
+                // Load BGG library
+                collectionData = await fetchBggCollection(bggUsername);
+                
+                // Load backend taste affinities with polling if status is scraping
+                let attempts = 0;
+                let activeForce = force;
+                while (attempts < 20) {
+                    profileAffinities = await fetchTasteProfile(bggUsername, collectionData, activeForce);
+                    if (profileAffinities && profileAffinities.status === 'scraping') {
+                        if (skeletonMessage) {
+                            skeletonMessage.textContent = "Syncing with BoardGameGeek... We are scraping your collection and analyzing your tastes. This takes about 30 seconds...";
+                        }
+                        attempts++;
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        activeForce = false;
+                    } else {
+                        break;
+                    }
+                }
+
+                // Hide skeleton, show profile
                 profileSkeleton.style.display = "none";
                 mainContent.style.display = "block";
-                renderEmptyOnboardingState();
-                return;
+
+                // Draw Overview
+                drawOverviewDashboard();
+
+            } catch (e) {
+                console.error("Failed loading profile details:", e);
+                profileSkeleton.style.display = "none";
+                mainContent.style.display = "block";
+                mainContent.innerHTML = `<div class="auth-gate" style="max-width:600px;">
+                    <span class="auth-gate-icon">⚠️</span>
+                    <h2>Failed to Load Data</h2>
+                    <p>There was a problem syncing your BoardGameGeek profile data: ${e.message || e}</p>
+                    <button onclick="loadProfileData(true)" class="auth-gate-btn">Retry Sync</button>
+                </div>`;
             }
+        };
 
-            // Sync Header details
-            document.getElementById("header-bgg-name").textContent = bggUsername;
-            document.getElementById("user-avatar-initials").textContent = bggUsername.substring(0, 2).toUpperCase();
-
-            // Load BGG library
-            collectionData = await fetchBggCollection(bggUsername);
-            
-            // Load backend taste affinities
-            profileAffinities = await fetchTasteProfile(bggUsername, collectionData);
-
-            // Hide skeleton, show profile
-            profileSkeleton.style.display = "none";
-            mainContent.style.display = "block";
-
-            // Draw Overview
-            drawOverviewDashboard();
-
-        } catch (e) {
-            console.error("Failed loading profile details:", e);
-            profileSkeleton.style.display = "none";
-            mainContent.style.display = "block";
-            mainContent.innerHTML = `<div class="auth-gate" style="max-width:600px;">
-                <span class="auth-gate-icon">⚠️</span>
-                <h2>Failed to Load Data</h2>
-                <p>There was a problem syncing your BoardGameGeek profile data: ${e.message || e}</p>
-                <button onclick="window.location.reload()" class="auth-gate-btn">Retry Sync</button>
-            </div>`;
-        }
+        // Initial load
+        loadProfileData(false);
 
         // ── Preset Playground Selector ──────────────────────────────────────
         window.switchPreset = function(btnEl, presetName) {
@@ -795,10 +864,10 @@ title: User Profile
             return games;
         }
 
-        async function fetchTasteProfile(username, games) {
+        async function fetchTasteProfile(username, games, force = false) {
             const lower = username.trim().toLowerCase();
             const sessionCache = sessionStorage.getItem(`profile_taste_${lower}`);
-            if (sessionCache) return JSON.parse(sessionCache);
+            if (sessionCache && !force) return JSON.parse(sessionCache);
 
             if (!apiUrl) {
                 const fallback = generateLocalAffinities(games);
@@ -807,10 +876,13 @@ title: User Profile
             }
 
             try {
-                const res = await fetchApi(`/profile?username=${lower}`);
+                const url = force ? `/profile?username=${lower}&refresh=true` : `/profile?username=${lower}`;
+                const res = await fetchApi(url);
                 if (res.ok) {
                     const data = await res.json();
-                    sessionStorage.setItem(`profile_taste_${lower}`, JSON.stringify(data));
+                    if (data && data.status !== 'scraping') {
+                        sessionStorage.setItem(`profile_taste_${lower}`, JSON.stringify(data));
+                    }
                     return data;
                 }
             } catch (e) {
