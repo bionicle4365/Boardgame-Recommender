@@ -12,10 +12,9 @@ resource "aws_apigatewayv2_api" "bgg_api" {
 }
 
 resource "aws_apigatewayv2_stage" "bgg_api_stage" {
-  api_id                           = aws_apigatewayv2_api.bgg_api.id
-  name                             = "$default"
-  auto_deploy                      = true
-  minimum_compression_size_in_bytes = 1024
+  api_id      = aws_apigatewayv2_api.bgg_api.id
+  name        = "$default"
+  auto_deploy = true
 
   default_route_settings {
     throttling_burst_limit = 10

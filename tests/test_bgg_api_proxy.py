@@ -45,3 +45,33 @@ def test_lambda_handler_success(mock_urlopen):
     assert response['headers']['Content-Type'] == 'application/xml'
     assert response['body'] == "<collection></collection>"
     assert 'Access-Control-Allow-Origin' not in response['headers']
+
+@patch('urllib.request.urlopen')
+def test_lambda_handler_compression(mock_urlopen):
+    import gzip
+    import base64
+
+    # Mock response
+    mock_resp = MagicMock()
+    mock_resp.getcode.return_value = 200
+    mock_resp.read.return_value = b"<collection></collection>"
+    mock_urlopen.return_value.__enter__.return_value = mock_resp
+
+    event = {
+        'queryStringParameters': {
+            'username': 'bionicle4365'
+        },
+        'headers': {
+            'accept-encoding': 'gzip'
+        }
+    }
+    response = bgg_api_proxy.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    assert response['headers']['Content-Type'] == 'application/xml'
+    assert response['headers']['Content-Encoding'] == 'gzip'
+    assert response['isBase64Encoded'] is True
+
+    # Decode and decompress to verify original content
+    decoded_body = base64.b64decode(response['body'])
+    decompressed_body = gzip.decompress(decoded_body).decode('utf-8')
+    assert decompressed_body == "<collection></collection>"

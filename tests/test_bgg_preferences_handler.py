@@ -166,4 +166,46 @@ def test_lambda_handler_post_partial_update(mock_boto_client, mock_table):
     mock_boto_client.assert_called_once_with('sqs', region_name='us-east-1')
     mock_sqs.send_message.assert_called_once()
 
+@patch('bgg_preferences_handler.table')
+def test_lambda_handler_compression(mock_table):
+    import gzip
+    import base64
+
+    mock_table.get_item.return_value = {
+        'Item': {
+            'userId': 'user-123',
+            'playgroups': [],
+            'saved_weights': {}
+        }
+    }
+    
+    event = {
+        'requestContext': {
+            'http': {
+                'method': 'GET'
+            },
+            'authorizer': {
+                'jwt': {
+                    'claims': {
+                        'sub': 'user-123'
+                    }
+                }
+            }
+        },
+        'headers': {
+            'accept-encoding': 'gzip'
+        }
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    assert response['headers']['Content-Type'] == 'application/json'
+    assert response['headers']['Content-Encoding'] == 'gzip'
+    assert response['isBase64Encoded'] is True
+
+    # Decode and decompress
+    decoded_body = base64.b64decode(response['body'])
+    decompressed_body = gzip.decompress(decoded_body).decode('utf-8')
+    body_data = json.loads(decompressed_body)
+    assert body_data['userId'] == 'user-123'
+
 

@@ -422,6 +422,44 @@ def _handle_recommendations(query_params):
     }
 
 
+def _compress_response(event, response):
+    import gzip
+    import base64
+
+    if not isinstance(response, dict):
+        return response
+    headers = event.get('headers') or {}
+    accept_encoding = ""
+    for k, v in headers.items():
+        if k.lower() == 'accept-encoding':
+            accept_encoding = v
+            break
+    if 'gzip' not in accept_encoding.lower():
+        return response
+    body = response.get('body')
+    if body is None or response.get('isBase64Encoded', False):
+        return response
+    if isinstance(body, str):
+        body_bytes = body.encode('utf-8')
+    elif isinstance(body, (bytes, bytearray)):
+        body_bytes = body
+    else:
+        return response
+    compressed = gzip.compress(body_bytes)
+    encoded = base64.b64encode(compressed).decode('utf-8')
+    resp_headers = response.get('headers') or {}
+    content_encoding_key = 'Content-Encoding'
+    for k in list(resp_headers.keys()):
+        if k.lower() == 'content-encoding':
+            content_encoding_key = k
+            break
+    resp_headers[content_encoding_key] = 'gzip'
+    response['body'] = encoded
+    response['isBase64Encoded'] = True
+    response['headers'] = resp_headers
+    return response
+
+
 @logger.inject_lambda_context
 def lambda_handler(event, context):
     logger.info("Received event", extra={"event": event})
@@ -430,11 +468,13 @@ def lambda_handler(event, context):
     path = event.get('rawPath', '') or event.get('requestContext', {}).get('http', {}).get('path', '')
 
     if '/profile' in path:
-        return _handle_profile(query_params)
+        response = _handle_profile(query_params)
     elif '/conventions' in path:
-        return _handle_conventions()
+        response = _handle_conventions()
     else:
-        return _handle_recommendations(query_params)
+        response = _handle_recommendations(query_params)
+
+    return _compress_response(event, response)
 
 
 def __getattr__(name):

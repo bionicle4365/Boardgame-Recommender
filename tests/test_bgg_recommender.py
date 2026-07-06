@@ -984,4 +984,36 @@ def test_handle_recommendations_invalid_username():
     assert response['statusCode'] == 400
     assert 'Invalid username' in response['body']
 
+@patch('bgg_recommender.get_user_profile_status')
+def test_lambda_handler_compression(mock_status):
+    import gzip
+    import base64
+
+    # We will simulate a profile request where the status check returns not found,
+    # resulting in a 202 status code. This is a simple request that doesn't trigger
+    # extensive mocks but returns a valid body.
+    mock_status.return_value = (False, False, None)
+
+    event = {
+        'rawPath': '/profile',
+        'queryStringParameters': {
+            'username': 'bionicle4365'
+        },
+        'headers': {
+            'accept-encoding': 'gzip'
+        }
+    }
+    
+    with patch('bgg_recommender.trigger_background_scrape') as mock_trigger:
+        response = bgg_recommender.lambda_handler(event, None)
+        assert response['statusCode'] == 202
+        assert response['headers']['Content-Encoding'] == 'gzip'
+        assert response['isBase64Encoded'] is True
+
+        # Decode and decompress
+        decoded_body = base64.b64decode(response['body'])
+        decompressed_body = gzip.decompress(decoded_body).decode('utf-8')
+        body_data = json.loads(decompressed_body)
+        assert body_data['status'] == 'scraping'
+
 

@@ -30,25 +30,6 @@ Add a content-based "Similar Games" endpoint to the recommender Lambda that retu
 
 ---
 
-## Milestone 32: API Gateway Response Compression
-
-### Objective
-Enable gzip response compression on API Gateway to reduce payload transfer sizes by 60-70%, improving mobile load times for recommendation and collection API responses.
-
-### Design Notes
-- **Current State:** The recommender Lambda returns raw uncompressed JSON. Recommendation payloads with 10+ rich game objects (including thumbnails, mechanics lists, AI narration text) can be 15-30KB. Gzip compression typically reduces this to 5-10KB.
-- **API Gateway Support:** API Gateway v2 (HTTP API) supports response compression natively via the `minimum_compression_size_in_bytes` setting.
-
-### Architecture Decisions
-- **Terraform Configuration:** Set `minimum_compression_size_in_bytes` on the API Gateway stage in the existing Terraform infrastructure module. A threshold of 1024 bytes (1KB) ensures only meaningful payloads are compressed.
-
-### Tasks
-- [x] **Terraform Update:** Add `minimum_compression_size_in_bytes = 1024` to the API Gateway stage configuration in `infrastructure/apigateway/`.
-- [x] **CORS Header Verification:** Ensure `Content-Encoding` is included in exposed CORS headers if needed.
-- [x] **Client Verification:** Verify that the Jekyll frontend `fetch()` calls correctly decompress gzip responses (browsers handle this automatically via `Accept-Encoding` headers).
-
----
-
 ## Milestone 33: Lightweight Recommendation Feedback Loop
 
 ### Objective

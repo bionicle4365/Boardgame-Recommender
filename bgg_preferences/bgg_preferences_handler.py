@@ -16,7 +16,7 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 table_name = os.environ.get('DYNAMODB_TABLE_NAME', 'bgg-user-preferences')
 table = dynamodb.Table(table_name)
 
-def lambda_handler(event, context):
+def _lambda_handler_impl(event, context):
     # Handle OPTIONS preflight request (CORS)
     # API Gateway HTTP API proxy format passes routeKey or requestContext.http.method
     method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
@@ -153,3 +153,44 @@ def lambda_handler(event, context):
         },
         'body': json.dumps({'error': 'Method Not Allowed'})
     }
+
+def _compress_response(event, response):
+    import gzip
+    import base64
+
+    if not isinstance(response, dict):
+        return response
+    headers = event.get('headers') or {}
+    accept_encoding = ""
+    for k, v in headers.items():
+        if k.lower() == 'accept-encoding':
+            accept_encoding = v
+            break
+    if 'gzip' not in accept_encoding.lower():
+        return response
+    body = response.get('body')
+    if body is None or response.get('isBase64Encoded', False):
+        return response
+    if isinstance(body, str):
+        body_bytes = body.encode('utf-8')
+    elif isinstance(body, (bytes, bytearray)):
+        body_bytes = body
+    else:
+        return response
+    compressed = gzip.compress(body_bytes)
+    encoded = base64.b64encode(compressed).decode('utf-8')
+    resp_headers = response.get('headers') or {}
+    content_encoding_key = 'Content-Encoding'
+    for k in list(resp_headers.keys()):
+        if k.lower() == 'content-encoding':
+            content_encoding_key = k
+            break
+    resp_headers[content_encoding_key] = 'gzip'
+    response['body'] = encoded
+    response['isBase64Encoded'] = True
+    response['headers'] = resp_headers
+    return response
+
+def lambda_handler(event, context):
+    response = _lambda_handler_impl(event, context)
+    return _compress_response(event, response)
