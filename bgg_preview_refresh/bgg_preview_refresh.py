@@ -178,34 +178,47 @@ def lambda_handler(event, context):
             url = f"https://boardgamegeek.com/api/geekpreviewitems?previewid={preview_id}&pageid={page}"
             print(f"  Fetching page {page}: {url}")
             req = urllib.request.Request(url, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    status = response.getcode()
-                    if status != 200:
-                        print(f"  Error: BGG API status code {status}. Stopping fetch.")
-                        break
-                    raw_text = response.read().decode('utf-8')
+            
+            page_data = None
+            max_retries = 5
+            base_delay = 2
+            
+            for attempt in range(max_retries):
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        status = response.getcode()
+                        if status != 200:
+                            raise urllib.error.HTTPError(url, status, f"Status code {status}", {}, None)
+                        raw_text = response.read().decode('utf-8')
                     
-                cleaned_text = raw_text.replace('"dynamicinfo":}', '"dynamicinfo":null}')
-                data = json.loads(cleaned_text)
+                    cleaned_text = raw_text.replace('"dynamicinfo":}', '"dynamicinfo":null}')
+                    page_data = json.loads(cleaned_text)
+                    break  # Success
+                except Exception as e:
+                    print(f"  Attempt {attempt + 1} failed for page {page}: {e}")
+                    if attempt < max_retries - 1:
+                        delay = min(60, base_delay * (2 ** attempt))
+                        import random
+                        jittered_delay = delay / 2.0 + random.uniform(0, delay / 2.0)
+                        print(f"  Retrying page {page} in {jittered_delay:.2f} seconds...")
+                        time.sleep(jittered_delay)
+                    else:
+                        print(f"  Max retries reached for page {page}. Stopping fetch.")
+            
+            if page_data is None:
+                break
                 
-                if not isinstance(data, list) or len(data) == 0:
-                    print(f"  Reached end of list. Total pages fetched: {page - 1}")
-                    break
+            if not isinstance(page_data, list) or len(page_data) == 0:
+                print(f"  Reached end of list. Total pages fetched: {page - 1}")
+                break
+                
+            for item in page_data:
+                g_id = str(item.get("objectid"))
+                if g_id and g_id not in game_ids:
+                    game_ids.append(g_id)
                     
-                for item in data:
-                    g_id = str(item.get("objectid"))
-                    if g_id and g_id not in game_ids:
-                        game_ids.append(g_id)
-                        
-                time.sleep(0.1)
-                page += 1
-            except urllib.error.HTTPError as he:
-                print(f"  HTTP Error fetching page {page}: {he.code} - {he.reason}. Stopping fetch.")
-                break
-            except Exception as e:
-                print(f"  Error fetching page {page}: {e}. Stopping fetch.")
-                break
+            time.sleep(0.1)
+            page += 1
                 
         if len(game_ids) > 0:
             if games_map.get(conv_id) != game_ids:

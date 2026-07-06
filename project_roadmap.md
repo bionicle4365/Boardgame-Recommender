@@ -346,6 +346,56 @@ Make the Jekyll site installable as a mobile app with offline caching, enabling 
 
 ---
 
+## Milestone 45: Recommendation Diversity Guard
+
+### Objective
+Add a deterministic post-scoring diversification pass that prevents mechanic and category clustering in the top-30 candidate shortlist sent to Bedrock, ensuring users receive a broader variety of recommendations instead of 8 deck-builders when they love deck-building.
+
+### Design Notes
+- **Current Behaviour:** `score_candidates()` returns the top-30 candidates sorted purely by composite score. Because Jaccard similarity is deterministic and heavily rewards the user's strongest mechanic preferences, the top-30 consistently clusters around a narrow set of mechanics. The LLM picks 10 from those 30, but if 20 of the 30 share the same primary mechanic, diversity is constrained no matter what the prompt says.
+- **Profile Presets Aren't Enough:** The existing recommendation profile presets (Balanced, Thematic, Strategy, etc.) shift weight distribution but don't address within-preset clustering. A "Balanced" user who rates 15 worker-placement games highly will still get a worker-placement-dominated shortlist.
+- **Design Principle:** The user's strongest mechanic match absolutely deserves representation — just not domination. This is a soft rebalancing, not a hard cap. The diversity pass operates *after* scoring and *before* the Bedrock handoff, so it doesn't change the scoring algorithm itself.
+
+### Architecture Decisions
+- **Diversification Location:** Add a `diversify_candidates(top_candidates, max_per_mechanic=4, max_per_category=5)` function in `scoring.py` that runs after `score_candidates()` returns. This keeps the scoring pure and makes diversity a separate, testable concern.
+- **Algorithm:** Iterate through the scored top-30 in rank order. For each candidate, extract its primary mechanic (first in the mechanics list) and primary category (first in the categories list). If either has already appeared `max_per_mechanic` or `max_per_category` times in the selected list, skip it and continue to the next candidate. Fill until 30 diverse candidates are selected or the scored list is exhausted.
+- **Fallback:** If fewer than 25 diverse candidates can be selected (extremely narrow catalog or filters), fall back to the original unmodified top-30 to avoid starving the Bedrock prompt.
+- **No New API Parameters:** Diversity is always applied. It's an internal quality improvement, not a user-facing toggle. The configurable `max_per_mechanic` and `max_per_category` constants are tuned server-side.
+
+### Tasks
+- [ ] **Diversify Function:** Implement `diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category=5)` in `scoring.py`. Accept the scored list (already sorted by composite score) and return a reordered list with mechanic/category caps applied. Preserve the original score ordering within the diverse subset.
+- [ ] **Integration in Handler:** Update `_handle_recommendations` in `bgg_recommender.py` to call `diversify_candidates(top_candidates)` after `score_candidates()` and before passing `top_candidates[:25]` to `narrate_recommendations()`.
+- [ ] **Logging:** Log the diversification impact — how many candidates were swapped out and which mechanic/category caps were hit — for observability and future tuning.
+- [ ] **Unit Tests:** Test diversification with synthetic candidate lists: all-same-mechanic input, already-diverse input (no-op), mixed clustering, and fallback when fewer than 25 diverse candidates exist. Verify that the highest-scored candidate is always retained regardless of caps.
+
+---
+
+## Milestone 46: Game Score Inspector
+
+### Objective
+Add a lightweight, unobtrusive "Score My Game" tool to the recommender page that lets a user enter a BGG game ID or name and see exactly how that game scored against their taste profile — including per-dimension similarity breakdowns and which filter (if any) eliminated it from the candidate pool.
+
+### Design Notes
+- **Use Case:** Users frequently wonder "Why didn't it recommend Gloomhaven?" or "How close was Brass: Birmingham to making the list?" This tool provides scoring transparency without requiring users to understand the algorithm — they enter a game name and see a simple breakdown.
+- **UI Principle:** This is a **power-user debugging tool**, not a primary workflow. It should be completely unobtrusive: a small "🔍 Score a game" link below the recommendation results that expands an inline panel or opens a compact modal. It must never distract from the main recommendation flow.
+- **Scope:** This is a read-only diagnostic. It does not modify recommendations, preferences, or any stored data. The backend computes the score on-demand against the user's current taste profile and returns it.
+
+### Architecture Decisions
+- **New Route:** Add a `GET /score?username=XXX&game_id=YYYYY` path to the existing Lambda handler routing in `bgg_recommender.py`, handled by a new `_handle_score(query_params)` function. Reuses the existing taste profile computation and scoring logic — no new algorithms needed.
+- **Response Format:** Return a JSON object with: `{ game: {name, id, mechanics, categories, ...}, scores: {mechanic_sim, category_sim, popularity, hotness, complexity_sim, designer_sim, publisher_sim, composite}, filter_status: "included" | {excluded_by: "ownership|player_count|year_range|rating_threshold|not_in_catalog"} }`.
+- **No Caching:** Score inspector results are not cached. They are fast single-game computations (no Bedrock call) that should reflect the user's current profile state.
+
+### Tasks
+- [ ] **Score Function:** Implement `score_single_game(game_id, catalog_df, mech_weights, cat_weights, user_designers, user_publishers, complexity_weights, hotness_scores, query_params, weights)` in `scoring.py` that returns a dict of per-dimension similarity scores and the composite score for a single game. Reuse the existing scoring math from `score_candidates()` extracted into a shared helper.
+- [ ] **Filter Status Check:** Implement `check_filter_status(game_id, catalog_df, owned_ids, rated_ids, query_params)` in `scoring.py` that returns whether the game was excluded by any active filter and which filter removed it.
+- [ ] **Lambda Route Handler:** Add `_handle_score(query_params)` to `bgg_recommender.py` that validates the `game_id` and `username` params, loads the catalog and user profile, computes the taste profile, scores the single game, checks filter status, and returns the combined result.
+- [ ] **Lambda Handler Routing:** Update `lambda_handler` to route `/score` paths to `_handle_score`.
+- [ ] **API Gateway Route:** Add a `GET /score` route in the API Gateway Terraform configuration, pointing to the existing recommender Lambda integration.
+- [ ] **Frontend Inspector UI:** Add a "🔍 Score a game" collapsible link below `#recommendations-results` in `site_ui/recommender/index.html`. When expanded, show a text input for game name/ID with a "Check Score" button. On submit, call `GET /score` and render a compact breakdown card showing each score dimension as a labelled bar (0–100%), the composite score, and the filter status. Style consistently with the existing glassmorphism card system.
+- [ ] **Unit Tests:** Test single-game scoring against a known taste profile (verify per-dimension math matches `score_candidates` output), filter status detection for each exclusion reason, and edge cases (game not in catalog, invalid game ID).
+
+---
+
 ## Completed Milestones
 
 
