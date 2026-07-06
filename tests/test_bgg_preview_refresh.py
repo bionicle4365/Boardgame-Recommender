@@ -30,6 +30,7 @@ def test_auto_discovery_and_pull(mock_s3_fixture):
     }
     
     def side_effect(bucket, key, local_path):
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
         if "active_previews_games.json" in key:
             with open(local_path, 'w', encoding='utf-8') as f:
                 json.dump(mock_games, f)
@@ -144,6 +145,7 @@ def test_passed_conventions_cleanup_with_seed(mock_s3_fixture):
     }
     
     def side_effect(bucket, key, local_path):
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
         if "active_previews_games.json" in key:
             with open(local_path, 'w', encoding='utf-8') as f:
                 json.dump(mock_games, f)

@@ -43,9 +43,9 @@ Enable gzip response compression on API Gateway to reduce payload transfer sizes
 - **Terraform Configuration:** Set `minimum_compression_size_in_bytes` on the API Gateway stage in the existing Terraform infrastructure module. A threshold of 1024 bytes (1KB) ensures only meaningful payloads are compressed.
 
 ### Tasks
-- [ ] **Terraform Update:** Add `minimum_compression_size_in_bytes = 1024` to the API Gateway stage configuration in `infrastructure/apigateway/`.
-- [ ] **CORS Header Verification:** Ensure `Content-Encoding` is included in exposed CORS headers if needed.
-- [ ] **Client Verification:** Verify that the Jekyll frontend `fetch()` calls correctly decompress gzip responses (browsers handle this automatically via `Accept-Encoding` headers).
+- [x] **Terraform Update:** Add `minimum_compression_size_in_bytes = 1024` to the API Gateway stage configuration in `infrastructure/apigateway/`.
+- [x] **CORS Header Verification:** Ensure `Content-Encoding` is included in exposed CORS headers if needed.
+- [x] **Client Verification:** Verify that the Jekyll frontend `fetch()` calls correctly decompress gzip responses (browsers handle this automatically via `Accept-Encoding` headers).
 
 ---
 
@@ -393,3 +393,4 @@ Make the Jekyll site installable as a mobile app with offline caching, enabling 
 * **Milestone 28: Shared CSS Design System & JS Utilities Extraction** (Extracted shared CSS variables, layout configurations, component classes, and Cognito Auth/fetch wrappers into centralized files)
 * **Milestone 29: Dark Mode Toggle** (User-togglable dark mode, custom property variables, transition animations, localStorage persistence, blocking pre-render script, page styling audits)
 * **Milestone 30: Skeleton Loading States** (Replaced spinner-based loading indicators with animated shimmering skeleton placeholder tables and cards in Recommender, Collection Browser, and Playgroup Organizer)
+* **Milestone 32: API Gateway Response Compression** (Enabled native gzip response compression on API Gateway and exposed the Content-Encoding header in CORS configurations)
