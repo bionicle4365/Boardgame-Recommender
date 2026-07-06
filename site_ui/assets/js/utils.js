@@ -74,6 +74,62 @@ window.Auth = {
 // API Fetch Wrapper
 window.fetchApi = async function(endpoint, options = {}) {
     const apiUrl = "{{ site.api_url }}";
+    
+    // Developer helper: Mock API responses locally if API URL is a placeholder
+    if (apiUrl === "PLACEHOLDER_API_URL") {
+        console.log(`[Mock API] Intercepted request for ${endpoint}`);
+        let data;
+        if (endpoint.startsWith('/conventions')) {
+            data = [
+                { "convention_id": "gencon-2026", "name": "Gen Con 2026" },
+                { "convention_id": "essen-2026", "name": "Essen Spiel 2026" }
+            ];
+        } else if (endpoint.startsWith('/recommendations')) {
+            data = {
+                status: "ready",
+                recommendations: [
+                    {
+                        id: "224517",
+                        name: "Gloomhaven",
+                        thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/L-92966Zg7xS0F8B-UshZk1917A=/fit-in/200x150/filters:strip_icc()/pic2437871.jpg",
+                        rating: 8.7,
+                        complexity: 4.4,
+                        min_players: 1,
+                        max_players: 4,
+                        playing_time: 120,
+                        year_published: 2017,
+                        reason: "Matches your taste for highly strategic tactical play and rich campaign elements."
+                    },
+                    {
+                        id: "266192",
+                        name: "Wingspan",
+                        thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/4nOFLn4e75E7v9gN8GgdFj8z1v0=/fit-in/200x150/filters:strip_icc()/pic4458123.jpg",
+                        rating: 8.1,
+                        complexity: 2.4,
+                        min_players: 1,
+                        max_players: 5,
+                        playing_time: 60,
+                        year_published: 2019,
+                        reason: "Excellent match for your preference of engine-building card games with smooth turns."
+                    }
+                ]
+            };
+        } else if (endpoint.startsWith('/preferences')) {
+            data = {
+                username: "MockUser",
+                weights: { mechanics: 50, categories: 50, popularity: 50, hotness: 50 }
+            };
+        } else {
+            data = {};
+        }
+        
+        return {
+            ok: true,
+            status: 200,
+            json: async () => data
+        };
+    }
+
     const url = endpoint.startsWith("http") ? endpoint : `${apiUrl}${endpoint}`;
     
     options.headers = options.headers || {};

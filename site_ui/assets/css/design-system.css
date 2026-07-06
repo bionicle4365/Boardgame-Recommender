@@ -35,6 +35,11 @@
     --warning: #f59e0b;
     --warning-bg: #fffbeb;
     --warning-border: #fde68a;
+    --info: #3b82f6;
+    --info-bg: #eff6ff;
+    --info-border: #bfdbfe;
+    --info-text: #1e40af;
+
 
     /* Theme-agnostic UI properties with Light theme defaults */
     --input-bg: rgba(255, 255, 255, 0.65);
@@ -105,6 +110,11 @@ html[data-theme="dark"] {
     --warning: #fbbf24; /* Amber 400 */
     --warning-bg: rgba(120, 53, 15, 0.4); /* Dark amber translucent */
     --warning-border: rgba(251, 191, 36, 0.2);
+    --info: #60a5fa; /* Blue 400 */
+    --info-bg: rgba(30, 58, 138, 0.4); /* Dark blue translucent */
+    --info-border: rgba(96, 165, 250, 0.2);
+    --info-text: #93c5fd; /* Light blue text */
+
 
     /* Form and Component Accents */
     --input-bg: rgba(15, 23, 42, 0.65);
@@ -401,8 +411,8 @@ body.sidebar-collapsed #main-wrapper {
 
 /* Spinner / Loader */
 .status-card {
-    background-color: #eff6ff;
-    border: 1px solid #bfdbfe;
+    background-color: var(--info-bg);
+    border: 1px solid var(--info-border);
     border-radius: 12px;
     padding: 20px;
     display: none;
@@ -415,15 +425,15 @@ body.sidebar-collapsed #main-wrapper {
 .spinner {
     width: 28px;
     height: 28px;
-    border: 3.5px solid #dbeafe;
-    border-top: 3.5px solid #2563eb;
+    border: 3.5px solid var(--info-border);
+    border-top: 3.5px solid var(--info);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
 
 .status-text {
     font-weight: 600;
-    color: #1e40af;
+    color: var(--info-text);
     margin: 0;
 }
 

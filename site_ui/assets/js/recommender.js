@@ -402,7 +402,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (refreshBtn) {
                         refreshBtn.disabled = false;
                     }
-                    resultsContainer.innerHTML = `<div style="color: #ef4444; font-weight: bold; padding: 20px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch recommendations. Ensure that API Gateway CORS and the Lambda function are running correctly.</div>`;
+                    resultsContainer.innerHTML = `<div style="color: var(--danger); font-weight: bold; padding: 20px; background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: 8px; margin: 0 auto; text-align: center;">Error: Failed to fetch recommendations. Ensure that API Gateway CORS and the Lambda function are running correctly.</div>`;
                 });
         }
 
@@ -423,7 +423,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function renderRecommendations(recs, isPending = false) {
         if (!recs || recs.length === 0) {
-            resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: #fff;">No recommendations found matching those criteria. Try relaxing your year filters!</div>`;
+            resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; border: 1px dashed var(--border); border-radius: 12px; background: var(--card-bg);">No recommendations found matching those criteria. Try relaxing your year filters!</div>`;
             return;
         }
 
@@ -432,7 +432,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (conventionSelect && conventionSelect.value) {
             const selectedText = conventionSelect.options[conventionSelect.selectedIndex].text;
             html += `
-                <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px 18px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; width: 100%; box-sizing: border-box;">
+                <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px 18px; background: var(--info-bg); border: 1.5px solid var(--info-border); border-radius: 12px; width: 100%; box-sizing: border-box;">
                     <span style="display: inline-block; background-color: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Convention Filter</span>
                     <span style="font-weight: 600; color: var(--text-main);">${selectedText}</span>
                 </div>
