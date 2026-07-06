@@ -5,12 +5,18 @@ on:
     branches: [ "main" ]
     paths:
       - infrastructure/**
+      - "bgg_api_proxy/**"
+      - "bgg_preferences/**"
+      - "bgg_preview_refresh/**"
       - "bgg_raw_to_compressed/**"
       - ".github/workflows/terraform.yml"
   pull_request:
     branches: [ "main" ]
     paths:
       - infrastructure/**
+      - "bgg_api_proxy/**"
+      - "bgg_preferences/**"
+      - "bgg_preview_refresh/**"
       - "bgg_raw_to_compressed/**"
       - ".github/workflows/terraform.yml"
   workflow_dispatch:
