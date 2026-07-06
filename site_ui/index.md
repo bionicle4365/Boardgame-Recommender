@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Home
+description: "Personalized board game recommendations powered by AI. Browse your BGG collection, analyze taste profiles, and plan group nights."
 ---
 
 <style>

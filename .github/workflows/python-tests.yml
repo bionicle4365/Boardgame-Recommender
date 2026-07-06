@@ -9,6 +9,7 @@ on:
       - "bgg_game_data_scraper/**"
       - "bgg_game_scraper/**"
       - "bgg_user_data_scraper/**"
+      - "bgg_preferences/**"
       - "tests/**"
       - ".github/workflows/python-tests.yml"
   pull_request:
@@ -19,6 +20,7 @@ on:
       - "bgg_game_data_scraper/**"
       - "bgg_game_scraper/**"
       - "bgg_user_data_scraper/**"
+      - "bgg_preferences/**"
       - "tests/**"
       - ".github/workflows/python-tests.yml"
   workflow_dispatch:

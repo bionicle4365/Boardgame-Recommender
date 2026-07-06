@@ -12,6 +12,10 @@ provider "aws" {
   region = "us-east-1"
 }
 
+module "ecr" {
+  source = "./ecr"
+}
+
 module "dynamodb" {
   source = "./dynamodb"
 }
@@ -51,6 +55,11 @@ module "lambda" {
   user_lambda_concurrency_limit = var.user_lambda_concurrency_limit
   dynamodb_table_name           = module.dynamodb.dynamodb_table_name
   taste_analytics_sqs_queue_arn = module.sqs.taste_analytics_sqs_queue_arn
+  bgg_game_data_scraper_ecr_url = module.ecr.bgg_game_data_scraper_ecr_url
+  bgg_user_data_scraper_ecr_url = module.ecr.bgg_user_data_scraper_ecr_url
+  bgg_recommender_ecr_url       = module.ecr.bgg_recommender_ecr_url
+  bgg_compactor_ecr_url         = module.ecr.bgg_compactor_ecr_url
+  bgg_taste_analytics_ecr_url   = module.ecr.bgg_taste_analytics_ecr_url
 }
 
 module "iam" {
@@ -78,12 +87,13 @@ module "s3" {
 
 
 module "ecs" {
-  source         = "./ecs"
-  s3_bucket_name = module.s3.bucket_name
-  s3_bucket_arn  = module.s3.bucket_arn
-  sqs_queue_name = module.sqs.data_sqs_queue_name
-  sqs_queue_arn  = module.sqs.data_sqs_queue_arn
-  bgg_api_token  = var.bgg_api_token
+  source                   = "./ecs"
+  s3_bucket_name           = module.s3.bucket_name
+  s3_bucket_arn            = module.s3.bucket_arn
+  sqs_queue_name           = module.sqs.data_sqs_queue_name
+  sqs_queue_arn            = module.sqs.data_sqs_queue_arn
+  bgg_api_token            = var.bgg_api_token
+  bgg_game_scraper_ecr_url = module.ecr.bgg_game_scraper_ecr_url
 }
 
 module "eventbridge" {

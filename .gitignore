@@ -10,3 +10,6 @@ ml_engine/**
 **/*.tfstate
 **/*.tfstate.*
 scratch/**
+node_modules/
+**/node_modules/
+**/.jekyll-cache/

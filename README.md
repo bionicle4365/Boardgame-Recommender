@@ -58,8 +58,7 @@ graph TD
 * **[bgg_game_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_game_scraper)**: Continuous containerized python scraper (run in ECS Fargate) that discovers boardgame IDs and pushes them to SQS.
 * **[bgg_game_data_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_game_data_scraper)**: SQS-triggered Lambda scraper that downloads game details (mechanics, complexity, name, year) and writes them to raw S3 Parquet.
 * **[bgg_user_data_scraper/](file:///d:/Git/Boardgame-Recommender/bgg_user_data_scraper)**: SQS-triggered Lambda scraper that downloads a BGG user's collection, rated games, and ownership status.
-* **[infrastructure/](file:///d:/Git/Boardgame-Recommender/infrastructure)**: Core Terraform templates provisioning S3, DynamoDB, Cognito User Pools, API Gateway integrations, Lambda functions, and EventBridge schedules.
-* **[ecr_infrastructure/](file:///d:/Git/Boardgame-Recommender/ecr_infrastructure)**: Terraform templates configuring ECR repositories and repository lifecycle rules.
+* **[infrastructure/](file:///d:/Git/Boardgame-Recommender/infrastructure)**: Core Terraform templates provisioning S3, DynamoDB, Cognito User Pools, API Gateway integrations, Lambda functions, EventBridge schedules, and ECR repositories with repository lifecycle rules.
 * **[deprecated/ml_engine/](file:///d:/Git/Boardgame-Recommender/deprecated/ml_engine)**: *(Archived)* Experimental LightFM collaborative filtering training script using PyAthena connection logic.
 
 ---
@@ -73,4 +72,3 @@ All Docker containers and Terraform infrastructures are continuously deployed vi
 * **`data-scraper-docker-image.yml`**: Builds and pushes `bgg_game_data_scraper` Lambda container image to Amazon ECR.
 * **`user-scraper-docker-image.yml`**: Builds and pushes `bgg_user_data_scraper` Lambda container image to Amazon ECR.
 * **`terraform.yml`**: Continuous integration plan/apply execution for core infrastructure.
-* **`ecr_terraform.yml`**: Plan/apply execution for ECR container repositories.

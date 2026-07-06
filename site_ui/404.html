@@ -1,0 +1,95 @@
+---
+layout: default
+title: Page Not Found
+description: "The page you are looking for does not exist on Boardgame Recommender."
+---
+
+<style>
+    .error-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(80vh - 120px);
+        padding: 24px;
+        box-sizing: border-box;
+    }
+
+    .error-card {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        box-shadow: var(--glass-shadow);
+        border-radius: var(--radius-lg);
+        padding: 48px 32px;
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .error-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .error-code {
+        font-size: 6rem;
+        font-weight: 800;
+        line-height: 1;
+        margin: 0 0 16px 0;
+        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .error-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 12px 0;
+        color: var(--text-main);
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .error-description {
+        font-size: 1.05rem;
+        color: var(--text-muted);
+        margin: 0 0 32px 0;
+        line-height: 1.6;
+    }
+
+    .home-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary);
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 12px 28px;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+        box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.3);
+    }
+
+    .home-button:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px 0 rgba(79, 70, 229, 0.4);
+    }
+
+    .home-button:active {
+        transform: translateY(0);
+    }
+</style>
+
+<div class="error-container">
+    <div class="error-card">
+        <div class="error-code">404</div>
+        <h1 class="error-title">Page Not Found</h1>
+        <p class="error-description">The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.</p>
+        <a href="{{ '/' | relative_url }}" class="home-button" id="back-to-home-btn">Go to Homepage</a>
+    </div>
+</div>

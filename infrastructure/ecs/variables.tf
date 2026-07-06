@@ -24,3 +24,9 @@ variable "bgg_api_token" {
   default     = ""
   sensitive   = true
 }
+
+variable "bgg_game_scraper_ecr_url" {
+  description = "The ECR repository URL for the BGG game scraper image"
+  type        = string
+}
+

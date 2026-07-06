@@ -1,0 +1,13 @@
+{
+  "name": "boardgame-recommender",
+  "version": "1.0.0",
+  "description": "Boardgame Recommender frontend unit tests",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^0.34.0",
+    "jsdom": "^22.0.0"
+  }
+}

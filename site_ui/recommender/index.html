@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Boardgame Recommender
+description: "Get personalized board game recommendations from your BGG library powered by Amazon Bedrock."
 ---
 
 <link rel="stylesheet" href="{{ '/assets/css/recommender.css' | relative_url }}">
@@ -19,7 +20,8 @@ title: Boardgame Recommender
                 <!-- Section 1: User & Scope -->
                 <div class="form-section">
                     <h3 class="section-title">
-                        <span class="section-title-icon" style="background: linear-gradient(135deg, #ede9fe, #c4b5fd);">👤</span>
+                        <span class="section-title-icon"
+                            style="background: linear-gradient(135deg, #ede9fe, #c4b5fd);">👤</span>
                         User Profile
                     </h3>
                     <div class="form-group">
@@ -47,14 +49,17 @@ title: Boardgame Recommender
                 <!-- Section 2: Game Constraints -->
                 <div class="form-section">
                     <h3 class="section-title">
-                        <span class="section-title-icon" style="background: linear-gradient(135deg, #d1fae5, #6ee7b7);">🎯</span>
+                        <span class="section-title-icon"
+                            style="background: linear-gradient(135deg, #d1fae5, #6ee7b7);">🎯</span>
                         Game Preferences
                     </h3>
                     <div class="form-group">
                         <label>Publishing Year (Optional)</label>
                         <div class="year-inputs">
-                            <input type="number" id="year_start" placeholder="From (e.g. 2023)" min="1900" max="2100" style="flex-grow: 1;">
-                            <input type="number" id="year_end" placeholder="To (e.g. 2026)" min="1900" max="2100" style="flex-grow: 1;">
+                            <input type="number" id="year_start" placeholder="From (e.g. 2023)" min="1900" max="2100"
+                                style="flex-grow: 1;">
+                            <input type="number" id="year_end" placeholder="To (e.g. 2026)" min="1900" max="2100"
+                                style="flex-grow: 1;">
                         </div>
                     </div>
 
@@ -81,7 +86,8 @@ title: Boardgame Recommender
             <!-- Section 3: Recommendation Profile (Full Width) -->
             <div class="form-section" style="margin-top: 16px;">
                 <h3 class="section-title">
-                    <span class="section-title-icon" style="background: linear-gradient(135deg, #e0e7ff, #a5b4fc);">🤖</span>
+                    <span class="section-title-icon"
+                        style="background: linear-gradient(135deg, #e0e7ff, #a5b4fc);">🤖</span>
                     AI Personalization
                 </h3>
                 <div class="form-group">
@@ -94,7 +100,9 @@ title: Boardgame Recommender
                         <option value="crowd_pleaser">Crowd Pleasers (Top Rated)</option>
                         <option value="custom">Custom (Fine-Tune Sliders)</option>
                     </select>
-                    <p id="preset_desc" class="preset-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; margin-bottom: 8px; line-height: 1.4;"></p>
+                    <p id="preset_desc" class="preset-desc"
+                        style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; margin-bottom: 8px; line-height: 1.4;">
+                    </p>
                 </div>
 
                 <div class="form-group" id="custom-sliders-group" style="display: none; margin-top: 10px;">
@@ -130,17 +138,20 @@ title: Boardgame Recommender
                                 <span id="w_hot_val" class="slider-badge">0%</span>
                             </div>
                             <input type="range" id="w_hot" min="0" max="100" value="0" class="weight-slider">
-                            <span class="slider-desc">Bias recommendations towards currently trending hot games on BGG</span>
+                            <span class="slider-desc">Bias recommendations towards currently trending hot games on
+                                BGG</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 25px; align-items: stretch; width: 100%;">
-                <button type="submit" class="btn btn-submit" id="submit-btn" style="flex: 3; justify-content: center; height: 50px;">
+                <button type="submit" class="btn btn-submit" id="submit-btn"
+                    style="flex: 3; justify-content: center; height: 50px;">
                     <span>Get AI Recommendations</span>
                 </button>
-                <button type="button" class="btn btn-submit" id="refresh-btn" style="flex: 1; justify-content: center; height: 50px; display: none;">
+                <button type="button" class="btn btn-submit" id="refresh-btn"
+                    style="flex: 1; justify-content: center; height: 50px; display: none;">
                     <span>Refresh</span>
                 </button>
             </div>

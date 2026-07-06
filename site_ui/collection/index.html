@@ -1,6 +1,7 @@
 ---
 layout: default
 title: BGG Collection Browser
+description: "Explore, search, filter, and sort your BoardGameGeek collection with a fast, modern glassmorphic interface."
 ---
 
 <style>
@@ -11,6 +12,7 @@ title: BGG Collection Browser
         --primary-green-border: #a7f3d0;
         --primary-green-glow: rgba(16, 185, 129, 0.15);
         --primary-green-text: #065f46;
+        --img-container-bg: linear-gradient(135deg, rgba(241, 245, 249, 0.4) 0%, rgba(226, 232, 240, 0.7) 100%);
     }
 
     html[data-theme="dark"] {
@@ -20,6 +22,7 @@ title: BGG Collection Browser
         --primary-green-border: rgba(52, 211, 153, 0.2);
         --primary-green-glow: rgba(52, 211, 153, 0.15);
         --primary-green-text: #34d399;
+        --img-container-bg: linear-gradient(135deg, rgba(15, 23, 42, 0.3) 0%, rgba(15, 23, 42, 0.6) 100%);
     }
 
     .collection-container {
@@ -909,21 +912,29 @@ title: BGG Collection Browser
         width: 100%;
         overflow: hidden;
         position: relative;
-        background-color: #f1f5f9;
+        background: var(--img-container-bg);
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 12px;
+        box-sizing: border-box;
+        border-bottom: 1px solid var(--border);
     }
     
     .game-card-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s ease;
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     .game-card:hover .game-card-img {
         transform: scale(1.06);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
     }
     
     .game-card-placeholder-img {
@@ -2808,7 +2819,8 @@ title: BGG Collection Browser
         document.getElementById('collection-panel-analytics').classList.add('hidden');
 
         const apiBaseUrl = "{{ site.api_url }}";
-        const apiUrl = apiBaseUrl
+        const isValidUrl = apiBaseUrl && (apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://'));
+        const apiUrl = isValidUrl
             ? `${apiBaseUrl}/collection?username=${lowerUsername}`
             : `https://boardgamegeek.com/xmlapi2/collection?username=${lowerUsername}&stats=1`;
 

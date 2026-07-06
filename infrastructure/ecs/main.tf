@@ -66,11 +66,6 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
   })
 }
 
-# Fetch the ECR repository created in the ecr_infrastructure state
-data "aws_ecr_repository" "bgg_game_scraper" {
-  name = "bgg_game_scraper"
-}
-
 resource "aws_cloudwatch_log_group" "scraper_log_group" {
   name              = "/ecs/bgg-scraper-task"
   retention_in_days = 7
@@ -88,7 +83,7 @@ resource "aws_ecs_task_definition" "scraper_task" {
 
   container_definitions = jsonencode([{
     name      = "bgg-scraper-container"
-    image     = "${data.aws_ecr_repository.bgg_game_scraper.repository_url}:latest"
+    image     = "${var.bgg_game_scraper_ecr_url}:latest"
     essential = true
     environment = [
       {

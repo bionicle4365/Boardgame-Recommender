@@ -1,12 +1,8 @@
-data "aws_ssm_parameter" "bgg_game_data_scraper_ecr_url" {
-  name = "/bgg/ecr/bgg_game_data_scraper_repository_url"
-}
-
 resource "aws_lambda_function" "bgg_game_data_scraper" {
   function_name                  = var.data_lambda_function_name
   role                           = var.lambda_execution_role_arn
   package_type                   = "Image"
-  image_uri                      = "${data.aws_ssm_parameter.bgg_game_data_scraper_ecr_url.value}:latest"
+  image_uri                      = "${var.bgg_game_data_scraper_ecr_url}:latest"
   timeout                        = 180
   memory_size                    = 256
   reserved_concurrent_executions = var.data_lambda_concurrency_limit
@@ -35,15 +31,11 @@ resource "aws_lambda_event_source_mapping" "bgg_game_data_scraper_esm" {
   function_response_types            = ["ReportBatchItemFailures"]
 }
 
-data "aws_ssm_parameter" "bgg_user_data_scraper_ecr_url" {
-  name = "/bgg/ecr/bgg_user_data_scraper_repository_url"
-}
-
 resource "aws_lambda_function" "bgg_user_data_scraper" {
   function_name                  = var.user_lambda_function_name
   role                           = var.lambda_execution_role_arn
   package_type                   = "Image"
-  image_uri                      = "${data.aws_ssm_parameter.bgg_user_data_scraper_ecr_url.value}:latest"
+  image_uri                      = "${var.bgg_user_data_scraper_ecr_url}:latest"
   timeout                        = 120
   memory_size                    = 256
   reserved_concurrent_executions = var.user_lambda_concurrency_limit
@@ -88,19 +80,11 @@ resource "aws_lambda_function" "bgg_api_proxy" {
   }
 }
 
-data "aws_ssm_parameter" "bgg_recommender_ecr_url" {
-  name = "/bgg/ecr/bgg_recommender_repository_url"
-}
-
-data "aws_ssm_parameter" "bgg_compactor_ecr_url" {
-  name = "/bgg/ecr/bgg_compactor_repository_url"
-}
-
 resource "aws_lambda_function" "bgg_recommender" {
   function_name = "bgg_recommender"
   role          = var.lambda_execution_role_arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ssm_parameter.bgg_recommender_ecr_url.value}:latest"
+  image_uri     = "${var.bgg_recommender_ecr_url}:latest"
   timeout       = 120
   memory_size   = 1024
 
@@ -125,7 +109,7 @@ resource "aws_lambda_function" "bgg_compactor" {
   function_name = "bgg_compactor"
   role          = var.lambda_execution_role_arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ssm_parameter.bgg_compactor_ecr_url.value}:latest"
+  image_uri     = "${var.bgg_compactor_ecr_url}:latest"
   timeout       = 900
   memory_size   = 3008
 
@@ -167,15 +151,11 @@ resource "aws_lambda_function" "bgg_preferences" {
   }
 }
 
-data "aws_ssm_parameter" "bgg_taste_analytics_ecr_url" {
-  name = "/bgg/ecr/bgg_taste_analytics_repository_url"
-}
-
 resource "aws_lambda_function" "bgg_taste_analytics" {
   function_name = "bgg_taste_analytics"
   role          = var.lambda_execution_role_arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ssm_parameter.bgg_taste_analytics_ecr_url.value}:latest"
+  image_uri     = "${var.bgg_taste_analytics_ecr_url}:latest"
   timeout       = 120
   memory_size   = 1024
 

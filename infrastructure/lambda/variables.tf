@@ -61,3 +61,28 @@ variable "taste_analytics_sqs_queue_arn" {
   description = "The ARN of the SQS queue for the BGG taste analytics"
   type        = string
 }
+
+variable "bgg_game_data_scraper_ecr_url" {
+  description = "The ECR repository URL for the BGG game data scraper image"
+  type        = string
+}
+
+variable "bgg_user_data_scraper_ecr_url" {
+  description = "The ECR repository URL for the BGG user data scraper image"
+  type        = string
+}
+
+variable "bgg_recommender_ecr_url" {
+  description = "The ECR repository URL for the BGG recommender image"
+  type        = string
+}
+
+variable "bgg_compactor_ecr_url" {
+  description = "The ECR repository URL for the BGG compactor image"
+  type        = string
+}
+
+variable "bgg_taste_analytics_ecr_url" {
+  description = "The ECR repository URL for the BGG taste analytics image"
+  type        = string
+}

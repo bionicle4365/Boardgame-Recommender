@@ -1,10 +1,25 @@
 title: BG Recommender
-description: A simple Jekyll site.
+description: "A premium AI-powered BoardGameGeek collection explorer and recommendation engine. Discover customized tabletop matches tailored to your taste profile, mechanics, and playgroups."
 baseurl: "/Boardgame-Recommender"
+url: "https://bionicle4365.github.io"
 api_url: "PLACEHOLDER_API_URL"
 cognito_region: "us-east-1"
 cognito_client_id: "PLACEHOLDER_COGNITO_CLIENT_ID"
 cognito_user_pool_id: "PLACEHOLDER_COGNITO_USER_POOL_ID"
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+image: /assets/img/og-image.png
+twitter:
+  card: summary_large_image
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      image: /assets/img/og-image.png
 
 
 

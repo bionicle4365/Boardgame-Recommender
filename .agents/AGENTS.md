@@ -17,4 +17,4 @@
 
 - **Docker Images**: Never build or push Docker images directly. Deployment processes and image builds should only be run via designated CI/CD pipelines (e.g. GitHub Actions).
 
-- **Milestone Completion**: When a milestone is completed, update the `project_roadmap.md` file to mark the milestone as completed.
+- **Milestone Completion**: When a milestone is completed, update the `project_roadmap.md` file to mark the milestone as completed and remove the milestone and its tasks from the active tasks section.

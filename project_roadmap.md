@@ -4,48 +4,24 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
-
-## Milestone 39: Test Coverage Expansion
-
-### Objective
-Close critical gaps in unit test coverage for the caching layer, Bedrock narration pipeline, and frontend JavaScript, and add an integration smoke test for the full recommendation flow.
-
-### Design Notes
-- **Current State:** The test suite has 8 test files covering scrapers, the recommender handler, compactor, preferences, and taste analytics. However, several high-complexity, high-risk modules have zero isolated test coverage.
-- **`cache_utils.py` (347 lines, untested):** Contains the S3 caching logic, TTL calculations, cache invalidation (profile-updated-since-cache), hotness API fetching with stale fallback, and catalog loading. These are complex multi-branch flows where bugs silently serve stale data.
-- **`narration.py` (241 lines, untested):** Contains Bedrock prompt construction, JSON response parsing (including markdown block cleanup), case-insensitive name matching with partial-match fallback, and the fill-in logic when the LLM returns fewer than 10 valid results. Each of these has subtle edge cases.
-- **Frontend JS:** No test framework exists. The `utils.js` shared module (Auth, fetchApi, renderRecommendationCard, renderSkeletonCards, escapeHTML) and the recommender page JavaScript contain business logic that should be unit tested.
-- **`bgg_preferences` test path list**: The `python-tests.yml` CI workflow does not include `bgg_preferences/` in its trigger paths, meaning changes to the preferences handler do not trigger CI tests.
-
-### Tasks
-- [ ] **`cache_utils` Unit Tests:** Add `tests/test_cache_utils.py` covering: `get_cached_recommendations` TTL expiration, smart invalidation (profile newer than cache), cache miss, `get_bgg_hotness` S3 cache hit/miss/stale fallback, `get_catalog` cold start and warm cache, `get_user_profile_status` exists/stale/missing, `safe_list` edge cases.
-- [ ] **`narration` Unit Tests:** Add `tests/test_narration.py` covering: Bedrock prompt construction (verify liked games and weight context are injected), JSON response parsing (valid JSON, markdown-wrapped JSON, malformed JSON), name-to-ID matching (exact match, case mismatch, partial match, no match), fill-in logic when LLM returns <10 results, `build_fallback_recommendations` output format.
-- [ ] **Frontend Test Framework:** Add a lightweight JS test framework (e.g., Vitest or Jest) for `utils.js`. Write tests for `escapeHTML`, `renderRecommendationCard` output structure, `renderSkeletonCards` count, and `Auth.isLoggedIn` state detection.
-- [ ] **CI Trigger Path Fix:** Add `bgg_preferences/**` to the `paths` trigger list in `.github/workflows/python-tests.yml`.
-
----
-
-## Milestone 47: Release Polish (SEO, Favicon & Social Sharing)
+## Milestone 48: Collection Browser Image Fitting
 
 ### Objective
-Implement metadata optimization, search engine optimization (SEO), OpenGraph configurations, and brand asset integration to polish the user experience and ensure the web app is ready for external public release.
+Fix game images in the collection browser so they display the full image instead of being fitted to width, which crops most game box art. Images should fit to either height or width based on their aspect ratio using `object-fit: contain`.
 
 ### Design Notes
-- **User Impression:** A public-facing web application needs consistent layouts, brand identifiers (favicons), and descriptive metadata. Currently, pages use generic site titles, missing descriptions, and lack basic sharing configurations.
-- **Social Sharing:** Sharing recommendations on platforms like Reddit, Discord, or Twitter should render structured rich preview cards (via OpenGraph metadata) showing a clean description of the application.
-- **Site Discovery:** Auto-generating a sitemap ensures search crawler indexing of user-accessible routes.
+- **Current Behaviour:** Game images in the collection browser use `object-fit: cover` (or equivalent width-based fitting), which crops portrait-oriented box art to fill the container width. Most board game boxes are tall/portrait, so significant portions of the artwork are lost.
+- **Desired Behaviour:** Images should display fully within their container without cropping, fitting to whichever dimension (height or width) preserves the complete image. This means using `object-fit: contain` so the browser natively handles aspect-ratio-aware fitting.
+- **Visual Consideration:** `object-fit: contain` may introduce letterboxing (empty space around the image). The container background should complement the glassmorphism card style so any visible gaps look intentional and polished.
 
 ### Architecture Decisions
-- **Metadata Integration:** Inject page-specific frontmatter descriptions into site header templates.
-- **Jekyll SEO & Sitemap:** Register standard Jekyll plugins (`jekyll-seo-tag` and `jekyll-sitemap`) for metadata orchestration and sitemap generation.
-- **Asset Optimization:** Add a standard favicon.ico and high-resolution icons to the site's media directory.
+- **CSS-Only Change:** This is a purely visual fix. Replace `object-fit: cover` with `object-fit: contain` on collection browser game image elements. No JavaScript or backend changes needed.
+- **Scoped Impact:** Only the collection browser grid images are affected. Recommendation cards and other image displays retain their current fitting behaviour unless they exhibit the same issue.
 
 ### Tasks
-- [ ] **Favicon Generation:** Create and upload `site_ui/favicon.ico` and apple touch icons, adding proper links in the site layout header.
-- [ ] **Jekyll Configuration Update:** Update the description field in `site_ui/_config.yml` from "A simple Jekyll site" to a descriptive value. Register `jekyll-seo-tag` and `jekyll-sitemap` in the plugins array.
-- [ ] **Page Metadata Audits:** Populate frontmatter `title` and `description` variables for all user-facing entry points (Home, Recommender, Collection, Groups, Profile).
-- [ ] **OpenGraph Markup:** Add `og:image` properties pointing to a high-quality preview asset and verify layout parsing.
-- [ ] **Custom 404 Page:** Create a glassmorphic-styled `site_ui/404.html` error landing page that routes users back to the homepage.
+- [ ] **Update Image Fitting CSS:** Change the collection browser game image `object-fit` property from `cover` to `contain` in the collection page styles and/or `design-system.css`.
+- [ ] **Container Background:** Ensure the image container has an appropriate background color or subtle gradient so letterboxed areas look clean.
+- [ ] **Visual Verification:** Test with a range of game images (portrait, landscape, and square box art) on both desktop and mobile viewports to confirm images display fully without cropping or layout breakage.
 
 ---
 
@@ -380,4 +356,7 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 36: Security Hardening & CORS Fixes** (Removed wildcard Lambda CORS headers, added API Gateway POST preflights, added regex username validation, moved Cognito Client/Pool IDs to GitHub secrets)
 * **Milestone 37: DynamoDB Preferences Safety & Backend DRY Refactor** (Migrated preferences handler POST to table.update_item, centralized weight parsing helper in cache_utils.py, simplified client mock patching with dynamic __getattr__ module routing)
 * **Milestone 38: Repository Hygiene & Code Quality** (Removed deprecated bgg_raw_to_compressed/ and ml_engine/ directories, extracted recommender index.html styles/scripts to external files, removed inert moved blocks from main.tf, and hardened test conftest AWS mock keys)
+* **Milestone 39: Test Coverage Expansion** (S3 caching layer unit tests, Bedrock narration pipeline unit tests, Vitest + JSDOM frontend tests, CI path trigger fix)
+* **Milestone 47: Release Polish (SEO, Favicon & Social Sharing)** (Registered jekyll-seo-tag and jekyll-sitemap, linked generated favicon and apple touch icons, audited page metadata, configured default OpenGraph/Twitter sharing cards, and added a custom glassmorphic 404 landing page)
+
 
