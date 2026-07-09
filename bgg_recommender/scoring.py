@@ -343,5 +343,104 @@ def score_candidates(candidates, mech_weights, cat_weights, user_designers, user
         candidate_scores.append((comp_score, row))
 
     candidate_scores.sort(key=lambda x: x[0], reverse=True)
-    top_candidates = [item[1] for item in candidate_scores[:30]]
+    top_candidates = [item[1] for item in candidate_scores[:40]]
     return top_candidates
+
+
+def diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category=5, target_count=25):
+    """
+    Applies a deterministic diversification pass on scored candidates.
+    Ensures that we do not cluster too many games with the same primary mechanic or category.
+    The highest-scored candidate is always retained.
+    
+    If fewer than 25 diverse candidates can be selected, falls back to returning the original list.
+    """
+    from collections import defaultdict
+
+    if not scored_candidates or len(scored_candidates) < 25:
+        logger.info(
+            f"Skipping diversity pass: candidate list size {len(scored_candidates) if scored_candidates else 0} "
+            f"is too small (minimum 25 required)."
+        )
+        return scored_candidates
+
+    selected = []
+    mechanic_counts = defaultdict(int)
+    category_counts = defaultdict(int)
+
+    skipped_count = 0
+    skipped_by_mechanic = 0
+    skipped_by_category = 0
+    skipped_by_both = 0
+
+    caps_hit_mechanics = set()
+    caps_hit_categories = set()
+
+    for idx, row in enumerate(scored_candidates):
+        if len(selected) >= target_count:
+            break
+
+        cand_mechs = row.get('mechanics')
+        cand_cats = row.get('categories')
+
+        # Convert to list if not already
+        cand_mechs = list(cand_mechs) if cand_mechs is not None else []
+        cand_cats = list(cand_cats) if cand_cats is not None else []
+
+        primary_mech = cand_mechs[0] if cand_mechs else None
+        primary_cat = cand_cats[0] if cand_cats else None
+
+        # Always retain the highest-scored candidate
+        if idx == 0:
+            selected.append(row)
+            if primary_mech:
+                mechanic_counts[primary_mech] += 1
+            if primary_cat:
+                category_counts[primary_cat] += 1
+            continue
+
+        # Check caps
+        mech_capped = False
+        cat_capped = False
+
+        if primary_mech and mechanic_counts[primary_mech] >= max_per_mechanic:
+            mech_capped = True
+            caps_hit_mechanics.add(primary_mech)
+
+        if primary_cat and category_counts[primary_cat] >= max_per_category:
+            cat_capped = True
+            caps_hit_categories.add(primary_cat)
+
+        if mech_capped or cat_capped:
+            skipped_count += 1
+            if mech_capped and cat_capped:
+                skipped_by_both += 1
+            elif mech_capped:
+                skipped_by_mechanic += 1
+            else:
+                skipped_by_category += 1
+            continue
+
+        selected.append(row)
+        if primary_mech:
+            mechanic_counts[primary_mech] += 1
+        if primary_cat:
+            category_counts[primary_cat] += 1
+
+    # Fallback check
+    if len(selected) < 25:
+        logger.warning(
+            f"Diversity pass failed: only {len(selected)} diverse candidates could be selected "
+            f"(target: {target_count}). Falling back to original unmodified candidates list."
+        )
+        return scored_candidates
+
+    logger.info(
+        f"Diversity pass complete. Selected {len(selected)} candidates. "
+        f"Skipped {skipped_count} candidates due to caps (mechanic cap: {skipped_by_mechanic}, "
+        f"category cap: {skipped_by_category}, both: {skipped_by_both}). "
+        f"Mechanic caps hit: {list(caps_hit_mechanics)}. "
+        f"Category caps hit: {list(caps_hit_categories)}."
+    )
+    return selected
+

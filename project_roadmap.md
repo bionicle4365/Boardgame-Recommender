@@ -4,51 +4,6 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
-## Milestone 48: Collection Browser Image Fitting
-
-### Objective
-Fix game images in the collection browser so they display the full image instead of being fitted to width, which crops most game box art. Images should fit to either height or width based on their aspect ratio using `object-fit: contain`.
-
-### Design Notes
-- **Current Behaviour:** Game images in the collection browser use `object-fit: cover` (or equivalent width-based fitting), which crops portrait-oriented box art to fill the container width. Most board game boxes are tall/portrait, so significant portions of the artwork are lost.
-- **Desired Behaviour:** Images should display fully within their container without cropping, fitting to whichever dimension (height or width) preserves the complete image. This means using `object-fit: contain` so the browser natively handles aspect-ratio-aware fitting.
-- **Visual Consideration:** `object-fit: contain` may introduce letterboxing (empty space around the image). The container background should complement the glassmorphism card style so any visible gaps look intentional and polished.
-
-### Architecture Decisions
-- **CSS-Only Change:** This is a purely visual fix. Replace `object-fit: cover` with `object-fit: contain` on collection browser game image elements. No JavaScript or backend changes needed.
-- **Scoped Impact:** Only the collection browser grid images are affected. Recommendation cards and other image displays retain their current fitting behaviour unless they exhibit the same issue.
-
-### Tasks
-- [ ] **Update Image Fitting CSS:** Change the collection browser game image `object-fit` property from `cover` to `contain` in the collection page styles and/or `design-system.css`.
-- [ ] **Container Background:** Ensure the image container has an appropriate background color or subtle gradient so letterboxed areas look clean.
-- [ ] **Visual Verification:** Test with a range of game images (portrait, landscape, and square box art) on both desktop and mobile viewports to confirm images display fully without cropping or layout breakage.
-
----
-
-## Milestone 45: Recommendation Diversity Guard
-
-### Objective
-Add a deterministic post-scoring diversification pass that prevents mechanic and category clustering in the top-30 candidate shortlist sent to Bedrock, ensuring users receive a broader variety of recommendations instead of 8 deck-builders when they love deck-building.
-
-### Design Notes
-- **Current Behaviour:** `score_candidates()` returns the top-30 candidates sorted purely by composite score. Because Jaccard similarity is deterministic and heavily rewards the user's strongest mechanic preferences, the top-30 consistently clusters around a narrow set of mechanics. The LLM picks 10 from those 30, but if 20 of the 30 share the same primary mechanic, diversity is constrained no matter what the prompt says.
-- **Profile Presets Aren't Enough:** The existing recommendation profile presets (Balanced, Thematic, Strategy, etc.) shift weight distribution but don't address within-preset clustering. A "Balanced" user who rates 15 worker-placement games highly will still get a worker-placement-dominated shortlist.
-- **Design Principle:** The user's strongest mechanic match absolutely deserves representation — just not domination. This is a soft rebalancing, not a hard cap. The diversity pass operates *after* scoring and *before* the Bedrock handoff, so it doesn't change the scoring algorithm itself.
-
-### Architecture Decisions
-- **Diversification Location:** Add a `diversify_candidates(top_candidates, max_per_mechanic=4, max_per_category=5)` function in `scoring.py` that runs after `score_candidates()` returns. This keeps the scoring pure and makes diversity a separate, testable concern.
-- **Algorithm:** Iterate through the scored top-30 in rank order. For each candidate, extract its primary mechanic (first in the mechanics list) and primary category (first in the categories list). If either has already appeared `max_per_mechanic` or `max_per_category` times in the selected list, skip it and continue to the next candidate. Fill until 30 diverse candidates are selected or the scored list is exhausted.
-- **Fallback:** If fewer than 25 diverse candidates can be selected (extremely narrow catalog or filters), fall back to the original unmodified top-30 to avoid starving the Bedrock prompt.
-- **No New API Parameters:** Diversity is always applied. It's an internal quality improvement, not a user-facing toggle. The configurable `max_per_mechanic` and `max_per_category` constants are tuned server-side.
-
-### Tasks
-- [ ] **Diversify Function:** Implement `diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category=5)` in `scoring.py`. Accept the scored list (already sorted by composite score) and return a reordered list with mechanic/category caps applied. Preserve the original score ordering within the diverse subset.
-- [ ] **Integration in Handler:** Update `_handle_recommendations` in `bgg_recommender.py` to call `diversify_candidates(top_candidates)` after `score_candidates()` and before passing `top_candidates[:25]` to `narrate_recommendations()`.
-- [ ] **Logging:** Log the diversification impact — how many candidates were swapped out and which mechanic/category caps were hit — for observability and future tuning.
-- [ ] **Unit Tests:** Test diversification with synthetic candidate lists: all-same-mechanic input, already-diverse input (no-op), mixed clustering, and fallback when fewer than 25 diverse candidates exist. Verify that the highest-scored candidate is always retained regardless of caps.
-
----
-
 ## Milestone 44: Progressive Web App & Offline Support
 
 ### Objective
@@ -96,29 +51,6 @@ Add a content-based "Similar Games" endpoint to the recommender Lambda that retu
 - [ ] **API Gateway Route:** Add a `/similar` route in the API Gateway Terraform configuration.
 - [ ] **S3 Response Caching:** Cache similar-games results in S3 (`data/similar_cache/{game_id}.json`) with a 7-day TTL.
 - [ ] **Unit Tests:** Test Jaccard similarity computation, edge cases (unknown game ID, game with no mechanics), and cache hit/miss paths.
-
----
-
-## Milestone 33: Lightweight Recommendation Feedback Loop
-
-### Objective
-Allow authenticated users to provide lightweight thumbs-up / thumbs-down feedback on individual recommendation results, stored in DynamoDB for future use as a pre-filter exclusion list — without adding computational overhead to the scoring pipeline.
-
-### Design Notes
-- **Performance Concern:** The recommendation pipeline is already latency-sensitive. Feedback must not add computation to the scoring loop. Instead, feedback is applied as a simple **pre-filter**: thumbs-down game IDs are excluded from candidates before scoring begins, and thumbs-up game IDs are never excluded even if other filters would remove them.
-- **Storage:** Feedback is stored in the existing DynamoDB preferences table (already used by `bgg_preferences` Lambda) as a `recommendation_feedback` attribute: `{ "liked": ["id1", "id2"], "disliked": ["id3"] }`.
-- **Scope:** This milestone covers the DynamoDB storage, the pre-filter integration, and the frontend UI buttons. It explicitly does **not** modify mechanic weight calculations or the Bedrock prompt.
-
-### Architecture Decisions
-- **DynamoDB Schema:** Add a `recommendation_feedback` map attribute to the existing user preferences item. No new table needed.
-- **Pre-Filter Only:** In `_handle_recommendations`, after loading user profiles and before candidate scoring, load the user's disliked game IDs from DynamoDB and remove them from the candidates DataFrame. This is a single set-difference operation with negligible cost.
-
-### Tasks
-- [ ] **DynamoDB Schema Update:** Add `recommendation_feedback` attribute (map of `liked` and `disliked` string sets) to the user preferences item schema in `bgg_preferences`.
-- [ ] **Preferences API Endpoints:** Add `PUT /preferences/feedback` and `GET /preferences/feedback` routes to the preferences Lambda for storing and retrieving feedback.
-- [ ] **Recommender Pre-Filter:** In `_handle_recommendations`, load disliked game IDs from DynamoDB (if user is authenticated) and exclude them from candidates before scoring.
-- [ ] **Frontend Feedback Buttons:** Add 👍 / 👎 buttons to recommendation cards (visible only when logged in). On click, call the preferences API to persist feedback and visually update the card state.
-- [ ] **Unit Tests:** Test the pre-filter exclusion logic and the feedback persistence endpoints.
 
 ---
 
@@ -306,19 +238,19 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 
 ### Design Notes
 - **Current UX Problem:** Users submit a recommendation request and wait 10-30 seconds seeing only a spinner. The backend spends ~2-3s on scoring and ~8-15s on Bedrock narration. Users have no feedback during this time, leading to uncertainty, repeated submissions, and perceived slowness.
-- **Streaming Model:** With WebSockets, the Lambda can push scored candidates (with fallback reasons) to the client immediately as Phase 1, then push individual narrated cards as Bedrock responses arrive in Phase 2. The user sees cards appearing one by one — dramatically better perceived performance.
+- **Streaming Model:** Since the LLM is responsible for selecting the final 10 games from the top 40 candidates and deduplicating game variants/editions, we cannot stream candidates to the client before the LLM makes its selections. Instead, we use Bedrock's Converse Stream API (`converse_stream`). The Lambda function parses the LLM's JSON output stream on the fly. As soon as a complete game object (containing the selected game name and narrated reason) is parsed, the Lambda resolves it to its catalog metadata and streams the final recommended card immediately to the client. This guarantees the user only sees the final 10 selected recommendations, appearing one-by-one as they are generated by the LLM.
 - **Fallback:** If WebSocket connection fails (corporate firewalls, older browsers), fall back to the existing polling-based HTTP flow automatically.
 
 ### Architecture Decisions
 - **API Gateway WebSocket API:** Create a separate WebSocket API in API Gateway (`wss://` endpoint) with `$connect`, `$disconnect`, and `$default` routes. The `$connect` route validates optional JWT auth. The `$default` route accepts recommendation request payloads.
 - **Connection Management:** Store active WebSocket connection IDs in a lightweight DynamoDB table (`bgg-ws-connections`) with a 1-hour TTL. The recommendation Lambda posts messages to connection IDs via the API Gateway Management API.
-- **Message Protocol:** Define a simple JSON message protocol: `{type: "candidate", index: N, data: {...}}` for individual cards, `{type: "narration", id: "game_id", reason: "..."}` for narrated reasons, `{type: "complete"}` for end-of-stream.
+- **Message Protocol:** Define a simple JSON message protocol: `{type: "recommendation", index: N, data: {...}}` for individual recommended cards, and `{type: "complete"}` for end-of-stream.
 
 ### Tasks
 - [ ] **WebSocket API Gateway:** Create a new WebSocket API (`bgg-ws-api`) in the Terraform API Gateway module with `$connect`, `$disconnect`, and `$default` routes.
 - [ ] **Connection DynamoDB Table:** Add a `bgg-ws-connections` table with `connectionId` partition key and TTL attribute.
 - [ ] **WebSocket Lambda Handler:** Implement connection management (`$connect` stores connectionId, `$disconnect` removes it) and request routing (`$default` triggers recommendation flow with streaming output).
-- [ ] **Streaming Recommendation Pipeline:** Modify `_handle_recommendations` to accept an optional WebSocket connection ID. When present, push each scored candidate individually via the API Gateway Management API, then push narrated reasons as they arrive from Bedrock.
+- [ ] **Streaming Recommendation Pipeline:** Modify `_handle_recommendations` to accept an optional WebSocket connection ID. When present, invoke the Bedrock Converse Stream API, parse the JSON stream chunk-by-chunk on the fly, resolve each selected game to its metadata, and stream the final 10 recommendations individually via WebSockets to the client as they are generated.
 - [ ] **Frontend WebSocket Client:** Update `recommender/index.html` (or the extracted `recommender.js`) to establish a WebSocket connection, render cards as they stream in, and fall back to HTTP polling if WebSocket connection fails.
 - [ ] **Unit Tests:** Test connection lifecycle, message serialization, and HTTP fallback behavior.
 
@@ -357,6 +289,8 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 37: DynamoDB Preferences Safety & Backend DRY Refactor** (Migrated preferences handler POST to table.update_item, centralized weight parsing helper in cache_utils.py, simplified client mock patching with dynamic __getattr__ module routing)
 * **Milestone 38: Repository Hygiene & Code Quality** (Removed deprecated bgg_raw_to_compressed/ and ml_engine/ directories, extracted recommender index.html styles/scripts to external files, removed inert moved blocks from main.tf, and hardened test conftest AWS mock keys)
 * **Milestone 39: Test Coverage Expansion** (S3 caching layer unit tests, Bedrock narration pipeline unit tests, Vitest + JSDOM frontend tests, CI path trigger fix)
+* **Milestone 45: Recommendation Diversity Guard** (Deterministic post-scoring diversification pass to prevent mechanic and category clustering in Bedrock shortlists)
 * **Milestone 47: Release Polish (SEO, Favicon & Social Sharing)** (Registered jekyll-seo-tag and jekyll-sitemap, linked generated favicon and apple touch icons, audited page metadata, configured default OpenGraph/Twitter sharing cards, and added a custom glassmorphic 404 landing page)
+* **Milestone 48: Collection Browser Image Fitting** (Updated collection browser game images to `object-fit: contain` with customized dark/light mode gradient containers to ensure aspect-ratio-aware fitting without cropping)
 
 

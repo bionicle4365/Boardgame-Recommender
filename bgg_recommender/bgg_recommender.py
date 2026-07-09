@@ -27,7 +27,7 @@ from cache_utils import (
     get_cached_recommendations, save_recommendations_to_cache,
     build_game_metadata, validate_username, parse_weights,
 )
-from scoring import compute_taste_profile_inline, score_candidates
+from scoring import compute_taste_profile_inline, score_candidates, diversify_candidates
 from narration import narrate_recommendations, build_fallback_recommendations, build_weight_context
 
 from botocore.exceptions import ClientError
@@ -397,7 +397,10 @@ def _handle_recommendations(query_params):
         complexity_weights, hotness_scores, catalog_df, query_params, weights
     )
 
-    # 7. Call Bedrock for personalized narration
+    # 7. Apply diversity guard to candidates
+    top_candidates = diversify_candidates(top_candidates)
+
+    # 8. Call Bedrock for personalized narration
     weight_context = build_weight_context(query_params, weights)
     narrated_recs = narrate_recommendations(top_candidates[:25], liked_games_str, weight_context, query_params)
 

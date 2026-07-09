@@ -1017,3 +1017,166 @@ def test_lambda_handler_compression(mock_status):
         assert body_data['status'] == 'scraping'
 
 
+def test_diversify_candidates_no_clustering():
+    import scoring
+    # Create 35 candidates with completely unique mechanics and categories
+    candidates = [
+        {
+            "id": i,
+            "name": f"Game {i}",
+            "mechanics": [f"Mech {i}"],
+            "categories": [f"Cat {i}"]
+        }
+        for i in range(35)
+    ]
+    # target_count = 25
+    result = scoring.diversify_candidates(candidates, target_count=25)
+    assert len(result) == 25
+    # Should be exactly the first 25 candidates in order
+    for idx, game in enumerate(result):
+        assert game["id"] == idx
+
+
+def test_diversify_candidates_clustering_mechanic():
+    import scoring
+    # First candidate has Mech A. Next 15 candidates also have Mech A.
+    # The remaining 20 candidates have unique mechanics (Mech B, Mech C, etc.)
+    candidates = []
+    # Index 0
+    candidates.append({
+        "id": 0,
+        "name": "First Game",
+        "mechanics": ["Mech A"],
+        "categories": ["Cat A"]
+    })
+    # Indexes 1 to 15 (all Mech A)
+    for i in range(1, 16):
+        candidates.append({
+            "id": i,
+            "name": f"Cluster Game {i}",
+            "mechanics": ["Mech A"],
+            "categories": [f"Cat {i}"]
+        })
+    # Indexes 16 to 39 (diverse mechanics)
+    for i in range(16, 40):
+        candidates.append({
+            "id": i,
+            "name": f"Diverse Game {i}",
+            "mechanics": [f"Mech {i}"],
+            "categories": [f"Cat {i}"]
+        })
+
+    # max_per_mechanic = 3
+    result = scoring.diversify_candidates(candidates, max_per_mechanic=3, target_count=25)
+    assert len(result) == 25
+
+    # Check that only 3 games with "Mech A" are selected (index 0, plus 2 of the cluster)
+    mech_a_count = sum(1 for g in result if g["mechanics"] and g["mechanics"][0] == "Mech A")
+    assert mech_a_count == 3
+
+    # First game (index 0) must be retained
+    assert result[0]["id"] == 0
+    # Next two should be index 1 and 2 (first items in cluster)
+    assert result[1]["id"] == 1
+    assert result[2]["id"] == 2
+    # The rest should skip the remaining cluster and pull from the diverse ones
+    assert result[3]["id"] == 16
+
+
+def test_diversify_candidates_clustering_category():
+    import scoring
+    # First candidate has Cat X. Next 15 candidates also have Cat X.
+    # The remaining 20 candidates have unique categories.
+    candidates = []
+    candidates.append({
+        "id": 0,
+        "name": "First Game",
+        "mechanics": ["Mech 0"],
+        "categories": ["Cat X"]
+    })
+    for i in range(1, 16):
+        candidates.append({
+            "id": i,
+            "name": f"Cluster Game {i}",
+            "mechanics": [f"Mech {i}"],
+            "categories": ["Cat X"]
+        })
+    for i in range(16, 40):
+        candidates.append({
+            "id": i,
+            "name": f"Diverse Game {i}",
+            "mechanics": [f"Mech {i}"],
+            "categories": [f"Cat {i}"]
+        })
+
+    # max_per_category = 2
+    result = scoring.diversify_candidates(candidates, max_per_category=2, target_count=25)
+    assert len(result) == 25
+
+    # Check that only 2 games with "Cat X" are selected
+    cat_x_count = sum(1 for g in result if g["categories"] and g["categories"][0] == "Cat X")
+    assert cat_x_count == 2
+    assert result[0]["id"] == 0
+    assert result[1]["id"] == 1
+    assert result[2]["id"] == 16
+
+
+def test_diversify_candidates_always_retains_first():
+    import scoring
+    # First candidate has Mech A.
+    # Set max_per_mechanic = 0 (or 1 with duplicate) to see if it is still kept
+    candidates = [
+        {
+            "id": i,
+            "name": f"Game {i}",
+            "mechanics": ["Mech A"],
+            "categories": ["Cat A"]
+        }
+        for i in range(30)
+    ]
+    # Even if max_per_mechanic is 0, the first game (index 0) must be returned in the list.
+    # Let's run with target_count = 25, max_per_mechanic = 0.
+    # Since max_per_mechanic = 0, every game after index 0 is skipped because their Mech is Mech A and count >= 0.
+    # This will trigger fallback since selected count is 1 (< 25).
+    # To test always retaining first without triggering fallback, let's use:
+    # 1st game: Mech A, Cat A.
+    # Next 29 games: Mech B, Cat B.
+    # If we set max_per_mechanic = 1 for Mech A, Mech B can have higher cap.
+    candidates = [
+        {"id": 0, "name": "Game 0", "mechanics": ["Mech A"], "categories": ["Cat A"]}
+    ] + [
+        {"id": i, "name": f"Game {i}", "mechanics": [f"Mech {i}"], "categories": [f"Cat {i}"]}
+        for i in range(1, 30)
+    ]
+    # Since Mech A has appeared once, if we set max_per_mechanic=1, and we have a duplicate of Mech A later:
+    candidates.append({"id": 30, "name": "Game 30", "mechanics": ["Mech A"], "categories": ["Cat 30"]})
+
+    result = scoring.diversify_candidates(candidates, max_per_mechanic=1, target_count=25)
+    # The first game (id 0) is Mech A. The last game (id 30) is Mech A.
+    # Game 30 should be skipped, but Game 0 is retained.
+    assert len(result) == 25
+    assert result[0]["id"] == 0
+    assert 30 not in [g["id"] for g in result]
+
+
+def test_diversify_candidates_fallback():
+    import scoring
+    # 40 games, all sharing same mechanic and category.
+    # Cap = 2. Maximum selected can only be 2.
+    # Since 2 < 25, the fallback must trigger and return the original list.
+    candidates = [
+        {
+            "id": i,
+            "name": f"Game {i}",
+            "mechanics": ["Mech A"],
+            "categories": ["Cat A"]
+        }
+        for i in range(40)
+    ]
+    result = scoring.diversify_candidates(candidates, max_per_mechanic=2, max_per_category=2, target_count=25)
+    assert len(result) == 40
+    for idx, game in enumerate(result):
+        assert game["id"] == idx
+
+
+
