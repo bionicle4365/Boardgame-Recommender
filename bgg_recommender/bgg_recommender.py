@@ -27,7 +27,7 @@ from cache_utils import (
     get_cached_recommendations, save_recommendations_to_cache,
     build_game_metadata, validate_username, parse_weights,
 )
-from scoring import compute_taste_profile_inline, score_candidates, diversify_candidates
+from scoring import compute_taste_profile_inline, score_candidates, diversify_candidates, calculate_game_score
 from narration import narrate_recommendations, build_fallback_recommendations, build_weight_context
 
 from botocore.exceptions import ClientError
@@ -380,8 +380,9 @@ def _handle_recommendations(query_params):
         logger.info(f"Pre-filtered candidates by rating >= 5.0. Candidates left: {len(candidates)}")
 
     # 6. Compute taste profiles and score candidates
+    individual_profiles = {}
     mech_weights, cat_weights, user_designers, user_publishers, complexity_weights = compute_taste_profile_inline(
-        user_df, catalog_df, usernames, user_parquet_modified
+        user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=individual_profiles
     )
 
     hot_games = bgg_rec.get_bgg_hotness(ttl_hours=2)
@@ -409,6 +410,41 @@ def _handle_recommendations(query_params):
     else:
         # Bedrock failed, return fallback
         recs_list = build_fallback_recommendations(top_candidates)
+
+    # 9. Compute individual playgroup member affinities if a group request
+    if len(usernames) > 1 and recs_list and individual_profiles:
+        logger.info(f"Computing individual playgroup member affinities for {len(usernames)} attendees.")
+        has_complexity = 'complexity' in catalog_df.columns
+        has_publishers = 'publishers' in catalog_df.columns
+        
+        for rec in recs_list:
+            game_id = str(rec['id'])
+            matching_rows = catalog_df[catalog_df['id'] == game_id]
+            if matching_rows.empty:
+                continue
+            game_row = matching_rows.iloc[0].to_dict()
+            
+            affinities = {}
+            for u in usernames:
+                u_prof = individual_profiles.get(u)
+                if u_prof:
+                    u_mech, u_cat, u_des, u_pub, u_comp = u_prof
+                    
+                    # Pre-calculate totals for u
+                    u_total_mech = sum(u_mech.values()) or 1.0
+                    u_total_cat = sum(u_cat.values()) or 1.0
+                    u_total_comp = sum(u_comp.values()) or 1.0
+                    u_total_des = sum(u_des.values()) or 1.0
+                    u_total_pub = sum(u_pub.values()) or 1.0
+                    
+                    u_score = calculate_game_score(
+                        game_row, u_mech, u_cat, u_des, u_pub, u_comp,
+                        hotness_scores, query_params, weights,
+                        u_total_mech, u_total_cat, u_total_comp, u_total_des, u_total_pub,
+                        has_complexity, has_publishers
+                    )
+                    affinities[u] = round(u_score, 3)
+            rec['member_affinities'] = affinities
 
     # Save narrated recommendations to cache
     if recs_list:

@@ -54,29 +54,6 @@ Add a content-based "Similar Games" endpoint to the recommender Lambda that retu
 
 ---
 
-## Milestone 40: Groups Page Redesign — Tabs & Per-Member Affinity
-
-### Objective
-Redesign the Playgroup page to present structured tabs for recommendations vs. analytics and update the backend response format to include individual member affinity breakdowns on recommended games.
-
-### Design Notes
-- **Redesign Concept:** The single playgroup container is cluttered. Introducing a **Recommendations** tab and a **Collection Analytics** tab splits the interface into logical focus areas.
-- **Consensus Pick Clarity:** Currently, group recommendations show a single composite score. Displaying per-member affinity bars (e.g., "Alice: 92%, Bob: 71%") on the recommendation cards helps groups understand consensus and avoid options that individual members strongly dislike.
-- **Data Integration:** Instead of a new endpoint, the existing recommender engine can return a map of individual scores for group requests. The client uses this map to render the breakdown on the existing recommendation card layout.
-
-### Architecture Decisions
-- **Scoring Engine:** Update `scoring.py` to optionally calculate individual user scores alongside composite scores when processing group recommendations, returning these results in the response payload.
-- **Interface Tabs:** Split `site_ui/groups/index.html` into a tabbed layout. Use dynamic tab toggles with smooth transition animations.
-- **Visual Affinity Bars:** Modify card rendering to draw individual progress indicators for playgroup members when scores are returned in the response metadata.
-
-### Tasks
-- [ ] **Group API Response Update:** Modify the `/recommendations` API logic to append a `member_affinities` dictionary matching `{username: score}` to recommended games when multiple usernames are queried.
-- [ ] **Groups Page HTML Structure:** Modify `site_ui/groups/index.html` to add tab buttons ("Group Recommendations", "Playgroup Analytics") and wrap current analytics panels in tab contents.
-- [ ] **Tab Styling & Animations:** Update groups stylesheet to add indicator lines, active tab classes, and clean hover states for tabs.
-- [ ] **Affinity Bar Rendering:** Add an affinity bar container to recommendation cards in `groups/index.html`. Render a list of member names and colorful progress bars representing their taste alignment.
-- [ ] **Verification:** Validate that group queries continue to resolve correctly for single-user collection caches, and test tab transitions on mobile viewports.
-
----
 
 ## Milestone 46: Game Score Inspector
 
@@ -290,6 +267,7 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 38: Repository Hygiene & Code Quality** (Removed deprecated bgg_raw_to_compressed/ and ml_engine/ directories, extracted recommender index.html styles/scripts to external files, removed inert moved blocks from main.tf, and hardened test conftest AWS mock keys)
 * **Milestone 39: Test Coverage Expansion** (S3 caching layer unit tests, Bedrock narration pipeline unit tests, Vitest + JSDOM frontend tests, CI path trigger fix)
 * **Milestone 45: Recommendation Diversity Guard** (Deterministic post-scoring diversification pass to prevent mechanic and category clustering in Bedrock shortlists)
+* **Milestone 40: Groups Page Redesign — Tabs & Per-Member Affinity** (Structured tabs layout, per-member taste alignment bar charts, dynamic color-coding, 100% max clamping, and backend Lambda scoring helper extraction)
 * **Milestone 47: Release Polish (SEO, Favicon & Social Sharing)** (Registered jekyll-seo-tag and jekyll-sitemap, linked generated favicon and apple touch icons, audited page metadata, configured default OpenGraph/Twitter sharing cards, and added a custom glassmorphic 404 landing page)
 * **Milestone 48: Collection Browser Image Fitting** (Updated collection browser game images to `object-fit: contain` with customized dark/light mode gradient containers to ensure aspect-ratio-aware fitting without cropping)
 

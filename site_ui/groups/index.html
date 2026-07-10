@@ -451,6 +451,131 @@ description: "Combine collections, plan board game sessions, and get group conse
         flex-grow: 1;
         height: 100%;
     }
+
+    /* Playgroup Redesign Tabs */
+    .groups-tabs-nav {
+        display: flex;
+        gap: 8px;
+        margin: 20px 0;
+        border-bottom: 1.5px solid var(--border);
+        padding-bottom: 0px;
+    }
+
+    .groups-tab-btn {
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 18px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.25s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        outline: none;
+        margin-bottom: -1.5px;
+    }
+
+    .groups-tab-btn:hover {
+        color: var(--text-main);
+    }
+
+    .groups-tab-btn.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        text-shadow: 0 0 10px rgba(79, 70, 229, 0.15);
+    }
+
+    .groups-tab-content {
+        display: none;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .groups-tab-content.active {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Member Affinity Progress Bars (glowing, glassmorphic) */
+    .member-affinities-container {
+        margin-top: 15px;
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+        width: 100%;
+    }
+
+    .member-affinities-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 10px;
+    }
+
+    .member-affinities-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    @media (min-width: 576px) {
+        .member-affinities-list {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+    }
+
+    .member-affinity-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .member-affinity-name {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-main);
+        min-width: 60px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .member-affinity-bar-track {
+        flex-grow: 1;
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .member-affinity-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.8s cubic-bezier(0.1, 0.8, 0.25, 1);
+        box-shadow: 0 0 6px rgba(16, 185, 129, 0.3);
+    }
+
+    .member-affinity-value {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-main);
+        min-width: 32px;
+        text-align: right;
+    }
 </style>
 
 <div class="groups-container">
@@ -517,132 +642,156 @@ description: "Combine collections, plan board game sessions, and get group conse
                         <span class="attendee-badge" id="attendance-count-badge">0 players</span>
                     </div>
 
-                    <!-- Playgroup Taste Analytics Container -->
-                    <div id="playgroup-taste-analytics" style="margin-top: 15px; display: none;">
-                        <h3 style="margin-top: 20px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); font-family: 'Outfit', sans-serif;">Playgroup Taste Analytics</h3>
-                        
-                        <!-- Summary Cards Row -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                            <div class="metric-card">
-                                <span class="metric-title">Total Unique Games</span>
-                                <span class="metric-value" id="group-card-unique-games">-</span>
+                    <!-- Tabs Switcher Navigation -->
+                    <div class="groups-tabs-nav">
+                        <button class="groups-tab-btn active" id="tab-recommendations-btn" type="button">
+                            🎯 Recommendations
+                        </button>
+                        <button class="groups-tab-btn" id="tab-analytics-btn" type="button">
+                            📊 Playgroup Analytics
+                        </button>
+                    </div>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-contents-wrapper">
+                        <!-- Tab 1: Recommendations Content -->
+                        <div id="tab-recommendations-content" class="groups-tab-content active">
+                            <!-- Pacing & Complexity Preferences -->
+                            <div class="form-group" style="margin-top: 15px; margin-bottom: 15px;">
+                                <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Pacing & Complexity Preferences (Optional)</label>
+                                <div class="year-inputs" style="display: flex; gap: 15px; margin-top: 8px;">
+                                    <select id="duration_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
+                                        <option value="any" selected>Any Pacing / Play Time</option>
+                                        <option value="short">Short (&lt; 45 mins)</option>
+                                        <option value="medium">Medium (45 - 90 mins)</option>
+                                        <option value="long">Long (&gt; 90 mins)</option>
+                                    </select>
+                                    <select id="complexity_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
+                                        <option value="any" selected>Any Complexity</option>
+                                        <option value="low">Low (&lt; 2.0 / 5)</option>
+                                        <option value="medium">Medium (2.0 - 3.5 / 5)</option>
+                                        <option value="high">High (&gt; 3.5 / 5)</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="metric-card">
-                                <span class="metric-title" id="group-card-complexity-title">Player Count Match</span>
-                                <span class="metric-value" id="group-card-complexity">-</span>
+
+                            <!-- Collapsible Weights Section -->
+                            <div>
+                                <div class="weights-toggle" id="weights-toggle-bar" style="margin-top: 5px;">
+                                    <span>Fine-tune Recommendation Priorities (Optional)</span>
+                                    <span id="weights-caret">▼</span>
+                                </div>
+                                <div class="weights-content" id="weights-expandable-content">
+                                    <div class="sliders-panel">
+                                        <div class="slider-group">
+                                            <div class="slider-header">
+                                                <span>Mechanics Match</span>
+                                                <span id="w_mech_val" class="slider-badge">50%</span>
+                                            </div>
+                                            <input type="range" id="w_mech" min="0" max="100" value="50" class="weight-slider">
+                                        </div>
+                                        <div class="slider-group">
+                                            <div class="slider-header">
+                                                <span>Categories Match</span>
+                                                <span id="w_cat_val" class="slider-badge">50%</span>
+                                            </div>
+                                            <input type="range" id="w_cat" min="0" max="100" value="50" class="weight-slider">
+                                        </div>
+                                        <div class="slider-group">
+                                            <div class="slider-header">
+                                                <span>Popularity Average</span>
+                                                <span id="w_pop_val" class="slider-badge">50%</span>
+                                            </div>
+                                            <input type="range" id="w_pop" min="0" max="100" value="50" class="weight-slider">
+                                        </div>
+                                        <div class="slider-group">
+                                            <div class="slider-header">
+                                                <span>Hotness / Trending</span>
+                                                <span id="w_hot_val" class="slider-badge">0%</span>
+                                            </div>
+                                            <input type="range" id="w_hot" min="0" max="100" value="0" class="weight-slider">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="metric-card">
-                                <span class="metric-title">Avg BGG Rating</span>
-                                <span class="metric-value" id="group-card-rating">-</span>
+
+                            <!-- Generate Plan Button -->
+                            <button class="btn btn-primary" style="padding: 12px; font-size: 1rem; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); margin-top: 20px;" id="generate-plan-btn">
+                                Generate Game Night Planner Recommendations
+                            </button>
+
+                            <!-- Status Progress Card -->
+                            <div id="status-card" class="status-card" style="margin-top: 25px;">
+                                <div class="spinner"></div>
+                                <div id="status-message" class="status-text">Consolidating group collections...</div>
                             </div>
+
+                            <!-- Recommendations results list -->
+                            <div id="recommendations-results" class="results-grid" style="margin-top: 25px;"></div>
                         </div>
 
-                        <!-- Charts Grid -->
-                        <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px;">
-                            <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
-                                <div class="chart-container-card">
-                                    <span class="chart-title">Group Mechanics Affinity</span>
-                                    <div class="chart-wrapper">
-                                        <canvas id="chart-group-mechanics"></canvas>
+                        <!-- Tab 2: Analytics Content -->
+                        <div id="tab-analytics-content" class="groups-tab-content">
+                            <!-- Playgroup Taste Analytics Container -->
+                            <div id="playgroup-taste-analytics" style="margin-top: 0px; display: none;">
+                                <h3 style="margin-top: 0px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); font-family: 'Outfit', sans-serif; display: none;">Playgroup Taste Analytics</h3>
+                                
+                                <!-- Summary Cards Row -->
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; margin-top: 15px;">
+                                    <div class="metric-card">
+                                        <span class="metric-title">Total Unique Games</span>
+                                        <span class="metric-value" id="group-card-unique-games">-</span>
+                                    </div>
+                                    <div class="metric-card">
+                                        <span class="metric-title" id="group-card-complexity-title">Player Count Match</span>
+                                        <span class="metric-value" id="group-card-complexity">-</span>
+                                    </div>
+                                    <div class="metric-card">
+                                        <span class="metric-title">Avg BGG Rating</span>
+                                        <span class="metric-value" id="group-card-rating">-</span>
                                     </div>
                                 </div>
-                                <div class="chart-container-card">
-                                    <span class="chart-title">Group Categories Affinity</span>
-                                    <div class="chart-wrapper">
-                                        <canvas id="chart-group-categories"></canvas>
+
+                                <!-- Charts Grid -->
+                                <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px;">
+                                    <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                                        <div class="chart-container-card">
+                                            <span class="chart-title">Group Mechanics Affinity</span>
+                                            <div class="chart-wrapper">
+                                                <canvas id="chart-group-mechanics"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="chart-container-card">
+                                            <span class="chart-title">Group Categories Affinity</span>
+                                            <div class="chart-wrapper">
+                                                <canvas id="chart-group-categories"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                                        <div class="chart-container-card">
+                                            <span class="chart-title">Attendee Complexity Preferences</span>
+                                            <div class="chart-wrapper">
+                                                <canvas id="chart-group-complexity-dist"></canvas>
+                                            </div>
+                                        </div>
+                                        <div class="chart-container-card">
+                                            <span class="chart-title">Unique Games Duration Distribution</span>
+                                            <div class="chart-wrapper">
+                                                <canvas id="chart-group-durations"></canvas>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
-                                <div class="chart-container-card">
-                                    <span class="chart-title">Attendee Complexity Preferences</span>
-                                    <div class="chart-wrapper">
-                                        <canvas id="chart-group-complexity-dist"></canvas>
-                                    </div>
-                                </div>
-                                <div class="chart-container-card">
-                                    <span class="chart-title">Unique Games Duration Distribution</span>
-                                    <div class="chart-wrapper">
-                                        <canvas id="chart-group-durations"></canvas>
-                                    </div>
-                                </div>
+                            
+                            <!-- Fallback empty state for Analytics when attendee list is empty -->
+                            <div id="analytics-empty-state" class="empty-state" style="padding: 40px; margin-top: 15px; display: block;">
+                                <h3 style="margin-top: 0;">No Analytics Available</h3>
+                                <p style="margin: 0; font-size: 0.95rem;">Please select at least one playgroup member to view aggregated collection statistics and taste analytics.</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Pacing & Complexity Preferences -->
-                    <div class="form-group" style="margin-top: 15px; margin-bottom: 15px;">
-                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Pacing & Complexity Preferences (Optional)</label>
-                        <div class="year-inputs" style="display: flex; gap: 15px; margin-top: 8px;">
-                            <select id="duration_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
-                                <option value="any" selected>Any Pacing / Play Time</option>
-                                <option value="short">Short (&lt; 45 mins)</option>
-                                <option value="medium">Medium (45 - 90 mins)</option>
-                                <option value="long">Long (&gt; 90 mins)</option>
-                            </select>
-                            <select id="complexity_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
-                                <option value="any" selected>Any Complexity</option>
-                                <option value="low">Low (&lt; 2.0 / 5)</option>
-                                <option value="medium">Medium (2.0 - 3.5 / 5)</option>
-                                <option value="high">High (&gt; 3.5 / 5)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Collapsible Weights Section -->
-                    <div>
-                        <div class="weights-toggle" id="weights-toggle-bar">
-                            <span>Fine-tune Recommendation Priorities (Optional)</span>
-                            <span id="weights-caret">▼</span>
-                        </div>
-                        <div class="weights-content" id="weights-expandable-content">
-                            <div class="sliders-panel">
-                                <div class="slider-group">
-                                    <div class="slider-header">
-                                        <span>Mechanics Match</span>
-                                        <span id="w_mech_val" class="slider-badge">50%</span>
-                                    </div>
-                                    <input type="range" id="w_mech" min="0" max="100" value="50" class="weight-slider">
-                                </div>
-                                <div class="slider-group">
-                                    <div class="slider-header">
-                                        <span>Categories Match</span>
-                                        <span id="w_cat_val" class="slider-badge">50%</span>
-                                    </div>
-                                    <input type="range" id="w_cat" min="0" max="100" value="50" class="weight-slider">
-                                </div>
-                                <div class="slider-group">
-                                    <div class="slider-header">
-                                        <span>Popularity Average</span>
-                                        <span id="w_pop_val" class="slider-badge">50%</span>
-                                    </div>
-                                    <input type="range" id="w_pop" min="0" max="100" value="50" class="weight-slider">
-                                </div>
-                                <div class="slider-group">
-                                    <div class="slider-header">
-                                        <span>Hotness / Trending</span>
-                                        <span id="w_hot_val" class="slider-badge">0%</span>
-                                    </div>
-                                    <input type="range" id="w_hot" min="0" max="100" value="0" class="weight-slider">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Generate Plan Button -->
-                    <button class="btn btn-primary" style="padding: 12px; font-size: 1rem; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" id="generate-plan-btn">
-                        Generate Game Night Planner Recommendations
-                    </button>
-                </div>
-
-                <!-- Status Progress Card -->
-                <div id="status-card" class="status-card" style="margin-top: 25px;">
-                    <div class="spinner"></div>
-                    <div id="status-message" class="status-text">Consolidating group collections...</div>
-                </div>
-
-                <!-- Recommendations results list -->
-                <div id="recommendations-results" class="results-grid" style="margin-top: 25px;"></div>
             </div>
 
             <!-- Empty State - displayed when no group is active/selected -->
@@ -803,6 +952,11 @@ description: "Combine collections, plan board game sessions, and get group conse
             if (pollingTimeout) clearTimeout(pollingTimeout);
             statusCard.style.display = "none";
             resultsContainer.innerHTML = "";
+
+            // Reset active tab to Recommendations
+            if (window.switchTab) {
+                window.switchTab("recommendations");
+            }
 
             activeGroup = playgroups.find(g => g.id === id);
             renderGroupList(); // Update active highlights
@@ -1073,6 +1227,55 @@ description: "Combine collections, plan board game sessions, and get group conse
             loadPreferencesFromBackend();
         });
 
+        // Tab Switching Logic
+        const tabRecsBtn = document.getElementById("tab-recommendations-btn");
+        const tabAnalBtn = document.getElementById("tab-analytics-btn");
+        const tabRecsContent = document.getElementById("tab-recommendations-content");
+        const tabAnalContent = document.getElementById("tab-analytics-content");
+
+        window.switchTab = function(targetTab) {
+            if (!tabRecsBtn || !tabAnalBtn || !tabRecsContent || !tabAnalContent) return;
+            
+            if (targetTab === "recommendations") {
+                tabRecsBtn.classList.add("active");
+                tabAnalBtn.classList.remove("active");
+                
+                tabAnalContent.classList.remove("active");
+                setTimeout(() => {
+                    if (!tabRecsBtn.classList.contains("active")) return; // Guard in case of double-toggle
+                    tabAnalContent.style.display = "none";
+                    tabRecsContent.style.display = "block";
+                    tabRecsContent.offsetHeight; // Reflow
+                    tabRecsContent.classList.add("active");
+                }, 150);
+            } else if (targetTab === "analytics") {
+                tabAnalBtn.classList.add("active");
+                tabRecsBtn.classList.remove("active");
+                
+                tabRecsContent.classList.remove("active");
+                setTimeout(() => {
+                    if (!tabAnalBtn.classList.contains("active")) return;
+                    tabRecsContent.style.display = "none";
+                    tabAnalContent.style.display = "block";
+                    tabAnalContent.offsetHeight; // Reflow
+                    tabAnalContent.classList.add("active");
+                    
+                    // Resize Chart.js graphs to fit updated display size
+                    const activeCharts = [chartGroupMechanics, chartGroupCategories, chartGroupComplexity, chartGroupDurations];
+                    activeCharts.forEach(chart => {
+                        if (chart) {
+                            chart.resize();
+                        }
+                    });
+                }, 150);
+            }
+        };
+
+        if (tabRecsBtn && tabAnalBtn) {
+            tabRecsBtn.addEventListener("click", () => window.switchTab("recommendations"));
+            tabAnalBtn.addEventListener("click", () => window.switchTab("analytics"));
+        }
+
         // Restore and bind duration/complexity preferences
         const durationPref = localStorage.getItem("bgg_rec_duration_pref") || "any";
         const complexityPref = localStorage.getItem("bgg_rec_complexity_pref") || "any";
@@ -1108,6 +1311,11 @@ description: "Combine collections, plan board game sessions, and get group conse
             if (usernames.length === 0) {
                 alert("Please check at least one attending playgroup member!");
                 return;
+            }
+
+            // Auto-switch back to recommendations tab to view loading skeleton / results
+            if (window.switchTab) {
+                window.switchTab("recommendations");
             }
 
             // Cancel any active polling
@@ -1494,13 +1702,16 @@ description: "Combine collections, plan board game sessions, and get group conse
         async function updateGroupAnalytics() {
             const usernames = getCheckedUsernames();
             const analyticsDiv = document.getElementById("playgroup-taste-analytics");
+            const emptyState = document.getElementById("analytics-empty-state");
             
             if (usernames.length === 0) {
-                analyticsDiv.style.display = "none";
+                if (analyticsDiv) analyticsDiv.style.display = "none";
+                if (emptyState) emptyState.style.display = "block";
                 return;
             }
 
-            analyticsDiv.style.display = "block";
+            if (emptyState) emptyState.style.display = "none";
+            if (analyticsDiv) analyticsDiv.style.display = "block";
             document.getElementById("group-card-unique-games").textContent = "Loading...";
             document.getElementById("group-card-complexity-title").textContent = "Player Count Match";
             document.getElementById("group-card-complexity").textContent = "Loading...";

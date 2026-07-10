@@ -1179,4 +1179,175 @@ def test_diversify_candidates_fallback():
         assert game["id"] == idx
 
 
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_group_member_affinities(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+    
+    def mock_download(bucket, key, local_path):
+        if "alice_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Cooperative": 5.0},
+                    "cat_weights": {"Thematic": 5.0},
+                    "complexity_weights": {"Light": 0.0, "Medium-Light": 0.0, "Medium-Heavy": 5.0, "Heavy": 0.0},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+        elif "bob_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Trading": 5.0},
+                    "cat_weights": {"Strategy": 5.0},
+                    "complexity_weights": {"Light": 0.0, "Medium-Light": 5.0, "Medium-Heavy": 0.0, "Heavy": 0.0},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+        elif ".parquet" in key:
+            pass
+
+    mock_s3.download_file.side_effect = mock_download
+    mock_s3.head_object.return_value = {}
+
+    user_df = pd.DataFrame([
+        {"id": "789", "username": "alice", "rating": 8.0, "own": True},
+        {"id": "789", "username": "bob", "rating": 8.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "123", "name": "Gloomhaven", "categories": ["Thematic"], "mechanics": ["Cooperative"], "rating": 8.5, "year_published": 2017, "complexity": 3.8, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "suggested_players_best": ["2"], "suggested_players_recommended": ["3", "4"]},
+        {"id": "456", "name": "Catan", "categories": ["Strategy"], "mechanics": ["Trading"], "rating": 7.1, "year_published": 1995, "complexity": 2.3, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "suggested_players_best": ["2", "3"], "suggested_players_recommended": ["4"]}
+    ])
+    
+    def mock_read(path, *args, **kwargs):
+        if "catalog" in str(path):
+            return catalog_df
+        else:
+            username = "alice"
+            if "bob" in str(path):
+                username = "bob"
+            return user_df[user_df['username'] == username].copy()
+
+    mock_read_parquet.side_effect = mock_read
+    mock_hotness.return_value = []
+    
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"id": "123", "name": "Gloomhaven", "reason": "Reason 1"}, {"id": "456", "name": "Catan", "reason": "Reason 2"}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+
+    event = {
+        'queryStringParameters': {
+            'username': 'alice,bob',
+            'own_status': 'any',
+            'player_count': '2'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    recs = res_body['recommendations']
+    
+    assert len(recs) == 2
+    for rec in recs:
+        assert 'member_affinities' in rec
+        aff = rec['member_affinities']
+        assert 'alice' in aff
+        assert 'bob' in aff
+        
+        if rec['id'] == '123':
+            assert aff['alice'] > aff['bob']
+        elif rec['id'] == '456':
+            assert aff['bob'] > aff['alice']
+
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_single_user_no_affinities(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+    
+    def mock_download(bucket, key, local_path):
+        if "alice_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Cooperative": 5.0},
+                    "cat_weights": {"Thematic": 5.0},
+                    "complexity_weights": {"Light": 0.0, "Medium-Light": 0.0, "Medium-Heavy": 5.0, "Heavy": 0.0},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+        elif ".parquet" in key:
+            pass
+
+    mock_s3.download_file.side_effect = mock_download
+    mock_s3.head_object.return_value = {}
+
+    user_df = pd.DataFrame([
+        {"id": "789", "username": "alice", "rating": 8.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "123", "name": "Gloomhaven", "categories": ["Thematic"], "mechanics": ["Cooperative"], "rating": 8.5, "year_published": 2017, "complexity": 3.8, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "suggested_players_best": ["1", "2"], "suggested_players_recommended": ["3", "4"]}
+    ])
+    
+    def mock_read(path, *args, **kwargs):
+        if "catalog" in str(path):
+            return catalog_df
+        else:
+            return user_df.copy()
+
+    mock_read_parquet.side_effect = mock_read
+    mock_hotness.return_value = []
+    
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"id": "123", "name": "Gloomhaven", "reason": "Reason 1"}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+
+    event = {
+        'queryStringParameters': {
+            'username': 'alice',
+            'own_status': 'any',
+            'player_count': '1'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    recs = res_body['recommendations']
+    
+    assert len(recs) == 1
+    assert 'member_affinities' not in recs[0]
+
+
+
 

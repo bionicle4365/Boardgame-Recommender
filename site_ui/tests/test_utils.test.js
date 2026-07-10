@@ -107,6 +107,36 @@ describe('renderRecommendationCard', () => {
     expect(html).not.toContain('📅');
     expect(html).toContain('placeholder_thumb.png');
   });
+
+  test('renders member affinities correctly when present', () => {
+    const rec = {
+      id: '12345',
+      name: 'Gloomhaven',
+      reason: 'Great cooperative game.',
+      member_affinities: {
+        alice: 0.95,
+        bob: 0.42,
+        charlie: 1.10
+      }
+    };
+
+    const html = window.renderRecommendationCard(rec, 0);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    expect(html).toContain('member-affinities-container');
+    expect(html).toContain('Group Member Taste Alignment:');
+    expect(container.textContent).toContain('alice');
+    expect(container.textContent).toContain('bob');
+    expect(container.textContent).toContain('charlie');
+    
+    expect(container.textContent).toContain('95%');
+    expect(container.textContent).toContain('42%');
+    expect(container.textContent).toContain('100%');
+    
+    expect(html).toContain('linear-gradient(90deg, #10b981, #34d399)');
+    expect(html).toContain('linear-gradient(90deg, #ef4444, #f87171)');
+  });
 });
 
 describe('renderSkeletonCards', () => {

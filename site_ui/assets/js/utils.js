@@ -78,6 +78,13 @@ window.fetchApi = async function(endpoint, options = {}) {
     // Developer helper: Mock API responses locally if API URL is a placeholder
     if (apiUrl === "PLACEHOLDER_API_URL") {
         console.log(`[Mock API] Intercepted request for ${endpoint}`);
+        if (endpoint.startsWith('/collection')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1]);
+            const username = urlParams.get('username') || '';
+            const bggUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${username}&stats=1`;
+            console.log(`[Mock API] Redirecting /collection to real BGG: ${bggUrl}`);
+            return fetch(bggUrl, options);
+        }
         let data;
         if (endpoint.startsWith('/conventions')) {
             data = [
@@ -85,6 +92,16 @@ window.fetchApi = async function(endpoint, options = {}) {
                 { "convention_id": "essen-2026", "name": "Essen Spiel 2026" }
             ];
         } else if (endpoint.startsWith('/recommendations')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1]);
+            const usernameParam = urlParams.get('username') || '';
+            const users = usernameParam.split(',').filter(u => u.trim() !== '');
+            let memberAffinities = null;
+            if (users.length > 1) {
+                memberAffinities = {};
+                users.forEach((u, i) => {
+                    memberAffinities[u] = parseFloat((0.4 + (i * 0.15) + (u.length % 5) * 0.08).toFixed(2));
+                });
+            }
             data = {
                 status: "ready",
                 recommendations: [
@@ -98,7 +115,8 @@ window.fetchApi = async function(endpoint, options = {}) {
                         max_players: 4,
                         playing_time: 120,
                         year_published: 2017,
-                        reason: "Matches your taste for highly strategic tactical play and rich campaign elements."
+                        reason: "Matches your taste for highly strategic tactical play and rich campaign elements.",
+                        member_affinities: memberAffinities
                     },
                     {
                         id: "266192",
@@ -110,7 +128,8 @@ window.fetchApi = async function(endpoint, options = {}) {
                         max_players: 5,
                         playing_time: 60,
                         year_published: 2019,
-                        reason: "Excellent match for your preference of engine-building card games with smooth turns."
+                        reason: "Excellent match for your preference of engine-building card games with smooth turns.",
+                        member_affinities: memberAffinities
                     }
                 ]
             };
@@ -119,6 +138,13 @@ window.fetchApi = async function(endpoint, options = {}) {
                 username: "MockUser",
                 weights: { mechanics: 50, categories: 50, popularity: 50, hotness: 50 }
             };
+        } else if (endpoint.startsWith('/profile')) {
+            return {
+                ok: false,
+                status: 404,
+                json: async () => ({ message: "Profile not found" }),
+                text: async () => '{"message":"Profile not found"}'
+            };
         } else {
             data = {};
         }
@@ -126,7 +152,8 @@ window.fetchApi = async function(endpoint, options = {}) {
         return {
             ok: true,
             status: 200,
-            json: async () => data
+            json: async () => data,
+            text: async () => typeof data === 'string' ? data : JSON.stringify(data)
         };
     }
 
@@ -218,6 +245,40 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
                         ${statsHtml}
                     </div>
                     <p class="rec-reason ${loadingClass}" data-game-id="${rec.id || ''}">${window.escapeHTML(rec.reason)}</p>
+                    ${(function() {
+                        let affinitiesHtml = "";
+                        if (rec.member_affinities && Object.keys(rec.member_affinities).length > 0) {
+                            affinitiesHtml += `<div class="member-affinities-container">`;
+                            affinitiesHtml += `<div class="member-affinities-title">Group Member Taste Alignment:</div>`;
+                            affinitiesHtml += `<div class="member-affinities-list">`;
+                            
+                            Object.entries(rec.member_affinities).forEach(([user, val]) => {
+                                const rawPct = val * 100;
+                                const displayPct = Math.min(100, Math.max(0, Math.round(rawPct)));
+                                
+                                // Dynamic color determination
+                                let barColor = "linear-gradient(90deg, #ef4444, #f87171)"; // Crimson/Red for <50%
+                                if (rawPct >= 80) {
+                                    barColor = "linear-gradient(90deg, #10b981, #34d399)"; // Emerald/Green for >=80%
+                                } else if (rawPct >= 50) {
+                                    barColor = "linear-gradient(90deg, #f59e0b, #fbbf24)"; // Amber/Yellow for 50-80%
+                                }
+                                
+                                affinitiesHtml += `
+                                    <div class="member-affinity-row">
+                                        <span class="member-affinity-name">${window.escapeHTML(user)}</span>
+                                        <div class="member-affinity-bar-track">
+                                            <div class="member-affinity-bar-fill" style="width: ${displayPct}%; background: ${barColor};"></div>
+                                        </div>
+                                        <span class="member-affinity-value">${displayPct}%</span>
+                                    </div>
+                                `;
+                            });
+                            
+                            affinitiesHtml += `</div></div>`;
+                        }
+                        return affinitiesHtml;
+                    })()}
                 </div>
             </div>
         </div>
