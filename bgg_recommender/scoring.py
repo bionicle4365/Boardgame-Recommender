@@ -234,8 +234,8 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
     complexity_pref = query_params.get('complexity_pref', 'any').lower()
 
     g_id = str(row['id'])
-    cand_cats = row.get('categories')
-    cand_mechs = row.get('mechanics')
+    cand_cats = safe_list(row.get('categories'))
+    cand_mechs = safe_list(row.get('mechanics'))
 
     # Compute cosine similarity for categories
     cat_dot = sum(cat_weights.get(c, 0.0) for c in cand_cats)
@@ -287,8 +287,7 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
 
     # Compute cosine similarity for designers
     des_sim = 0.0
-    cand_des = row.get('designers')
-    cand_des = list(cand_des) if cand_des is not None else []
+    cand_des = safe_list(row.get('designers'))
     if cand_des and user_designers:
         des_dot = sum(user_designers.get(d, 0.0) for d in cand_des)
         des_game_norm = math.sqrt(len(cand_des))
@@ -298,8 +297,7 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
     # Compute cosine similarity for publishers
     pub_sim = 0.0
     if has_publishers:
-        cand_pubs = row.get('publishers')
-        cand_pubs = list(cand_pubs) if cand_pubs is not None else []
+        cand_pubs = safe_list(row.get('publishers'))
         if cand_pubs and user_publishers:
             primary_cand_pub = cand_pubs[0]
             pub_dot = user_publishers.get(primary_cand_pub, 0.0)
