@@ -253,8 +253,8 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
                             affinitiesHtml += `<div class="member-affinities-list">`;
                             
                             Object.entries(rec.member_affinities).forEach(([user, val]) => {
-                                // Direct percentage calculation from cosine similarity score
-                                const displayPct = Math.min(100, Math.max(0, Math.round(val * 100)));
+                                // Scale cosine similarity (which maxes around 0.60 due to dimensionality differences) to a 0-100% display scale
+                                const displayPct = Math.min(100, Math.max(0, Math.round((val / 0.60) * 100)));
                                 
                                 // Dynamic color determination based on percentage thresholds
                                 let barColor = "linear-gradient(90deg, #ef4444, #f87171)"; // Crimson/Red for <40%
