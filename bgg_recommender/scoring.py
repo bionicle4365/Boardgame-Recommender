@@ -237,11 +237,17 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
     cand_cats = row.get('categories')
     cand_mechs = row.get('mechanics')
 
-    cand_cats = list(cand_cats) if cand_cats is not None else []
-    cand_mechs = list(cand_mechs) if cand_mechs is not None else []
+    # Compute cosine similarity for categories
+    cat_dot = sum(cat_weights.get(c, 0.0) for c in cand_cats)
+    cat_game_norm = math.sqrt(len(cand_cats)) if cand_cats else 1.0
+    cat_user_norm = math.sqrt(sum(v * v for v in cat_weights.values())) if cat_weights else 1.0
+    cat_sim = cat_dot / (cat_user_norm * cat_game_norm) if (cat_user_norm * cat_game_norm) > 0 else 0.0
 
-    cat_sim = sum(cat_weights.get(c, 0.0) for c in cand_cats) / total_cat_weight
-    mech_sim = sum(mech_weights.get(m, 0.0) for m in cand_mechs) / total_mech_weight
+    # Compute cosine similarity for mechanics
+    mech_dot = sum(mech_weights.get(m, 0.0) for m in cand_mechs)
+    mech_game_norm = math.sqrt(len(cand_mechs)) if cand_mechs else 1.0
+    mech_user_norm = math.sqrt(sum(v * v for v in mech_weights.values())) if mech_weights else 1.0
+    mech_sim = mech_dot / (mech_user_norm * mech_game_norm) if (mech_user_norm * mech_game_norm) > 0 else 0.0
 
     rating = row.get('rating')
     if rating is None or not isinstance(rating, (int, float)) or math.isnan(rating):
@@ -279,20 +285,27 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
             bucket_weight = complexity_weights.get(comp_bucket, 0.0)
             comp_sim = bucket_weight / total_complexity_weight
 
-    # Compute designer/publisher similarity
+    # Compute cosine similarity for designers
     des_sim = 0.0
     cand_des = row.get('designers')
     cand_des = list(cand_des) if cand_des is not None else []
-    if cand_des and user_designers and total_des_weight > 0:
-        des_sim = sum(user_designers.get(d, 0.0) for d in cand_des) / total_des_weight
+    if cand_des and user_designers:
+        des_dot = sum(user_designers.get(d, 0.0) for d in cand_des)
+        des_game_norm = math.sqrt(len(cand_des))
+        des_user_norm = math.sqrt(sum(v * v for v in user_designers.values()))
+        des_sim = des_dot / (des_user_norm * des_game_norm) if (des_user_norm * des_game_norm) > 0 else 0.0
 
+    # Compute cosine similarity for publishers
     pub_sim = 0.0
     if has_publishers:
         cand_pubs = row.get('publishers')
         cand_pubs = list(cand_pubs) if cand_pubs is not None else []
-        if cand_pubs and user_publishers and total_pub_weight > 0:
+        if cand_pubs and user_publishers:
             primary_cand_pub = cand_pubs[0]
-            pub_sim = user_publishers.get(primary_cand_pub, 0.0) / total_pub_weight
+            pub_dot = user_publishers.get(primary_cand_pub, 0.0)
+            pub_game_norm = 1.0
+            pub_user_norm = math.sqrt(sum(v * v for v in user_publishers.values()))
+            pub_sim = pub_dot / (pub_user_norm * pub_game_norm) if (pub_user_norm * pub_game_norm) > 0 else 0.0
 
     # Compute composite score
     denominator = w_mech + w_cat + w_pop + w_hot + w_comp + w_des + w_pub

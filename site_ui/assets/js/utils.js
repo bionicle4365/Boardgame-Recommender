@@ -253,15 +253,15 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
                             affinitiesHtml += `<div class="member-affinities-list">`;
                             
                             Object.entries(rec.member_affinities).forEach(([user, val]) => {
-                                // Scale Jaccard similarity (which maxes around 0.40) to standard 0-100% display scale
-                                const displayPct = Math.min(100, Math.max(0, Math.round((val / 0.40) * 100)));
+                                // Direct percentage calculation from cosine similarity score
+                                const displayPct = Math.min(100, Math.max(0, Math.round(val * 100)));
                                 
-                                // Dynamic color determination based on scaled percentage
-                                let barColor = "linear-gradient(90deg, #ef4444, #f87171)"; // Crimson/Red for <50%
-                                if (displayPct >= 80) {
-                                    barColor = "linear-gradient(90deg, #10b981, #34d399)"; // Emerald/Green for >=80%
-                                } else if (displayPct >= 50) {
-                                    barColor = "linear-gradient(90deg, #f59e0b, #fbbf24)"; // Amber/Yellow for 50-80%
+                                // Dynamic color determination based on percentage thresholds
+                                let barColor = "linear-gradient(90deg, #ef4444, #f87171)"; // Crimson/Red for <40%
+                                if (displayPct >= 70) {
+                                    barColor = "linear-gradient(90deg, #10b981, #34d399)"; // Emerald/Green for >=70%
+                                } else if (displayPct >= 40) {
+                                    barColor = "linear-gradient(90deg, #f59e0b, #fbbf24)"; // Amber/Yellow for 40-70%
                                 }
                                 
                                 affinitiesHtml += `
