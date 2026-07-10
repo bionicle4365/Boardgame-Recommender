@@ -114,9 +114,9 @@ describe('renderRecommendationCard', () => {
       name: 'Gloomhaven',
       reason: 'Great cooperative game.',
       member_affinities: {
-        alice: 0.95,
-        bob: 0.42,
-        charlie: 1.10
+        alice: 0.38,
+        bob: 0.168,
+        charlie: 0.44
       }
     };
 
