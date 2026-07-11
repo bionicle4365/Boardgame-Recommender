@@ -90,6 +90,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Initialize & Sync from localStorage
     function initializeWeightsAndPresets() {
+        // Clear any old manual onboarding quiz data from previous sessions
+        localStorage.removeItem("manual_onboarding_ratings");
+        localStorage.removeItem("manual_personality_weights");
+
         const storedPreset = localStorage.getItem("bgg_rec_preset") || "balanced";
         presetSelect.value = storedPreset;
 
@@ -669,15 +673,6 @@ document.addEventListener("DOMContentLoaded", function () {
     function initTasteTest() {
         tasteRatings = [];
         tasteGameIndex = 0;
-        
-        const storedRatings = localStorage.getItem("manual_onboarding_ratings");
-        if (storedRatings) {
-            try {
-                tasteRatings = JSON.parse(storedRatings);
-            } catch (e) {
-                console.error("Failed to parse manual onboarding ratings:", e);
-            }
-        }
 
         const round1Ids = ["13", "9209", "30549", "178900", "230802", "266192"];
         tasteRoundGames = SEED_CATALOG.filter(game => round1Ids.includes(game.id));
@@ -744,8 +739,6 @@ document.addEventListener("DOMContentLoaded", function () {
             tasteRatings.push({ id: game.id, rating: ratingValue });
         }
         
-        localStorage.setItem("manual_onboarding_ratings", JSON.stringify(tasteRatings));
-        
         tasteGameIndex++;
         loadTasteTestGame();
     }
@@ -785,6 +778,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // PATH 2: PERSONALITY TEST LOGIC
     function initPersonalityTest() {
         personalityIndex = 1;
+        // Uncheck all radio buttons in the personality slides to start fresh
+        document.querySelectorAll(".personality-option-card input[type='radio']").forEach(radio => {
+            radio.checked = false;
+        });
         showPersonalitySlide();
     }
 
@@ -966,7 +963,6 @@ document.addEventListener("DOMContentLoaded", function () {
             publisher_weights: {}
         };
 
-        localStorage.setItem("manual_personality_weights", JSON.stringify(weightsObj));
         return weightsObj;
     }
 
