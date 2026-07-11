@@ -449,7 +449,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Build POST body if inline
         const bodyPayload = {
-            username: username || "manual_profile",
             own_status: own_status,
             w_mech: parseFloat(w_mech),
             w_cat: parseFloat(w_cat),
@@ -861,11 +860,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (tasteTestRecommendBtn) tasteTestRecommendBtn.addEventListener("click", () => {
         closeModal();
         
-        const usernameInput = document.getElementById("username");
-        if (usernameInput && usernameInput.value.trim() === "") {
-            usernameInput.value = "manual_profile";
-        }
-        
         syncManualPreferencesToBackend(tasteRatings, null);
         getRecommendations(true, tasteRatings, null);
     });
@@ -947,11 +941,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (personalityRecommendBtn) personalityRecommendBtn.addEventListener("click", () => {
         closeModal();
         const inlineWeights = compilePersonalityWeights();
-
-        const usernameInput = document.getElementById("username");
-        if (usernameInput && usernameInput.value.trim() === "") {
-            usernameInput.value = "manual_profile";
-        }
 
         syncManualPreferencesToBackend(null, inlineWeights);
         getRecommendations(true, null, inlineWeights);
