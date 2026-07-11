@@ -198,12 +198,18 @@ def _handle_recommendations(query_params):
                 'body': json.dumps({'error': f'Invalid username format: {u}'})
             }
 
-    own_status = query_params.get('own_status', 'unowned').lower()
+    own_status_val = query_params.get('own_status', 'unowned')
+    own_status = own_status_val.lower() if isinstance(own_status_val, str) else 'unowned'
+    
     year_start = query_params.get('year_start')
     year_end = query_params.get('year_end')
     player_count = query_params.get('player_count')
-    refresh = query_params.get('refresh', 'false').lower() == 'true'
-    narrate = query_params.get('narrate', 'true').lower() == 'true'
+    
+    refresh_val = query_params.get('refresh', 'false')
+    refresh = refresh_val if isinstance(refresh_val, bool) else str(refresh_val).lower() == 'true'
+    
+    narrate_val = query_params.get('narrate', 'true')
+    narrate = narrate_val if isinstance(narrate_val, bool) else str(narrate_val).lower() == 'true'
 
     # Parse list of BGG usernames (support groups)
     sorted_usernames = sorted([u.lower() for u in usernames])
