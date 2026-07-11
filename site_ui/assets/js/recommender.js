@@ -691,6 +691,12 @@ document.addEventListener("DOMContentLoaded", function () {
             recommendBtn.disabled = true;
         }
 
+        const summaryContainer = document.querySelector(".taste-test-summary-container");
+        if (summaryContainer) {
+            summaryContainer.style.display = "none";
+            summaryContainer.innerHTML = "";
+        }
+
         const round1Ids = ["13", "9209", "30549", "178900", "230802", "266192"];
         tasteRoundGames = SEED_CATALOG.filter(game => round1Ids.includes(game.id));
 
@@ -722,6 +728,56 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Update the progress UI one last time to include the final game's rating
                 updateTasteTestProgress();
                 
+                // Create or find summary container
+                let summaryContainer = document.querySelector(".taste-test-summary-container");
+                if (!summaryContainer) {
+                    summaryContainer = document.createElement("div");
+                    summaryContainer.className = "taste-test-summary-container";
+                    const footer = document.querySelector("#wizard-taste-test-screen .wizard-footer-actions");
+                    if (footer) {
+                        footer.parentNode.insertBefore(summaryContainer, footer);
+                    }
+                }
+
+                // Populate liked games summary
+                const likedGames = tasteRatings.filter(r => r.rating === 9.0);
+                let summaryHtml = "";
+                if (likedGames.length > 0) {
+                    summaryHtml += `
+                        <div class="liked-games-summary" style="margin-top: 5px; margin-bottom: 20px; text-align: left; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 18px; animation: fadeIn 0.3s ease;">
+                            <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif;">
+                                <span style="font-size: 1.2rem;">👍</span> Your Saved Liked Games (${likedGames.length})
+                            </h3>
+                            <div class="liked-games-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    `;
+                    likedGames.forEach(liked => {
+                        const seedGame = SEED_CATALOG.find(g => g.id === liked.id);
+                        if (seedGame) {
+                            summaryHtml += `
+                                <div style="display: flex; align-items: center; gap: 12px; padding: 6px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">
+                                    <img src="${seedGame.image}" alt="${seedGame.name}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px;">
+                                    <span style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);">${seedGame.name}</span>
+                                </div>
+                            `;
+                        }
+                    });
+                    summaryHtml += `
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    summaryHtml += `
+                        <div class="liked-games-summary" style="margin-top: 5px; margin-bottom: 20px; text-align: center; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 18px; animation: fadeIn 0.3s ease;">
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.95rem;">You didn't thumbs-up any games in the test.</p>
+                        </div>
+                    `;
+                }
+                
+                if (summaryContainer) {
+                    summaryContainer.innerHTML = summaryHtml;
+                    summaryContainer.style.display = "block";
+                }
+
                 // Hide everything except the recommend button
                 const carousel = document.querySelector(".taste-test-carousel");
                 const actions = document.querySelector(".taste-test-actions");
