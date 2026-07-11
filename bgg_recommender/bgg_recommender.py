@@ -157,6 +157,18 @@ def _handle_recommendations(query_params):
     username = query_params.get('username')
     inline_profile = query_params.get('inline_profile')
     inline_weights = query_params.get('inline_weights')
+
+    if isinstance(inline_profile, str):
+        try:
+            inline_profile = json.loads(inline_profile)
+        except Exception:
+            pass
+    if isinstance(inline_weights, str):
+        try:
+            inline_weights = json.loads(inline_weights)
+        except Exception:
+            pass
+
     is_inline = (inline_profile is not None) or (inline_weights is not None)
 
     if not username:
@@ -569,35 +581,46 @@ def _compress_response(event, response):
 
 @logger.inject_lambda_context
 def lambda_handler(event, context):
-    logger.info("Received event", extra={"event": event})
+    try:
+        logger.info("Received event", extra={"event": event})
 
-    query_params = event.get('queryStringParameters') or {}
-    
-    # Handle POST JSON body
-    body_params = {}
-    body = event.get('body')
-    if body:
-        try:
-            if event.get('isBase64Encoded', False):
-                import base64
-                body = base64.b64decode(body).decode('utf-8')
-            body_params = json.loads(body)
-        except Exception as e:
-            logger.error(f"Error parsing event body: {e}")
-            
-    # Combine query params and body params, prioritizing body params
-    combined_params = {**query_params, **body_params}
+        query_params = event.get('queryStringParameters') or {}
+        
+        # Handle POST JSON body
+        body_params = {}
+        body = event.get('body')
+        if body:
+            try:
+                if event.get('isBase64Encoded', False):
+                    import base64
+                    body = base64.b64decode(body).decode('utf-8')
+                body_params = json.loads(body)
+            except Exception as e:
+                logger.error(f"Error parsing event body: {e}")
+                
+        # Combine query params and body params, prioritizing body params
+        combined_params = {**query_params, **body_params}
 
-    path = event.get('rawPath', '') or event.get('requestContext', {}).get('http', {}).get('path', '')
+        path = event.get('rawPath', '') or event.get('requestContext', {}).get('http', {}).get('path', '')
 
-    if '/profile' in path:
-        response = _handle_profile(query_params)
-    elif '/conventions' in path:
-        response = _handle_conventions()
-    else:
-        response = _handle_recommendations(combined_params)
+        if '/profile' in path:
+            response = _handle_profile(query_params)
+        elif '/conventions' in path:
+            response = _handle_conventions()
+        else:
+            response = _handle_recommendations(combined_params)
 
-    return _compress_response(event, response)
+        return _compress_response(event, response)
+    except Exception as e:
+        logger.error(f"Unhandled exception in lambda_handler: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({
+                'error': 'Internal Server Error',
+                'details': str(e)
+            })
+        }
 
 
 def __getattr__(name):
