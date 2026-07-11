@@ -495,3 +495,59 @@ def diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category
     )
     return selected
 
+
+def filter_dislike_exclusions(candidates, user_df, catalog_df):
+    """
+    Filters out candidates dominated by mechanics of disliked games (rating < 7.0)
+    and having no overlap with liked games' mechanics.
+    """
+    if user_df is None or user_df.empty:
+        return candidates
+
+    liked_df = user_df[user_df['rating'] >= 7.0]
+    if liked_df.empty:
+        liked_df = user_df[user_df['own']]
+
+    disliked_df = user_df[user_df['rating'] < 7.0]
+    if disliked_df.empty:
+        return candidates
+
+    # Get mechanics of liked games
+    liked_joined = liked_df.merge(catalog_df, on='id', how='inner')
+    like_mechs = set()
+    for _, row in liked_joined.iterrows():
+        mechs = safe_list(row.get('mechanics'))
+        like_mechs.update(mechs)
+
+    # Get mechanics of disliked games
+    disliked_joined = disliked_df.merge(catalog_df, on='id', how='inner')
+    dislike_mechs = set()
+    for _, row in disliked_joined.iterrows():
+        mechs = safe_list(row.get('mechanics'))
+        dislike_mechs.update(mechs)
+
+    if not dislike_mechs:
+        return candidates
+
+    filtered = []
+    excluded_count = 0
+    for row in candidates:
+        cand_mechs = set(safe_list(row.get('mechanics')))
+        if not cand_mechs:
+            filtered.append(row)
+            continue
+
+        like_overlap = cand_mechs.intersection(like_mechs)
+        dislike_overlap = cand_mechs.intersection(dislike_mechs)
+
+        # Dominated check: shares no overlap with liked mechanics AND
+        # has dislike mechanics representing at least 50% of the candidate's mechanics
+        if len(like_overlap) == 0 and len(dislike_overlap) > 0 and len(dislike_overlap) >= len(cand_mechs) / 2.0:
+            excluded_count += 1
+            logger.info(f"Excluding candidate {row.get('name')} due to dislike mechanics domination (no liked mechanics, dislike overlap: {dislike_overlap})")
+            continue
+        filtered.append(row)
+
+    logger.info(f"Dislike hard exclusion filtered {excluded_count} candidates. Remaining: {len(filtered)}")
+    return filtered
+

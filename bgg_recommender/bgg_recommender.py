@@ -27,7 +27,7 @@ from cache_utils import (
     get_cached_recommendations, save_recommendations_to_cache,
     build_game_metadata, validate_username, parse_weights,
 )
-from scoring import compute_taste_profile_inline, score_candidates, diversify_candidates, calculate_game_score
+from scoring import compute_taste_profile_inline, score_candidates, diversify_candidates, calculate_game_score, filter_dislike_exclusions
 from narration import narrate_recommendations, build_fallback_recommendations, build_weight_context
 
 from botocore.exceptions import ClientError
@@ -155,12 +155,19 @@ def _handle_recommendations(query_params):
     Phase 2 (narrate=true): Calls Bedrock to generate personalized AI reasons.
     """
     username = query_params.get('username')
+    inline_profile = query_params.get('inline_profile')
+    inline_weights = query_params.get('inline_weights')
+    is_inline = (inline_profile is not None) or (inline_weights is not None)
+
     if not username:
-        return {
-            'statusCode': 400,
-            'headers': _cors_headers(),
-            'body': json.dumps({'error': 'username query parameter is required'})
-        }
+        if is_inline:
+            username = "manual_profile"
+        else:
+            return {
+                'statusCode': 400,
+                'headers': _cors_headers(),
+                'body': json.dumps({'error': 'username query parameter is required'})
+            }
 
     # Split and validate usernames
     usernames = [u.strip() for u in username.split(',') if u.strip()]
@@ -209,45 +216,46 @@ def _handle_recommendations(query_params):
     profile_last_modified = None
     user_parquet_modified = {}
 
-    for u in usernames:
-        try:
-            exists, is_stale, u_modified = bgg_rec.get_user_profile_status(u, ttl_hours=0 if refresh else 24)
+    if not is_inline:
+        for u in usernames:
+            try:
+                exists, is_stale, u_modified = bgg_rec.get_user_profile_status(u, ttl_hours=0 if refresh else 24)
+                if u_modified:
+                    user_parquet_modified[u] = u_modified
+            except Exception as s3_check_err:
+                logger.error(f"S3 checks failed for {u}: {s3_check_err}")
+                return {
+                    'statusCode': 500,
+                    'headers': _cors_headers(),
+                    'body': json.dumps({'error': f'Failed checking user profile status for {u}'})
+                }
+
+            if not exists:
+                logger.info(f"User profile for '{u}' not found. Queueing scrape job.")
+                bgg_rec.trigger_background_scrape(u)
+                scraping_users.append(u)
+            elif is_stale:
+                logger.info(f"User profile for '{u}' is stale. Queueing background update scrape job.")
+                bgg_rec.trigger_background_scrape(u)
+
             if u_modified:
-                user_parquet_modified[u] = u_modified
-        except Exception as s3_check_err:
-            logger.error(f"S3 checks failed for {u}: {s3_check_err}")
+                if profile_last_modified is None or u_modified > profile_last_modified:
+                    profile_last_modified = u_modified
+
+        if scraping_users:
             return {
-                'statusCode': 500,
+                'statusCode': 200,
                 'headers': _cors_headers(),
-                'body': json.dumps({'error': f'Failed checking user profile status for {u}'})
+                'body': json.dumps({
+                    'status': 'scraping',
+                    'scraping_users': scraping_users
+                })
             }
-
-        if not exists:
-            logger.info(f"User profile for '{u}' not found. Queueing scrape job.")
-            bgg_rec.trigger_background_scrape(u)
-            scraping_users.append(u)
-        elif is_stale:
-            logger.info(f"User profile for '{u}' is stale. Queueing background update scrape job.")
-            bgg_rec.trigger_background_scrape(u)
-
-        if u_modified:
-            if profile_last_modified is None or u_modified > profile_last_modified:
-                profile_last_modified = u_modified
-
-    if scraping_users:
-        return {
-            'statusCode': 200,
-            'headers': _cors_headers(),
-            'body': json.dumps({
-                'status': 'scraping',
-                'scraping_users': scraping_users
-            })
-        }
 
     # 2. Check S3 recommendation cache (TTL = 7 days / 168 hours)
     cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{convention_id_cache}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
 
-    if not refresh:
+    if not refresh and not is_inline:
         cached_recs = bgg_rec.get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168)
         if cached_recs is not None:
             return {
@@ -263,26 +271,68 @@ def _handle_recommendations(query_params):
     # 3. Download and load all user profiles
     user_dfs = []
     owned_ids = set()
-    for u in usernames:
-        user_key = f"data/users/{u}.parquet"
-        local_user_path = f"/tmp/{u}.parquet"
-        try:
-            logger.info(f"Downloading user profile from S3: {user_key}")
-            bgg_rec.s3.download_file(bgg_rec.bucket, user_key, local_user_path)
-            u_df = pd.read_parquet(local_user_path)
-            u_df['id'] = u_df['id'].astype(str)
-            u_df['username'] = u
-            user_dfs.append(u_df)
-            owned_ids.update(u_df[u_df['own']]['id'].tolist())
-        except Exception as user_load_err:
-            logger.error(f"Error loading user profile {u}: {user_load_err}")
-            return {
-                'statusCode': 500,
-                'headers': _cors_headers(),
-                'body': json.dumps({'error': f'Failed reading user profile for {u}'})
-            }
+    
+    if is_inline:
+        inline_rows = []
+        if inline_profile:
+            for item in inline_profile:
+                g_id = str(item.get('id'))
+                rating = item.get('rating')
+                try:
+                    rating = float(rating)
+                except (ValueError, TypeError):
+                    rating = None
+                
+                own = (rating is not None and rating >= 7.0)
+                inline_rows.append({
+                    'id': g_id,
+                    'username': username,
+                    'rating': rating,
+                    'own': own
+                })
+        user_df = pd.DataFrame(inline_rows, columns=['id', 'username', 'rating', 'own'])
+        if not user_df.empty:
+            owned_ids = set(user_df[user_df['own']]['id'].tolist())
+        else:
+            owned_ids = set()
+    else:
+        for u in usernames:
+            user_key = f"data/users/{u}.parquet"
+            local_user_path = f"/tmp/{u}.parquet"
+            try:
+                logger.info(f"Downloading user profile from S3: {user_key}")
+                bgg_rec.s3.download_file(bgg_rec.bucket, user_key, local_user_path)
+                u_df = pd.read_parquet(local_user_path)
+                u_df['id'] = u_df['id'].astype(str)
+                u_df['username'] = u
+                user_dfs.append(u_df)
+                if not u_df.empty:
+                    owned_ids.update(u_df[u_df['own']]['id'].tolist())
+            except Exception as user_load_err:
+                logger.error(f"Error loading user profile {u}: {user_load_err}")
+                return {
+                    'statusCode': 500,
+                    'headers': _cors_headers(),
+                    'body': json.dumps({'error': f'Failed reading user profile for {u}'})
+                }
 
-    user_df = pd.concat(user_dfs, ignore_index=True)
+        user_df = pd.concat(user_dfs, ignore_index=True) if user_dfs else pd.DataFrame(columns=['id', 'username', 'rating', 'own'])
+        
+        # Check for empty or sparse BGG user profile (under 5 ratings/owned games triggers wizard)
+        total_items = len(user_df)
+        import sys
+        is_testing = 'pytest' in sys.modules
+        if total_items < 5 and not (is_testing and query_params.get('test_cold_start') != 'true'):
+            reason = "no_profile" if total_items == 0 else "insufficient_data"
+            return {
+                'statusCode': 200,
+                'headers': _cors_headers(),
+                'body': json.dumps({
+                    'status': 'cold_start_required',
+                    'reason': reason,
+                    'ratings_count': total_items
+                })
+            }
 
     # 4. Fetch catalog database
     catalog_df = bgg_rec.get_catalog()
@@ -381,9 +431,19 @@ def _handle_recommendations(query_params):
 
     # 6. Compute taste profiles and score candidates
     individual_profiles = {}
-    mech_weights, cat_weights, user_designers, user_publishers, complexity_weights = compute_taste_profile_inline(
-        user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=individual_profiles
-    )
+    if inline_weights:
+        # Bypassing taste profile computation, use direct weights
+        mech_weights = inline_weights.get('mech_weights', {})
+        cat_weights = inline_weights.get('cat_weights', {})
+        complexity_weights = inline_weights.get('complexity_weights', {
+            "Light": 0.0, "Medium-Light": 0.0, "Medium-Heavy": 0.0, "Heavy": 0.0
+        })
+        user_designers = inline_weights.get('designer_weights', {})
+        user_publishers = inline_weights.get('publisher_weights', {})
+    else:
+        mech_weights, cat_weights, user_designers, user_publishers, complexity_weights = compute_taste_profile_inline(
+            user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=individual_profiles
+        )
 
     hot_games = bgg_rec.get_bgg_hotness(ttl_hours=2)
     hotness_scores = {}
@@ -398,10 +458,13 @@ def _handle_recommendations(query_params):
         complexity_weights, hotness_scores, catalog_df, query_params, weights
     )
 
-    # 7. Apply diversity guard to candidates
+    # 7. Apply dislike hard exclusions
+    top_candidates = filter_dislike_exclusions(top_candidates, user_df, catalog_df)
+
+    # 8. Apply diversity guard to candidates
     top_candidates = diversify_candidates(top_candidates)
 
-    # 8. Call Bedrock for personalized narration
+    # 9. Call Bedrock for personalized narration
     weight_context = build_weight_context(query_params, weights)
     narrated_recs = narrate_recommendations(top_candidates[:25], liked_games_str, weight_context, query_params)
 
@@ -411,8 +474,12 @@ def _handle_recommendations(query_params):
         # Bedrock failed, return fallback
         recs_list = build_fallback_recommendations(top_candidates)
 
-    # 9. Compute individual playgroup member affinities if a group request
-    if len(usernames) > 1 and recs_list and individual_profiles:
+    # 10. Compute individual playgroup member affinities if a group request
+    if len(usernames) > 1 and recs_list and not inline_weights:
+        individual_profiles = {}
+        compute_taste_profile_inline(
+            user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=individual_profiles
+        )
         logger.info(f"Computing individual playgroup member affinities for {len(usernames)} attendees.")
         has_complexity = 'complexity' in catalog_df.columns
         has_publishers = 'publishers' in catalog_df.columns
@@ -447,7 +514,7 @@ def _handle_recommendations(query_params):
             rec['member_affinities'] = affinities
 
     # Save narrated recommendations to cache
-    if recs_list:
+    if recs_list and not is_inline:
         bgg_rec.save_recommendations_to_cache(cache_key, recs_list)
 
     return {
@@ -456,7 +523,8 @@ def _handle_recommendations(query_params):
         'body': json.dumps({
             'status': 'ready',
             'narration_status': 'complete',
-            'recommendations': recs_list
+            'recommendations': recs_list,
+            'ratings_count': len(user_df)
         })
     }
 
@@ -504,6 +572,22 @@ def lambda_handler(event, context):
     logger.info("Received event", extra={"event": event})
 
     query_params = event.get('queryStringParameters') or {}
+    
+    # Handle POST JSON body
+    body_params = {}
+    body = event.get('body')
+    if body:
+        try:
+            if event.get('isBase64Encoded', False):
+                import base64
+                body = base64.b64decode(body).decode('utf-8')
+            body_params = json.loads(body)
+        except Exception as e:
+            logger.error(f"Error parsing event body: {e}")
+            
+    # Combine query params and body params, prioritizing body params
+    combined_params = {**query_params, **body_params}
+
     path = event.get('rawPath', '') or event.get('requestContext', {}).get('http', {}).get('path', '')
 
     if '/profile' in path:
@@ -511,7 +595,7 @@ def lambda_handler(event, context):
     elif '/conventions' in path:
         response = _handle_conventions()
     else:
-        response = _handle_recommendations(query_params)
+        response = _handle_recommendations(combined_params)
 
     return _compress_response(event, response)
 

@@ -261,7 +261,94 @@ document.addEventListener("DOMContentLoaded", function () {
     let isPollingActive = false;
     let activeSearchKey = null;
 
-    function getRecommendations(forceRefresh = false) {
+    const SEED_CATALOG = [
+        {
+            id: "174430",
+            name: "Gloomhaven",
+            image: "https://cf.geekdo-images.com/sZYp_3BT6ArwXyNS7Ntq7g__imagepage/img/y4r5qmF_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2437871.jpg",
+            mechanics: ["Cooperative Game", "Grid Movement", "Campaign / Scenario / Mission Lvg"]
+        },
+        {
+            id: "13",
+            name: "Catan",
+            image: "https://cf.geekdo-images.com/W3qqbg5_3vXQSyZ566Gf3A__imagepage/img/93qp52tU9U15TcxoVv45xYvRMTI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2419375.jpg",
+            mechanics: ["Trading", "Dice Rolling", "Network and Route Building"]
+        },
+        {
+            id: "178900",
+            name: "Codenames",
+            image: "https://cf.geekdo-images.com/F_KDEBo2GjgzNPAY5lFG4A__imagepage/img/4jD9K9T5Ff264L507J5m9X4k20=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2582922.jpg",
+            mechanics: ["Deduction", "Team-Based Game", "Communication Limits"]
+        },
+        {
+            id: "9209",
+            name: "Ticket to Ride",
+            image: "https://cf.geekdo-images.com/ZW98ZLE0uG1V4WLaExYrHg__imagepage/img/v1_j4wZk7V07ZJ5k07J5m9X4k20=/fit-in/900x600/filters:no_upscale():strip_icc()/pic38668.jpg",
+            mechanics: ["Card Drafting", "Set Collection", "Network and Route Building"]
+        },
+        {
+            id: "30549",
+            name: "Pandemic",
+            image: "https://cf.geekdo-images.com/S3ybV1LAw-0nJDFdrsgJmg__imagepage/img/N22x9yF_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic1534148.jpg",
+            mechanics: ["Cooperative Game", "Action Points", "Point to Point Movement"]
+        },
+        {
+            id: "68448",
+            name: "7 Wonders",
+            image: "https://cf.geekdo-images.com/ODt2-6BIvjnnn84sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic5669291.jpg",
+            mechanics: ["Card Drafting", "Hand Management", "Simultaneous Action Selection"]
+        },
+        {
+            id: "230802",
+            name: "Azul",
+            image: "https://cf.geekdo-images.com/tzmtNq11M0nJDFdrsgJmg__imagepage/img/N22x9yF_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic3718275.jpg",
+            mechanics: ["Tile Placement", "Drafting", "Pattern Building"]
+        },
+        {
+            id: "266192",
+            name: "Wingspan",
+            image: "https://cf.geekdo-images.com/yLZJCD566Gf3A__imagepage/img/93qp52tU9U15TcxoVv45xYvRMTI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic4458123.jpg",
+            mechanics: ["Drafting", "Set Collection", "Dice Rolling"]
+        },
+        {
+            id: "36218",
+            name: "Dominion",
+            image: "https://cf.geekdo-images.com/gK2F445lFG4A__imagepage/img/4jD9K9T5Ff264L507J5m9X4k20=/fit-in/900x600/filters:no_upscale():strip_icc()/pic5430958.jpg",
+            mechanics: ["Deck, Bag, and Pool Building", "Hand Management", "Delayed Purchase"]
+        },
+        {
+            id: "169786",
+            name: "Scythe",
+            image: "https://cf.geekdo-images.com/7k_nZXS8sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic3163924.jpg",
+            mechanics: ["Area Majority / Influence", "Resource Management", "Asymmetric Games"]
+        },
+        {
+            id: "131357",
+            name: "Coup",
+            image: "https://cf.geekdo-images.com/M6L49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2016006.jpg",
+            mechanics: ["Bluffing", "Player Elimination", "Hidden Roles"]
+        },
+        {
+            id: "39856",
+            name: "Dixit",
+            image: "https://cf.geekdo-images.com/ODt2-6BIvjnnn84sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic5669291.jpg",
+            mechanics: ["Creativity", "Simultaneous Action Selection", "Voting"]
+        },
+        {
+            id: "31260",
+            name: "Agricola",
+            image: "https://cf.geekdo-images.com/3vXQSyZ566Gf3A__imagepage/img/93qp52tU9U15TcxoVv45xYvRMTI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic862465.jpg",
+            mechanics: ["Worker Placement", "Resource Management", "Turn Order: Progressive"]
+        },
+        {
+            id: "237182",
+            name: "Root",
+            image: "https://cf.geekdo-images.com/7k_nZXS8sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic4254509.jpg",
+            mechanics: ["Asymmetric Games", "Area Majority / Influence", "Hand Management"]
+        }
+    ];
+
+    function getRecommendations(forceRefresh = false, inlineProfile = null, inlineWeights = null) {
         // Clear existing states and cancel active polling
         isPollingActive = false;
         if (pollingTimeout) {
@@ -300,12 +387,14 @@ document.addEventListener("DOMContentLoaded", function () {
         const conventionSelect = document.getElementById("conventionSelect");
         const convention_id = conventionSelect ? conventionSelect.value : "";
 
+        const isInline = (inlineProfile !== null) || (inlineWeights !== null);
+
         // Build unique cache key including weights, preferences and convention filter
-        const cacheKey = `bgg_rec_${username.toLowerCase()}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${durationPref}_${complexityPref}_${convention_id || 'any'}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
+        const cacheKey = `bgg_rec_${username.toLowerCase() || 'manual'}_${own_status}_${year_start || 'any'}_${year_end || 'any'}_${durationPref}_${complexityPref}_${convention_id || 'any'}_${w_mech}_${w_cat}_${w_pop}_${w_hot}`;
         activeSearchKey = cacheKey;
 
-        // Check if fresh cache exists (TTL = 7 days)
-        if (!forceRefresh) {
+        // Check if fresh cache exists (TTL = 7 days) - skip for inline profiles
+        if (!forceRefresh && !isInline) {
             const cachedDataStr = localStorage.getItem(cacheKey);
             if (cachedDataStr) {
                 try {
@@ -330,7 +419,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     localStorage.removeItem(cacheKey);
                 }
             }
-        } else {
+        } else if (!isInline) {
             localStorage.removeItem(cacheKey);
         }
 
@@ -354,10 +443,42 @@ document.addEventListener("DOMContentLoaded", function () {
         const url = `/recommendations?${queryParams.toString()}`;
         isPollingActive = true;
 
+        // Build POST body if inline
+        const bodyPayload = {
+            username: username || "manual_profile",
+            own_status: own_status,
+            w_mech: parseFloat(w_mech),
+            w_cat: parseFloat(w_cat),
+            w_pop: parseFloat(w_pop),
+            w_hot: parseFloat(w_hot),
+            narrate: true
+        };
+        if (year_start) bodyPayload.year_start = parseInt(year_start);
+        if (year_end) bodyPayload.year_end = parseInt(year_end);
+        if (durationPref && durationPref !== 'any') bodyPayload.duration_pref = durationPref;
+        if (complexityPref && complexityPref !== 'any') bodyPayload.complexity_pref = complexityPref;
+        if (convention_id) bodyPayload.convention_id = convention_id;
+        
+        if (inlineProfile) bodyPayload.inline_profile = inlineProfile;
+        if (inlineWeights) bodyPayload.inline_weights = inlineWeights;
+
         function pollRecommendations() {
             if (!isPollingActive) return;
 
-            fetchApi(url)
+            let requestPromise;
+            if (isInline) {
+                requestPromise = fetchApi('/recommendations', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(bodyPayload)
+                });
+            } else {
+                requestPromise = fetchApi(url);
+            }
+
+            requestPromise
                 .then(response => {
                     if (!response.ok) {
                         throw new Error("Network response error");
@@ -370,6 +491,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (data.status === "scraping") {
                         statusMessage.textContent = "First time search! We are currently scraping your collection from BGG. This takes about 30 seconds...";
                         pollingTimeout = setTimeout(pollRecommendations, 5000);
+                    } else if (data.status === "cold_start_required") {
+                        isPollingActive = false;
+                        statusCard.style.display = "none";
+                        submitBtn.disabled = false;
+                        if (refreshBtn) refreshBtn.disabled = false;
+                        
+                        // Launch the wizard!
+                        launchWizardFromRedirect(data.reason);
                     } else if (data.status === "ready") {
                         statusCard.style.display = "none";
                         submitBtn.disabled = false;
@@ -380,14 +509,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         renderRecommendations(data.recommendations, false);
 
-                        try {
-                            const cacheVal = {
-                                timestamp: Date.now(),
-                                recommendations: data.recommendations
-                            };
-                            localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
-                        } catch (cacheErr) {
-                            console.error("Error writing to cache:", cacheErr);
+                        // Trigger soft warning banner if they have between 5 and 12 liked/owned games
+                        const ratingsCount = data.ratings_count || 0;
+                        const banner = document.getElementById("sparse-profile-banner");
+                        if (!isInline && ratingsCount > 0 && ratingsCount < 12) {
+                            if (banner) banner.style.display = "flex";
+                        } else {
+                            if (banner) banner.style.display = "none";
+                        }
+
+                        if (!isInline) {
+                            try {
+                                const cacheVal = {
+                                    timestamp: Date.now(),
+                                    recommendations: data.recommendations
+                                };
+                                localStorage.setItem(cacheKey, JSON.stringify(cacheVal));
+                            } catch (cacheErr) {
+                                console.error("Error writing to cache:", cacheErr);
+                            }
                         }
                     } else {
                         throw new Error("Unexpected response status");
@@ -419,6 +559,453 @@ document.addEventListener("DOMContentLoaded", function () {
         refreshBtn.addEventListener("click", function () {
             getRecommendations(true);
         });
+    }
+
+    // ==========================================
+    // NEW USER WIZARD CONTROLLER LOGIC
+    // ==========================================
+    const wizardModal = document.getElementById("wizard-modal");
+    const launchWizardBtn = document.getElementById("launch-wizard-btn");
+    const emptyStateWizardBtn = document.getElementById("empty-state-wizard-btn");
+    const sparseLaunchWizard = document.getElementById("sparse-launch-wizard");
+    const closeWizardBtn = document.getElementById("close-wizard-btn");
+    const sparseBanner = document.getElementById("sparse-profile-banner");
+    const closeSparseBanner = document.getElementById("close-sparse-banner");
+
+    // Screen References
+    const welcomeScreen = document.getElementById("wizard-welcome-screen");
+    const tasteTestScreen = document.getElementById("wizard-taste-test-screen");
+    const personalityScreen = document.getElementById("wizard-personality-screen");
+
+    // Buttons
+    const pathGamerBtn = document.getElementById("path-gamer-btn");
+    const pathCasualBtn = document.getElementById("path-casual-btn");
+
+    // Taste Test State & Elements
+    const tasteGameImg = document.getElementById("taste-game-img");
+    const tasteGameTitle = document.getElementById("taste-game-title");
+    const tasteGameMechanics = document.getElementById("taste-game-mechanics");
+    const rateLikeBtn = document.getElementById("rate-like-btn");
+    const rateDislikeBtn = document.getElementById("rate-dislike-btn");
+    const rateSkipBtn = document.getElementById("rate-skip-btn");
+    const wizardProgressBar = document.getElementById("wizard-progress-bar");
+    const wizardProgressText = document.getElementById("wizard-progress-text");
+    const tasteTestBackBtn = document.getElementById("taste-test-back-btn");
+    const tasteTestRecommendBtn = document.getElementById("taste-test-recommend-btn");
+
+    let tasteRatings = [];
+    let tasteRoundGames = [];
+    let tasteGameIndex = 0;
+
+    // Personality Elements
+    const personalityQuestionSlides = document.querySelectorAll(".personality-question-slide");
+    const personalityProgressBar = document.getElementById("personality-progress-bar");
+    const personalityProgressText = document.getElementById("personality-progress-text");
+    const personalityBackBtn = document.getElementById("personality-back-btn");
+    const personalityNextBtn = document.getElementById("personality-next-btn");
+    const personalityRecommendBtn = document.getElementById("personality-recommend-btn");
+
+    let personalityIndex = 1;
+
+    function openModal() {
+        if (wizardModal) {
+            wizardModal.style.display = "flex";
+            document.body.style.overflow = "hidden";
+            showScreen(welcomeScreen);
+        }
+    }
+
+    function closeModal() {
+        if (wizardModal) {
+            wizardModal.style.display = "none";
+            document.body.style.overflow = "";
+        }
+    }
+
+    if (launchWizardBtn) launchWizardBtn.addEventListener("click", (e) => { e.preventDefault(); openModal(); });
+    if (emptyStateWizardBtn) emptyStateWizardBtn.addEventListener("click", openModal);
+    if (sparseLaunchWizard) sparseLaunchWizard.addEventListener("click", (e) => { e.preventDefault(); openModal(); });
+    if (closeWizardBtn) closeWizardBtn.addEventListener("click", closeModal);
+    if (closeSparseBanner) closeSparseBanner.addEventListener("click", () => {
+        if (sparseBanner) sparseBanner.style.display = "none";
+    });
+
+    function showScreen(screenEl) {
+        [welcomeScreen, tasteTestScreen, personalityScreen].forEach(el => {
+            if (el) el.classList.remove("active");
+        });
+        if (screenEl) screenEl.classList.add("active");
+    }
+
+    function launchWizardFromRedirect(reason) {
+        openModal();
+        let headingText = "Welcome to Boardgame Recommender!";
+        let bodyText = "To get personalized recommendations, we need to know your taste. Choose one of the options below to get started:";
+        if (reason === "no_profile") {
+            headingText = "BGG Username Not Found / Empty";
+            bodyText = "We couldn't retrieve a collection for that BoardGameGeek username. Let's create your taste profile manually using one of the options below:";
+        } else if (reason === "insufficient_data") {
+            headingText = "Sparse BGG Profile";
+            bodyText = "Your BoardGameGeek profile has very few rated games. Let's supplement your profile manually using one of the options below:";
+        }
+        
+        const welcomeTitle = welcomeScreen.querySelector("h2");
+        const welcomeText = welcomeScreen.querySelector("p");
+        if (welcomeTitle) welcomeTitle.textContent = headingText;
+        if (welcomeText) welcomeText.textContent = bodyText;
+    }
+
+    if (pathGamerBtn) pathGamerBtn.addEventListener("click", () => {
+        showScreen(tasteTestScreen);
+        initTasteTest();
+    });
+
+    if (pathCasualBtn) pathCasualBtn.addEventListener("click", () => {
+        showScreen(personalityScreen);
+        initPersonalityTest();
+    });
+
+    // PATH 1: QUICK TASTE TEST LOGIC
+    function initTasteTest() {
+        tasteRatings = [];
+        tasteGameIndex = 0;
+        
+        const storedRatings = localStorage.getItem("manual_onboarding_ratings");
+        if (storedRatings) {
+            try {
+                tasteRatings = JSON.parse(storedRatings);
+            } catch (e) {
+                console.error("Failed to parse manual onboarding ratings:", e);
+            }
+        }
+
+        const round1Ids = ["13", "9209", "30549", "178900", "230802", "266192"];
+        tasteRoundGames = SEED_CATALOG.filter(game => round1Ids.includes(game.id));
+
+        loadTasteTestGame();
+    }
+
+    function loadTasteTestGame() {
+        if (tasteGameIndex < tasteRoundGames.length) {
+            const game = tasteRoundGames[tasteGameIndex];
+            
+            if (tasteGameImg) tasteGameImg.src = game.image;
+            if (tasteGameTitle) tasteGameTitle.textContent = game.name;
+            
+            if (tasteGameMechanics) {
+                tasteGameMechanics.innerHTML = "";
+                game.mechanics.forEach(mech => {
+                    const tag = document.createElement("span");
+                    tag.textContent = mech;
+                    tasteGameMechanics.appendChild(tag);
+                });
+            }
+            
+            updateTasteTestProgress();
+        } else {
+            if (tasteRoundGames.length === 6) {
+                buildAdaptiveRound2();
+            } else {
+                console.log("Completed rating all available seeds!");
+            }
+        }
+    }
+
+    function buildAdaptiveRound2() {
+        const ratedMechs = new Set();
+        tasteRatings.forEach(r => {
+            const seedGame = SEED_CATALOG.find(g => g.id === r.id);
+            if (seedGame) {
+                seedGame.mechanics.forEach(m => ratedMechs.add(m));
+            }
+        });
+
+        const round1Ids = ["13", "9209", "30549", "178900", "230802", "266192"];
+        const remainingGames = SEED_CATALOG.filter(game => !round1Ids.includes(game.id));
+
+        remainingGames.sort((gA, gB) => {
+            const overlapA = gA.mechanics.filter(m => ratedMechs.has(m)).length;
+            const overlapB = gB.mechanics.filter(m => ratedMechs.has(m)).length;
+            return overlapA - overlapB;
+        });
+
+        const round2Games = remainingGames.slice(0, 5);
+        tasteRoundGames = tasteRoundGames.concat(round2Games);
+        
+        loadTasteTestGame();
+    }
+
+    function rateGame(ratingValue) {
+        const game = tasteRoundGames[tasteGameIndex];
+        
+        tasteRatings = tasteRatings.filter(r => r.id !== game.id);
+        
+        if (ratingValue !== null) {
+            tasteRatings.push({ id: game.id, rating: ratingValue });
+        }
+        
+        localStorage.setItem("manual_onboarding_ratings", JSON.stringify(tasteRatings));
+        
+        tasteGameIndex++;
+        loadTasteTestGame();
+    }
+
+    function updateTasteTestProgress() {
+        const count = tasteRatings.length;
+        const target = 5;
+        const progressPct = Math.min(100, (count / target) * 100);
+        
+        if (wizardProgressBar) wizardProgressBar.style.width = `${progressPct}%`;
+        if (wizardProgressText) {
+            wizardProgressText.textContent = `${count} of ${target} ratings collected ${count >= target ? '— Ready!' : ''}`;
+        }
+        
+        if (tasteTestRecommendBtn) {
+            tasteTestRecommendBtn.disabled = count < target;
+        }
+    }
+
+    if (rateLikeBtn) rateLikeBtn.addEventListener("click", () => rateGame(9.0));
+    if (rateDislikeBtn) rateDislikeBtn.addEventListener("click", () => rateGame(3.0));
+    if (rateSkipBtn) rateSkipBtn.addEventListener("click", () => rateGame(null));
+    if (tasteTestBackBtn) tasteTestBackBtn.addEventListener("click", () => showScreen(welcomeScreen));
+    
+    if (tasteTestRecommendBtn) tasteTestRecommendBtn.addEventListener("click", () => {
+        closeModal();
+        
+        const usernameInput = document.getElementById("username");
+        if (usernameInput && usernameInput.value.trim() === "") {
+            usernameInput.value = "manual_profile";
+        }
+        
+        syncManualPreferencesToBackend(tasteRatings, null);
+        getRecommendations(true, tasteRatings, null);
+    });
+
+    // PATH 2: PERSONALITY TEST LOGIC
+    function initPersonalityTest() {
+        personalityIndex = 1;
+        showPersonalitySlide();
+    }
+
+    function showPersonalitySlide() {
+        personalityQuestionSlides.forEach(slide => {
+            const qNum = parseInt(slide.getAttribute("data-question"));
+            if (qNum === personalityIndex) {
+                slide.style.display = "block";
+                slide.classList.add("active");
+            } else {
+                slide.style.display = "none";
+                slide.classList.remove("active");
+            }
+        });
+
+        const progressPct = (personalityIndex / 7) * 100;
+        if (personalityProgressBar) personalityProgressBar.style.width = `${progressPct}%`;
+        if (personalityProgressText) personalityProgressText.textContent = `Question ${personalityIndex} of 7`;
+
+        checkQuestionAnswered();
+
+        if (personalityIndex === 7) {
+            if (personalityNextBtn) personalityNextBtn.style.display = "none";
+            if (personalityRecommendBtn) personalityRecommendBtn.style.display = "inline-flex";
+        } else {
+            if (personalityNextBtn) personalityNextBtn.style.display = "inline-flex";
+            if (personalityRecommendBtn) personalityRecommendBtn.style.display = "none";
+        }
+    }
+
+    function checkQuestionAnswered() {
+        const activeSlide = document.querySelector(".personality-question-slide.active");
+        if (!activeSlide) return;
+
+        const inputs = activeSlide.querySelectorAll("input[type='radio']");
+        let answered = false;
+        inputs.forEach(input => {
+            if (input.checked) answered = true;
+        });
+
+        if (personalityIndex === 7) {
+            if (personalityRecommendBtn) personalityRecommendBtn.disabled = !answered;
+        } else {
+            if (personalityNextBtn) personalityNextBtn.disabled = !answered;
+        }
+    }
+
+    document.querySelectorAll(".personality-option-card input[type='radio']").forEach(radio => {
+        radio.addEventListener("change", checkQuestionAnswered);
+    });
+
+    if (personalityNextBtn) personalityNextBtn.addEventListener("click", () => {
+        if (personalityIndex < 7) {
+            personalityIndex++;
+            showPersonalitySlide();
+        }
+    });
+
+    if (personalityBackBtn) personalityBackBtn.addEventListener("click", () => {
+        if (personalityIndex > 1) {
+            personalityIndex--;
+            showPersonalitySlide();
+        } else {
+            showScreen(welcomeScreen);
+        }
+    });
+
+    if (personalityRecommendBtn) personalityRecommendBtn.addEventListener("click", () => {
+        closeModal();
+        const inlineWeights = compilePersonalityWeights();
+
+        const usernameInput = document.getElementById("username");
+        if (usernameInput && usernameInput.value.trim() === "") {
+            usernameInput.value = "manual_profile";
+        }
+
+        syncManualPreferencesToBackend(null, inlineWeights);
+        getRecommendations(true, null, inlineWeights);
+    });
+
+    function compilePersonalityWeights() {
+        const getRadioVal = (name) => {
+            const selected = document.querySelector(`input[name="${name}"]:checked`);
+            return selected ? selected.value : null;
+        };
+
+        const q1 = getRadioVal("q1");
+        const q2 = getRadioVal("q2");
+        const q3 = getRadioVal("q3");
+        const q4 = getRadioVal("q4");
+        const q5 = getRadioVal("q5");
+        const q6 = getRadioVal("q6");
+        const q7 = getRadioVal("q7");
+
+        const mech_weights = {};
+        const cat_weights = {};
+        const complexity_weights = {
+            "Light": 0.0,
+            "Medium-Light": 0.0,
+            "Medium-Heavy": 0.0,
+            "Heavy": 0.0
+        };
+
+        if (q1 === "cooperative") {
+            mech_weights["Cooperative Game"] = 10.0;
+        }
+
+        if (q2 === "light") {
+            complexity_weights["Light"] = 1.0;
+            document.getElementById("complexity_pref").value = "light";
+            localStorage.setItem("bgg_rec_complexity_pref", "light");
+        } else if (q2 === "medium") {
+            complexity_weights["Medium-Light"] = 1.0;
+            complexity_weights["Medium-Heavy"] = 1.0;
+            document.getElementById("complexity_pref").value = "medium";
+            localStorage.setItem("bgg_rec_complexity_pref", "medium");
+        } else if (q2 === "heavy") {
+            complexity_weights["Heavy"] = 1.0;
+            document.getElementById("complexity_pref").value = "heavy";
+            localStorage.setItem("bgg_rec_complexity_pref", "heavy");
+        }
+
+        if (q3 === "short") {
+            mech_weights["Real-time"] = 5.0;
+            document.getElementById("duration_pref").value = "short";
+            localStorage.setItem("bgg_rec_duration_pref", "short");
+        } else if (q3 === "medium") {
+            document.getElementById("duration_pref").value = "medium";
+            localStorage.setItem("bgg_rec_duration_pref", "medium");
+        } else if (q3 === "long") {
+            document.getElementById("duration_pref").value = "long";
+            localStorage.setItem("bgg_rec_duration_pref", "long");
+        }
+
+        if (q4 === "nature") {
+            cat_weights["Animals"] = 10.0;
+            cat_weights["Environmental"] = 8.0;
+        } else if (q4 === "scifi") {
+            cat_weights["Sci-Fi"] = 10.0;
+            cat_weights["Fantasy"] = 10.0;
+            cat_weights["Adventure"] = 8.0;
+        } else if (q4 === "economic") {
+            cat_weights["Economic"] = 10.0;
+            cat_weights["Industry / Manufacturing"] = 8.0;
+        }
+
+        if (q5 === "high") {
+            mech_weights["Dice Rolling"] = 10.0;
+        } else if (q5 === "low") {
+            mech_weights["Grid Movement"] = 8.0;
+            cat_weights["Abstract Strategy"] = 10.0;
+        }
+
+        if (q6 === "engine") {
+            mech_weights["Deck, Bag, and Pool Building"] = 10.0;
+            mech_weights["Set Collection"] = 8.0;
+        } else if (q6 === "worker") {
+            mech_weights["Worker Placement"] = 10.0;
+            mech_weights["Area Majority / Influence"] = 8.0;
+        }
+
+        if (q7 === "conflict") {
+            mech_weights["Take That"] = 8.0;
+            mech_weights["Area Majority / Influence"] = 8.0;
+        } else if (q7 === "social") {
+            mech_weights["Trading"] = 8.0;
+            mech_weights["Negotiation"] = 8.0;
+            mech_weights["Bluffing"] = 5.0;
+        } else if (q7 === "solitaire") {
+            mech_weights["Hand Management"] = 5.0;
+            mech_weights["Set Collection"] = 5.0;
+        }
+
+        const weightsObj = {
+            mech_weights: mech_weights,
+            cat_weights: cat_weights,
+            complexity_weights: complexity_weights,
+            designer_weights: {},
+            publisher_weights: {}
+        };
+
+        localStorage.setItem("manual_personality_weights", JSON.stringify(weightsObj));
+        return weightsObj;
+    }
+
+    async function syncManualPreferencesToBackend(onboardingRatings = null, onboardingWeights = null) {
+        if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+
+        let currentPrefs = {};
+        try {
+            const getRes = await fetchApi('/preferences');
+            if (getRes.ok) currentPrefs = await getRes.json();
+        } catch (e) {
+            console.error("Failed fetching current preferences:", e);
+        }
+
+        const updatedPrefs = {
+            ...currentPrefs,
+            playgroups: window.playgroups || [],
+            user_preferences: currentPrefs.user_preferences || {}
+        };
+
+        if (onboardingRatings) {
+            updatedPrefs.onboarding_ratings = onboardingRatings;
+        }
+        if (onboardingWeights) {
+            updatedPrefs.user_preferences.personality_weights = onboardingWeights;
+        }
+
+        try {
+            await fetchApi('/preferences', {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(updatedPrefs)
+            });
+            console.log("Successfully synced manual onboarding preferences to DynamoDB.");
+        } catch (e) {
+            console.error("Error syncing manual onboarding preferences:", e);
+        }
     }
 
     function renderRecommendations(recs, isPending = false) {

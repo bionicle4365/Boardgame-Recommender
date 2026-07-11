@@ -13,6 +13,12 @@ description: "Get personalized board game recommendations from your BGG library 
         <p>Get personalized board game recommendations powered by Amazon Bedrock.</p>
     </div>
 
+    <!-- Sparse profile warning banner -->
+    <div id="sparse-profile-banner" class="sparse-banner" style="display: none; margin-bottom: 20px;">
+        <span>⚠️ Your BGG profile has very few rated games. For better recommendations, try our <a href="#" id="sparse-launch-wizard" style="font-weight: 600; text-decoration: underline; color: inherit;">New User Wizard</a>.</span>
+        <button type="button" id="close-sparse-banner" class="close-btn" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: inherit; margin-left: 15px; vertical-align: middle;">&times;</button>
+    </div>
+
     <!-- Configuration Form -->
     <div class="form-card">
         <form id="recommender-form">
@@ -27,6 +33,9 @@ description: "Get personalized board game recommendations from your BGG library 
                     <div class="form-group">
                         <label for="username">BoardGameGeek Username</label>
                         <input type="text" id="username" placeholder="e.g. bionicle4365" required>
+                        <div class="username-wizard-hint" style="margin-top: 6px; font-size: 0.85rem;">
+                            No BGG account? <a href="#" id="launch-wizard-btn" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Launch New User Wizard</a>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -165,7 +174,314 @@ description: "Get personalized board game recommendations from your BGG library 
     </div>
 
     <!-- Recommendations Results -->
-    <div id="recommendations-results" class="results-grid"></div>
+    <div id="recommendations-results" class="results-grid">
+        <div class="recommender-empty-state" id="recommender-empty-state-card" style="grid-column: 1 / -1; width: 100%; box-sizing: border-box;">
+            <!-- Blurred cards preview -->
+            <div class="empty-state-preview-cards">
+                <div class="dummy-card blurred">
+                    <div class="dummy-image"></div>
+                    <div class="dummy-title"></div>
+                    <div class="dummy-tags"><span></span><span></span></div>
+                </div>
+                <div class="dummy-card blurred">
+                    <div class="dummy-image"></div>
+                    <div class="dummy-title"></div>
+                    <div class="dummy-tags"><span></span><span></span></div>
+                </div>
+                <div class="dummy-card blurred">
+                    <div class="dummy-image"></div>
+                    <div class="dummy-title"></div>
+                    <div class="dummy-tags"><span></span><span></span></div>
+                </div>
+            </div>
+            
+            <!-- Overlay CTA -->
+            <div class="empty-state-overlay">
+                <h2>Discover Your Next Favorite Game</h2>
+                <p>Sync your BoardGameGeek profile or take our quick quiz to get personalized recommendations narrated by AI.</p>
+                <div class="empty-state-actions">
+                    <button type="button" class="btn btn-submit" id="empty-state-wizard-btn" style="max-width: 320px; font-weight: 600; padding: 12px 24px; display: inline-flex; justify-content: center; height: auto;">
+                        Start New User Wizard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New User Wizard Modal -->
+<div id="wizard-modal" class="wizard-modal" style="display: none;">
+    <div class="wizard-modal-content glassmorphism">
+        <button type="button" id="close-wizard-btn" class="wizard-close-btn">&times;</button>
+        
+        <!-- Welcome Screen -->
+        <div id="wizard-welcome-screen" class="wizard-screen active">
+            <h2 style="margin-top: 0; font-size: 1.8rem;">Welcome to Boardgame Recommender!</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">To get personalized recommendations, we need to know your taste. Choose one of the options below to get started:</p>
+            <div class="wizard-path-grid">
+                <button type="button" class="wizard-path-card" id="path-gamer-btn">
+                    <span class="path-icon">🎲</span>
+                    <h3>Quick Taste Test</h3>
+                    <p>Rate some of the most popular modern board games (👍/👎/skip) to build a precise taste profile.</p>
+                </button>
+                <button type="button" class="wizard-path-card" id="path-casual-btn">
+                    <span class="path-icon">🧭</span>
+                    <h3>Board Game Personality Test</h3>
+                    <p>Answer 7 simple questions about your play style and preferences to generate a custom weight profile.</p>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Quick Taste Test Screen -->
+        <div id="wizard-taste-test-screen" class="wizard-screen">
+            <h2 style="margin-top: 0;">Quick Taste Test</h2>
+            <p class="wizard-screen-desc" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Rate at least 5 games to unlock your personalized recommendations.</p>
+            
+            <div class="taste-test-carousel" style="margin-bottom: 20px;">
+                <div class="taste-card glassmorphism" id="taste-game-card">
+                    <div class="taste-card-image-wrapper">
+                        <img id="taste-game-img" src="" alt="Game Image">
+                    </div>
+                    <div class="taste-card-info">
+                        <h3 id="taste-game-title">Game Title</h3>
+                        <div class="game-mechanics-tags" id="taste-game-mechanics"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="taste-test-actions">
+                <button type="button" class="btn btn-rate thumbs-down" id="rate-dislike-btn">👎 Dislike</button>
+                <button type="button" class="btn btn-rate skip" id="rate-skip-btn">Haven't played it</button>
+                <button type="button" class="btn btn-rate thumbs-up" id="rate-like-btn">👍 Like</button>
+            </div>
+            
+            <div class="wizard-progress-container" style="margin-top: 20px; margin-bottom: 20px;">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar-fill" id="wizard-progress-bar" style="width: 0%;"></div>
+                </div>
+                <div class="progress-text" id="wizard-progress-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">0 of 5 ratings collected</div>
+            </div>
+            
+            <div class="wizard-footer-actions" style="display: flex; justify-content: space-between; gap: 15px;">
+                <button type="button" class="btn btn-rate" id="taste-test-back-btn" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); width: 100px;">Back</button>
+                <button type="button" class="btn btn-submit" id="taste-test-recommend-btn" style="height: 45px; display: inline-flex; align-items: center; justify-content: center;" disabled>Get Recommendations</button>
+            </div>
+        </div>
+        
+        <!-- Board Game Personality Test Screen -->
+        <div id="wizard-personality-screen" class="wizard-screen">
+            <h2 style="margin-top: 0;">Board Game Personality Test</h2>
+            <p class="wizard-screen-desc" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Answer 7 simple questions about your play style to help us discover your taste.</p>
+            
+            <div class="personality-questions-container" style="margin-bottom: 20px; min-height: 280px; position: relative;">
+                <!-- Q1 -->
+                <div class="personality-question-slide active" data-question="1">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 1 of 7: What is your preferred game format?</h3>
+                    <div class="personality-options-grid">
+                        <label class="personality-option-card">
+                            <input type="radio" name="q1" value="cooperative">
+                            <span class="option-content">
+                                <span class="option-icon">🤝</span>
+                                <span class="option-title">Cooperative</span>
+                                <span class="option-desc">Win or lose together as a team against the game's challenge.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q1" value="competitive">
+                            <span class="option-content">
+                                <span class="option-icon">🏆</span>
+                                <span class="option-title">Competitive</span>
+                                <span class="option-desc">Every player for themselves, competing for the highest score.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Q2 -->
+                <div class="personality-question-slide" data-question="2" style="display: none;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 2 of 7: How complex do you want the rules to be?</h3>
+                    <div class="personality-options-grid">
+                        <label class="personality-option-card">
+                            <input type="radio" name="q2" value="light">
+                            <span class="option-content">
+                                <span class="option-icon">⚡</span>
+                                <span class="option-title">Easy to Learn</span>
+                                <span class="option-desc">Learn in 2 minutes. Simple rules, friendly for anyone.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q2" value="medium">
+                            <span class="option-content">
+                                <span class="option-icon">🧠</span>
+                                <span class="option-title">Moderate Strategy</span>
+                                <span class="option-desc">Some strategic depth, interesting choices, moderate rules weight.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q2" value="heavy">
+                            <span class="option-content">
+                                <span class="option-icon">🧬</span>
+                                <span class="option-title">Heavy Brain-Burner</span>
+                                <span class="option-desc">Complex systems, deep strategy, and heavy rulebooks.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Q3 -->
+                <div class="personality-question-slide" data-question="3" style="display: none;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 3 of 7: What is your ideal play time for a game?</h3>
+                    <div class="personality-options-grid">
+                        <label class="personality-option-card">
+                            <input type="radio" name="q3" value="short">
+                            <span class="option-content">
+                                <span class="option-icon">⏱️</span>
+                                <span class="option-title">Short &amp; Snappy</span>
+                                <span class="option-desc">Under 30 minutes. Great for quick rounds or filler.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q3" value="medium">
+                            <span class="option-content">
+                                <span class="option-icon">⏳</span>
+                                <span class="option-title">Standard Game Night</span>
+                                <span class="option-desc">45 to 90 minutes. The sweet spot for strategy games.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q3" value="long">
+                            <span class="option-content">
+                                <span class="option-icon">🏰</span>
+                                <span class="option-title">Epic Immersion</span>
+                                <span class="option-desc">Over 90 minutes. A deep journey or complex campaign.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Q4 -->
+                <div class="personality-question-slide" data-question="4" style="display: none;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 4 of 7: What theme or aesthetic vibe appeals to you most?</h3>
+                    <div class="personality-options-grid">
+                        <label class="personality-option-card">
+                            <input type="radio" name="q4" value="nature">
+                            <span class="option-content">
+                                <span class="option-icon">🍃</span>
+                                <span class="option-title">Nature &amp; Cozy</span>
+                                <span class="option-desc">Animals, plants, cozy patterns, and peaceful themes.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q4" value="scifi">
+                            <span class="option-content">
+                                <span class="option-icon">🌌</span>
+                                <span class="option-title">Sci-Fi &amp; Fantasy</span>
+                                <span class="option-desc">Space exploration, wizards, fantasy adventures, and magic.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q4" value="economic">
+                            <span class="option-content">
+                                <span class="option-icon">🚂</span>
+                                <span class="option-title">Modern World &amp; Economy</span>
+                                <span class="option-desc">Trading resources, building industries, history, and train networks.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Q5 -->
+                <div class="personality-question-slide" data-question="5" style="display: none;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 5 of 7: How do you feel about luck in games?</h3>
+                    <div class="personality-options-grid">
+                        <label class="personality-option-card">
+                            <input type="radio" name="q5" value="high">
+                            <span class="option-content">
+                                <span class="option-icon">🎲</span>
+                                <span class="option-title">Tactical Chaos (High Luck)</span>
+                                <span class="option-desc">Rolling lots of dice, dealing cards, and adapting to random events.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q5" value="low">
+                            <span class="option-content">
+                                <span class="option-icon">📊</span>
+                                <span class="option-title">Calculated Strategy (No Luck)</span>
+                                <span class="option-desc">Deterministic rules. Pure chess-like skill and planning ahead.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Q6 -->
+                <div class="personality-question-slide" data-question="6" style="display: none;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 6 of 7: Which core gameplay activity sounds most fun?</h3>
+                    <div class="personality-options-grid">
+                        <label class="personality-option-card">
+                            <input type="radio" name="q6" value="engine">
+                            <span class="option-content">
+                                <span class="option-icon">⚙️</span>
+                                <span class="option-title">Engine &amp; Collection Building</span>
+                                <span class="option-desc">Building combos, buying cards, and gathering resource sets.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q6" value="worker">
+                            <span class="option-content">
+                                <span class="option-icon">👷</span>
+                                <span class="option-title">Worker Placement &amp; Map Positioning</span>
+                                <span class="option-desc">Placing workers on slots, taking actions, and claiming map areas.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Q7 -->
+                <div class="personality-question-slide" data-question="7" style="display: none;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 7 of 7: How do you want to interact with other players?</h3>
+                    <div class="personality-options-grid">
+                        <label class="personality-option-card">
+                            <input type="radio" name="q7" value="conflict">
+                            <span class="option-content">
+                                <span class="option-icon">⚔️</span>
+                                <span class="option-title">High Interaction &amp; Conflict</span>
+                                <span class="option-desc">Fighting for space, blocking moves, or direct attacks.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q7" value="social">
+                            <span class="option-content">
+                                <span class="option-icon">🗣️</span>
+                                <span class="option-title">Social Table Talk &amp; Negotiation</span>
+                                <span class="option-desc">Negotiating, trading resources, or bluffing and reading roles.</span>
+                            </span>
+                        </label>
+                        <label class="personality-option-card">
+                            <input type="radio" name="q7" value="solitaire">
+                            <span class="option-content">
+                                <span class="option-icon">🧩</span>
+                                <span class="option-title">Multiplayer Solitaire</span>
+                                <span class="option-desc">Doing your own puzzle and building without direct attacks.</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="personality-progress-container" style="margin-top: 15px; margin-bottom: 20px;">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar-fill" id="personality-progress-bar" style="width: 14.3%;"></div>
+                </div>
+                <div class="progress-text" id="personality-progress-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">Question 1 of 7</div>
+            </div>
+            
+            <div class="wizard-footer-actions" style="display: flex; justify-content: space-between; gap: 15px;">
+                <button type="button" class="btn btn-rate" id="personality-back-btn" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); width: 100px;">Back</button>
+                <button type="button" class="btn btn-submit" id="personality-next-btn" style="height: 45px; display: inline-flex; align-items: center; justify-content: center;" disabled>Next</button>
+                <button type="button" class="btn btn-submit" id="personality-recommend-btn" style="height: 45px; display: none; align-items: center; justify-content: center;" disabled>Get Recommendations</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="{{ '/assets/js/recommender.js' | relative_url }}"></script>

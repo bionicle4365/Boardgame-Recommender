@@ -81,57 +81,6 @@ Add a lightweight, unobtrusive "Score My Game" tool to the recommender page that
 
 ---
 
-## Milestone 34: Empty States, Onboarding Guidance & Cold-Start Rating Flow
-
-### Objective
-Replace blank/empty page states with visually polished onboarding guidance and provide a seamless recommendation flow for users without a BoardGameGeek profile (or with insufficient data) via a two-round adaptive game rating wizard that builds a temporary inline taste profile.
-
-### Design Notes
-
-**Empty States:**
-- **Current State:** Pages show no content until a BGG username is entered or the user is logged in. First-time visitors see empty containers with no context.
-- **Visual Approach:** Each empty state should be minimal and tasteful — a short headline, 1-2 sentence description, and a single clear CTA. Avoid heavy illustration or multi-step walkthroughs. The glassmorphism card style already established in the UI provides a natural container.
-- **Scope Caution:** Empty states must not feel intrusive or tutorial-heavy. They should disappear permanently once the user has engaged with the feature (tracked via `localStorage` flag).
-
-**Cold-Start Onboarding (BGG Profile Bypass):**
-- **Why only positive ratings build the weight profile (and what we do about it):** The recommender's scoring weights are built exclusively from liked games (rating >= 7.0). Disliked games (rating 3.0) are excluded from the weight-building step — they do not penalise mechanics in candidate scoring. For a full BGG profile (15+ liked games), positive signal alone is dense enough that this is not a significant limitation. For the cold-start case (3-8 liked games), disliked games represent meaningful signal that must not be silently discarded. The solution is a **hard candidate exclusion** rather than negative weight subtraction: after scoring, any candidate game whose primary mechanics are dominated by mechanics from disliked games (with no overlap with liked mechanics) is excluded from the top-25 shortlist passed to Bedrock.
-- **Profile data threshold:** The content-based scoring profile does not become reliable until approximately 10–15 liked games exist. The onboarding flow must collect at least **5 genuine ratings** (thumbs up or down — not skips) before enabling the "Get Recommendations" action. A progress indicator should communicate this requirement to the user.
-- **Adaptive round selection:** Round 1 shows 5-6 fixed seed games spanning diverse mechanic clusters. Round 2 selects 4-5 follow-up games based on Round 1 responses — steering toward unexplored mechanic territory to maximise profile diversity.
-- **Skip semantics:** "Skip" is labelled **"Haven't played it"** in the UI. Skipped games are omitted from the inline profile entirely — they are not assigned a neutral rating.
-- **Inline profile via request body:** The existing `POST /recommendations` request accepts an optional `inline_profile` body field containing a list of `{id, rating}` objects. When present, the Lambda skips the S3 parquet lookup entirely and constructs the user dataframe from the inline payload. Inline-profile recommendations are **not cached** in S3.
-- **State persistence:** Onboarding ratings are saved to `localStorage` immediately. If the user is authenticated via Cognito, completed onboarding ratings are additionally written to the DynamoDB preferences table. If the user subsequently provides a real BGG username, the scraped profile takes precedence.
-
-### Tasks
-
-#### Empty States
-- [ ] **Home Page Empty State:** Add a subtle "Getting Started" card below the feature grid for first-time visitors (no username in `localStorage`) with a brief explanation and a "Enter your BGG username to begin" prompt.
-- [ ] **Recommender Empty State:** Show 2-3 blurred/faded example recommendation cards as a visual preview of what results look like, with an overlay CTA to enter a username or start the cold-start onboarding wizard.
-- [ ] **Collection Empty State:** Add a brief description card explaining the collection browser with a CTA pointing to the username form.
-- [ ] **Profile Empty State:** When not logged in, show a teaser card explaining what the profile dashboard offers with a "Log in to view" CTA.
-- [ ] **localStorage Dismissal:** Track `onboarding_dismissed` in `localStorage` so empty states are hidden once the user has engaged.
-
-#### Seed Catalog & Adaptive Selection
-- [ ] **Curated Seed Catalog:** Curate 14-16 widely recognised board games across maximally distinct mechanic clusters (e.g. Gloomhaven, Catan, Codenames, Ticket to Ride, Pandemic, 7 Wonders, Azul, Wingspan, Dominion, Scythe, Coup, Dixit, Agricola, Root).
-- [ ] **Round 1 Fixed Set:** Select 5-6 games from the seed catalog as the fixed Round 1 set, maximising mechanic diversity.
-- [ ] **Round 2 Adaptive Selection:** After Round 1, compute which mechanic clusters are unrepresented in the user's responses and select 4-5 follow-up games from the remaining catalog.
-
-#### Onboarding UI
-- [ ] **Card-by-Card Rating Wizard:** Implement a full-screen card carousel showing one game at a time with its cover art, name, and mechanic tags. Buttons: 👍 Thumbs Up / 👎 Thumbs Down / Haven't played it.
-- [ ] **Progress Indicator:** Display a "X of 5 ratings needed" progress bar that unlocks the "Get Recommendations" button once ≥5 genuine (non-skip) ratings are collected.
-- [ ] **localStorage Persistence:** Save each rating to `localStorage` as it is made. Pre-populate the wizard state from `localStorage` on load so a page refresh does not lose progress.
-- [ ] **Cognito Integration:** If the user is authenticated, write completed onboarding ratings to the DynamoDB preferences table on wizard completion.
-
-#### Backend Changes
-- [ ] **Inline Profile Support:** Update `bgg_recommender.py` to accept an optional `inline_profile` field in the JSON request body. When present, construct the user dataframe directly from the payload (list of `{id, rating}` objects) and skip the S3 parquet lookup and recommendation cache read/write steps entirely.
-- [ ] **Dislike Hard Exclusion:** After candidate scoring, identify the primary mechanics of each disliked game in the inline profile. Remove from the top-25 shortlist any candidate whose mechanic set is dominated by those dislike mechanics and shares no overlap with liked mechanics.
-- [ ] **Inline Profile Mapping:** Map onboarding responses to ratings: Thumbs Up → 9.0, Thumbs Down → 3.0. Skipped games are omitted from the payload entirely.
-
-#### Testing
-- [ ] **Backend Unit Tests:** Verify the recommendation generator executes correctly when provided with an inline profile payload, including edge cases: all thumbs up, mixed ratings, minimum 5-rating payload, and empty dislike exclusion list.
-- [ ] **Dislike Exclusion Tests:** Verify that candidates dominated by disliked mechanics are correctly excluded from the shortlist passed to Bedrock.
-- [ ] **Visual Verification:** Verify all empty states look polished on desktop and mobile, and disappear correctly after engagement.
-
----
 
 ## Milestone 41: Shareable Recommendation Links
 
@@ -270,5 +219,4 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 40: Groups Page Redesign — Tabs & Per-Member Affinity** (Structured tabs layout, per-member taste alignment bar charts, dynamic color-coding, 100% max clamping, and backend Lambda scoring helper extraction)
 * **Milestone 47: Release Polish (SEO, Favicon & Social Sharing)** (Registered jekyll-seo-tag and jekyll-sitemap, linked generated favicon and apple touch icons, audited page metadata, configured default OpenGraph/Twitter sharing cards, and added a custom glassmorphic 404 landing page)
 * **Milestone 48: Collection Browser Image Fitting** (Updated collection browser game images to `object-fit: contain` with customized dark/light mode gradient containers to ensure aspect-ratio-aware fitting without cropping)
-
-
+* **Milestone 34: Empty States, Onboarding Guidance & Cold-Start Rating Flow** (Polished empty state preview overlay, Gamer Quick Taste Test with Round 2 adaptive selection, Casual Personality Test with 7 playstyle questions, S3-bypass inline profile/weights POST submissions, and mechanic-based dislike exclusions)

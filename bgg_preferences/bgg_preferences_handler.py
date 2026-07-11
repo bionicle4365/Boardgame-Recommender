@@ -103,7 +103,7 @@ def _lambda_handler_impl(event, context):
             expression_attribute_values = {}
             expression_attribute_names = {}
             
-            allowed_fields = ['playgroups', 'saved_weights', 'user_preferences', 'bgg_username']
+            allowed_fields = ['playgroups', 'saved_weights', 'user_preferences', 'bgg_username', 'onboarding_ratings']
             for field in allowed_fields:
                 if field in body:
                     val = floats_to_decimals(body[field])

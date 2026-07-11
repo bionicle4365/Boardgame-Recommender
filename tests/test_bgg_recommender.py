@@ -1349,5 +1349,153 @@ def test_single_user_no_affinities(mock_bedrock, mock_hotness, mock_read_parquet
     assert 'member_affinities' not in recs[0]
 
 
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+def test_cold_start_redirect(mock_read_parquet, mock_s3, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    
+    # Empty profile dataframe with expected columns
+    user_df = pd.DataFrame(columns=['id', 'username', 'rating', 'own'])
+    mock_read_parquet.return_value = user_df
+    
+    event = {
+        'queryStringParameters': {
+            'username': 'alice',
+            'own_status': 'any',
+            'test_cold_start': 'true'
+        }
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'cold_start_required'
+    assert res_body['reason'] == 'no_profile'
+    assert res_body['ratings_count'] == 0
+
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_inline_profile_bypass(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    mock_status.return_value = (False, False, None)
+    mock_cache.return_value = None
+    
+    # Catalog contains 2 games: 13 (Catan - user rated/owned) and 123 (Gloomhaven - unrated)
+    catalog_df = pd.DataFrame([
+        {"id": "13", "name": "Catan", "categories": ["Strategy"], "mechanics": ["Trading"], "rating": 7.1, "year_published": 1995, "complexity": 2.3, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "suggested_players_best": ["3"], "suggested_players_recommended": ["4"]},
+        {"id": "123", "name": "Gloomhaven", "categories": ["Thematic"], "mechanics": ["Cooperative"], "rating": 8.5, "year_published": 2017, "complexity": 3.8, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "suggested_players_best": ["2"], "suggested_players_recommended": ["3", "4"]}
+    ])
+    mock_read_parquet.return_value = catalog_df
+    mock_hotness.return_value = []
+    
+    # Bedrock recommends the unrated game 123 (Gloomhaven)
+    mock_bedrock.converse.return_value = {
+        'output': {
+            'message': {
+                'content': [{'text': '{"recommendations": [{"id": "123", "name": "Gloomhaven", "reason": "Reason"}]}'}]
+            }
+        }
+    }
+    
+    event = {
+        'body': json.dumps({
+            'username': 'manual_profile',
+            'own_status': 'any',
+            'inline_profile': [
+                {'id': '13', 'rating': 9.0}
+            ]
+        })
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'ready'
+    assert len(res_body['recommendations']) == 1
+    assert res_body['ratings_count'] == 1
+    for call in mock_s3.download_file.call_args_list:
+        args, kwargs = call
+        assert ".parquet" not in args[1] or "catalog.parquet" in args[1]
+
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_inline_weights_bypass(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    mock_status.return_value = (False, False, None)
+    mock_cache.return_value = None
+    
+    catalog_df = pd.DataFrame([
+        {"id": "13", "name": "Catan", "categories": ["Strategy"], "mechanics": ["Trading"], "rating": 7.1, "year_published": 1995, "complexity": 2.3, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "suggested_players_best": ["3"], "suggested_players_recommended": ["4"]}
+    ])
+    mock_read_parquet.return_value = catalog_df
+    mock_hotness.return_value = []
+    
+    mock_bedrock.converse.return_value = {
+        'output': {
+            'message': {
+                'content': [{'text': '{"recommendations": [{"id": "13", "name": "Catan", "reason": "Reason"}]}'}]
+            }
+        }
+    }
+    
+    event = {
+        'body': json.dumps({
+            'username': 'manual_profile',
+            'own_status': 'any',
+            'inline_weights': {
+                'mech_weights': {'Trading': 10.0},
+                'cat_weights': {'Strategy': 10.0},
+                'complexity_weights': {'Light': 1.0, 'Medium-Light': 0.0, 'Medium-Heavy': 0.0, 'Heavy': 0.0},
+                'designer_weights': {},
+                'publisher_weights': {}
+            }
+        })
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    res_body = json.loads(response['body'])
+    assert res_body['status'] == 'ready'
+    assert len(res_body['recommendations']) == 1
+    for call in mock_s3.download_file.call_args_list:
+        args, kwargs = call
+        assert ".parquet" not in args[1] or "catalog.parquet" in args[1]
+
+
+def test_dislike_exclusions():
+    from scoring import filter_dislike_exclusions
+    
+    candidates = [
+        {"id": "1", "name": "Game A", "mechanics": ["Dice Rolling", "Trading"]},
+        {"id": "2", "name": "Game B", "mechanics": ["Card Drafting", "Set Collection"]}
+    ]
+    
+    catalog_df = pd.DataFrame([
+        {"id": "1", "mechanics": ["Dice Rolling", "Trading"]},
+        {"id": "2", "mechanics": ["Card Drafting", "Set Collection"]},
+        {"id": "3", "mechanics": ["Trading"]},
+        {"id": "4", "mechanics": ["Dice Rolling", "Card Drafting"]}
+    ])
+    
+    user_df = pd.DataFrame([
+        {"id": "3", "rating": 9.0, "own": True},
+        {"id": "4", "rating": 3.0, "own": False}
+    ])
+    
+    filtered = filter_dislike_exclusions(candidates, user_df, catalog_df)
+    
+    assert len(filtered) == 1
+    assert filtered[0]["id"] == "1"
+
+
+
+
 
 
