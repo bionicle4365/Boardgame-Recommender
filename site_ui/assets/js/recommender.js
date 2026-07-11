@@ -718,7 +718,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (tasteRoundGames.length === 6) {
                 buildAdaptiveRound2();
             } else {
-                console.log("Completed rating all available seeds!");
+                console.log("Completed rating all available seeds! Total ratings collected:", tasteRatings.length, JSON.stringify(tasteRatings));
+                // Update the progress UI one last time to include the final game's rating
+                updateTasteTestProgress();
+                
                 // Hide everything except the recommend button
                 const carousel = document.querySelector(".taste-test-carousel");
                 const actions = document.querySelector(".taste-test-actions");
@@ -772,6 +775,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (ratingValue !== null) {
             tasteRatings.push({ id: game.id, rating: ratingValue });
         }
+        
+        console.log(`[Taste Test] Rated ${game.name} (${game.id}) -> ${ratingValue}. Total ratings: ${tasteRatings.length}`);
         
         tasteGameIndex++;
         loadTasteTestGame();
