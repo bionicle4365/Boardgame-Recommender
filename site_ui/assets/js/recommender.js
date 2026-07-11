@@ -674,6 +674,23 @@ document.addEventListener("DOMContentLoaded", function () {
         tasteRatings = [];
         tasteGameIndex = 0;
 
+        // Restore elements visibility for new taste test
+        const carousel = document.querySelector(".taste-test-carousel");
+        const actions = document.querySelector(".taste-test-actions");
+        const progressContainer = document.querySelector(".wizard-progress-container");
+        const backBtn = document.getElementById("taste-test-back-btn");
+        const recommendBtn = document.getElementById("taste-test-recommend-btn");
+
+        if (carousel) carousel.style.display = "";
+        if (actions) actions.style.display = "";
+        if (progressContainer) progressContainer.style.display = "";
+        if (backBtn) backBtn.style.display = "";
+        if (recommendBtn) {
+            recommendBtn.style.width = "";
+            recommendBtn.style.margin = "";
+            recommendBtn.disabled = true;
+        }
+
         const round1Ids = ["13", "9209", "30549", "178900", "230802", "266192"];
         tasteRoundGames = SEED_CATALOG.filter(game => round1Ids.includes(game.id));
 
@@ -702,6 +719,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 buildAdaptiveRound2();
             } else {
                 console.log("Completed rating all available seeds!");
+                // Hide everything except the recommend button
+                const carousel = document.querySelector(".taste-test-carousel");
+                const actions = document.querySelector(".taste-test-actions");
+                const progressContainer = document.querySelector(".wizard-progress-container");
+                const backBtn = document.getElementById("taste-test-back-btn");
+                const recommendBtn = document.getElementById("taste-test-recommend-btn");
+
+                if (carousel) carousel.style.display = "none";
+                if (actions) actions.style.display = "none";
+                if (progressContainer) progressContainer.style.display = "none";
+                if (backBtn) backBtn.style.display = "none";
+                if (recommendBtn) {
+                    recommendBtn.disabled = false; // Ensure it's enabled since we reached the end
+                    recommendBtn.style.display = "inline-flex";
+                    recommendBtn.style.width = "100%";
+                    recommendBtn.style.justifyContent = "center";
+                }
             }
         }
     }
