@@ -269,85 +269,85 @@ document.addEventListener("DOMContentLoaded", function () {
         {
             id: "174430",
             name: "Gloomhaven",
-            image: "https://cf.geekdo-images.com/sZYp_3BT6ArwXyNS7Ntq7g__imagepage/img/y4r5qmF_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2437871.jpg",
+            image: "https://cf.geekdo-images.com/OBUTs8Upox1__rHIsg6ViA__small/img/NkxnU-s0bRNGwgi8dqAKKEopMzU=/fit-in/200x150/filters:strip_icc()/pic9662755.jpg",
             mechanics: ["Cooperative Game", "Grid Movement", "Campaign / Scenario / Mission Lvg"]
         },
         {
             id: "13",
             name: "Catan",
-            image: "https://cf.geekdo-images.com/W3qqbg5_3vXQSyZ566Gf3A__imagepage/img/93qp52tU9U15TcxoVv45xYvRMTI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2419375.jpg",
+            image: "https://cf.geekdo-images.com/rg6OOR55B9fV3MCDfgdNdg__small/img/ql8oE9UE4UDjI_JUyaIstGkqGYg=/fit-in/200x150/filters:strip_icc()/pic9674480.jpg",
             mechanics: ["Trading", "Dice Rolling", "Network and Route Building"]
         },
         {
             id: "178900",
             name: "Codenames",
-            image: "https://cf.geekdo-images.com/F_KDEBo2GjgzNPAY5lFG4A__imagepage/img/4jD9K9T5Ff264L507J5m9X4k20=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2582922.jpg",
+            image: "https://cf.geekdo-images.com/GNw7rg1uFhdSowcjQZ4F5g__small/img/pWnrQZJJqjp3EGnmNMYNukNvXZ0=/fit-in/200x150/filters:strip_icc()/pic9608422.png",
             mechanics: ["Deduction", "Team-Based Game", "Communication Limits"]
         },
         {
             id: "9209",
             name: "Ticket to Ride",
-            image: "https://cf.geekdo-images.com/ZW98ZLE0uG1V4WLaExYrHg__imagepage/img/v1_j4wZk7V07ZJ5k07J5m9X4k20=/fit-in/900x600/filters:no_upscale():strip_icc()/pic38668.jpg",
+            image: "https://cf.geekdo-images.com/eoCGMPqtOPZSHEACZkWwHw__small/img/rsVQLCKn9dJV5BjUNaA6ruzKeDg=/fit-in/200x150/filters:strip_icc()/pic9653788.jpg",
             mechanics: ["Card Drafting", "Set Collection", "Network and Route Building"]
         },
         {
             id: "30549",
             name: "Pandemic",
-            image: "https://cf.geekdo-images.com/S3ybV1LAw-0nJDFdrsgJmg__imagepage/img/N22x9yF_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic1534148.jpg",
+            image: "https://cf.geekdo-images.com/QsCBY10yJ6VbNq8odEkFvQ__small/img/he9ngCPfm75d3pa3X1KNw19WzZ4=/fit-in/200x150/filters:strip_icc()/pic9641990.png",
             mechanics: ["Cooperative Game", "Action Points", "Point to Point Movement"]
         },
         {
             id: "68448",
             name: "7 Wonders",
-            image: "https://cf.geekdo-images.com/ODt2-6BIvjnnn84sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic5669291.jpg",
+            image: "https://cf.geekdo-images.com/UDflrZeOvVizJe-ZcRrp6g__small/img/O22_OSjC57JUKmZxIyGWQu2AkAY=/fit-in/200x150/filters:strip_icc()/pic9299348.jpg",
             mechanics: ["Card Drafting", "Hand Management", "Simultaneous Action Selection"]
         },
         {
             id: "230802",
             name: "Azul",
-            image: "https://cf.geekdo-images.com/tzmtNq11M0nJDFdrsgJmg__imagepage/img/N22x9yF_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic3718275.jpg",
+            image: "https://cf.geekdo-images.com/yQM6mW8QvXg0DzZLLh0dCQ__small/img/wlWi5ffB-WEmWKobN-IjDjSgH2g=/fit-in/200x150/filters:strip_icc()/pic9660979.jpg",
             mechanics: ["Tile Placement", "Drafting", "Pattern Building"]
         },
         {
             id: "266192",
             name: "Wingspan",
-            image: "https://cf.geekdo-images.com/yLZJCD566Gf3A__imagepage/img/93qp52tU9U15TcxoVv45xYvRMTI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic4458123.jpg",
+            image: "https://cf.geekdo-images.com/fqqlSn7nGpGXAdoNQEHuYQ__small/img/hrOSJ1rShe8jygMrckpAk6S3lXk=/fit-in/200x150/filters:strip_icc()/pic9678251.jpg",
             mechanics: ["Drafting", "Set Collection", "Dice Rolling"]
         },
         {
             id: "36218",
             name: "Dominion",
-            image: "https://cf.geekdo-images.com/gK2F445lFG4A__imagepage/img/4jD9K9T5Ff264L507J5m9X4k20=/fit-in/900x600/filters:no_upscale():strip_icc()/pic5430958.jpg",
+            image: "https://cf.geekdo-images.com/IoozL860MR2CebKgPWQi6w__small/img/ykuymRXuCC1B73PVVNAuPpkB3OQ=/fit-in/200x150/filters:strip_icc()/pic9683981.jpg",
             mechanics: ["Deck, Bag, and Pool Building", "Hand Management", "Delayed Purchase"]
         },
         {
             id: "169786",
             name: "Scythe",
-            image: "https://cf.geekdo-images.com/7k_nZXS8sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic3163924.jpg",
+            image: "https://cf.geekdo-images.com/zjm1LW5RV57N3S2hX-EcRw__small/img/ERIt9VMMVlOWXH0cA91cnTg5BFQ=/fit-in/200x150/filters:strip_icc()/pic9662313.png",
             mechanics: ["Area Majority / Influence", "Resource Management", "Asymmetric Games"]
         },
         {
             id: "131357",
             name: "Coup",
-            image: "https://cf.geekdo-images.com/M6L49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2016006.jpg",
+            image: "https://cf.geekdo-images.com/AwfXpPn8IwghSkUI-Ebhvg__small/img/6ONRvgwNmopzgZXDkiSyu_q9LLY=/fit-in/200x150/filters:strip_icc()/pic9687331.jpg",
             mechanics: ["Bluffing", "Player Elimination", "Hidden Roles"]
         },
         {
             id: "39856",
             name: "Dixit",
-            image: "https://cf.geekdo-images.com/ODt2-6BIvjnnn84sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic5669291.jpg",
+            image: "https://cf.geekdo-images.com/sCn9y6PtmRkIMIGYgcFjXA__small/img/IiyzLjBnom0BHaCifwlkE1SaepM=/fit-in/200x150/filters:strip_icc()/pic9572269.jpg",
             mechanics: ["Creativity", "Simultaneous Action Selection", "Voting"]
         },
         {
             id: "31260",
             name: "Agricola",
-            image: "https://cf.geekdo-images.com/3vXQSyZ566Gf3A__imagepage/img/93qp52tU9U15TcxoVv45xYvRMTI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic862465.jpg",
+            image: "https://cf.geekdo-images.com/ylVEa2gIveavIzoA_8gXJQ__small/img/Byawbf78dJqbXGZkbM_Ff89IejQ=/fit-in/200x150/filters:strip_icc()/pic9647458.jpg",
             mechanics: ["Worker Placement", "Resource Management", "Turn Order: Progressive"]
         },
         {
             id: "237182",
             name: "Root",
-            image: "https://cf.geekdo-images.com/7k_nZXS8sn9sn8A__imagepage/img/J1vXJ5pW_9s49z1uWv65G1zS2Tz0=/fit-in/900x600/filters:no_upscale():strip_icc()/pic4254509.jpg",
+            image: "https://cf.geekdo-images.com/kK-LrmAyfOU_gB5b8O-ccw__small/img/Sr0719wl9U1fAxCEXmG3bc0XzAY=/fit-in/200x150/filters:strip_icc()/pic9686574.jpg",
             mechanics: ["Asymmetric Games", "Area Majority / Influence", "Hand Management"]
         }
     ];

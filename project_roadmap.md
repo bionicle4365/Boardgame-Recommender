@@ -4,29 +4,27 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
-## Milestone 44: Progressive Web App & Offline Support
+---
+
+## Milestone 44: Recommender Latency Optimization
 
 ### Objective
-Make the Jekyll site installable as a mobile app with offline caching, enabling users to browse cached recommendations and collection data without connectivity — particularly useful at board game stores and conventions.
+Reduce the recommendation refresh latency from 20+ seconds to under 8 seconds. This will be achieved by parallelizing S3 I/O operations and optimizing the Bedrock prompt and output token budgets without changing the LLM's selection capability or reducing recommendation diversity.
 
 ### Design Notes
-- **Use Case:** Board gamers frequently browse recommendations at game stores (deciding what to buy) or conventions (checking recommendations between sessions) where Wi-Fi is spotty or unavailable. Having the last set of recommendations and collection data available offline is genuinely useful.
-- **PWA Requirements:** A valid PWA needs a `manifest.json` (app metadata, icons, theme colors), a registered service worker (caching strategy), and HTTPS (already satisfied via GitHub Pages).
-- **Caching Strategy:** Cache-first for static assets (HTML, CSS, JS, images). Network-first with stale fallback for API responses (recommendations, collection data). The service worker stores the last successful API response for each cached endpoint in the Cache API.
+- **Concise AI Explanations:** Enforce a strict length limit (e.g., maximum 12 words) on recommendation reasons in the Bedrock system prompt. Generating fewer output tokens dramatically reduces LLM latency since generation is the primary bottleneck.
+- **25 Candidate Pool:** Retain the candidate shortlist at 25 games to preserve recommendation diversity and refresh variety, as input token count has negligible impact on prefill phase latency.
+- **Parallel S3 Reads:** Use Python `concurrent.futures.ThreadPoolExecutor` to fetch user profiles, taste profiles, and hotness data from S3 concurrently rather than sequentially.
 
 ### Architecture Decisions
-- **Service Worker Scope:** Register the service worker at the site root (`/Boardgame-Recommender/sw.js`). Cache the app shell (all HTML pages, `design-system.css`, `utils.js`, and page-specific JS) on install. Intercept API fetch requests and cache successful responses for offline fallback.
-- **Manifest:** Define a `manifest.json` with app name, short name, theme color matching the glassmorphism palette, background color, start URL, display mode `standalone`, and generated icons at 192px and 512px.
-- **Install Prompt:** Show a subtle "Install App" banner on the first visit (dismissible, tracked via `localStorage`). Don't interrupt the user flow — the banner appears below the header, not as a modal.
+- **Token Constraints:** Set Bedrock `inferenceConfig` `maxTokens` limit lower (e.g., 800 tokens instead of 2048) to cap the execution time and enforce concise output.
+- **Threading Model:** Use standard Python multiprocessing/threading libraries to run S3 operations concurrently within the Lambda execution environment.
 
 ### Tasks
-- [ ] **Web Manifest:** Create `site_ui/manifest.json` with app metadata, theme colors aligned to the existing glassmorphism palette, and icon references.
-- [ ] **App Icons:** Generate PWA icons at 192x192 and 512x512 sizes in the site assets directory.
-- [ ] **Service Worker:** Create `site_ui/sw.js` implementing cache-first for static assets and network-first-with-stale-fallback for API responses. Include cache versioning for cache-busting on deploys.
-- [ ] **Service Worker Registration:** Add service worker registration script to the default Jekyll layout (`_layouts/default.html`) with feature detection fallback.
-- [ ] **Install Prompt UI:** Add a dismissible "Install App" banner to the site header area, shown only when the `beforeinstallprompt` event fires. Track dismissal in `localStorage`.
-- [ ] **Offline Indicator:** When the service worker detects no connectivity, display a subtle "Offline — showing cached data" banner at the top of the page.
-- [ ] **Verification:** Test install flow on Android Chrome and iOS Safari. Verify offline browsing shows cached recommendations and collection data. Verify the app updates correctly when new content is deployed.
+- [ ] **Parallel S3 Fetching:** Refactor S3 calls in `bgg_recommender.py` and `scoring.py` to use a `ThreadPoolExecutor` for parallel downloads of user parquets, taste profiles, and hotness cache files.
+- [ ] **Prompt Tuning (Concise Narration):** Update `narrate_recommendations` in `narration.py` to prompt Bedrock for short, punchy reasons (max 12 words) and adjust the `maxTokens` inference config down to 800.
+- [ ] **Scoring Performance Tweaks:** Remove the redundant `catalog_df.copy()` operations from the recommendation routing path.
+- [ ] **Verification:** Validate via logs that refresh requests return in < 8 seconds. Confirm that recommendations remain high-quality and reasons are concise.
 
 ---
 
@@ -235,28 +233,6 @@ Enable full local Jekyll development with real API endpoints and Cognito credent
 
 ---
 
-## Milestone 51: Taste Test Image Loading Fix
-
-### Objective
-Replace the malformed BGG CDN image URLs in the `SEED_CATALOG` with correct, verified BGG thumbnail URLs that reliably load for all 14 seed games used in the Quick Taste Test wizard.
-
-### Design Notes
-- **Root Cause:** The `SEED_CATALOG` array in `recommender.js` contains hardcoded BGG image URLs, but several have truncated or garbled CDN paths (e.g., Ticket to Ride, Pandemic, Azul, Wingspan, Dominion, Scythe, Coup, Dixit, Agricola, Root). These URLs return 404s from the BGG CDN, resulting in broken images during the taste test flow.
-- **Fix Strategy:** Replace all image URLs with the smaller, more reliable BGG thumbnail format (`__thumb` variant) rather than the full `__imagepage` variant. Thumbnail URLs are shorter, load faster, and are less prone to CDN path changes. The taste test card display size (contained within a small carousel card) doesn't require the full 900×600 image resolution.
-- **URL Format:** Use the verified `https://cf.geekdo-images.com/{hash}__thumb/img/{signature}/fit-in/200x150/filters:strip_icc()/pic{id}.{ext}` format, confirmed by cross-referencing each game's BGG page.
-
-### Architecture Decisions
-- **Single File Change:** All changes are isolated to the `SEED_CATALOG` array in `site_ui/assets/js/recommender.js` (lines 268-353).
-- **Fallback:** The existing `onerror` handler on recommendation card images already falls back to a placeholder. Add a similar `onerror` fallback to the taste test `<img>` element in `index.html` as an extra safety net.
-
-### Tasks
-- [ ] **Verify Correct URLs:** For each of the 14 SEED_CATALOG games, look up the correct BGG thumbnail URL from the BoardGameGeek game pages.
-- [ ] **Update SEED_CATALOG:** Replace all `image` values in the SEED_CATALOG array with the verified thumbnail URLs.
-- [ ] **Add Image Fallback:** Add an `onerror` handler to the `#taste-game-img` element in `recommender/index.html` to display a placeholder if any image still fails to load.
-- [ ] **Verification:** Run the site locally and step through both rounds of the Quick Taste Test, confirming all 14 game images load correctly.
-
----
-
 ## Milestone 52: New User AI Narration Context
 
 ### Objective
@@ -351,3 +327,4 @@ Redesign the recommendation results cards to be more compact and space-efficient
 * **Milestone 48: Collection Browser Image Fitting** (Updated collection browser game images to `object-fit: contain` with customized dark/light mode gradient containers to ensure aspect-ratio-aware fitting without cropping)
 * **Milestone 34: Empty States, Onboarding Guidance & Cold-Start Rating Flow** (Polished empty state preview overlay, Gamer Quick Taste Test with Round 2 adaptive selection, Casual Personality Test with 7 playstyle questions, S3-bypass inline profile/weights POST submissions, and mechanic-based dislike exclusions)
 * **Milestone 54: Scoring Pipeline Corrections** (Projected true cosine similarity, dislike threshold boundary lowered to 6.5, group re-computation deduplication, BGG_TESTING env var test bypass, and sum-based complexity weighting)
+* **Milestone 51: Taste Test Image Loading Fix** (Replaced broken full-sized BGG CDN images with verified smaller thumbnail URLs in the seed catalog array, and added a fallback placeholder handler to the HTML markup)
