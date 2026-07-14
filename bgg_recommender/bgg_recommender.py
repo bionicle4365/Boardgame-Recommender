@@ -338,8 +338,7 @@ def _handle_recommendations(query_params):
         
         # Check for empty or sparse BGG user profile (under 5 ratings/owned games triggers wizard)
         total_items = len(user_df)
-        import sys
-        is_testing = 'pytest' in sys.modules
+        is_testing = os.environ.get('BGG_TESTING') == 'true'
         if total_items < 5 and not (is_testing and query_params.get('test_cold_start') != 'true'):
             reason = "no_profile" if total_items == 0 else "insufficient_data"
             return {
@@ -494,10 +493,6 @@ def _handle_recommendations(query_params):
 
     # 10. Compute individual playgroup member affinities if a group request
     if len(usernames) > 1 and recs_list and not inline_weights:
-        individual_profiles = {}
-        compute_taste_profile_inline(
-            user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=individual_profiles
-        )
         logger.info(f"Computing individual playgroup member affinities for {len(usernames)} attendees.")
         has_complexity = 'complexity' in catalog_df.columns
         has_publishers = 'publishers' in catalog_df.columns

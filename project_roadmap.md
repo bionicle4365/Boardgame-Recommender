@@ -182,6 +182,136 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 
 ---
 
+## Milestone 49: Mobile UI Polish Pass
+
+### Objective
+Conduct a comprehensive mobile responsiveness audit and polish across every page (Home, Recommender, Collection Browser, Profile, Groups, Settings, 404) to ensure consistent, usable touch experiences on phones and small tablets — building on the responsive foundations from Milestone 10.
+
+### Design Notes
+- **Scope:** This is a general polish pass, not a single-page fix. Every page needs a mobile audit for layout overflow, tap target sizing, text readability, and scroll behavior.
+- **Breakpoints:** Audit all pages at 320px, 375px, 414px, and 768px widths. Ensure no horizontal scrolling, no clipped content, and no overlapping elements at any width.
+- **Touch Targets:** All interactive elements (buttons, links, radio cards, tabs) must meet a minimum 44×44px touch target per WCAG 2.1 guidelines.
+- **Focus Areas:** Recommender wizard modal (personality cards and taste test carousel), Groups tabs and per-member affinity bars, Profile dashboard charts, Collection grid/table toggle, and Settings form layout.
+
+### Architecture Decisions
+- **CSS-Only Where Possible:** Prefer CSS media query fixes and flexbox/grid adjustments over JS-based responsive logic. All changes should go in existing page-level CSS or `design-system.css`.
+- **No Layout Rewrites:** Preserve the existing desktop layouts. Only add/adjust `@media` rules for widths ≤768px and ≤480px.
+
+### Tasks
+- [ ] **Recommender Page Mobile Audit:** Fix wizard modal sizing, personality option cards overflow, taste test carousel image scaling, form field widths, and slider touch areas on narrow viewports.
+- [ ] **Collection Browser Mobile Audit:** Verify collection grid cards, filter panel, taste profile charts, and table rows at 320-414px widths. Fix any horizontal overflow or text clipping.
+- [ ] **Profile Dashboard Mobile Audit:** Ensure profile header, overview stats, Chart.js visualizations, and rating distribution bars scale correctly and remain readable on mobile.
+- [ ] **Groups Page Mobile Audit:** Verify tab navigation, attendee list, per-member affinity bars, playgroup analytics charts, and planner empty states at mobile widths.
+- [ ] **Settings Page Mobile Audit:** Check form layout, weight sliders, and preference dropdowns for usability on narrow screens.
+- [ ] **Home Page & 404 Mobile Audit:** Verify landing page hero, feature cards, and 404 page layout at mobile widths.
+- [ ] **Global Navigation Mobile Audit:** Re-verify the mobile drawer from Milestone 10 still works correctly with all current pages and account dropdown interactions.
+- [ ] **Verification:** Manual test all pages at 320px, 375px, 414px, and 768px. Confirm no horizontal scrolling, no overlapping elements, and all interactive elements have adequate touch targets.
+
+---
+
+## Milestone 50: Local Development Environment
+
+### Objective
+Enable full local Jekyll development with real API endpoints and Cognito credentials by providing a secure, gitignored configuration override system — supporting both `.env.local` file and Jekyll config override approaches.
+
+### Design Notes
+- **Problem:** The `_config.yml` uses `PLACEHOLDER_API_URL`, `PLACEHOLDER_COGNITO_CLIENT_ID`, and `PLACEHOLDER_COGNITO_USER_POOL_ID` which are only substituted via GitHub Actions secrets during CI deployment. When running `bundle exec jekyll serve` locally, these remain as literal placeholder strings, causing API calls and authentication to fail silently.
+- **No Secrets in Repo:** The real values must never be committed. Both approaches must use gitignored files.
+- **Two Approaches:** Document and support: (a) a `_config.local.yml` override file used with Jekyll's multi-config flag, and (b) a `.env.local` file with a helper script that generates the local config override automatically.
+
+### Architecture Decisions
+- **Approach A — Jekyll Config Override:** Create a `_config.local.yml` template (gitignored) that users copy and fill in with real values. Run Jekyll with `bundle exec jekyll serve --config _config.yml,_config.local.yml` — the second config file overrides matching keys in the first.
+- **Approach B — `.env.local` + Script:** Create a `.env.local.example` file documenting required variables. Create a `scripts/gen_local_config.py` (or `.sh`) script that reads `.env.local` and generates `_config.local.yml` from it. Add `.env.local` and `_config.local.yml` to `.gitignore`.
+- **Documentation:** Add a `LOCAL_DEVELOPMENT.md` guide documenting both approaches, prerequisites (Ruby, Bundler, Jekyll), and troubleshooting steps.
+
+### Tasks
+- [ ] **Gitignore Updates:** Add `_config.local.yml`, `.env.local`, and any generated local config files to the repository `.gitignore`.
+- [ ] **Config Override Template:** Create `site_ui/_config.local.yml.example` with commented placeholder entries for `api_url`, `cognito_client_id`, `cognito_region`, and `cognito_user_pool_id`.
+- [ ] **Env File Template:** Create `site_ui/.env.local.example` listing all required environment variables with descriptions.
+- [ ] **Config Generator Script:** Create `scripts/gen_local_config.py` that reads `site_ui/.env.local` and writes `site_ui/_config.local.yml` with the real values.
+- [ ] **Local Development Guide:** Create `LOCAL_DEVELOPMENT.md` documenting both approaches, prerequisites, and step-by-step setup instructions.
+- [ ] **Mock API Enhancement:** Review and update the existing `fetchApi` mock fallback in `utils.js` to cover more endpoints accurately for fully offline development when even the real API URL is unavailable.
+- [ ] **Verification:** Confirm both approaches produce a working local site with functional API calls and Cognito authentication when real credentials are provided.
+
+---
+
+## Milestone 51: Taste Test Image Loading Fix
+
+### Objective
+Replace the malformed BGG CDN image URLs in the `SEED_CATALOG` with correct, verified BGG thumbnail URLs that reliably load for all 14 seed games used in the Quick Taste Test wizard.
+
+### Design Notes
+- **Root Cause:** The `SEED_CATALOG` array in `recommender.js` contains hardcoded BGG image URLs, but several have truncated or garbled CDN paths (e.g., Ticket to Ride, Pandemic, Azul, Wingspan, Dominion, Scythe, Coup, Dixit, Agricola, Root). These URLs return 404s from the BGG CDN, resulting in broken images during the taste test flow.
+- **Fix Strategy:** Replace all image URLs with the smaller, more reliable BGG thumbnail format (`__thumb` variant) rather than the full `__imagepage` variant. Thumbnail URLs are shorter, load faster, and are less prone to CDN path changes. The taste test card display size (contained within a small carousel card) doesn't require the full 900×600 image resolution.
+- **URL Format:** Use the verified `https://cf.geekdo-images.com/{hash}__thumb/img/{signature}/fit-in/200x150/filters:strip_icc()/pic{id}.{ext}` format, confirmed by cross-referencing each game's BGG page.
+
+### Architecture Decisions
+- **Single File Change:** All changes are isolated to the `SEED_CATALOG` array in `site_ui/assets/js/recommender.js` (lines 268-353).
+- **Fallback:** The existing `onerror` handler on recommendation card images already falls back to a placeholder. Add a similar `onerror` fallback to the taste test `<img>` element in `index.html` as an extra safety net.
+
+### Tasks
+- [ ] **Verify Correct URLs:** For each of the 14 SEED_CATALOG games, look up the correct BGG thumbnail URL from the BoardGameGeek game pages.
+- [ ] **Update SEED_CATALOG:** Replace all `image` values in the SEED_CATALOG array with the verified thumbnail URLs.
+- [ ] **Add Image Fallback:** Add an `onerror` handler to the `#taste-game-img` element in `recommender/index.html` to display a placeholder if any image still fails to load.
+- [ ] **Verification:** Run the site locally and step through both rounds of the Quick Taste Test, confirming all 14 game images load correctly.
+
+---
+
+## Milestone 52: New User AI Narration Context
+
+### Objective
+Detect inline/new-user recommendation requests (Quick Taste Test and Personality Test) and use a tailored Bedrock narration prompt that generates meaningful, contextual explanations without referencing a user's BGG collection — which doesn't exist for these users.
+
+### Design Notes
+- **Problem:** The current Bedrock narration prompt instructs the LLM to "relate the recommended game to 1 or 2 specific board games they already like or own from their list." For Quick Taste Test users, this list is just the 5-11 seed games they thumbs-upped (e.g., Catan, Wingspan). For Personality Test users, this list is *completely empty* ("No games rated/owned yet"). The resulting AI narration sounds nonsensical — referencing games the user never mentioned, or producing generic filler text.
+- **Fix Strategy:** Detect `is_inline` mode in the narration pipeline and switch to an alternative prompt that:
+  - For **taste test users** (who have a sparse `liked_games_str` from seed games): References their seed game preferences but acknowledges the profile is approximate. Focuses on mechanic/thematic alignment rather than deep collection knowledge.
+  - For **personality test users** (who have only `inline_weights` and no liked games): Focuses entirely on the user's declared playstyle preferences (cooperative vs competitive, complexity level, play time, theme, luck preference, etc.) rather than referencing any games.
+- **Personality Context Forwarding:** The compiled personality answers (q1-q7 values) should be forwarded through `query_params` or the `inline_weights` object so the narration prompt can reference the user's specific quiz answers (e.g., "Since you prefer cooperative games with moderate complexity...").
+
+### Architecture Decisions
+- **Narration Module Change:** Add an `is_inline` flag and `inline_weights` context to `narrate_recommendations()` in `narration.py`. When `is_inline` is true, use an alternative prompt template that omits the "relate to games they already like" instruction.
+- **Personality Context:** Include the personality quiz answer labels (not just the derived weights) in the `inline_weights` payload so the prompt can reference natural-language preferences like "cooperative", "heavy brain-burner", "sci-fi & fantasy", etc.
+- **No Scoring Changes:** The scoring pipeline remains unchanged — only the narration prompt text differs for inline users.
+
+### Tasks
+- [ ] **Pass Inline Context to Narration:** Update `_handle_recommendations` in `bgg_recommender.py` to pass `is_inline` and `inline_weights` to the `narrate_recommendations` function.
+- [ ] **Alternative Narration Prompt:** Create a new prompt template in `narration.py` for inline users. For taste test users, reference seed games lightly. For personality test users, reference playstyle preferences (format, complexity, theme, interaction style) directly.
+- [ ] **Forward Personality Labels:** Update the frontend `compilePersonalityWeights()` in `recommender.js` to include a `personality_answers` object (e.g., `{format: "cooperative", complexity: "heavy", theme: "scifi", ...}`) alongside the derived mechanic/category/complexity weights.
+- [ ] **Backend Parsing:** Ensure `bgg_recommender.py` extracts the `personality_answers` from the `inline_weights` payload and passes it through to the narration module.
+- [ ] **Unit Tests:** Test the alternative prompt generation for both taste-test and personality-test user types. Verify the prompt does not contain "relate to games they already like" for inline users. Verify personality labels are correctly injected.
+- [ ] **Verification:** Run both new user paths end-to-end and confirm the AI narration references appropriate context (seed game preferences for taste test, playstyle descriptors for personality test).
+
+---
+
+## Milestone 53: Recommendation Card Redesign
+
+### Objective
+Redesign the recommendation results cards to be more compact and space-efficient on wide monitors, reducing excessive vertical scrolling while preserving the glassmorphism design system and all existing card information.
+
+### Design Notes
+- **Problem:** The current recommendation cards use a single-column full-width layout (`grid-template-columns: 1fr`). On wide monitors (≥1024px), each card stretches across the full content area, making the AI narration text lines very long and requiring excessive vertical scrolling to see all 10 recommendations.
+- **Design Exploration:** Before implementing, create visual mockups of multiple layout options for user review:
+  - **Option A:** 2-column grid on desktop (≥1024px) — cards sit side-by-side, roughly halving vertical space.
+  - **Option B:** Compact horizontal card layout — reduced padding, smaller thumbnail, condensed stats row, single-column but less vertical height per card.
+  - **Option C:** Hybrid — 2-column grid with compact cards for maximum density.
+- **Constraints:** Must preserve: game thumbnail, title link, Match # badge, all stat badges (rating, complexity, players, playtime, year), AI narration text, and group member affinities when present. Must maintain glassmorphism visual style and dark/light mode support.
+
+### Architecture Decisions
+- **Mockup First:** Generate visual mockups before writing code. The user wants to see options and choose a direction.
+- **CSS-First Changes:** The card layout changes should be primarily CSS (grid and flex adjustments in `design-system.css`), with minimal or no JS changes to the `renderRecommendationCard` function in `utils.js`.
+- **Responsive Breakpoints:** The redesign targets desktop (≥1024px). Tablet (768-1023px) and mobile (<768px) should remain single-column.
+
+### Tasks
+- [ ] **Generate Mockups:** Create visual mockups for 2-3 layout options (2-column grid, compact single-column, hybrid) for user review and selection.
+- [ ] **User Review:** Present mockups and collect design direction feedback before implementation.
+- [ ] **Implement Chosen Layout:** Update `design-system.css` with the selected layout's grid/flex rules, padding, and sizing adjustments at the ≥1024px breakpoint.
+- [ ] **Update Card Rendering (if needed):** Adjust `renderRecommendationCard` in `utils.js` if the chosen layout requires HTML structure changes.
+- [ ] **Dark/Light Mode Verification:** Confirm the redesigned cards look correct in both light and dark mode themes.
+- [ ] **Responsive Verification:** Verify the new layout gracefully collapses to single-column at tablet and mobile widths.
+
+---
+
 ## Completed Milestones
 
 
@@ -220,3 +350,4 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 47: Release Polish (SEO, Favicon & Social Sharing)** (Registered jekyll-seo-tag and jekyll-sitemap, linked generated favicon and apple touch icons, audited page metadata, configured default OpenGraph/Twitter sharing cards, and added a custom glassmorphic 404 landing page)
 * **Milestone 48: Collection Browser Image Fitting** (Updated collection browser game images to `object-fit: contain` with customized dark/light mode gradient containers to ensure aspect-ratio-aware fitting without cropping)
 * **Milestone 34: Empty States, Onboarding Guidance & Cold-Start Rating Flow** (Polished empty state preview overlay, Gamer Quick Taste Test with Round 2 adaptive selection, Casual Personality Test with 7 playstyle questions, S3-bypass inline profile/weights POST submissions, and mechanic-based dislike exclusions)
+* **Milestone 54: Scoring Pipeline Corrections** (Projected true cosine similarity, dislike threshold boundary lowered to 6.5, group re-computation deduplication, BGG_TESTING env var test bypass, and sum-based complexity weighting)

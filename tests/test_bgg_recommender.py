@@ -1495,6 +1495,107 @@ def test_dislike_exclusions():
     assert filtered[0]["id"] == "1"
 
 
+def test_milestone_54_scoring_corrections():
+    # 1. Test True Cosine Similarity logic in calculate_game_score
+    from scoring import calculate_game_score, compute_taste_profile_inline, filter_dislike_exclusions
+    
+    # Taste weights: Strategy=10.0, Economic=1.0, others=0.0
+    cat_weights = {"Strategy": 10.0, "Economic": 1.0}
+    mech_weights = {"Trading": 5.0}
+    user_designers = {}
+    user_publishers = {}
+    complexity_weights = {"Medium-Light": 1.0}
+    hotness_scores = {}
+    query_params = {
+        'w_mech': '0.0',
+        'w_cat': '1.0',
+        'w_pop': '0.0',
+        'w_comp': '0.0',
+        'w_des': '0.0',
+        'w_pub': '0.0'
+    }
+    weights = {
+        'w_mech': 0.0,
+        'w_cat': 1.0,
+        'w_pop': 0.0,
+        'w_hot': 0.0,
+        'w_comp': 0.0,
+        'w_des': 0.0,
+        'w_pub': 0.0
+    }
+    
+    # Case A: Game with only Strategy category
+    row_a = {"id": "1", "categories": ["Strategy"], "rating": 8.0, "complexity": 2.0}
+    score_a = calculate_game_score(
+        row_a, mech_weights, cat_weights, user_designers, user_publishers,
+        complexity_weights, hotness_scores, query_params, weights,
+        5.0, 11.0, 1.0, 0.0, 0.0, True, True
+    )
+    # expected: cat_dot_sq = 10^2 = 100, cat_user_norm_sq = 10^2 + 1^2 = 101, similarity = sqrt(100/101) = 0.9950
+    assert abs(score_a - 0.9950) < 0.001
+    
+    # Case B: Game with only Economic category
+    row_b = {"id": "2", "categories": ["Economic"], "rating": 8.0, "complexity": 2.0}
+    score_b = calculate_game_score(
+        row_b, mech_weights, cat_weights, user_designers, user_publishers,
+        complexity_weights, hotness_scores, query_params, weights,
+        5.0, 11.0, 1.0, 0.0, 0.0, True, True
+    )
+    # expected: similarity = sqrt(1/101) = 0.0995
+    assert abs(score_b - 0.0995) < 0.001
+
+    # Case C: Game with both Strategy and Economic categories
+    row_c = {"id": "3", "categories": ["Strategy", "Economic"], "rating": 8.0, "complexity": 2.0}
+    score_c = calculate_game_score(
+        row_c, mech_weights, cat_weights, user_designers, user_publishers,
+        complexity_weights, hotness_scores, query_params, weights,
+        5.0, 11.0, 1.0, 0.0, 0.0, True, True
+    )
+    # expected: similarity = sqrt(101/101) = 1.0
+    assert abs(score_c - 1.0) < 0.001
+
+    # 2. Test summed complexity weights in compute_taste_profile_inline
+    user_df = pd.DataFrame([
+        {"id": "1", "username": "user1", "rating": 8.0, "own": True},  # weight = 3.0, complexity bucket Heavy
+        {"id": "2", "username": "user1", "rating": 9.0, "own": True}   # weight = 4.0, complexity bucket Heavy
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "1", "complexity": 4.0, "categories": [], "mechanics": [], "rating": 5.0},
+        {"id": "2", "complexity": 3.8, "categories": [], "mechanics": [], "rating": 5.0}
+    ])
+    
+    m_w, c_w, u_d, u_p, comp_w = compute_taste_profile_inline(
+        user_df, catalog_df, ["user1"], {}
+    )
+    # expected: comp_w["Heavy"] should be sum of weights (3.0 + 4.0 = 7.0), no averaging
+    assert comp_w["Heavy"] == 7.0
+    assert comp_w["Light"] == 0.0
+    
+    # 3. Test dislike threshold lowered to 6.5 in filter_dislike_exclusions
+    candidates = [
+        {"id": "1", "name": "Game A", "mechanics": ["Trading"]}
+    ]
+    catalog_df_ex = pd.DataFrame([
+        {"id": "1", "mechanics": ["Trading"]},
+        {"id": "2", "mechanics": ["Trading"]}
+    ])
+    
+    # User rates a game with "Trading" at 6.6 — should NOT be excluded because rating >= 6.5 (liked)
+    user_df_liked = pd.DataFrame([
+        {"id": "2", "rating": 6.6, "own": False}
+    ])
+    filtered_liked = filter_dislike_exclusions(candidates, user_df_liked, catalog_df_ex)
+    assert len(filtered_liked) == 1
+    
+    # User rates a game with "Trading" at 6.4 — should be excluded because rating < 6.5 (disliked)
+    user_df_disliked = pd.DataFrame([
+        {"id": "2", "rating": 6.4, "own": False}
+    ])
+    filtered_disliked = filter_dislike_exclusions(candidates, user_df_disliked, catalog_df_ex)
+    assert len(filtered_disliked) == 0
+
+
+
 
 
 

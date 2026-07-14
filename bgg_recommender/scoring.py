@@ -109,14 +109,7 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                 "Medium-Heavy": 0.0,
                 "Heavy": 0.0
             }
-            u_complexity_counts = {
-                "Light": 0,
-                "Medium-Light": 0,
-                "Medium-Heavy": 0,
-                "Heavy": 0
-            }
-            u_complexity_weights["Medium-Light"] = 1.0
-            complexity_count = 0
+            has_user_complexity = False
 
             if not u_joined.empty:
                 has_publishers = 'publishers' in u_joined.columns
@@ -157,20 +150,7 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                         comp = row.get('complexity')
                         if comp is not None and not math.isnan(float(comp)):
                             comp = float(comp)
-                            if complexity_count == 0:
-                                u_complexity_weights = {
-                                    "Light": 0.0,
-                                    "Medium-Light": 0.0,
-                                    "Medium-Heavy": 0.0,
-                                    "Heavy": 0.0
-                                }
-                                u_complexity_counts = {
-                                    "Light": 0,
-                                    "Medium-Light": 0,
-                                    "Medium-Heavy": 0,
-                                    "Heavy": 0
-                                }
-                            complexity_count += 1
+                            has_user_complexity = True
                             if comp < 2.0:
                                 comp_bucket = "Light"
                             elif comp <= 2.8:
@@ -179,15 +159,10 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                                 comp_bucket = "Medium-Heavy"
                             else:
                                 comp_bucket = "Heavy"
-                            u_complexity_weights[comp_bucket] += weight
-                            u_complexity_counts[comp_bucket] += 1
+                            u_complexity_weights[comp_bucket] = round(u_complexity_weights.get(comp_bucket, 0.0) + weight, 2)
 
-            if complexity_count > 0:
-                for b in u_complexity_weights:
-                    if u_complexity_counts[b] > 0:
-                        u_complexity_weights[b] = round(u_complexity_weights[b] / u_complexity_counts[b], 2)
-                    else:
-                        u_complexity_weights[b] = 0.0
+            if not has_user_complexity:
+                u_complexity_weights["Medium-Light"] = 1.0
 
         # Save individual profile if requested
         if individual_profiles is not None:
@@ -237,17 +212,15 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
     cand_cats = safe_list(row.get('categories'))
     cand_mechs = safe_list(row.get('mechanics'))
 
-    # Compute cosine similarity for categories
-    cat_dot = sum(cat_weights.get(c, 0.0) for c in cand_cats)
-    cat_game_norm = math.sqrt(len(cand_cats)) if cand_cats else 1.0
-    cat_user_norm = math.sqrt(sum(v * v for v in cat_weights.values())) if cat_weights else 1.0
-    cat_sim = cat_dot / (cat_user_norm * cat_game_norm) if (cat_user_norm * cat_game_norm) > 0 else 0.0
+    # Compute cosine similarity for categories (projected into same weighted space)
+    cat_dot_sq = sum(cat_weights.get(c, 0.0)**2 for c in cand_cats)
+    cat_user_norm_sq = sum(v * v for v in cat_weights.values())
+    cat_sim = math.sqrt(cat_dot_sq / cat_user_norm_sq) if cat_user_norm_sq > 0 else 0.0
 
-    # Compute cosine similarity for mechanics
-    mech_dot = sum(mech_weights.get(m, 0.0) for m in cand_mechs)
-    mech_game_norm = math.sqrt(len(cand_mechs)) if cand_mechs else 1.0
-    mech_user_norm = math.sqrt(sum(v * v for v in mech_weights.values())) if mech_weights else 1.0
-    mech_sim = mech_dot / (mech_user_norm * mech_game_norm) if (mech_user_norm * mech_game_norm) > 0 else 0.0
+    # Compute cosine similarity for mechanics (projected into same weighted space)
+    mech_dot_sq = sum(mech_weights.get(m, 0.0)**2 for m in cand_mechs)
+    mech_user_norm_sq = sum(v * v for v in mech_weights.values())
+    mech_sim = math.sqrt(mech_dot_sq / mech_user_norm_sq) if mech_user_norm_sq > 0 else 0.0
 
     rating = row.get('rating')
     if rating is None or not isinstance(rating, (int, float)) or math.isnan(rating):
@@ -285,14 +258,13 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
             bucket_weight = complexity_weights.get(comp_bucket, 0.0)
             comp_sim = bucket_weight / total_complexity_weight
 
-    # Compute cosine similarity for designers
+    # Compute cosine similarity for designers (projected into same weighted space)
     des_sim = 0.0
     cand_des = safe_list(row.get('designers'))
     if cand_des and user_designers:
-        des_dot = sum(user_designers.get(d, 0.0) for d in cand_des)
-        des_game_norm = math.sqrt(len(cand_des))
-        des_user_norm = math.sqrt(sum(v * v for v in user_designers.values()))
-        des_sim = des_dot / (des_user_norm * des_game_norm) if (des_user_norm * des_game_norm) > 0 else 0.0
+        des_dot_sq = sum(user_designers.get(d, 0.0)**2 for d in cand_des)
+        des_user_norm_sq = sum(v * v for v in user_designers.values())
+        des_sim = math.sqrt(des_dot_sq / des_user_norm_sq) if des_user_norm_sq > 0 else 0.0
 
     # Compute cosine similarity for publishers
     pub_sim = 0.0
@@ -498,17 +470,17 @@ def diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category
 
 def filter_dislike_exclusions(candidates, user_df, catalog_df):
     """
-    Filters out candidates dominated by mechanics of disliked games (rating < 7.0)
+    Filters out candidates dominated by mechanics of disliked games (rating < 6.5)
     and having no overlap with liked games' mechanics.
     """
     if user_df is None or user_df.empty:
         return candidates
 
-    liked_df = user_df[user_df['rating'] >= 7.0]
+    liked_df = user_df[user_df['rating'] >= 6.5]
     if liked_df.empty:
         liked_df = user_df[user_df['own']]
 
-    disliked_df = user_df[user_df['rating'] < 7.0]
+    disliked_df = user_df[user_df['rating'] < 6.5]
     if disliked_df.empty:
         return candidates
 

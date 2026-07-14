@@ -8,6 +8,7 @@ os.environ['AWS_SECRET_ACCESS_KEY'] = 'TESTING_DO_NOT_USE'
 os.environ['S3_OUTPUT_BUCKET_NAME'] = 'test-bucket'
 os.environ['USER_SQS_QUEUE_URL'] = 'https://sqs.test.com'
 os.environ['BGG_API_TOKEN'] = 'test-token'
+os.environ['BGG_TESTING'] = 'true'
 
 # Mock aws_lambda_powertools inject_lambda_context to avoid AttributeError when context is None in tests
 try:
