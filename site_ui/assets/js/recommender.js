@@ -341,7 +341,7 @@ document.addEventListener("DOMContentLoaded", function () {
         {
             id: "31260",
             name: "Agricola",
-            image: "https://cf.geekdo-images.com/3L6ZtOll9W5O6-3-EwSMyw__itemrep/img/TpNF65wCIb1n3EGW18eJJ3MlRMo=/fit-in/246x300/filters:strip_icc()/pic1899157.jpg",
+            image: "https://cf.geekdo-images.com/3L6ZtOll9W5O6-3-EwSMyw__itemrep/img/8VVXhLllK6HGLr406rykMMFimUQ=/fit-in/246x300/filters:strip_icc()/pic1899157.jpg",
             mechanics: ["Worker Placement", "Resource Management", "Turn Order: Progressive"]
         },
         {
