@@ -54,6 +54,15 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
       {
         Effect = "Allow"
         Action = [
+          "s3:ListBucket"
+        ]
+        Resource = [
+          var.s3_bucket_arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "sqs:SendMessage",
           "sqs:GetQueueUrl",
           "sqs:GetQueueAttributes"
