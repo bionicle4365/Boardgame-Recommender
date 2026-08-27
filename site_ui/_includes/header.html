@@ -97,27 +97,33 @@
         background-color: var(--primary-hover);
     }
 
-    .header-user-badge {
+    .header-user-avatar-btn {
         position: relative;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary) 0%, #818cf8 100%);
+        color: #ffffff;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        font-size: 1.1rem;
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 0.85rem;
-        color: var(--text-muted);
-        background-color: var(--badge-bg);
-        padding: 8px 16px;
-        min-height: 44px;
-        box-sizing: border-box;
-        border-radius: 20px;
-        border: 1px solid var(--border);
+        justify-content: center;
+        border: 2px solid rgba(255, 255, 255, 0.2);
         cursor: pointer;
         user-select: none;
         transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+        box-sizing: border-box;
     }
 
-    .header-user-badge:hover {
-        background-color: var(--badge-hover-bg);
-        border-color: var(--primary);
+    .header-user-avatar-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+        border-color: rgba(255, 255, 255, 0.4);
     }
 
     /* Modern clean theme toggle button */
@@ -177,19 +183,6 @@
         display: none;
     }
 
-    .header-user-badge::after {
-        content: "▼";
-        font-size: 0.65rem;
-        margin-left: 4px;
-        color: var(--text-muted);
-        transition: transform 0.2s ease;
-    }
-
-    .header-user-badge.open::after,
-    .header-user-badge:hover::after {
-        transform: rotate(180deg);
-    }
-
     .header-user-dropdown {
         display: none;
         position: absolute;
@@ -200,22 +193,29 @@
         border-radius: 12px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
         padding: 8px;
-        min-width: 160px;
+        min-width: 170px;
+        max-width: 240px;
         flex-direction: column;
         gap: 4px;
         z-index: 1000;
         animation: slideUp 0.15s ease;
     }
 
-    .header-user-badge.open .header-user-dropdown,
-    .header-user-badge:hover .header-user-dropdown {
+    .header-user-avatar-btn.open .header-user-dropdown,
+    .header-user-avatar-btn:hover .header-user-dropdown {
         display: flex;
     }
 
-    .header-user-email {
-        font-weight: 600;
+    .header-user-dropdown-info {
+        padding: 6px 10px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header-user-dropdown-email {
+        font-weight: 700;
+        font-size: 0.85rem;
         color: var(--text-main);
-        max-width: 120px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -560,13 +560,17 @@
         function renderAuthHeader() {
             if (Auth.isLoggedIn()) {
                 const email = Auth.getEmail() || "User";
+                const initial = email.charAt(0).toUpperCase();
                 authStatusContainer.innerHTML = `
-                    <div class="header-user-badge" id="header-user-badge-btn" onclick="toggleHeaderDropdown(event)">
-                        <span>Welcome,</span>
-                        <span class="header-user-email" title="${email}">${email}</span>
+                    <div class="header-user-avatar-btn" id="header-user-badge-btn" onclick="toggleHeaderDropdown(event)" title="${email}" aria-label="Account menu for ${email}">
+                        <span>${initial}</span>
                         <div class="header-user-dropdown" id="header-user-dropdown">
-                            <a class="header-dropdown-item" href="/Boardgame-Recommender/profile/">👤 View Profile</a>
-                            <a class="header-dropdown-item" href="/Boardgame-Recommender/settings/">⚙️ Settings</a>
+                            <div class="header-user-dropdown-info">
+                                <span class="header-user-dropdown-email" title="${email}">${email}</span>
+                            </div>
+                            <div class="header-dropdown-divider"></div>
+                            <a class="header-dropdown-item" href="{{ '/profile/' | relative_url }}">👤 View Profile</a>
+                            <a class="header-dropdown-item" href="{{ '/settings/' | relative_url }}">⚙️ Settings</a>
                             <div class="header-dropdown-divider"></div>
                             <div class="header-dropdown-item" onclick="event.stopPropagation(); Auth.logout()">🚪 Log Out</div>
                         </div>
