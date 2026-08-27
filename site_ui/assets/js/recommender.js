@@ -1569,23 +1569,59 @@ document.addEventListener("DOMContentLoaded", function () {
         const ratedMechs = new Set();
         tasteRatings.forEach(r => {
             const seedGame = SEED_CATALOG.find(g => g.id === r.id);
-            if (seedGame) {
+            if (seedGame && seedGame.mechanics) {
                 seedGame.mechanics.forEach(m => ratedMechs.add(m));
             }
         });
 
         const round1Ids = ["13", "9209", "30549", "178900", "230802", "266192"];
-        const remainingGames = SEED_CATALOG.filter(game => !round1Ids.includes(game.id));
-
-        remainingGames.sort((gA, gB) => {
-            const overlapA = gA.mechanics.filter(m => ratedMechs.has(m)).length;
-            const overlapB = gB.mechanics.filter(m => ratedMechs.has(m)).length;
-            return overlapA - overlapB;
-        });
-
-        const round2Games = remainingGames.slice(0, 9);
-        tasteRoundGames = tasteRoundGames.concat(round2Games);
         
+        // Helper to detect common franchise roots for deduplication within the same test
+        function getFranchiseRoot(name) {
+            const lower = name.toLowerCase();
+            const roots = [
+                'gloomhaven', 'frosthaven', 'castles of burgundy', 'dune: imperium',
+                'brass', 'mage knight', 'great western trail', 'pandemic',
+                '7 wonders', 'arkham horror', 'clank'
+            ];
+            for (const root of roots) {
+                if (lower.includes(root)) return root;
+            }
+            return name;
+        }
+
+        // Shuffle remaining candidates so tie-breaks across 44 games are varied
+        const candidates = SEED_CATALOG
+            .filter(game => !round1Ids.includes(game.id))
+            .sort(() => Math.random() - 0.5);
+
+        const currentMechs = new Set(ratedMechs);
+        const chosenFamilies = new Set();
+        const round2Games = [];
+
+        while (round2Games.length < 9 && candidates.length > 0) {
+            // Sort remaining candidates:
+            // 1. Prefer unrepresented franchises
+            // 2. Minimize overlap with all mechanics seen so far (iterative greedy diversity)
+            candidates.sort((gA, gB) => {
+                const famA = chosenFamilies.has(getFranchiseRoot(gA.name)) ? 1 : 0;
+                const famB = chosenFamilies.has(getFranchiseRoot(gB.name)) ? 1 : 0;
+                if (famA !== famB) return famA - famB;
+
+                const overlapA = gA.mechanics.filter(m => currentMechs.has(m)).length;
+                const overlapB = gB.mechanics.filter(m => currentMechs.has(m)).length;
+                return overlapA - overlapB;
+            });
+
+            const picked = candidates.shift();
+            round2Games.push(picked);
+            chosenFamilies.add(getFranchiseRoot(picked.name));
+            if (picked.mechanics) {
+                picked.mechanics.forEach(m => currentMechs.add(m));
+            }
+        }
+
+        tasteRoundGames = tasteRoundGames.concat(round2Games);
         loadTasteTestGame();
     }
 

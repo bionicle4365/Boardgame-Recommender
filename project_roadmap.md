@@ -302,4 +302,6 @@ Redesign the recommendation results cards to be more compact and space-efficient
 * **Milestone 51: Taste Test Image Loading Fix** (Replaced broken full-sized BGG CDN images with verified smaller thumbnail URLs in the seed catalog array, and added a fallback placeholder handler to the HTML markup)
 * **Milestone 49: Mobile UI Polish Pass** (Comprehensive responsiveness audit, WCAG 2.1 44px touch targets, mobile wizard modal & taste test carousel, adaptive filters and affinity bars, table overflow protection, and responsive layouts across all viewports from 320px to 768px)
 * **Milestone 55: Wizard Write-In Game Search & Expanded Seed Catalog** (50-game auto-generated SEED_CATALOG, 9 adaptive Round 2 picks, static minified 5,000-game autocomplete database, debounced vanilla JS search with keyboard navigation, 3 write-in slots in Taste Test & Personality Test with 9.0 rating assignment)
+* **Milestone 56: Monthly Stats Refresh for Recent Board Games** (Added `recent` mode to `bgg_game_scraper.py` with `--window` support, EventBridge monthly schedule `cron(0 3 1 * ? *)` with container environment overrides, SQS batch queuing of recent game IDs `[start_id - 2500, start_id]`)
+
 

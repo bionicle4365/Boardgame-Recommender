@@ -138,3 +138,47 @@ resource "aws_lambda_permission" "allow_eventbridge_to_call_preview_refresh" {
   source_arn    = aws_cloudwatch_event_rule.daily_bgg_preview_refresh_schedule.arn
 }
 
+# 7. EventBridge rule to trigger the monthly BGG Recent Games Stats Refresh ECS task (1st of every month at 03:00 UTC)
+resource "aws_cloudwatch_event_rule" "monthly_bgg_recent_games_schedule" {
+  name                = "monthly-bgg-recent-games-schedule"
+  description         = "Runs the BGG Discovery Scraper in 'recent' mode on the 1st of every month"
+  schedule_expression = "cron(0 3 1 * ? *)" 
+}
+
+resource "aws_cloudwatch_event_target" "run_bgg_recent_games_task" {
+  target_id = "run-bgg-recent-games-ecs-task"
+  rule      = aws_cloudwatch_event_rule.monthly_bgg_recent_games_schedule.name
+  arn       = var.ecs_cluster_arn
+  role_arn  = aws_iam_role.eventbridge_ecs_execution_role.arn
+
+  ecs_target {
+    task_definition_arn = var.ecs_task_definition_arn
+    task_count          = 1
+    launch_type         = "FARGATE"
+    
+    network_configuration {
+      subnets          = var.ecs_subnets
+      security_groups  = [var.ecs_security_group_id]
+      assign_public_ip = true
+    }
+  }
+
+  input = jsonencode({
+    containerOverrides = [
+      {
+        name = "bgg-scraper-container"
+        environment = [
+          {
+            name  = "SCRAPE_MODE"
+            value = "recent"
+          },
+          {
+            name  = "REFRESH_WINDOW"
+            value = "2500"
+          }
+        ]
+      }
+    ]
+  })
+}
+

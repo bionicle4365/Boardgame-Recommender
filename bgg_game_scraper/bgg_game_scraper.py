@@ -96,10 +96,13 @@ def main():
     - 'reprocess': Re-queues all existing game IDs from S3.
     """
     parser = argparse.ArgumentParser(description="BGG Game ID Scraper/Queuer")
-    parser.add_argument('--mode', choices=['new', 'reprocess'], default=os.environ.get('SCRAPE_MODE', 'new'),
-                        help="Scraping mode: 'new' (scrape new IDs sequentially from checkpoint) or 'reprocess' (re-queue existing game IDs from S3)")
+    parser.add_argument('--mode', choices=['new', 'reprocess', 'recent'], default=os.environ.get('SCRAPE_MODE', 'new'),
+                        help="Scraping mode: 'new' (scrape new IDs sequentially from checkpoint), 'reprocess' (re-queue existing game IDs from S3), or 'recent' (re-queue recent game IDs within refresh window)")
+    parser.add_argument('--window', type=int, default=int(os.environ.get('REFRESH_WINDOW', '2500')),
+                        help="Number of recent game IDs to refresh when in 'recent' mode (default: 2500)")
     args, unknown = parser.parse_known_args()
     mode = args.mode.lower()
+    window = args.window
 
     s3_bucket_name = os.environ.get('S3_BUCKET_NAME', 'boardgame-app')
     s3_key = os.environ.get('S3_KEY', 'bgg-scraper/bgg_start_id.txt')
@@ -130,6 +133,31 @@ def main():
             logger.info("Successfully completed reprocess queueing. Exiting.")
         else:
             logger.info("No existing game IDs found to reprocess.")
+        return
+
+    if mode == 'recent':
+        logger.info(f"Starting in RECENT mode (window: {window})...")
+        try:
+            logger.info(f"Attempting to read current ID from s3://{s3_bucket_name}/{s3_key}")
+            response = s3.get_object(Bucket=s3_bucket_name, Key=s3_key)
+            start_id_str = response['Body'].read().decode('utf-8').strip()
+            max_id = int(start_id_str)
+            logger.info(f"Successfully read current max ID: {max_id}")
+        except s3.exceptions.NoSuchKey:
+            logger.error(f"Error: S3 key '{s3_key}' not found in bucket '{s3_bucket_name}'. Exiting.")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Error reading from S3: {e}. Exiting.")
+            sys.exit(1)
+
+        min_id = max(1, max_id - window)
+        recent_ids = list(range(min_id, max_id))
+        logger.info(f"Generating {len(recent_ids)} game IDs to refresh from {min_id} to {max_id - 1}...")
+        if recent_ids:
+            send_ids_to_sqs_batch(sqs, sqs_queue_url, recent_ids)
+            logger.info("Successfully completed recent game IDs queueing. Exiting.")
+        else:
+            logger.info("No recent game IDs to refresh.")
         return
 
     # Default 'new' mode

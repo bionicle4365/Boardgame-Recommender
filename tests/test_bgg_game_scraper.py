@@ -146,3 +146,97 @@ def test_main_reprocess_mode(mock_boto):
             {'Id': '1', 'MessageBody': '200'}
         ]
     )
+
+
+@patch('bgg_game_scraper.boto3.client')
+@patch('sys.argv', ['bgg_game_scraper', '--mode', 'recent', '--window', '5'])
+def test_main_recent_mode_custom_window(mock_boto):
+    mock_s3 = MagicMock()
+    mock_s3.get_object.return_value = {
+        'Body': MagicMock(read=lambda: b"100\n")
+    }
+    
+    mock_sqs = MagicMock()
+    mock_sqs.get_queue_url.return_value = {'QueueUrl': 'https://sqs.mock-queue'}
+    
+    def get_mock_client(service, *args, **kwargs):
+        if service == 's3':
+            return mock_s3
+        if service == 'sqs':
+            return mock_sqs
+        return MagicMock()
+    mock_boto.side_effect = get_mock_client
+    
+    # Run the scraper in recent mode with window=5
+    bgg_game_scraper.main()
+    
+    # Verify start_id read from S3 checkpoint
+    mock_s3.get_object.assert_called_once_with(Bucket='test-bucket', Key='bgg-scraper/bgg_start_id.txt')
+    
+    # Verify SQS send_message_batch was called with IDs 95 through 99
+    expected_entries = [{'Id': str(idx), 'MessageBody': str(gid)} for idx, gid in enumerate(range(95, 100))]
+    mock_sqs.send_message_batch.assert_called_once_with(
+        QueueUrl='https://sqs.mock-queue',
+        Entries=expected_entries
+    )
+
+
+@patch('bgg_game_scraper.boto3.client')
+@patch('sys.argv', ['bgg_game_scraper', '--mode', 'recent', '--window', '2500'])
+def test_main_recent_mode_clamping(mock_boto):
+    mock_s3 = MagicMock()
+    mock_s3.get_object.return_value = {
+        'Body': MagicMock(read=lambda: b"4\n")
+    }
+    
+    mock_sqs = MagicMock()
+    mock_sqs.get_queue_url.return_value = {'QueueUrl': 'https://sqs.mock-queue'}
+    
+    def get_mock_client(service, *args, **kwargs):
+        if service == 's3':
+            return mock_s3
+        if service == 'sqs':
+            return mock_sqs
+        return MagicMock()
+    mock_boto.side_effect = get_mock_client
+    
+    # Run the scraper with start_id=4 and window=2500 -> range 1..3
+    bgg_game_scraper.main()
+    
+    expected_entries = [
+        {'Id': '0', 'MessageBody': '1'},
+        {'Id': '1', 'MessageBody': '2'},
+        {'Id': '2', 'MessageBody': '3'}
+    ]
+    mock_sqs.send_message_batch.assert_called_once_with(
+        QueueUrl='https://sqs.mock-queue',
+        Entries=expected_entries
+    )
+
+
+@patch('bgg_game_scraper.boto3.client')
+@patch('sys.argv', ['bgg_game_scraper', '--mode', 'recent'])
+def test_main_recent_mode_s3_error(mock_boto):
+    mock_s3 = MagicMock()
+    class MockNoSuchKey(Exception):
+        pass
+    mock_s3.exceptions.NoSuchKey = MockNoSuchKey
+    
+    err_resp = {'Error': {'Code': 'NoSuchKey', 'Message': 'The specified key does not exist.'}}
+    mock_s3.get_object.side_effect = ClientError(err_resp, 'GetObject')
+    
+    mock_sqs = MagicMock()
+    mock_sqs.get_queue_url.return_value = {'QueueUrl': 'https://sqs.mock-queue'}
+    
+    def get_mock_client(service, *args, **kwargs):
+        if service == 's3':
+            return mock_s3
+        if service == 'sqs':
+            return mock_sqs
+        return MagicMock()
+    mock_boto.side_effect = get_mock_client
+    
+    with pytest.raises(SystemExit) as excinfo:
+        bgg_game_scraper.main()
+    assert excinfo.value.code == 1
+
