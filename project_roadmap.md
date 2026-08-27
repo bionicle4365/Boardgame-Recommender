@@ -260,42 +260,6 @@ Redesign the recommendation results cards to be more compact and space-efficient
 
 ---
 
-## Milestone 55: Wizard Write-In Game Search & Expanded Seed Catalog
-
-### Objective
-Improve the new user wizard in two ways: (1) Expand the `SEED_CATALOG` from 14 to 50 games auto-generated from the catalog parquet, and increase the adaptive Round 2 from 5 to 9 games shown, giving the taste test richer data to work with. (2) After both wizard paths exhaust their cards/questions, present 3 optional write-in slots with autocomplete so the user can type additional favorite game names that map to BGG game IDs.
-
-### Design Notes
-- **Current Flow:** The Quick Taste Test shows 6 Round 1 seed games → 5 Round 2 adaptive seed games (from a pool of 8 remaining in `SEED_CATALOG`) → summary screen with liked games and "Get Recommendations" button. The Casual Personality Test shows 7 playstyle questions → completion screen with "Get Recommendations" button.
-- **Expanded Seed Catalog:** The current `SEED_CATALOG` in `recommender.js` has 14 hardcoded games with `{id, name, image, mechanics}`. Expand this to 50 games auto-generated from the catalog parquet (top 50 by BGG rank). Each entry needs `id`, `name`, `image` (thumbnail URL), and `mechanics` array. Round 1 stays at 6 fixed, well-known gateway games. Round 2 increases from 5 to 9 adaptive picks, selected from the remaining 44 in the pool based on mechanic diversity vs. what the user already rated. This brings the total rated games from 11 to 15.
-- **Write-In Step:** After the summary/completion screen, show a new step with 3 write-in input fields with autocomplete and a prominent "Skip" button. The write-in step is entirely optional — the user can fill 0–3 fields or skip straight to "Get Recommendations". Each field shows a floating dropdown of matching game names as they type, and selecting one locks in the game ID.
-- **Autocomplete Data Source:** Generate a static JSON file (`assets/data/game_names.json`) containing the top ~5,000 games by BGG rank with `{id, name}` pairs. Served alongside the Jekyll site and loaded client-side on demand — no backend latency, no new Lambda, instant results.
-- **Autocomplete UX:** Debounced input handler (150–200ms). After ≥2 characters, fuzzy-match against the loaded JSON array and show the top 8 results in a dropdown. Selecting a result fills the input and stores the `id`. Clicking outside or pressing Escape closes the dropdown.
-- **Rating:** All write-in games are auto-assigned a rating of `9.0` (liked), matching the 👍 behavior in the taste test. The user is volunteering favorites, so no like/dislike toggle is needed.
-- **Both Paths:** The write-in slots appear in both the Gamer Quick Taste Test (after Round 2 summary) and the Casual Personality Test (after question 7 completion).
-
-### Architecture Decisions
-- **Seed Catalog Generation:** Write a Python script (`scratch/generate_seed_catalog.py`) that reads the S3 catalog parquet, selects the top 50 games by BGG rank, and outputs a JS-embeddable array with `{id, name, image, mechanics}` for each. The 6 Round 1 IDs remain hardcoded as well-known gateway games (Catan, Ticket to Ride, Pandemic, Codenames, Azul, Wingspan). The generated catalog replaces the hardcoded `SEED_CATALOG` array in `recommender.js`.
-- **Round 2 Expansion:** Update `buildAdaptiveRound2()` in `recommender.js` to pick 9 games (instead of 5) from the remaining 44 candidates. Update `updateTasteTestProgress()` target from 5 to reflect the new expected rating count.
-- **Static JSON Generation:** Write a companion Python script (`scratch/generate_game_names.py`) that extracts the top ~5,000 games by rank into a minified `site_ui/assets/data/game_names.json` file with `[{id, name}, ...]` format for autocomplete.
-- **Client-Side Autocomplete:** No external library. Implement a lightweight vanilla JS autocomplete component in `recommender.js` using `input` event listeners, substring/fuzzy matching, and a positioned `<div>` dropdown. The JSON file is lazily loaded via `fetch()` the first time the user focuses a write-in field.
-- **Data Flow:** When the user clicks "Get Recommendations," the write-in game IDs are appended to the `tasteRatings` array (for taste test) or passed as a new `inlineProfile` array (for personality test) with `{id, rating: 9.0}` entries, then submitted through the existing `syncManualPreferencesToBackend()` and `getRecommendations()` pathways.
-- **No Backend Changes:** The existing `inline_profile` and `onboarding_ratings` backend handlers already accept arbitrary `{id, rating}` pairs. No Lambda or API changes are needed.
-
-### Tasks
-- [ ] **Generate Seed Catalog (50 games):** Write a Python script to extract the top 50 games by BGG rank from the S3 catalog parquet, including `id`, `name`, `image` (thumbnail URL), and `mechanics` array for each. Output as a JS-ready array to replace the hardcoded `SEED_CATALOG` in `recommender.js`.
-- [ ] **Update SEED_CATALOG:** Replace the 14-game hardcoded `SEED_CATALOG` in `recommender.js` with the generated 50-game array. Verify the 6 Round 1 IDs are still present in the new catalog (update if any top-50 game displaced them).
-- [ ] **Expand Round 2 to 9 Games:** Update `buildAdaptiveRound2()` to select 9 adaptive games from the remaining 44 candidates (instead of 5 from 8). Update progress bar target and text in `updateTasteTestProgress()` accordingly.
-- [ ] **Generate Game Names JSON:** Write a Python script to extract the top ~5,000 games by BGG rank into a minified `site_ui/assets/data/game_names.json` file with `[{id, name}, ...]` format for autocomplete.
-- [ ] **Autocomplete Component:** Implement a reusable vanilla JS autocomplete input component in `recommender.js` — lazy-load the JSON on first focus, debounced substring matching, positioned dropdown with keyboard navigation (arrow keys + Enter), and selection callback that stores the game ID.
-- [ ] **Taste Test Write-In UI:** After the Round 2 summary screen (when all 15 seed games are exhausted), show a write-in step with 3 labeled input fields with autocomplete, a "Skip" button to bypass directly to recommendations, and a "Get Recommendations" button. Style consistently with the wizard's glassmorphism design.
-- [ ] **Personality Test Write-In UI:** After the final personality question (question 7), show the same write-in step with 3 input fields, "Skip" button, and "Get Recommendations" button.
-- [ ] **Data Submission Integration:** On "Get Recommendations" click, collect any filled write-in game IDs, merge them into `tasteRatings` (taste test) or create an equivalent `inlineProfile` array (personality test) with `{id: gameId, rating: 9.0}`, and pass through the existing `syncManualPreferencesToBackend()` and `getRecommendations()` pipelines.
-- [ ] **Mobile Responsiveness:** Ensure the write-in fields and autocomplete dropdown render correctly at 320px–768px viewports with 44px touch targets and no horizontal overflow.
-- [ ] **Verification:** End-to-end test both wizard paths with the expanded catalog: complete taste test (6 + 9 = 15 games) → fill 1–3 write-in games → get recommendations; complete personality test → fill 1–3 write-in games → get recommendations. Confirm all game IDs appear in the backend request payload.
-
----
-
 ## Completed Milestones
 
 
@@ -337,3 +301,5 @@ Improve the new user wizard in two ways: (1) Expand the `SEED_CATALOG` from 14 t
 * **Milestone 54: Scoring Pipeline Corrections** (Projected true cosine similarity, dislike threshold boundary lowered to 6.5, group re-computation deduplication, BGG_TESTING env var test bypass, and sum-based complexity weighting)
 * **Milestone 51: Taste Test Image Loading Fix** (Replaced broken full-sized BGG CDN images with verified smaller thumbnail URLs in the seed catalog array, and added a fallback placeholder handler to the HTML markup)
 * **Milestone 49: Mobile UI Polish Pass** (Comprehensive responsiveness audit, WCAG 2.1 44px touch targets, mobile wizard modal & taste test carousel, adaptive filters and affinity bars, table overflow protection, and responsive layouts across all viewports from 320px to 768px)
+* **Milestone 55: Wizard Write-In Game Search & Expanded Seed Catalog** (50-game auto-generated SEED_CATALOG, 9 adaptive Round 2 picks, static minified 5,000-game autocomplete database, debounced vanilla JS search with keyboard navigation, 3 write-in slots in Taste Test & Personality Test with 9.0 rating assignment)
+

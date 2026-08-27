@@ -466,6 +466,42 @@ description: "Get personalized board game recommendations from your BGG library 
                         </label>
                     </div>
                 </div>
+
+                <!-- Slide 8: Optional Write-In Step -->
+                <div class="personality-question-slide" data-question="8" style="display: none;">
+                    <h3 style="font-size: 1.15rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                        <span>Playstyle Profile Complete!</span>
+                    </h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;">
+                        We've calculated your playstyle weights. Optionally add up to 3 of your all-time favorite games below to fine-tune your recommendations:
+                    </p>
+                    <div class="wizard-writein-container">
+                        <div class="wizard-writein-group">
+                            <label for="personality-writein-1">Favorite Game 1 <span class="optional-badge">Optional</span></label>
+                            <div class="autocomplete-wrapper">
+                                <input type="text" id="personality-writein-1" class="wizard-writein-input" placeholder="e.g. Terraforming Mars..." autocomplete="off">
+                                <button type="button" class="autocomplete-clear-btn" style="display: none;" title="Clear">&times;</button>
+                                <div class="autocomplete-dropdown" id="personality-writein-1-dropdown"></div>
+                            </div>
+                        </div>
+                        <div class="wizard-writein-group">
+                            <label for="personality-writein-2">Favorite Game 2 <span class="optional-badge">Optional</span></label>
+                            <div class="autocomplete-wrapper">
+                                <input type="text" id="personality-writein-2" class="wizard-writein-input" placeholder="e.g. Scythe..." autocomplete="off">
+                                <button type="button" class="autocomplete-clear-btn" style="display: none;" title="Clear">&times;</button>
+                                <div class="autocomplete-dropdown" id="personality-writein-2-dropdown"></div>
+                            </div>
+                        </div>
+                        <div class="wizard-writein-group">
+                            <label for="personality-writein-3">Favorite Game 3 <span class="optional-badge">Optional</span></label>
+                            <div class="autocomplete-wrapper">
+                                <input type="text" id="personality-writein-3" class="wizard-writein-input" placeholder="e.g. 7 Wonders Duel..." autocomplete="off">
+                                <button type="button" class="autocomplete-clear-btn" style="display: none;" title="Clear">&times;</button>
+                                <div class="autocomplete-dropdown" id="personality-writein-3-dropdown"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="personality-progress-container" style="margin-top: 15px; margin-bottom: 20px;">
@@ -478,10 +514,13 @@ description: "Get personalized board game recommendations from your BGG library 
             <div class="wizard-footer-actions" style="display: flex; justify-content: space-between; gap: 15px;">
                 <button type="button" class="btn btn-rate" id="personality-back-btn" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); width: 100px;">Back</button>
                 <button type="button" class="btn btn-submit" id="personality-next-btn" style="height: 45px; display: inline-flex; align-items: center; justify-content: center;" disabled>Next</button>
-                <button type="button" class="btn btn-submit" id="personality-recommend-btn" style="height: 45px; display: none; align-items: center; justify-content: center;" disabled>Get Recommendations</button>
+                <button type="button" class="btn btn-submit" id="personality-recommend-btn" style="height: 45px; display: none; align-items: center; justify-content: center;">Get Recommendations</button>
             </div>
         </div>
     </div>
 </div>
 
+<script>
+    window.BGG_GAME_NAMES_URL = "{{ '/assets/data/game_names.json' | relative_url }}";
+</script>
 <script src="{{ '/assets/js/recommender.js' | relative_url }}"></script>
