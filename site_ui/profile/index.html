@@ -19,6 +19,12 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         padding: 20px;
     }
 
+    @media (max-width: 480px) {
+        .profile-container {
+            padding: 14px 8px;
+        }
+    }
+
     /* ── Profile Header ── */
     .profile-header-card {
         background: var(--glass-bg, rgba(255, 255, 255, 0.7));
@@ -155,6 +161,52 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         color: var(--primary);
         background-color: var(--card-bg);
         box-shadow: var(--shadow-sm);
+    }
+
+    @media (max-width: 600px) {
+        .profile-header-card {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 14px;
+            padding: 20px 14px;
+        }
+        .profile-meta-row {
+            justify-content: center;
+        }
+        .profile-refresh-btn {
+            min-height: 44px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .playground-tabs {
+            max-width: 100%;
+            gap: 4px;
+            padding: 4px;
+        }
+        .playground-tab-btn {
+            padding: 10px 6px;
+            font-size: 0.82rem;
+            min-height: 44px;
+        }
+        .panel-card {
+            padding: 16px 12px;
+            border-radius: 12px;
+        }
+        .stat-card {
+            padding: 16px 14px;
+            border-radius: 12px;
+        }
+        .stat-card-value {
+            font-size: 1.5rem;
+        }
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
     }
 
     /* ── Main Layout Panels ── */
@@ -301,13 +353,15 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         background: var(--btn-secondary-bg, #f1f5f9);
         border: 1px solid var(--border);
         color: var(--text-main);
-        padding: 6px 16px;
+        padding: 8px 16px;
         border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 600;
         display: flex;
         align-items: center;
         gap: 6px;
+        min-height: 40px;
+        box-sizing: border-box;
         transition: all 0.2s ease;
     }
 
@@ -383,6 +437,13 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         grid-template-columns: repeat(3, 1fr);
         gap: 20px;
         margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) {
+        .skeleton-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
     }
 
     .skeleton-card {

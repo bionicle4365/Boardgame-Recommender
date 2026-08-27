@@ -57,6 +57,13 @@ description: "Combine collections, plan board game sessions, and get group conse
         transition: all 0.3s ease;
     }
 
+    @media (max-width: 480px) {
+        .sidebar-card, .planner-card {
+            padding: 16px 12px;
+            border-radius: 12px;
+        }
+    }
+
     .sidebar-card {
         position: sticky;
         top: 20px;
@@ -228,6 +235,9 @@ description: "Combine collections, plan board game sessions, and get group conse
         align-items: center;
         justify-content: center;
         font-size: 0.95rem;
+        width: 44px;
+        height: 44px;
+        box-sizing: border-box;
     }
 
     .group-action-btn:hover {
@@ -253,6 +263,8 @@ description: "Combine collections, plan board game sessions, and get group conse
         align-items: center;
         gap: 10px;
         padding: 12px 16px;
+        min-height: 44px;
+        box-sizing: border-box;
         background-color: var(--input-bg);
         border: 1.5px solid var(--border);
         border-radius: 10px;
@@ -466,6 +478,8 @@ description: "Combine collections, plan board game sessions, and get group conse
         border: none;
         border-bottom: 3px solid transparent;
         padding: 10px 18px;
+        min-height: 44px;
+        box-sizing: border-box;
         font-family: 'Outfit', sans-serif;
         font-size: 0.95rem;
         font-weight: 700;
@@ -487,6 +501,28 @@ description: "Combine collections, plan board game sessions, and get group conse
         color: var(--primary);
         border-bottom-color: var(--primary);
         text-shadow: 0 0 10px rgba(79, 70, 229, 0.15);
+    }
+
+    @media (max-width: 480px) {
+        .groups-tab-btn {
+            padding: 10px 10px;
+            font-size: 0.85rem;
+        }
+        .attendee-summary {
+            padding: 12px 14px;
+        }
+        .metric-card {
+            padding: 12px 10px;
+        }
+        .metric-value {
+            font-size: 1.25rem;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .member-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .groups-tab-content {
@@ -575,6 +611,33 @@ description: "Combine collections, plan board game sessions, and get group conse
         color: var(--text-main);
         min-width: 32px;
         text-align: right;
+    }
+
+    .year-inputs {
+        display: flex;
+        gap: 15px;
+    }
+
+    @media (max-width: 576px) {
+        .year-inputs {
+            flex-direction: column;
+            gap: 10px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .member-affinity-row {
+            padding: 8px 10px;
+            gap: 8px;
+        }
+        .member-affinity-name {
+            min-width: 50px;
+            font-size: 0.78rem;
+        }
+        .member-affinity-value {
+            font-size: 0.78rem;
+            min-width: 30px;
+        }
     }
 </style>
 

@@ -83,6 +83,32 @@ description: "The page you are looking for does not exist on Boardgame Recommend
     .home-button:active {
         transform: translateY(0);
     }
+
+    @media (max-width: 480px) {
+        .error-container {
+            padding: 16px 12px;
+        }
+        .error-card {
+            padding: 32px 18px;
+            border-radius: 14px;
+        }
+        .error-code {
+            font-size: 4.5rem;
+        }
+        .error-title {
+            font-size: 1.4rem;
+        }
+        .error-description {
+            font-size: 0.95rem;
+            margin-bottom: 24px;
+        }
+        .home-button {
+            padding: 12px 24px;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 44px;
+        }
+    }
 </style>
 
 <div class="error-container">

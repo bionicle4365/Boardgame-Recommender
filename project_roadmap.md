@@ -4,8 +4,6 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
----
-
 ## Milestone 44: Recommender Latency Optimization
 
 ### Objective
@@ -180,32 +178,6 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 
 ---
 
-## Milestone 49: Mobile UI Polish Pass
-
-### Objective
-Conduct a comprehensive mobile responsiveness audit and polish across every page (Home, Recommender, Collection Browser, Profile, Groups, Settings, 404) to ensure consistent, usable touch experiences on phones and small tablets — building on the responsive foundations from Milestone 10.
-
-### Design Notes
-- **Scope:** This is a general polish pass, not a single-page fix. Every page needs a mobile audit for layout overflow, tap target sizing, text readability, and scroll behavior.
-- **Breakpoints:** Audit all pages at 320px, 375px, 414px, and 768px widths. Ensure no horizontal scrolling, no clipped content, and no overlapping elements at any width.
-- **Touch Targets:** All interactive elements (buttons, links, radio cards, tabs) must meet a minimum 44×44px touch target per WCAG 2.1 guidelines.
-- **Focus Areas:** Recommender wizard modal (personality cards and taste test carousel), Groups tabs and per-member affinity bars, Profile dashboard charts, Collection grid/table toggle, and Settings form layout.
-
-### Architecture Decisions
-- **CSS-Only Where Possible:** Prefer CSS media query fixes and flexbox/grid adjustments over JS-based responsive logic. All changes should go in existing page-level CSS or `design-system.css`.
-- **No Layout Rewrites:** Preserve the existing desktop layouts. Only add/adjust `@media` rules for widths ≤768px and ≤480px.
-
-### Tasks
-- [ ] **Recommender Page Mobile Audit:** Fix wizard modal sizing, personality option cards overflow, taste test carousel image scaling, form field widths, and slider touch areas on narrow viewports.
-- [ ] **Collection Browser Mobile Audit:** Verify collection grid cards, filter panel, taste profile charts, and table rows at 320-414px widths. Fix any horizontal overflow or text clipping.
-- [ ] **Profile Dashboard Mobile Audit:** Ensure profile header, overview stats, Chart.js visualizations, and rating distribution bars scale correctly and remain readable on mobile.
-- [ ] **Groups Page Mobile Audit:** Verify tab navigation, attendee list, per-member affinity bars, playgroup analytics charts, and planner empty states at mobile widths.
-- [ ] **Settings Page Mobile Audit:** Check form layout, weight sliders, and preference dropdowns for usability on narrow screens.
-- [ ] **Home Page & 404 Mobile Audit:** Verify landing page hero, feature cards, and 404 page layout at mobile widths.
-- [ ] **Global Navigation Mobile Audit:** Re-verify the mobile drawer from Milestone 10 still works correctly with all current pages and account dropdown interactions.
-- [ ] **Verification:** Manual test all pages at 320px, 375px, 414px, and 768px. Confirm no horizontal scrolling, no overlapping elements, and all interactive elements have adequate touch targets.
-
----
 
 ## Milestone 50: Local Development Environment
 
@@ -328,3 +300,4 @@ Redesign the recommendation results cards to be more compact and space-efficient
 * **Milestone 34: Empty States, Onboarding Guidance & Cold-Start Rating Flow** (Polished empty state preview overlay, Gamer Quick Taste Test with Round 2 adaptive selection, Casual Personality Test with 7 playstyle questions, S3-bypass inline profile/weights POST submissions, and mechanic-based dislike exclusions)
 * **Milestone 54: Scoring Pipeline Corrections** (Projected true cosine similarity, dislike threshold boundary lowered to 6.5, group re-computation deduplication, BGG_TESTING env var test bypass, and sum-based complexity weighting)
 * **Milestone 51: Taste Test Image Loading Fix** (Replaced broken full-sized BGG CDN images with verified smaller thumbnail URLs in the seed catalog array, and added a fallback placeholder handler to the HTML markup)
+* **Milestone 49: Mobile UI Polish Pass** (Comprehensive responsiveness audit, WCAG 2.1 44px touch targets, mobile wizard modal & taste test carousel, adaptive filters and affinity bars, table overflow protection, and responsive layouts across all viewports from 320px to 768px)

@@ -123,6 +123,27 @@ description: "Personalized board game recommendations powered by AI. Browse your
     .card-action.groups {
         color: #a855f7;
     }
+
+    @media (max-width: 600px) {
+        .welcome-banner {
+            padding: 28px 20px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+        .welcome-banner h1 {
+            font-size: 1.8rem;
+        }
+        .welcome-banner p {
+            font-size: 1rem;
+        }
+        .features-grid {
+            gap: 16px;
+        }
+        .feature-card {
+            padding: 22px 18px;
+            border-radius: 14px;
+        }
+    }
 </style>
 
 <div class="home-container">

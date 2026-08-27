@@ -59,6 +59,37 @@
     gap: 15px;
 }
 
+@media (max-width: 576px) {
+    .year-inputs {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .recommender-container {
+        padding: 12px 6px;
+    }
+    .form-section {
+        padding: 16px 14px;
+    }
+}
+
+.recommender-actions-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 25px;
+    align-items: stretch;
+    width: 100%;
+}
+
+@media (max-width: 480px) {
+    .recommender-actions-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
 #refresh-btn {
     background-color: #6b7280;
     box-shadow: 0 4px 12px rgba(107, 114, 128, 0.25);
@@ -181,6 +212,23 @@
     font-size: 0.95rem;
     line-height: 1.5;
     margin-bottom: 20px;
+}
+
+@media (max-width: 480px) {
+    .empty-state-overlay {
+        padding: 20px 14px;
+        width: 92%;
+    }
+    .empty-state-overlay h2 {
+        font-size: 1.3rem;
+    }
+    .empty-state-overlay p {
+        font-size: 0.85rem;
+    }
+    .recommender-empty-state {
+        min-height: 220px;
+        padding: 20px 10px;
+    }
 }
 
 /* Wizard Modal Overlay */
@@ -468,5 +516,62 @@
     font-size: 0.8rem;
     color: var(--text-muted);
     line-height: 1.3;
+}
+
+@media (max-width: 576px) {
+    .wizard-modal {
+        padding: 10px;
+    }
+    .wizard-modal-content {
+        padding: 24px 16px;
+        border-radius: 16px;
+        max-height: 95vh;
+    }
+    .wizard-close-btn {
+        top: 10px;
+        right: 12px;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .wizard-path-card {
+        padding: 18px 14px;
+    }
+    .taste-card {
+        max-width: 100%;
+        width: 280px;
+    }
+    .taste-card-image-wrapper {
+        height: 140px;
+    }
+    .taste-test-actions {
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .btn-rate {
+        padding: 10px 12px;
+        font-size: 0.82rem;
+        min-height: 44px;
+        flex: 1 1 auto;
+    }
+    .personality-options-grid {
+        gap: 8px;
+    }
+    .option-content {
+        padding: 12px 14px;
+        gap: 12px;
+        min-height: 48px;
+    }
+    .option-icon {
+        font-size: 1.5rem;
+    }
+    .option-title {
+        font-size: 0.9rem;
+    }
+    .option-desc {
+        font-size: 0.78rem;
+    }
 }
 
