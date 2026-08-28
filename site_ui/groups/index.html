@@ -1468,10 +1468,12 @@ description: "Combine collections, plan board game sessions, and get group conse
 
         updateSlidersFromStorage();
         loadPreferencesFromBackend();
+        loadPastPolls();
 
         // Listen to custom login event to load preferences immediately upon login
         document.addEventListener("bgg_login_success", function() {
             loadPreferencesFromBackend();
+            loadPastPolls();
         });
 
         // Tab Switching Logic
@@ -1872,7 +1874,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                                             <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">⏱️ ACTIVE • ${timeLeft}</span>
                                         </div>
                                         <div style="font-size: 0.85rem; color: var(--text-muted);">
-                                            Created ${createdDate} by <strong>${window.escapeHTML(sess.creator_name || 'Host')}</strong> • ${totalVoters} vote${totalVoters !== 1 ? 's' : ''} recorded • ${sess.candidates ? sess.candidates.length : 0} candidate games
+                                            Created ${createdDate} by <strong>${window.escapeHTML(sess.creator_name === 'anonymous_host' ? 'Host' : (sess.creator_name || 'Host'))}</strong> • ${totalVoters} vote${totalVoters !== 1 ? 's' : ''} recorded • ${sess.candidates ? sess.candidates.length : 0} candidate games
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">

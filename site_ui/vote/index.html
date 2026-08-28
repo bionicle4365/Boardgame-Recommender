@@ -490,35 +490,20 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
         }
     }
 
-    window.promptSetVoterName = function() {
-        let msg = "Enter your BGG username to vote:";
-        if (currentSession && currentSession.roster && currentSession.roster.length > 0) {
-            msg = `Select or type your name from the group roster (${currentSession.roster.join(', ')}):`;
-        }
-        const currentVal = currentVoterName.startsWith("Anonymous") ? "" : currentVoterName;
-        const chosen = prompt(msg, currentVal);
-        if (chosen !== null && chosen.trim() !== "") {
-            const clean = chosen.trim();
-            if (window.Auth && window.Auth.setBggUsername) window.Auth.setBggUsername(clean);
-            else {
-                localStorage.setItem("bgg_username", clean);
-                localStorage.setItem("bgg_last_username", clean);
-            }
-            renderSession();
-        }
-    };
-
     function renderSession() {
         resolveVoterIdentity();
 
         document.getElementById('poll-group-name').textContent = currentSession.group_name || "Game Night Session";
         
-        const creatorDisplay = currentSession.creator_name || currentSession.creator_id || 'Host';
-        const changeVoterBtn = `<button type="button" onclick="promptSetVoterName()" style="background: none; border: none; text-decoration: underline; color: inherit; cursor: pointer; font-size: 0.75rem; padding: 0 2px; margin-left: 6px; opacity: 0.85;" title="Change which playgroup member you are voting as">change</button>`;
+        let rawCreator = currentSession.creator_name || currentSession.creator_id || 'Host';
+        if (rawCreator === 'anonymous_host') {
+            rawCreator = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) || (currentVoterName && !currentVoterName.startsWith('Anonymous') ? currentVoterName : 'Host');
+        }
+        const creatorDisplay = rawCreator;
 
         const voterBadge = isRosterMember
-            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">👤 Voting as ${window.escapeHTML(currentVoterName)} ${changeVoterBtn}</span>`
-            : `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-left: 6px;">👤 Voting anonymously ${changeVoterBtn}</span>`;
+            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">👤 Voting as ${window.escapeHTML(currentVoterName)}</span>`
+            : `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-left: 6px;">👤 Voting anonymously</span>`;
 
         document.getElementById('poll-creator-text').innerHTML = `Created by <strong>${window.escapeHTML(creatorDisplay)}</strong> • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates • ${voterBadge}`;
 

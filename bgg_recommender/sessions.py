@@ -162,10 +162,13 @@ def create_session(
     closes_at = now + timedelta(hours=duration_hours)
     expires_at = int((closes_at + timedelta(days=60)).timestamp())  # TTL after 60 days
 
+    norm_creator_id = 'Host' if (not creator_id or creator_id == 'anonymous_host') else creator_id
+    norm_creator_name = 'Host' if (not creator_name or creator_name == 'anonymous_host') else creator_name
+
     item = {
         'session_id': session_id,
-        'creator_id': creator_id or 'Host',
-        'creator_name': creator_name or creator_id or 'Host',
+        'creator_id': norm_creator_id,
+        'creator_name': norm_creator_name or norm_creator_id,
         'group_name': group_name or 'Game Night',
         'created_at': now.isoformat(),
         'closes_at': closes_at.isoformat(),
@@ -202,6 +205,11 @@ def get_session(session_id: str, table=None) -> Optional[Dict[str, Any]]:
         return None
 
     item = decimals_to_floats(raw_item)
+    if item.get('creator_name') == 'anonymous_host':
+        item['creator_name'] = 'Host'
+    if item.get('creator_id') == 'anonymous_host':
+        item['creator_id'] = 'Host'
+
     now = datetime.now(timezone.utc)
     closes_at = datetime.fromisoformat(item['closes_at'].replace('Z', '+00:00'))
     is_closed = now >= closes_at

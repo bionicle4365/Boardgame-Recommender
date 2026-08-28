@@ -207,6 +207,13 @@ window.fetchApi = async function(endpoint, options = {}) {
             };
         } else if (endpoint.startsWith('/sessions')) {
             const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            const now = new Date();
+            sessions.forEach(s => {
+                if (s.closes_at) s.is_closed = now >= new Date(s.closes_at);
+                if (s.creator_name === 'anonymous_host') {
+                    s.creator_name = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) || 'Host';
+                }
+            });
             data = { sessions };
         } else if (endpoint.startsWith('/session/vote') || (endpoint.startsWith('/session') && options.method === 'POST' && options.body && options.body.includes('participant_name'))) {
             let sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
@@ -276,6 +283,24 @@ window.fetchApi = async function(endpoint, options = {}) {
             sessions = sessions.filter(s => s.session_id !== sessionId);
             localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
             data = { message: "Session cancelled successfully", session_id: sessionId };
+        } else if (endpoint.startsWith('/session') && (!options.method || options.method === 'GET')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const sessionId = urlParams.get('session_id') || urlParams.get('id');
+            const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            let found = sessions.find(s => s.session_id === sessionId);
+            if (!found && sessions.length > 0 && (!sessionId || sessionId === 'demo')) {
+                found = sessions[0];
+            }
+            if (found) {
+                const now = new Date();
+                if (found.closes_at) found.is_closed = now >= new Date(found.closes_at);
+                if (found.creator_name === 'anonymous_host') {
+                    found.creator_name = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) || 'Host';
+                }
+                data = found;
+            } else {
+                data = { error: "Session not found" };
+            }
         } else if (endpoint.startsWith('/session') && options.method === 'POST') {
             const payload = JSON.parse(options.body || '{}');
             const now = new Date();
