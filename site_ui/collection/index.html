@@ -1506,56 +1506,96 @@ description: "Explore, search, filter, and sort your BoardGameGeek collection wi
         const controlsDiv = document.getElementById('browser-controls-bar');
         const paginationBar = document.getElementById('pagination-bar');
 
-        if (sidebarDiv) sidebarDiv.style.display = 'none';
-        if (controlsDiv) controlsDiv.style.display = 'none';
+        // Keep sidebar and controls visible in loading state to prevent layout jumping
+        if (sidebarDiv) {
+            sidebarDiv.style.display = 'block';
+            sidebarDiv.classList.add('filters-loading');
+        }
+        if (controlsDiv) {
+            controlsDiv.style.display = 'flex';
+            controlsDiv.style.opacity = '0.6';
+            controlsDiv.style.pointerEvents = 'none';
+        }
         if (paginationBar) paginationBar.style.display = 'none';
 
-        let skeletonRows = '';
-        for (let i = 0; i < 10; i++) {
-            skeletonRows += `
-                <tr class="skeleton-row">
-                    <td><div class="skeleton skeleton-text" style="width: 80%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 50%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 45%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 50%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 70%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
-                    <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
-                </tr>
+        if (currentViewMode === 'grid') {
+            let skeletonCards = '';
+            for (let i = 0; i < 8; i++) {
+                skeletonCards += `
+                    <div class="collection-card-skeleton">
+                        <div class="skeleton-img-box"></div>
+                        <div class="skeleton-card-body">
+                            <div class="skeleton skeleton-text title" style="width: 75%; height: 18px; margin-bottom: 6px;"></div>
+                            <div class="skeleton skeleton-text" style="width: 35%; height: 12px; margin-bottom: 8px;"></div>
+                            <div class="skeleton-details-grid">
+                                <div class="skeleton skeleton-text" style="height: 14px; margin: 0;"></div>
+                                <div class="skeleton skeleton-text" style="height: 14px; margin: 0;"></div>
+                                <div class="skeleton skeleton-text" style="height: 14px; margin: 0;"></div>
+                                <div class="skeleton skeleton-text" style="height: 14px; margin: 0;"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            collectionDataDiv.innerHTML = `
+                <div class="collection-status-card" style="margin: 0 0 20px 0;">
+                    <div class="collection-spinner"></div>
+                    <div class="collection-status-text">${message}</div>
+                </div>
+                <div class="game-cards-grid">
+                    ${skeletonCards}
+                </div>
+            `;
+        } else {
+            let skeletonRows = '';
+            for (let i = 0; i < 10; i++) {
+                skeletonRows += `
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton skeleton-text" style="width: 80%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 50%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 45%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 50%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 70%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 30%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                        <td><div class="skeleton skeleton-text" style="width: 40%; height: 14px;"></div></td>
+                    </tr>
+                `;
+            }
+
+            collectionDataDiv.innerHTML = `
+                <div class="collection-status-card" style="margin: 0 0 20px 0;">
+                    <div class="collection-spinner"></div>
+                    <div class="collection-status-text">${message}</div>
+                </div>
+                <table id="bgg-collection-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Year</th>
+                            <th>BGG Rating</th>
+                            <th>BGG User Avg</th>
+                            <th>BGG Rank</th>
+                            <th>Min Players</th>
+                            <th>Max Players</th>
+                            <th>Play Time</th>
+                            <th>Status</th>
+                            <th>Plays</th>
+                            <th>My Rating</th>
+                            <th>My Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${skeletonRows}
+                    </tbody>
+                </table>
             `;
         }
-
-        collectionDataDiv.innerHTML = `
-            <div class="collection-status-card" style="margin: 0 0 20px 0;">
-                <div class="collection-status-text">${message}</div>
-            </div>
-            <table id="bgg-collection-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Year</th>
-                        <th>BGG Rating</th>
-                        <th>BGG User Avg</th>
-                        <th>BGG Rank</th>
-                        <th>Min Players</th>
-                        <th>Max Players</th>
-                        <th>Play Time</th>
-                        <th>Status</th>
-                        <th>Plays</th>
-                        <th>My Rating</th>
-                        <th>My Rank</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${skeletonRows}
-                </tbody>
-            </table>
-        `;
         collectionDataDiv.classList.add('has-content');
     }
     let filteredGamesData = []; // Store the currently filtered data
@@ -2255,7 +2295,14 @@ description: "Explore, search, filter, and sort your BoardGameGeek collection wi
             return;
         }
 
-        controlsDiv.style.display = 'flex';
+        if (sidebarDiv) {
+            sidebarDiv.classList.remove('filters-loading');
+        }
+        if (controlsDiv) {
+            controlsDiv.style.display = 'flex';
+            controlsDiv.style.opacity = '1';
+            controlsDiv.style.pointerEvents = 'auto';
+        }
         
         // Only show sidebar filters on Grid View tab
         const activeTab = document.querySelector('.tab-btn.active');

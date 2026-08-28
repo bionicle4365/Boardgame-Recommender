@@ -59,6 +59,42 @@ Add a lightweight, unobtrusive "Score My Game" tool to the recommender page that
 
 ---
 
+## Milestone 57: Async Game Night Voting & Veto Session
+
+### Objective
+Enable playgroup hosts to generate a lightweight, shareable voting link from their group recommendations where attendees can vote (👍 Want to Play / 😐 Fine / ❌ Veto) on a candidate shortlist, automatically calculating the group consensus pick, locking results at a user-defined deadline, and preserving past poll history for the creator.
+
+### Design Notes
+- **Frictionless Participant Flow:** No registration or login required for participants. Group members simply open the link, enter their name (or select from the playgroup roster), and vote with 1-click reaction buttons on 3–6 candidate games.
+- **Configurable Poll Duration & Deadline:** The creator selects how long the poll remains open (e.g., 2 hours, 6 hours, 24 hours, 3 days, or 7 days). A live countdown is shown on the voting page; once expired, voting automatically locks and the final consensus winner is declared.
+- **Veto-Aware Consensus Algorithm:** Calculates the winning game by scoring:
+  - 👍 `+2 points`
+  - 😐 `+1 point`
+  - ❌ `-99 points` (Hard Veto: immediately disqualifies the game if any attendee vetoes it).
+  - Tie-breaker: Highest original playgroup recommendation score.
+- **Creator History & Results Archive:** The original poll creator can view a "📜 Poll History" dashboard in their Playgroup Planner (`groups/index.html`) to review past sessions, see who voted what, and look back at past game night winners.
+
+### Architecture Decisions
+- **Storage:** DynamoDB `bgg-game-night-sessions` table with partition key `session_id` (8-char nanoid) and TTL expiration attribute `expires_at` (set to `closes_at + 60 days` so historical results persist well after the poll closes). Items store `creator_id` (Cognito Sub / BGG username), `group_name`, `created_at`, `closes_at`, `candidates` array, and a `votes` map `{ participant_name: { game_id: "yes"|"neutral"|"veto" } }`.
+- **Global Secondary Index (GSI):** Add a `creator_id-created_at-index` GSI to DynamoDB to allow fast queries for all past sessions created by a user.
+- **Lambda Routes:** Add route handlers in `bgg_recommender.py`:
+  - `POST /session` (Authenticated): Creates a new voting session with candidates and custom `duration_hours`.
+  - `GET /session/{session_id}` (Public): Retrieves the session candidates, deadline countdown, and current vote tallies.
+  - `POST /session/{session_id}/vote` (Public): Submits or updates a participant's vote payload before `closes_at`.
+  - `GET /sessions` (Authenticated): Retrieves all past and active sessions created by `creator_id` for the history dashboard.
+- **Frontend Voting Interface:** Add a standalone, mobile-first page `site_ui/vote/index.html` with live countdown and voting controls.
+
+### Tasks
+- [ ] **DynamoDB Table & GSI:** Define `bgg-game-night-sessions` table in Terraform with `session_id` partition key, `creator_id-created_at-index` GSI, and TTL attribute `expires_at`.
+- [ ] **Session Backend API:** Implement `create_session` (with `duration_hours`), `get_session` (with deadline enforcement), `submit_vote`, and `list_creator_sessions` route handlers in the recommender Lambda.
+- [ ] **Consensus Scoring Function:** Implement consensus tallying math in `scoring.py` with hard veto disqualification, tie-breaking, and closed-poll status checks.
+- [ ] **Playgroup Host Session Creator:** Add a "🗳️ Start Voting Session" modal on `groups/index.html` with candidate picker and duration selector (2h / 6h / 24h / 3d / 7d).
+- [ ] **Playgroup History Dashboard:** Add a "📜 Past Polls" tab on `groups/index.html` listing past game night polls, attendance, and winners.
+- [ ] **Participant Voting Page:** Build `site_ui/vote/index.html` with countdown timer, glassmorphic cards, candidate box art, 👍/😐/❌ vote buttons, and a live results banner showing the consensus pick.
+- [ ] **Unit Tests & Verification:** Test duration calculation, deadline expiration locking, GSI history queries, vote serialization, and consensus calculation with vetoes.
+
+---
+
 ## Milestone 35: Gamefound Crowdfunding Recommendations
 
 ### Objective
@@ -210,5 +246,7 @@ Enable full local Jekyll development with real API endpoints and Cognito credent
 * **Milestone 52: New User AI Narration Context** (Added prompt branching in narration.py for Casual Personality Test and Quick Taste Test, forwarded personality quiz answers from frontend to backend, tuned punchy/direct 1-sentence explanations aiming for 12–15 words, and raised generation maxTokens to 1,200 at 0.6 temperature)
 * **Milestone 53: Recommendation Card Redesign** (Explored visual mockup options, implemented Option A 2-column desktop grid for ≥1024px monitors in design-system.css, updated card padding, flex alignment, member affinity bar tracks, and aligned skeleton loading placeholders)
 * **Milestone 41: Shareable Top 10 Recommendation Graphic & Image Export** (Implemented HTML5 Canvas generator module graphic_export.js for generating 1200x675 high-res social graphics of top 10 recommended games without AI text, added Export Image modal with live preview, 1-click Download PNG, Clipboard copy, and mobile Web Share API integration)
+* **Milestone 58: Collection Browser Loading State & Skeleton Redesign** (Maintained visible persistent filter sidebar in loading state to eliminate layout jumping, rendered 8-card shimmering card grid skeleton matching default Card View)
+* **Milestone 59: User Profile Skeleton Animation & Viewport Alignment Fix** (Fixed @keyframes shimmer in design-system.css and profile/index.html to animate background-position instead of transform: translateX, eliminating offscreen lateral drift during profile dashboard load)
 
 

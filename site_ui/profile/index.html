@@ -17,6 +17,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         max-width: 1000px;
         margin: 0 auto;
         padding: 20px;
+        overflow-x: hidden;
     }
 
     @media (max-width: 480px) {
@@ -425,9 +426,10 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
     /* ── Skeletal Shimmer Loading State ── */
     .skeleton-header {
         height: 118px;
-        background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+        background: var(--skeleton-bg, #e2e8f0);
+        background-image: var(--skeleton-shimmer, linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent));
         background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
+        animation: skeleton-shimmer 1.5s infinite linear;
         border-radius: 16px;
         margin-bottom: 24px;
     }
@@ -448,17 +450,19 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
 
     .skeleton-card {
         height: 106px;
-        background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+        background: var(--skeleton-bg, #e2e8f0);
+        background-image: var(--skeleton-shimmer, linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent));
         background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
+        animation: skeleton-shimmer 1.5s infinite linear;
         border-radius: 16px;
     }
 
     .skeleton-chart-box {
         height: 350px;
-        background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+        background: var(--skeleton-bg, #e2e8f0);
+        background-image: var(--skeleton-shimmer, linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent));
         background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
+        animation: skeleton-shimmer 1.5s infinite linear;
         border-radius: 16px;
         margin-bottom: 24px;
     }
