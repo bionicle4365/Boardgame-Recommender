@@ -708,13 +708,13 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                     <!-- Tabs Switcher Navigation -->
                     <div class="groups-tabs-nav">
-                        <button class="groups-tab-btn active" id="tab-recommendations-btn" type="button">
+                        <button class="groups-tab-btn active" id="tab-recommendations-btn" onclick="switchTab('recommendations')" type="button">
                             🎯 Recommendations
                         </button>
-                        <button class="groups-tab-btn" id="tab-analytics-btn" type="button">
+                        <button class="groups-tab-btn" id="tab-analytics-btn" onclick="switchTab('analytics')" type="button">
                             📊 Playgroup Analytics
                         </button>
-                        <button class="groups-tab-btn" id="tab-polls-btn" type="button">
+                        <button class="groups-tab-btn" id="tab-polls-btn" onclick="switchTab('polls')" type="button">
                             🗳️ Polls
                         </button>
                     </div>
@@ -1485,7 +1485,13 @@ description: "Combine collections, plan board game sessions, and get group conse
         const tabPollsContent = document.getElementById("tab-polls-content");
 
         window.switchTab = function(targetTab) {
-            const allBtns = [tabRecsBtn, tabAnalBtn, tabPollsBtn].filter(Boolean);
+            const tabRecsBtn = document.getElementById("tab-recommendations-btn");
+            const tabAnalBtn = document.getElementById("tab-analytics-btn");
+            const tabPollsBtn = document.getElementById("tab-polls-btn");
+            const tabRecsContent = document.getElementById("tab-recommendations-content");
+            const tabAnalContent = document.getElementById("tab-analytics-content");
+            const tabPollsContent = document.getElementById("tab-polls-content");
+
             const allContents = [
                 { id: "recommendations", btn: tabRecsBtn, content: tabRecsContent },
                 { id: "analytics", btn: tabAnalBtn, content: tabAnalContent },
@@ -1512,7 +1518,9 @@ description: "Combine collections, plan board game sessions, and get group conse
                     if (chart) chart.resize();
                 });
             } else if (targetTab === "polls") {
-                loadPastPolls();
+                if (typeof loadPastPolls === 'function') {
+                    loadPastPolls();
+                }
             }
         };
 
@@ -1803,7 +1811,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             setTimeout(() => { copyBtn.textContent = "📋 Copy"; }, 2000);
         };
 
-        window.loadPastPolls = async function() {
+        async function loadPastPolls() {
             const listContainer = document.getElementById("past-polls-list");
             if (!listContainer) return;
 
@@ -1955,7 +1963,8 @@ description: "Combine collections, plan board game sessions, and get group conse
                     </div>
                 `;
             }
-        };
+        }
+        window.loadPastPolls = loadPastPolls;
 
         window.closeSessionEarly = async function(sessionId) {
             if (!confirm("Are you sure you want to close this poll now? Voting will end immediately.")) return;
