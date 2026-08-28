@@ -118,65 +118,64 @@
         return lines;
     }
 
-    // Main graphic generator
+    // Main graphic generator (Mobile-First 9:16 Vertical Poster: 1080 x 1920)
     window.generateRecommendationGraphic = async function(recs, titleText = "Personalized Recommendations", subtitleText = "") {
         const top10 = (recs || []).slice(0, 10);
         const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 675;
+        canvas.width = 1080;
+        canvas.height = 1920;
         const ctx = canvas.getContext('2d');
 
         // 1. Background Gradient (Deep slate to indigo)
-        const bgGrad = ctx.createLinearGradient(0, 0, 1200, 675);
+        const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1920);
         bgGrad.addColorStop(0, '#090d16');
         bgGrad.addColorStop(0.5, '#0f172a');
         bgGrad.addColorStop(1, '#1e1b4b');
         ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, 1200, 675);
+        ctx.fillRect(0, 0, 1080, 1920);
 
-        // Subtle ambient background glow circles
+        // Ambient background glow circles
         ctx.save();
-        const glow1 = ctx.createRadialGradient(150, 100, 10, 150, 100, 300);
-        glow1.addColorStop(0, 'rgba(99, 102, 241, 0.15)');
+        const glow1 = ctx.createRadialGradient(180, 150, 10, 180, 150, 450);
+        glow1.addColorStop(0, 'rgba(99, 102, 241, 0.18)');
         glow1.addColorStop(1, 'rgba(99, 102, 241, 0)');
         ctx.fillStyle = glow1;
-        ctx.fillRect(0, 0, 1200, 675);
+        ctx.fillRect(0, 0, 1080, 1920);
 
-        const glow2 = ctx.createRadialGradient(1050, 550, 10, 1050, 550, 350);
-        glow2.addColorStop(0, 'rgba(168, 85, 247, 0.15)');
+        const glow2 = ctx.createRadialGradient(900, 1750, 10, 900, 1750, 500);
+        glow2.addColorStop(0, 'rgba(168, 85, 247, 0.18)');
         glow2.addColorStop(1, 'rgba(168, 85, 247, 0)');
         ctx.fillStyle = glow2;
-        ctx.fillRect(0, 0, 1200, 675);
+        ctx.fillRect(0, 0, 1080, 1920);
         ctx.restore();
 
         // 2. Header Section
         ctx.save();
         // Logo / Title
-        ctx.font = 'bold 26px "Outfit", "Inter", sans-serif';
+        ctx.font = 'bold 38px "Outfit", "Inter", sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('🎲 Boardgame Recommender', 48, 48);
+        ctx.fillText('🎲 Boardgame Recommender', 50, 82);
 
         // Subtitle
-        ctx.font = '600 15px "Inter", sans-serif';
+        ctx.font = '600 22px "Inter", sans-serif';
         ctx.fillStyle = '#818cf8';
-        const displaySubtitle = subtitleText ? `Top 10 Picks for ${subtitleText}` : 'Top 10 Personalized Picks';
-        ctx.fillText(displaySubtitle, 48, 72);
+        const displaySubtitle = subtitleText ? `Top 10 Picks for ${subtitleText}` : 'Top 10 Personalized Recommendations';
+        ctx.fillText(displaySubtitle, 50, 124);
         ctx.restore();
 
         // 3. Preload all thumbnails
         const thumbPromises = top10.map(rec => loadImage(rec.thumbnail));
         const loadedImages = await Promise.all(thumbPromises);
 
-        // 4. Render 2x5 Grid of Cards
-        // Layout params:
-        const cols = 5;
-        const rows = 2;
-        const startX = 48;
-        const startY = 96;
-        const cardWidth = 206;
-        const cardHeight = 250;
-        const gapX = 18;
-        const gapY = 16;
+        // 4. Render 2x5 Grid of Cards (2 Columns x 5 Rows)
+        const cols = 2;
+        const rows = 5;
+        const startX = 50;
+        const startY = 160;
+        const cardWidth = 465;
+        const cardHeight = 315;
+        const gapX = 50;
+        const gapY = 24;
 
         for (let i = 0; i < top10.length; i++) {
             const rec = top10[i];
@@ -187,37 +186,37 @@
 
             ctx.save();
             // Card Container (Frosted Glass)
-            ctx.fillStyle = 'rgba(30, 41, 59, 0.75)';
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.lineWidth = 1;
-            roundRect(ctx, x, y, cardWidth, cardHeight, 12, true, true);
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.78)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, x, y, cardWidth, cardHeight, 16, true, true);
 
             // Match Rank Pill (#1, #2...)
-            ctx.fillStyle = 'rgba(99, 102, 241, 0.25)';
-            roundRect(ctx, x + 8, y + 8, 30, 18, 9, true, false);
-            ctx.font = 'bold 10px "Inter", sans-serif';
+            ctx.fillStyle = 'rgba(99, 102, 241, 0.28)';
+            roundRect(ctx, x + 16, y + 16, 52, 28, 14, true, false);
+            ctx.font = 'bold 15px "Inter", sans-serif';
             ctx.fillStyle = '#c7d2fe';
             ctx.textAlign = 'center';
-            ctx.fillText(`#${i + 1}`, x + 23, y + 21);
+            ctx.fillText(`#${i + 1}`, x + 42, y + 35.5);
 
             // Year Pill (if available)
             if (rec.year_published) {
-                ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
-                roundRect(ctx, x + cardWidth - 44, y + 8, 36, 18, 9, true, false);
-                ctx.font = '600 10px "Inter", sans-serif';
+                ctx.fillStyle = 'rgba(148, 163, 184, 0.18)';
+                roundRect(ctx, x + cardWidth - 76, y + 16, 60, 28, 14, true, false);
+                ctx.font = '600 14px "Inter", sans-serif';
                 ctx.fillStyle = '#94a3b8';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${rec.year_published}`, x + cardWidth - 26, y + 21);
+                ctx.fillText(`${rec.year_published}`, x + cardWidth - 46, y + 35.5);
             }
 
-            // Thumbnail (Image or Placeholder)
-            const imgW = 92;
-            const imgH = 92;
+            // Thumbnail (Image or Placeholder) - 125x125
+            const imgW = 125;
+            const imgH = 125;
             const imgX = x + (cardWidth - imgW) / 2;
-            const imgY = y + 34;
+            const imgY = y + 38;
 
             ctx.save();
-            roundRect(ctx, imgX, imgY, imgW, imgH, 8, false, false);
+            roundRect(ctx, imgX, imgY, imgW, imgH, 12, false, false);
             ctx.clip();
 
             const img = loadedImages[i];
@@ -236,87 +235,86 @@
                 pGrad.addColorStop(1, '#1e293b');
                 ctx.fillStyle = pGrad;
                 ctx.fillRect(imgX, imgY, imgW, imgH);
-                ctx.font = 'bold 28px sans-serif';
+                ctx.font = 'bold 36px sans-serif';
                 ctx.fillStyle = '#64748b';
                 ctx.textAlign = 'center';
-                ctx.fillText('🎲', imgX + imgW / 2, imgY + 56);
+                ctx.fillText('🎲', imgX + imgW / 2, imgY + 75);
             }
             ctx.restore();
 
             // Border around thumbnail
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 1;
-            roundRect(ctx, imgX, imgY, imgW, imgH, 8, false, true);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, imgX, imgY, imgW, imgH, 12, false, true);
 
-            // Game Title (Symmetrically centered between thumbnail bottom y+126 and stat badges top y+208)
-            const titleZoneCenterY = y + 126 + 82 / 2; // y + 167
+            // Game Title (Symmetrically centered between thumbnail bottom y+163 and stat badges top y+248)
+            const titleZoneCenterY = y + 163 + 85 / 2; // y + 205.5
             ctx.fillStyle = '#f8fafc';
             ctx.textAlign = 'center';
-            ctx.font = 'bold 12.5px "Inter", sans-serif';
-            const lines = wrapText(ctx, rec.name || 'Untitled Game', cardWidth - 18, 2);
+            const lines = wrapText(ctx, rec.name || 'Untitled Game', cardWidth - 28, 2);
 
             if (lines.length === 1) {
-                ctx.font = 'bold 13px "Inter", sans-serif';
-                ctx.fillText(lines[0], x + cardWidth / 2, titleZoneCenterY + 4.5);
+                ctx.font = 'bold 18.5px "Inter", sans-serif';
+                ctx.fillText(lines[0], x + cardWidth / 2, titleZoneCenterY + 6);
             } else {
-                ctx.font = 'bold 11.5px "Inter", sans-serif';
-                ctx.fillText(lines[0], x + cardWidth / 2, titleZoneCenterY - 4.5);
-                ctx.fillText(lines[1], x + cardWidth / 2, titleZoneCenterY + 12.5);
+                ctx.font = 'bold 16.5px "Inter", sans-serif';
+                ctx.fillText(lines[0], x + cardWidth / 2, titleZoneCenterY - 7);
+                ctx.fillText(lines[1], x + cardWidth / 2, titleZoneCenterY + 17);
             }
 
-            // Stat Badges Bar (Bottom row inside card)
-            const badgeY = y + 208;
-            const badgeH = 24;
-            const badgeW = 41;
-            const badgeGap = 4;
-            const badgesStartX = x + 12;
+            // Stat Badges Bar (Bottom row inside card) - 4 pills
+            const badgeY = y + 254;
+            const badgeH = 34;
+            const badgeW = 98;
+            const badgeGap = 8;
+            const badgesStartX = x + (cardWidth - (4 * badgeW + 3 * badgeGap)) / 2;
 
             // Rating Badge (★)
             const ratingVal = rec.rating ? rec.rating.toFixed(1) : 'N/A';
-            ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
-            roundRect(ctx, badgesStartX, badgeY, badgeW, badgeH, 5, true, false);
-            ctx.font = 'bold 10px "Inter", sans-serif';
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+            roundRect(ctx, badgesStartX, badgeY, badgeW, badgeH, 7, true, false);
+            ctx.font = 'bold 13px "Inter", sans-serif';
             ctx.fillStyle = '#fde68a';
             ctx.textAlign = 'center';
-            ctx.fillText(`★${ratingVal}`, badgesStartX + badgeW / 2, badgeY + 16);
+            ctx.fillText(`★ ${ratingVal}`, badgesStartX + badgeW / 2, badgeY + 22);
 
             // Complexity Badge (⚙)
             const compVal = rec.complexity ? rec.complexity.toFixed(1) : 'N/A';
             const b2X = badgesStartX + badgeW + badgeGap;
-            ctx.fillStyle = 'rgba(168, 85, 247, 0.15)';
-            roundRect(ctx, b2X, badgeY, badgeW, badgeH, 5, true, false);
+            ctx.fillStyle = 'rgba(168, 85, 247, 0.18)';
+            roundRect(ctx, b2X, badgeY, badgeW, badgeH, 7, true, false);
             ctx.fillStyle = '#f5d0fe';
-            ctx.fillText(`⚙${compVal}`, b2X + badgeW / 2, badgeY + 16);
+            ctx.fillText(`⚙ ${compVal}`, b2X + badgeW / 2, badgeY + 22);
 
             // Players Badge (👥)
             const b3X = b2X + badgeW + badgeGap;
             let playerVal = rec.min_players ? (rec.min_players === rec.max_players ? `${rec.min_players}` : `${rec.min_players}-${rec.max_players}`) : 'All';
-            if (playerVal.length > 4) playerVal = `${rec.min_players || 1}+`;
-            ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-            roundRect(ctx, b3X, badgeY, badgeW, badgeH, 5, true, false);
+            if (playerVal.length > 5) playerVal = `${rec.min_players || 1}+`;
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.18)';
+            roundRect(ctx, b3X, badgeY, badgeW, badgeH, 7, true, false);
             ctx.fillStyle = '#a7f3d0';
-            ctx.fillText(`👥${playerVal}`, b3X + badgeW / 2, badgeY + 16);
+            ctx.fillText(`👥 ${playerVal}`, b3X + badgeW / 2, badgeY + 22);
 
             // Playtime Badge (🕒)
             const b4X = b3X + badgeW + badgeGap;
             let playVal = rec.playing_time ? `${rec.playing_time}m` : (rec.min_playtime ? `${rec.min_playtime}m` : '30m');
-            ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
-            roundRect(ctx, b4X, badgeY, badgeW, badgeH, 5, true, false);
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.18)';
+            roundRect(ctx, b4X, badgeY, badgeW, badgeH, 7, true, false);
             ctx.fillStyle = '#bae6fd';
-            ctx.fillText(`🕒${playVal}`, b4X + badgeW / 2, badgeY + 16);
+            ctx.fillText(`🕒 ${playVal}`, b4X + badgeW / 2, badgeY + 22);
 
             ctx.restore();
         }
 
         // 5. Footer Branding
         ctx.save();
-        ctx.font = '500 12px "Inter", sans-serif';
+        ctx.font = '500 16px "Inter", sans-serif';
         ctx.fillStyle = '#64748b';
         ctx.textAlign = 'left';
-        ctx.fillText('Find your perfect tabletop games at bionicle4365.github.io/Boardgame-Recommender', 48, 648);
+        ctx.fillText('Find your perfect tabletop games at bionicle4365.github.io/Boardgame-Recommender', 50, 1885);
 
         ctx.textAlign = 'right';
-        ctx.fillText(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }), 1152, 648);
+        ctx.fillText(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }), 1030, 1885);
         ctx.restore();
 
         // Generate data URL and Blob
