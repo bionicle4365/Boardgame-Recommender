@@ -134,16 +134,71 @@ window.fetchApi = async function(endpoint, options = {}) {
                 ]
             };
         } else if (endpoint.startsWith('/preferences')) {
-            data = {
-                username: "MockUser",
-                weights: { mechanics: 50, categories: 50, popularity: 50, hotness: 50 }
-            };
+            if (options.method === 'POST' && options.body) {
+                try {
+                    const parsed = JSON.parse(options.body);
+                    const existing = JSON.parse(localStorage.getItem('bgg_mock_preferences') || '{}');
+                    const updated = { ...existing, ...parsed };
+                    localStorage.setItem('bgg_mock_preferences', JSON.stringify(updated));
+                    data = { message: "Preferences updated successfully", preferences: updated };
+                } catch (e) {
+                    data = { message: "Preferences updated" };
+                }
+            } else {
+                const saved = JSON.parse(localStorage.getItem('bgg_mock_preferences') || '{}');
+                data = {
+                    bgg_username: saved.bgg_username || "gamer123",
+                    weights: saved.weights || { mechanics: 50, categories: 50, popularity: 50, hotness: 50 }
+                };
+            }
+        } else if (endpoint.startsWith('/groups')) {
+            let groups = JSON.parse(localStorage.getItem('bgg_mock_groups') || 'null');
+            if (!groups) {
+                groups = [
+                    { id: "grp-1", name: "Friday Heavy Euro", members: ["gamer123", "alice", "bob"] },
+                    { id: "grp-2", name: "Weekend Casual", members: ["gamer123", "charlie"] }
+                ];
+                localStorage.setItem('bgg_mock_groups', JSON.stringify(groups));
+            }
+            if (options.method === 'POST' && options.body) {
+                try {
+                    const newGroup = JSON.parse(options.body);
+                    newGroup.id = newGroup.id || `grp-${Date.now()}`;
+                    const idx = groups.findIndex(g => g.id === newGroup.id);
+                    if (idx >= 0) groups[idx] = newGroup;
+                    else groups.push(newGroup);
+                    localStorage.setItem('bgg_mock_groups', JSON.stringify(groups));
+                    data = { message: "Group saved", group: newGroup };
+                } catch (e) {
+                    data = { message: "Group saved" };
+                }
+            } else if (options.method === 'DELETE') {
+                const groupId = endpoint.split('/groups/')[1] || '';
+                groups = groups.filter(g => g.id !== groupId);
+                localStorage.setItem('bgg_mock_groups', JSON.stringify(groups));
+                data = { message: "Group deleted" };
+            } else {
+                data = { groups };
+            }
         } else if (endpoint.startsWith('/profile')) {
-            return {
-                ok: false,
-                status: 404,
-                json: async () => ({ message: "Profile not found" }),
-                text: async () => '{"message":"Profile not found"}'
+            data = {
+                username: "gamer123",
+                collection_size: 48,
+                avg_rating: 7.8,
+                complexity_pref: "Medium-Heavy",
+                top_mechanics: { "Worker Placement": 0.85, "Hand Management": 0.72, "Deck Construction": 0.65, "Drafting": 0.58, "Variable Player Powers": 0.54 },
+                top_categories: { "Economic": 0.82, "Fantasy": 0.70, "Science Fiction": 0.64, "Card Game": 0.60, "Medieval": 0.52 },
+                complexity_weights: { "Light": 0.1, "Medium-Light": 0.3, "Medium-Heavy": 0.8, "Heavy": 0.5 },
+                player_counts: { "1": 5, "2": 18, "3": 25, "4": 30, "5+": 12 },
+                rating_distribution: { "1-4": 1, "5-6": 6, "7-8": 22, "9-10": 13 },
+                generated_at: new Date().toISOString()
+            };
+        } else if (endpoint.startsWith('/similar')) {
+            data = {
+                similar_games: [
+                    { id: "224517", name: "Gloomhaven", similarity: 0.88, rating: 8.7, complexity: 4.4 },
+                    { id: "266192", name: "Wingspan", similarity: 0.76, rating: 8.1, complexity: 2.4 }
+                ]
             };
         } else {
             data = {};

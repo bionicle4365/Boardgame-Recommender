@@ -1,0 +1,26 @@
+# ==============================================================================
+# Local Development Jekyll Configuration Override
+# ==============================================================================
+# Copy this file to `_config.local.yml` (which is gitignored) and fill in your
+# actual backend values:
+#
+#   cp _config.local.yml.example _config.local.yml
+#
+# Run Jekyll with both configs:
+#   bundle exec jekyll serve --config _config.yml,_config.local.yml
+# ==============================================================================
+
+# Local development root base URL (leaves root '/' without repository prefix)
+baseurl: ""
+
+# Local server URL
+url: "http://localhost:4000"
+
+# AWS API Gateway Endpoint (from `terraform output api_gateway_url` or staging)
+# Example: https://abc123xyz.execute-api.us-east-1.amazonaws.com
+api_url: "https://YOUR_API_GATEWAY_URL.execute-api.us-east-1.amazonaws.com"
+
+# AWS Cognito Authentication Configuration
+cognito_region: "us-east-1"
+cognito_client_id: "YOUR_COGNITO_APP_CLIENT_ID"
+cognito_user_pool_id: "us-east-1_YOUR_POOL_ID"

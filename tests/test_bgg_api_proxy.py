@@ -37,7 +37,7 @@ def test_lambda_handler_success(mock_urlopen):
 
     event = {
         'queryStringParameters': {
-            'username': 'bionicle4365'
+            'username': 'test_gamer'
         }
     }
     response = bgg_api_proxy.lambda_handler(event, None)
@@ -59,7 +59,7 @@ def test_lambda_handler_compression(mock_urlopen):
 
     event = {
         'queryStringParameters': {
-            'username': 'bionicle4365'
+            'username': 'test_gamer'
         },
         'headers': {
             'accept-encoding': 'gzip'

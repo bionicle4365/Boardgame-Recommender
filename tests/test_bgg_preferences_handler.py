@@ -149,7 +149,7 @@ def test_lambda_handler_post_partial_update(mock_boto_client, mock_table):
             }
         },
         'body': json.dumps({
-            'bgg_username': 'bionicle4365'
+            'bgg_username': 'test_gamer'
         })
     }
     response = bgg_preferences_handler.lambda_handler(event, None)
@@ -159,7 +159,7 @@ def test_lambda_handler_post_partial_update(mock_boto_client, mock_table):
     args, kwargs = mock_table.update_item.call_args
     assert kwargs['Key'] == {'userId': 'user-123'}
     assert kwargs['UpdateExpression'] == 'SET #bgg_username = :bgg_username'
-    assert kwargs['ExpressionAttributeValues'] == {':bgg_username': 'bionicle4365'}
+    assert kwargs['ExpressionAttributeValues'] == {':bgg_username': 'test_gamer'}
     assert kwargs['ExpressionAttributeNames'] == {'#bgg_username': 'bgg_username'}
     
     # Verify SQS trigger

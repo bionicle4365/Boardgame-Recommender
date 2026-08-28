@@ -957,7 +957,7 @@ def test_primary_publisher_only():
 
 def test_validate_username():
     from cache_utils import validate_username
-    assert validate_username("bionicle4365") is True
+    assert validate_username("gamer123") is True
     assert validate_username("user_123") is True
     assert validate_username("A") is True
     assert validate_username("a" * 25) is True
@@ -979,7 +979,7 @@ def test_handle_profile_invalid_username():
 
 
 def test_handle_recommendations_invalid_username():
-    query_params = {'username': 'bionicle4365,user-123'}
+    query_params = {'username': 'gamer123,user-123'}
     response = bgg_recommender._handle_recommendations(query_params)
     assert response['statusCode'] == 400
     assert 'Invalid username' in response['body']
@@ -997,7 +997,7 @@ def test_lambda_handler_compression(mock_status):
     event = {
         'rawPath': '/profile',
         'queryStringParameters': {
-            'username': 'bionicle4365'
+            'username': 'gamer123'
         },
         'headers': {
             'accept-encoding': 'gzip'

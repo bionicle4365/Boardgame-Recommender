@@ -310,8 +310,10 @@
         ctx.save();
         ctx.font = '500 16px "Inter", sans-serif';
         ctx.fillStyle = '#64748b';
-        ctx.textAlign = 'left';
-        ctx.fillText('Find your perfect tabletop games at bionicle4365.github.io/Boardgame-Recommender', 50, 1885);
+        const siteUrlText = (typeof window !== 'undefined' && window.location && window.location.host)
+            ? `${window.location.host}${window.location.pathname.startsWith('/Boardgame-Recommender') ? '/Boardgame-Recommender' : ''}`
+            : 'Boardgame-Recommender';
+        ctx.fillText(`Find your perfect tabletop games at ${siteUrlText}`, 50, 1885);
 
         ctx.textAlign = 'right';
         ctx.fillText(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }), 1030, 1885);

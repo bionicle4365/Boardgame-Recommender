@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
     model = run_model(interactions=interaction_matrix, n_components=50, loss='warp', epoch=30, n_jobs=4)
     
-    username = 'bionicle4365'
+    username = 'sample_user'
 
     rec_list_u12 = get_recs(model = model, 
                     interactions = interaction_matrix, 

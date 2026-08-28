@@ -358,7 +358,7 @@ if __name__ == "__main__":
 
     # 4. Generate recommendations if a model is available
     if best_model and best_dataset:
-        usernames_to_recommend = ['bionicle4365', 'janeivy11']
+        usernames_to_recommend = ['sample_user1', 'sample_user2']
         print("--- Generating Recommendations ---")
         generate_recommendations(
             model=best_model,

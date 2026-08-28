@@ -171,82 +171,9 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 ---
 
 
-## Milestone 50: Local Development Environment
-
-### Objective
-Enable full local Jekyll development with real API endpoints and Cognito credentials by providing a secure, gitignored configuration override system — supporting both `.env.local` file and Jekyll config override approaches.
-
-### Design Notes
-- **Problem:** The `_config.yml` uses `PLACEHOLDER_API_URL`, `PLACEHOLDER_COGNITO_CLIENT_ID`, and `PLACEHOLDER_COGNITO_USER_POOL_ID` which are only substituted via GitHub Actions secrets during CI deployment. When running `bundle exec jekyll serve` locally, these remain as literal placeholder strings, causing API calls and authentication to fail silently.
-- **No Secrets in Repo:** The real values must never be committed. Both approaches must use gitignored files.
-- **Two Approaches:** Document and support: (a) a `_config.local.yml` override file used with Jekyll's multi-config flag, and (b) a `.env.local` file with a helper script that generates the local config override automatically.
-
-### Architecture Decisions
-- **Approach A — Jekyll Config Override:** Create a `_config.local.yml` template (gitignored) that users copy and fill in with real values. Run Jekyll with `bundle exec jekyll serve --config _config.yml,_config.local.yml` — the second config file overrides matching keys in the first.
-- **Approach B — `.env.local` + Script:** Create a `.env.local.example` file documenting required variables. Create a `scripts/gen_local_config.py` (or `.sh`) script that reads `.env.local` and generates `_config.local.yml` from it. Add `.env.local` and `_config.local.yml` to `.gitignore`.
-- **Documentation:** Add a `LOCAL_DEVELOPMENT.md` guide documenting both approaches, prerequisites (Ruby, Bundler, Jekyll), and troubleshooting steps.
-
-### Tasks
-- [ ] **Gitignore Updates:** Add `_config.local.yml`, `.env.local`, and any generated local config files to the repository `.gitignore`.
-- [ ] **Config Override Template:** Create `site_ui/_config.local.yml.example` with commented placeholder entries for `api_url`, `cognito_client_id`, `cognito_region`, and `cognito_user_pool_id`.
-- [ ] **Env File Template:** Create `site_ui/.env.local.example` listing all required environment variables with descriptions.
-- [ ] **Config Generator Script:** Create `scripts/gen_local_config.py` that reads `site_ui/.env.local` and writes `site_ui/_config.local.yml` with the real values.
-- [ ] **Local Development Guide:** Create `LOCAL_DEVELOPMENT.md` documenting both approaches, prerequisites, and step-by-step setup instructions.
-- [ ] **Mock API Enhancement:** Review and update the existing `fetchApi` mock fallback in `utils.js` to cover more endpoints accurately for fully offline development when even the real API URL is unavailable.
-- [ ] **Verification:** Confirm both approaches produce a working local site with functional API calls and Cognito authentication when real credentials are provided.
-
-
-
----
-
-## Completed Milestones
-
-
-* **Milestone 1: Crawler & Data Pipeline Verification** (AWS S3 combined catalog downloads, custom Parquet schema mapping)
-* **Milestone 2: Scraper Resilience, Concurrency Limiting, & API Back-off** (SQS rate limiting, exponential backoff/jitter)
-* **Milestone 3: Serving Caching & API Performance Optimization** (S3 and client localStorage caching)
-* **Milestone 4: Recommender Enhancements & Dynamic Personalization UI** (weights, BGG hotness tuning, dynamic parameters)
-* **Milestone 5: Playgroup Organizer & Game Night Planner Page** (attendee filtering, group collection merging)
-* **Milestone 6: Rich Cards & CDN-Cached Image Rendering** (metadata display, visual image cards)
-* **Milestone 7: Unit Testing & CI/CD Verification** (pytest, GitHub Actions workflows)
-* **Milestone 8: Database Reprocessing & Full Catalog Scrape Execution** (scraper reprocessing, serverless python compactor Lambda)
-* **Milestone 10: Mobile UI Optimization & Responsive Navigation Menu** (responsive layouts, blurred backdrop mobile drawer)
-* **Milestone 11: Taste Analytics Backend** (Event-driven pipeline using SQS and Lambda to pre-compute user taste profiles in JSON format)
-* **Milestone 12: Production Observability, Rate Limiting, & Cost Protection** (API limits, structured logging, alarms)
-* **Milestone 13: Serverless Cost Optimization & Glue Crawler Bypass** (Python pandas/pyarrow compaction Lambda, bypass Athena)
-* **Milestone 14: Recommender Personalization via Duration & Complexity Weighting** (Pacing/complexity soft-weighting, Bedrock justifications, frontend selectors)
-* **Milestone 15: User Authentication & Profile Persistence** (Amazon Cognito integration, DynamoDB preferences/playgroups synchronization, custom glassmorphism modal UI)
-* **Milestone 16: Unified Analytics & Taste Profile UI** (Cohesive dashboard experience with glassmorphism layout, dynamic Chart.js visualizations for individual/playgroup collection statistics and taste profiles)
-* **Milestone 18: Varied & Engaging AI Recommendation Explanations** (Prompt example removal, explicit 7-angle rotation instruction, hard opener uniqueness constraint, elevated temperature, Converse system prompt, test coverage)
-* **Milestone 19: BGG GeekPreview Convention Recommendations** (Active previews metadata configuration, Lambda daily synchronization of preview game IDs, recommender filter, in-memory TTL caching, frontend convention dropdown, and convention badges)
-* **Milestone 20: Cognito Verification Email Delivery Setup** (SES identity created, IAM policies granted, custom HTML email templates added to Terraform)
-* **Milestone 22: LLM Prompt Grounding & Deduplication** (Injected catalog mechanics into Bedrock prompt to eliminate hallucination, and added instructions to deduplicate variants)
-* **Milestone 24: Responsive Grid UI** (CSS container widths updated to prevent unnecessary horizontal scrolling)
-* **Milestone 26: UI Redesign & Polish** (Standardized grid wrapper alignment, full-width responsive BGG collection grid/analytics table, symmetric AI form layout, realigned playgroup panel with loading animations, glassmorphism visual accents)
-* **Milestone 27: Interactive User Profile Dashboard & Playground** (Cognito profile syncing, Overview, Deep Dive, and Rating Analytics layouts, hover/click user header dropdown, and grouped rating distribution bar charts)
-* **Milestone 28: Shared CSS Design System & JS Utilities Extraction** (Extracted shared CSS variables, layout configurations, component classes, and Cognito Auth/fetch wrappers into centralized files)
-* **Milestone 29: Dark Mode Toggle** (User-togglable dark mode, custom property variables, transition animations, localStorage persistence, blocking pre-render script, page styling audits)
-* **Milestone 30: Skeleton Loading States** (Replaced spinner-based loading indicators with animated shimmering skeleton placeholder tables and cards in Recommender, Collection Browser, and Playgroup Organizer)
-* **Milestone 32: API Gateway Response Compression** (Enabled native gzip response compression on API Gateway and exposed the Content-Encoding header in CORS configurations)
-* **Milestone 36: Security Hardening & CORS Fixes** (Removed wildcard Lambda CORS headers, added API Gateway POST preflights, added regex username validation, moved Cognito Client/Pool IDs to GitHub secrets)
-* **Milestone 37: DynamoDB Preferences Safety & Backend DRY Refactor** (Migrated preferences handler POST to table.update_item, centralized weight parsing helper in cache_utils.py, simplified client mock patching with dynamic __getattr__ module routing)
-* **Milestone 38: Repository Hygiene & Code Quality** (Removed deprecated bgg_raw_to_compressed/ and ml_engine/ directories, extracted recommender index.html styles/scripts to external files, removed inert moved blocks from main.tf, and hardened test conftest AWS mock keys)
-* **Milestone 39: Test Coverage Expansion** (S3 caching layer unit tests, Bedrock narration pipeline unit tests, Vitest + JSDOM frontend tests, CI path trigger fix)
-* **Milestone 45: Recommendation Diversity Guard** (Deterministic post-scoring diversification pass to prevent mechanic and category clustering in Bedrock shortlists)
-* **Milestone 40: Groups Page Redesign — Tabs & Per-Member Affinity** (Structured tabs layout, per-member taste alignment bar charts, dynamic color-coding, 100% max clamping, and backend Lambda scoring helper extraction)
-* **Milestone 47: Release Polish (SEO, Favicon & Social Sharing)** (Registered jekyll-seo-tag and jekyll-sitemap, linked generated favicon and apple touch icons, audited page metadata, configured default OpenGraph/Twitter sharing cards, and added a custom glassmorphic 404 landing page)
-* **Milestone 48: Collection Browser Image Fitting** (Updated collection browser game images to `object-fit: contain` with customized dark/light mode gradient containers to ensure aspect-ratio-aware fitting without cropping)
-* **Milestone 34: Empty States, Onboarding Guidance & Cold-Start Rating Flow** (Polished empty state preview overlay, Gamer Quick Taste Test with Round 2 adaptive selection, Casual Personality Test with 7 playstyle questions, S3-bypass inline profile/weights POST submissions, and mechanic-based dislike exclusions)
-* **Milestone 54: Scoring Pipeline Corrections** (Projected true cosine similarity, dislike threshold boundary lowered to 6.5, group re-computation deduplication, BGG_TESTING env var test bypass, and sum-based complexity weighting)
-* **Milestone 51: Taste Test Image Loading Fix** (Replaced broken full-sized BGG CDN images with verified smaller thumbnail URLs in the seed catalog array, and added a fallback placeholder handler to the HTML markup)
-* **Milestone 49: Mobile UI Polish Pass** (Comprehensive responsiveness audit, WCAG 2.1 44px touch targets, mobile wizard modal & taste test carousel, adaptive filters and affinity bars, table overflow protection, and responsive layouts across all viewports from 320px to 768px)
-* **Milestone 55: Wizard Write-In Game Search & Expanded Seed Catalog** (50-game auto-generated SEED_CATALOG, 9 adaptive Round 2 picks, static minified 5,000-game autocomplete database, debounced vanilla JS search with keyboard navigation, 3 write-in slots in Taste Test & Personality Test with 9.0 rating assignment)
-* **Milestone 56: Monthly Stats Refresh for Recent Board Games** (Added `recent` mode to `bgg_game_scraper.py` with `--window` support, EventBridge monthly schedule `cron(0 3 1 * ? *)` with container environment overrides, SQS batch queuing of recent game IDs `[start_id - 2500, start_id]`)
-* **Milestone 44: Recommender Latency Optimization** (Parallelized S3 profile checks, parquet downloads, and taste profile loading with ThreadPoolExecutor, Bedrock maxTokens reduced to 800 with 15-word concise narration constraint, removed redundant catalog copies, and cached catalog data conversions)
-* **Milestone 52: New User AI Narration Context** (Added prompt branching in narration.py for Casual Personality Test and Quick Taste Test, forwarded personality quiz answers from frontend to backend, tuned punchy/direct 1-sentence explanations aiming for 12–15 words, and raised generation maxTokens to 1,200 at 0.6 temperature)
-* **Milestone 53: Recommendation Card Redesign** (Explored visual mockup options, implemented Option A 2-column desktop grid for ≥1024px monitors in design-system.css, updated card padding, flex alignment, member affinity bar tracks, and aligned skeleton loading placeholders)
 * **Milestone 41: Shareable Top 10 Recommendation Graphic & Image Export** (Implemented HTML5 Canvas generator module graphic_export.js for generating 1200x675 high-res social graphics of top 10 recommended games without AI text, added Export Image modal with live preview, 1-click Download PNG, Clipboard copy, and mobile Web Share API integration)
 * **Milestone 58: Collection Browser Loading State & Skeleton Redesign** (Maintained visible persistent filter sidebar in loading state to eliminate layout jumping, rendered 8-card shimmering card grid skeleton matching default Card View)
 * **Milestone 59: User Profile Skeleton Animation & Viewport Alignment Fix** (Fixed @keyframes shimmer in design-system.css and profile/index.html to animate background-position instead of transform: translateX, eliminating offscreen lateral drift during profile dashboard load)
+* **Milestone 50: Local Development Environment** (Gitignored _config.local.yml and .env.local overrides, gen_local_config.py generator script, comprehensive LOCAL_DEVELOPMENT.md guide, and enhanced offline mock API handlers for /profile, /groups, and /preferences)
 
 

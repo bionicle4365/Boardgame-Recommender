@@ -203,7 +203,7 @@ if __name__ == '__main__':
         "Records": [
             {
                 "messageId": "msg1",
-                "body": "bionicle4365",
+                "body": "gamer_demo",
                 "attributes": {}, "messageAttributes": {}, "md5OfBody": "", "eventSource": "aws:sqs", "eventSourceARN": "", "awsRegion": ""
             },
             {

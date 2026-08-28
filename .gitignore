@@ -12,4 +12,9 @@ ml_engine/**
 scratch/**
 node_modules/
 **/node_modules/
-**/.jekyll-cache/
+**/.jekyll-cache/
+**/.env.local
+**/.env*.local
+**/_config.local.yml
+**/*_config.local.yml
+*.local.yml
