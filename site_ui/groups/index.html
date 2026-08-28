@@ -781,10 +781,15 @@ description: "Combine collections, plan board game sessions, and get group conse
                                 </div>
                             </div>
 
-                            <!-- Generate Plan Button -->
-                            <button class="btn btn-primary" style="padding: 12px; font-size: 1rem; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); margin-top: 20px;" id="generate-plan-btn">
-                                Generate Game Night Planner Recommendations
-                            </button>
+                            <!-- Action Buttons Row -->
+                            <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                                <button class="btn btn-primary" style="flex: 1; min-width: 260px; padding: 12px; font-size: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" id="generate-plan-btn">
+                                    Generate Game Night Planner Recommendations
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="openVotingSessionModal()" style="padding: 12px 18px; font-size: 0.95rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;" title="Create a poll directly from all unique games owned by this playgroup">
+                                    🗳️ Poll Group Library
+                                </button>
+                            </div>
 
                             <!-- Status Progress Card -->
                             <div id="status-card" class="status-card" style="margin-top: 25px;">
@@ -860,13 +865,16 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                         <!-- Tab 3: Past Polls History Content -->
                         <div id="tab-polls-content" class="groups-tab-content">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 20px 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 20px 0; gap: 10px; flex-wrap: wrap;">
                                 <h3 style="margin: 0; font-size: 1.1rem; font-family: 'Outfit', sans-serif; color: var(--text-main);">Game Night Voting History</h3>
-                                <button class="btn btn-secondary" onclick="loadPastPolls()" style="font-size: 0.85rem; padding: 6px 14px;">🔄 Refresh</button>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-primary" onclick="openVotingSessionModal()" style="font-size: 0.85rem; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;">🗳️ + Create Poll</button>
+                                    <button class="btn btn-secondary" onclick="loadPastPolls()" style="font-size: 0.85rem; padding: 6px 14px;">🔄 Refresh</button>
+                                </div>
                             </div>
                             <div id="past-polls-list" style="display: flex; flex-direction: column; gap: 14px;">
                                 <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
-                                    No past polls found for this group. Run recommendations and launch a voting session to see results here!
+                                    No past polls found for this group. Click "+ Create Poll" or run recommendations to launch a voting session!
                                 </div>
                             </div>
                         </div>
@@ -875,18 +883,28 @@ description: "Combine collections, plan board game sessions, and get group conse
 
             <!-- Voting Session Modal -->
             <div id="voting-session-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
-                <div style="background: var(--surface-bg, #1e293b); border: 1.5px solid var(--border); border-radius: 16px; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                <div style="background: var(--surface-bg, #1e293b); border: 1.5px solid var(--border); border-radius: 16px; max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h3 style="margin: 0; font-size: 1.25rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">🗳️ Create Game Night Poll</h3>
                         <button type="button" onclick="closeVotingSessionModal()" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;">&times;</button>
                     </div>
                     
                     <div id="modal-step-config">
-                        <p style="margin: 0 0 14px 0; font-size: 0.9rem; color: var(--text-muted);">
-                            Select candidates from your recommendations and set a poll duration. Attendees can vote 👍 Want to Play, 😐 Fine, or ❌ Veto.
+                        <p id="modal-source-desc" style="margin: 0 0 14px 0; font-size: 0.9rem; color: var(--text-muted);">
+                            Select candidates from your group's library or recommendations. Attendees can vote 👍 Want to Play, 😐 Fine, or ❌ Veto.
                         </p>
-                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Candidate Games:</label>
-                        <div id="modal-candidates-list" style="margin: 8px 0 16px 0; display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding-right: 4px;"></div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Candidate Games:</label>
+                            <span id="modal-selection-count" style="font-size: 0.82rem; font-weight: 700; color: var(--primary);">0 selected</span>
+                        </div>
+
+                        <!-- Search and Filter Bar -->
+                        <div style="margin-bottom: 10px;">
+                            <input type="text" id="modal-candidate-search" placeholder="🔍 Filter games by title..." oninput="filterModalCandidates(this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.88rem; box-sizing: border-box;">
+                        </div>
+
+                        <div id="modal-candidates-list" style="margin: 8px 0 16px 0; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px;"></div>
                         
                         <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Poll Duration (Closes At):</label>
                         <select id="modal-poll-duration" style="width: 100%; margin-top: 6px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem;">
@@ -1400,37 +1418,190 @@ description: "Combine collections, plan board game sessions, and get group conse
 
         let currentActiveRecs = [];
 
-        // Voting Session Modal Handlers
-        window.openVotingSessionModal = function(recs) {
-            currentActiveRecs = recs || currentActiveRecs || [];
-            if (!currentActiveRecs || currentActiveRecs.length === 0) {
-                alert("Please generate recommendations first before creating a voting poll!");
+        let modalCandidatePool = [];
+        let modalSelectedCandidateIds = new Set();
+
+        // Helper to fetch all unique owned games across active playgroup members
+        async function fetchGroupOwnedGames(usernames) {
+            if (!usernames || usernames.length === 0) return [];
+            const allUniqueMap = new Map();
+
+            for (const username of usernames) {
+                try {
+                    const xmlDoc = await fetchUserXml(username);
+                    if (xmlDoc) {
+                        const userGames = parseXmlGames(xmlDoc);
+                        userGames.forEach(g => {
+                            if (g.own || userGames.every(x => !x.own)) {
+                                const key = String(g.id || g.name.toLowerCase());
+                                if (!allUniqueMap.has(key)) {
+                                    allUniqueMap.set(key, {
+                                        id: g.id || key,
+                                        name: g.name,
+                                        thumbnail: g.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png',
+                                        rating: g.rating || g.bggRating || null,
+                                        yearPublished: g.yearPublished,
+                                        minPlayers: g.minPlayers,
+                                        maxPlayers: g.maxPlayers,
+                                        playingTime: g.playingTime,
+                                        owners: [username]
+                                    });
+                                } else {
+                                    const existing = allUniqueMap.get(key);
+                                    if (!existing.owners.includes(username)) {
+                                        existing.owners.push(username);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.warn(`Could not load collection for ${username}:`, err);
+                }
+            }
+
+            const gamesList = Array.from(allUniqueMap.values());
+            gamesList.sort((a, b) => {
+                if (a.rating && b.rating) return b.rating - a.rating;
+                if (a.rating) return -1;
+                if (b.rating) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            return gamesList;
+        }
+
+        function renderModalCandidatesList(filterQuery = "") {
+            const candidatesList = document.getElementById("modal-candidates-list");
+            const countBadge = document.getElementById("modal-selection-count");
+            if (!candidatesList) return;
+
+            const q = filterQuery.toLowerCase().trim();
+            const filtered = q
+                ? modalCandidatePool.filter(c => c.name.toLowerCase().includes(q))
+                : modalCandidatePool;
+
+            if (countBadge) {
+                countBadge.textContent = `${modalSelectedCandidateIds.size} selected`;
+            }
+
+            if (filtered.length === 0) {
+                candidatesList.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem;">
+                        ${q ? `No games match "${window.escapeHTML(q)}"` : 'No games found in the candidates pool.'}
+                    </div>
+                `;
                 return;
             }
 
-            const modal = document.getElementById("voting-session-modal");
-            const stepConfig = document.getElementById("modal-step-config");
-            const stepCreated = document.getElementById("modal-step-created");
-            const candidatesList = document.getElementById("modal-candidates-list");
-
-            stepConfig.style.display = "block";
-            stepCreated.style.display = "none";
-
-            // Render candidate checkboxes (pre-select top 5)
             let html = "";
-            currentActiveRecs.slice(0, 10).forEach((rec, idx) => {
-                const isChecked = idx < 5 ? "checked" : "";
+            filtered.forEach(rec => {
+                const recId = String(rec.id);
+                const isChecked = modalSelectedCandidateIds.has(recId) ? "checked" : "";
+                const ownerBadge = (rec.owners && rec.owners.length > 0)
+                    ? `<span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 4px;">(${rec.owners.join(", ")})</span>`
+                    : '';
+
                 html += `
-                    <label style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">
-                        <input type="checkbox" class="poll-candidate-cb" value="${rec.id}" ${isChecked} style="accent-color: var(--primary);">
-                        <img src="${rec.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover;">
-                        <span style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${window.escapeHTML(rec.name)}</span>
-                        ${rec.rating ? `<span style="font-size: 0.8rem; color: #b45309; margin-left: auto;">★ ${rec.rating.toFixed(1)}</span>` : ''}
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: background 0.15s ease;">
+                        <input type="checkbox" class="poll-candidate-cb" value="${window.escapeHTML(recId)}" ${isChecked} onchange="toggleModalCandidate('${window.escapeHTML(recId)}')" style="accent-color: var(--primary);">
+                        <img src="${rec.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border);" onerror="this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png'">
+                        <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                            <span style="font-weight: 600; color: var(--text-main); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${window.escapeHTML(rec.name)} ${ownerBadge}
+                            </span>
+                            ${rec.yearPublished && rec.yearPublished !== 'N/A' ? `<span style="font-size: 0.75rem; color: var(--text-muted);">${rec.yearPublished}</span>` : ''}
+                        </div>
+                        ${rec.rating ? `<span style="font-size: 0.8rem; color: #b45309; font-weight: 700; white-space: nowrap;">★ ${typeof rec.rating === 'number' ? rec.rating.toFixed(1) : rec.rating}</span>` : ''}
                     </label>
                 `;
             });
             candidatesList.innerHTML = html;
+        }
+
+        window.toggleModalCandidate = function(candId) {
+            candId = String(candId);
+            if (modalSelectedCandidateIds.has(candId)) {
+                modalSelectedCandidateIds.delete(candId);
+            } else {
+                modalSelectedCandidateIds.add(candId);
+            }
+            const countBadge = document.getElementById("modal-selection-count");
+            if (countBadge) {
+                countBadge.textContent = `${modalSelectedCandidateIds.size} selected`;
+            }
+        };
+
+        window.filterModalCandidates = function(query) {
+            renderModalCandidatesList(query);
+        };
+
+        // Voting Session Modal Handlers
+        window.openVotingSessionModal = async function(recs) {
+            const modal = document.getElementById("voting-session-modal");
+            const stepConfig = document.getElementById("modal-step-config");
+            const stepCreated = document.getElementById("modal-step-created");
+            const candidatesList = document.getElementById("modal-candidates-list");
+            const sourceDesc = document.getElementById("modal-source-desc");
+            const searchInput = document.getElementById("modal-candidate-search");
+
+            stepConfig.style.display = "block";
+            stepCreated.style.display = "none";
+            if (searchInput) searchInput.value = "";
+
+            const hasExplicitRecs = recs && recs.length > 0;
+            const attendees = getCheckedUsernames();
+
+            if (!hasExplicitRecs && attendees.length === 0) {
+                alert("Please select at least one playgroup member to load candidates for the voting poll!");
+                return;
+            }
+
             modal.style.display = "flex";
+
+            if (hasExplicitRecs) {
+                if (sourceDesc) {
+                    sourceDesc.textContent = "Select candidate games from your recommendation shortlist or filter by title. Attendees vote 👍 Want to Play, 😐 Fine, or ❌ Veto.";
+                }
+                modalCandidatePool = recs.map(r => ({ ...r, id: String(r.id) }));
+                modalSelectedCandidateIds = new Set(modalCandidatePool.slice(0, 5).map(r => String(r.id)));
+                renderModalCandidatesList();
+            } else {
+                if (sourceDesc) {
+                    sourceDesc.textContent = `Aggregating unique owned games from active playgroup attendees (${attendees.join(", ")})...`;
+                }
+                candidatesList.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: var(--text-muted);">
+                        <div class="spinner" style="width: 24px; height: 24px; margin: 0 auto 12px auto;"></div>
+                        Loading unique owned games from ${attendees.length} member${attendees.length > 1 ? 's' : ''}...
+                    </div>
+                `;
+
+                try {
+                    const ownedGames = await fetchGroupOwnedGames(attendees);
+                    if (ownedGames.length === 0) {
+                        candidatesList.innerHTML = `
+                            <div style="text-align: center; padding: 25px; color: var(--danger);">
+                                No games found in the selected members' collections. Make sure member BGG accounts have owned games or run recommendations first.
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    if (sourceDesc) {
+                        sourceDesc.textContent = `Found ${ownedGames.length} unique owned games across ${attendees.length} members. Select games to include in tonight's voting poll:`;
+                    }
+                    modalCandidatePool = ownedGames;
+                    modalSelectedCandidateIds = new Set(ownedGames.slice(0, 5).map(g => String(g.id)));
+                    renderModalCandidatesList();
+                } catch (e) {
+                    console.error("Error loading group library for poll:", e);
+                    candidatesList.innerHTML = `
+                        <div style="text-align: center; padding: 25px; color: var(--danger);">
+                            Failed to load group games: ${window.escapeHTML(e.message || 'Unknown error')}
+                        </div>
+                    `;
+                }
+            }
         };
 
         window.closeVotingSessionModal = function() {
@@ -1439,13 +1610,12 @@ description: "Combine collections, plan board game sessions, and get group conse
         };
 
         window.createVotingSession = async function() {
-            const selectedIds = Array.from(document.querySelectorAll(".poll-candidate-cb:checked")).map(cb => cb.value);
-            if (selectedIds.length === 0) {
+            if (modalSelectedCandidateIds.size === 0) {
                 alert("Please select at least one candidate game for the voting poll!");
                 return;
             }
 
-            const chosenCandidates = currentActiveRecs.filter(r => selectedIds.includes(String(r.id)));
+            const chosenCandidates = modalCandidatePool.filter(r => modalSelectedCandidateIds.has(String(r.id)));
             const durationHours = parseFloat(document.getElementById("modal-poll-duration").value || 24);
             const groupName = activeGroup ? activeGroup.name : "Game Night";
             const roster = activeGroup ? activeGroup.members : getCheckedUsernames();
@@ -1856,7 +2026,10 @@ description: "Combine collections, plan board game sessions, and get group conse
             const games = [];
             const items = xmlDoc.getElementsByTagName('item');
             for (let i = 0; i < items.length; i++) {
+                const id = items[i].getAttribute('objectid') || '';
                 const name = items[i].getElementsByTagName('name')[0]?.textContent || 'N/A';
+                const thumbnail = items[i].getElementsByTagName('thumbnail')[0]?.textContent || '';
+                const image = items[i].getElementsByTagName('image')[0]?.textContent || '';
                 const yearPublished = items[i].getElementsByTagName('yearpublished')[0]?.textContent || 'N/A';
                 const status = items[i].getElementsByTagName('status')[0];
                 let own = status && status.getAttribute('own') === '1';
@@ -1869,10 +2042,14 @@ description: "Combine collections, plan board game sessions, and get group conse
                 const bggAverage = stats?.getElementsByTagName('bayesaverage')[0]?.getAttribute('value') || 'N/A';
 
                 games.push({
+                    id: id,
                     name: name,
+                    thumbnail: thumbnail || image || 'https://cf.geekdo-images.com/images/placeholder_thumb.png',
+                    image: image,
                     own: own,
                     yearPublished: yearPublished === 'N/A' ? 'N/A' : parseInt(yearPublished),
                     bggRating: bggAverage === 'N/A' ? 'N/A' : parseFloat(bggAverage),
+                    rating: bggAverage === 'N/A' ? null : parseFloat(bggAverage),
                     minPlayers: minPlayers === 'N/A' ? 'N/A' : parseInt(minPlayers),
                     maxPlayers: maxPlayers === 'N/A' ? 'N/A' : parseInt(maxPlayers),
                     playingTime: playingTime === 'N/A' ? 'N/A' : parseInt(playingTime),

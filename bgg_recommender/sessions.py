@@ -11,6 +11,7 @@ import json
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Dict, List, Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,28 @@ POINTS_NEUTRAL = 1
 POINTS_VETO = -99
 
 SESSIONS_TABLE_NAME = os.environ.get("SESSIONS_TABLE", "bgg-game-night-sessions")
+
+
+def floats_to_decimals(obj: Any) -> Any:
+    """Recursively converts all float instances to Decimal for DynamoDB storage."""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    if isinstance(obj, dict):
+        return {k: floats_to_decimals(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [floats_to_decimals(v) for v in obj]
+    return obj
+
+
+def decimals_to_floats(obj: Any) -> Any:
+    """Recursively converts Decimal instances back to float/int for JSON serialization."""
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    if isinstance(obj, dict):
+        return {k: decimals_to_floats(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [decimals_to_floats(v) for v in obj]
+    return obj
 
 
 def get_dynamodb_table():
@@ -154,7 +177,8 @@ def create_session(
     if table is None:
         table = get_dynamodb_table()
 
-    table.put_item(Item=item)
+    dynamo_item = floats_to_decimals(item)
+    table.put_item(Item=dynamo_item)
     logger.info(f"Created voting session {session_id} for creator {creator_id}, closes at {item['closes_at']}")
 
     # Calculate initial consensus
@@ -171,10 +195,11 @@ def get_session(session_id: str, table=None) -> Optional[Dict[str, Any]]:
         table = get_dynamodb_table()
 
     resp = table.get_item(Key={'session_id': session_id})
-    item = resp.get('Item')
-    if not item:
+    raw_item = resp.get('Item')
+    if not raw_item:
         return None
 
+    item = decimals_to_floats(raw_item)
     now = datetime.now(timezone.utc)
     closes_at = datetime.fromisoformat(item['closes_at'].replace('Z', '+00:00'))
     is_closed = now >= closes_at
@@ -269,6 +294,7 @@ def list_creator_sessions(creator_id: str, table=None) -> List[Dict[str, Any]]:
         except Exception:
             items = []
 
+    items = decimals_to_floats(items)
     now = datetime.now(timezone.utc)
     for item in items:
         try:

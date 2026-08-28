@@ -315,3 +315,32 @@ def test_lambda_handler_vote_route(mock_vote):
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
     assert 'Alice' in body['votes']
+
+
+def test_decimal_serialization_roundtrip(sample_candidates):
+    from decimal import Decimal
+    from sessions import floats_to_decimals, decimals_to_floats
+    
+    mock_table = MagicMock()
+    session = create_session(
+        creator_id="user_123",
+        group_name="Friday Games",
+        candidates=sample_candidates,
+        duration_hours=24.0,
+        table=mock_table
+    )
+    
+    # Check that saved item contains Decimals instead of floats
+    saved_item = mock_table.put_item.call_args[1]['Item']
+    assert isinstance(saved_item['duration_hours'], Decimal)
+    assert isinstance(saved_item['candidates'][0]['rating'], Decimal)
+    assert isinstance(saved_item['candidates'][0]['complexity'], Decimal)
+    
+    # Check that decimals_to_floats converts it back cleanly for JSON serialization
+    converted = decimals_to_floats(saved_item)
+    assert isinstance(converted['duration_hours'], (float, int))
+    assert isinstance(converted['candidates'][0]['rating'], float)
+    
+    # Check JSON serializability
+    json_str = json.dumps(converted)
+    assert "Dune: Imperium" in json_str
