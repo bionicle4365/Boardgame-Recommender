@@ -401,3 +401,12 @@ def cancel_session(session_id: str, table=None) -> bool:
     table.delete_item(Key={'session_id': session_id})
     logger.info(f"Deleted / cancelled session {session_id}")
     return True
+
+
+def delete_session(session_id: str, table=None) -> bool:
+    """
+    Deletes a completed or cancelled voting session from DynamoDB.
+    """
+    if table is not None:
+        return cancel_session(session_id, table=table)
+    return cancel_session(session_id)

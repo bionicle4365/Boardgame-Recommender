@@ -275,14 +275,20 @@ window.fetchApi = async function(endpoint, options = {}) {
             } else {
                 data = { error: "Session not found" };
             }
-        } else if (endpoint.startsWith('/session/cancel') || (endpoint.startsWith('/session') && options.method === 'DELETE')) {
+        } else if (endpoint.startsWith('/session/delete') || endpoint.startsWith('/session/cancel') || (endpoint.startsWith('/session') && options.method === 'DELETE')) {
             const payload = JSON.parse(options.body || '{}');
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
-            const sessionId = payload.session_id || urlParams.get('session_id') || urlParams.get('id') || endpoint.split('/session/')[1];
+            let sessionId = payload.session_id || urlParams.get('session_id') || urlParams.get('id');
+            if (!sessionId) {
+                const parts = endpoint.split('?')[0].split('/');
+                if (parts.length > 2 && !['cancel', 'delete', 'close', 'vote'].includes(parts[2])) {
+                    sessionId = parts[2];
+                }
+            }
             let sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
             sessions = sessions.filter(s => s.session_id !== sessionId);
             localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
-            data = { message: "Session cancelled successfully", session_id: sessionId };
+            data = { message: "Session deleted successfully", session_id: sessionId };
         } else if (endpoint.startsWith('/session') && (!options.method || options.method === 'GET')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
             const sessionId = urlParams.get('session_id') || urlParams.get('id');

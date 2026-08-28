@@ -308,14 +308,14 @@ def _handle_delete_session(params):
         }
 
     try:
-        sessions.cancel_session(session_id)
+        sessions.delete_session(session_id)
         return {
             'statusCode': 200,
             'headers': _cors_headers(),
-            'body': json.dumps({'message': 'Session cancelled successfully', 'session_id': session_id})
+            'body': json.dumps({'message': 'Session deleted successfully', 'session_id': session_id})
         }
     except Exception as e:
-        logger.error(f"Error cancelling session {session_id}: {e}", exc_info=True)
+        logger.error(f"Error deleting session {session_id}: {e}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': _cors_headers(),
@@ -866,10 +866,10 @@ def lambda_handler(event, context):
             response = _handle_list_sessions(query_params, event)
         elif '/session/close' in path or (path.startswith('/session') and http_method == 'PUT'):
             response = _handle_close_session(combined_params)
-        elif '/session/cancel' in path or (path.startswith('/session') and http_method == 'DELETE'):
+        elif '/session/cancel' in path or '/session/delete' in path or (path.startswith('/session') and http_method == 'DELETE'):
             stripped = path.strip('/')
             parts = stripped.split('/')
-            if len(parts) > 1 and parts[0] == 'session':
+            if len(parts) > 1 and parts[0] == 'session' and parts[1] not in ('cancel', 'close', 'vote', 'delete'):
                 combined_params['session_id'] = parts[1]
             response = _handle_delete_session(combined_params)
         elif '/session/vote' in path or (path.startswith('/session') and http_method == 'POST' and ('vote' in path or 'participant_name' in body_params)):
@@ -880,7 +880,7 @@ def lambda_handler(event, context):
             # Extract session_id if in path: /session/{session_id}
             stripped = path.strip('/')
             parts = stripped.split('/')
-            if len(parts) > 1 and parts[0] == 'session':
+            if len(parts) > 1 and parts[0] == 'session' and parts[1] not in ('cancel', 'close', 'vote', 'delete'):
                 combined_params['session_id'] = parts[1]
             response = _handle_get_session(combined_params)
         else:

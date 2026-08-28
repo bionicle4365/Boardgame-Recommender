@@ -1944,7 +1944,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                                         ` : ''}
                                     </div>
                                     <div style="display: flex; gap: 8px; align-items: center;">
-                                        <button type="button" class="btn btn-secondary" onclick="cancelSessionPrompt('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #f87171; border-color: rgba(239, 68, 68, 0.4);" title="Delete from history">
+                                        <button type="button" class="btn btn-secondary" onclick="deleteSessionPrompt('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #f87171; border-color: rgba(239, 68, 68, 0.4);" title="Delete from history">
                                             🗑️ Delete
                                         </button>
                                         <a href="${voteUrl}" target="_blank" class="btn btn-secondary" style="font-size: 0.82rem; padding: 8px 14px;">
@@ -2002,8 +2002,26 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
+        window.deleteSessionPrompt = async function(sessionId) {
+            if (!confirm("Are you sure you want to permanently delete this completed poll from your history?")) return;
+            try {
+                const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(sessionId)}`, {
+                    method: 'DELETE'
+                });
+                if (resp.ok) {
+                    loadPastPolls();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    alert(err.error || "Failed to delete poll.");
+                }
+            } catch (e) {
+                console.error("Error deleting session:", e);
+                alert("Error deleting poll.");
+            }
+        };
+
         window.cancelSessionPrompt = async function(sessionId) {
-            if (!confirm("Are you sure you want to cancel and delete this voting poll? This cannot be undone.")) return;
+            if (!confirm("Are you sure you want to cancel and remove this active voting poll?")) return;
             try {
                 const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(sessionId)}`, {
                     method: 'DELETE'
