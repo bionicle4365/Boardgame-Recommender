@@ -275,38 +275,56 @@ def submit_vote(
     return session
 
 
-def list_creator_sessions(creator_id: str, table=None) -> List[Dict[str, Any]]:
+def list_creator_sessions(creator_id: Optional[str] = None, table=None) -> List[Dict[str, Any]]:
     """
-    Lists past and active sessions created by creator_id via GSI query.
+    Lists past and active sessions created by creator_id via GSI query,
+    or lists all recent sessions if creator_id is not specified.
     """
-    if not creator_id:
-        return []
-
     if table is None:
         table = get_dynamodb_table()
 
-    try:
-        from boto3.dynamodb.conditions import Key
-        resp = table.query(
-            IndexName='creator_id-created_at-index',
-            KeyConditionExpression=Key('creator_id').eq(creator_id),
-            ScanIndexForward=False  # Most recent first
-        )
-        items = resp.get('Items', [])
-    except Exception as e:
-        logger.error(f"Error querying creator sessions for {creator_id}: {e}")
-        # Fallback to scan in local test environments if GSI is not indexed
+    items = []
+    if creator_id:
+        try:
+            from boto3.dynamodb.conditions import Key
+            resp = table.query(
+                IndexName='creator_id-created_at-index',
+                KeyConditionExpression=Key('creator_id').eq(creator_id),
+                ScanIndexForward=False  # Most recent first
+            )
+            items = resp.get('Items', [])
+        except Exception as e:
+            logger.warning(f"GSI query for {creator_id} failed: {e}. Falling back to scan.")
+            try:
+                resp = table.scan()
+                all_items = resp.get('Items', [])
+                items = [
+                    i for i in all_items
+                    if i.get('creator_id') == creator_id
+                    or i.get('creator_name') == creator_id
+                    or (isinstance(i.get('roster'), list) and creator_id in i.get('roster'))
+                ]
+                items.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+            except Exception as scan_err:
+                logger.error(f"Scan fallback failed: {scan_err}")
+                items = []
+    else:
         try:
             resp = table.scan()
-            all_items = resp.get('Items', [])
-            items = [i for i in all_items if i.get('creator_id') == creator_id]
+            items = resp.get('Items', [])
             items.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-        except Exception:
+            items = items[:50]
+        except Exception as scan_err:
+            logger.error(f"Scan failed: {scan_err}")
             items = []
 
     items = decimals_to_floats(items)
     now = datetime.now(timezone.utc)
     for item in items:
+        if item.get('creator_name') == 'anonymous_host':
+            item['creator_name'] = 'Host'
+        if item.get('creator_id') == 'anonymous_host':
+            item['creator_id'] = 'Host'
         try:
             closes_at = datetime.fromisoformat(item['closes_at'].replace('Z', '+00:00'))
             item['is_closed'] = now >= closes_at

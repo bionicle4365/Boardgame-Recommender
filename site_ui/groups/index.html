@@ -1816,7 +1816,9 @@ description: "Combine collections, plan board game sessions, and get group conse
             if (!listContainer) return;
 
             try {
-                const resp = await window.fetchApi("/sessions");
+                const currentUsername = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) || localStorage.getItem("bgg_username") || "";
+                const url = currentUsername ? `/sessions?creator_id=${encodeURIComponent(currentUsername)}` : "/sessions";
+                const resp = await window.fetchApi(url);
                 if (resp.ok) {
                     const data = await resp.json();
                     const sessions = data.sessions || [];
@@ -1878,7 +1880,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                                 <div style="background: var(--card-bg); border: 1.5px solid rgba(16, 185, 129, 0.4); box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08); border-radius: 12px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                                     <div style="display: flex; flex-direction: column; gap: 6px;">
                                         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                            <strong style="font-size: 1.1rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">${window.escapeHTML(sess.group_name || 'Game Night')}</strong>
+                                             <strong style="font-size: 1.1rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">${window.escapeHTML(sess.group_name || 'Game Night')}</strong>
                                             <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">⏱️ ACTIVE • ${timeLeft}</span>
                                         </div>
                                         <div style="font-size: 0.85rem; color: var(--text-muted);">
@@ -1954,12 +1956,24 @@ description: "Combine collections, plan board game sessions, and get group conse
                     }
 
                     listContainer.innerHTML = html;
+                } else {
+                    listContainer.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
+                            <div style="font-size: 2rem; margin-bottom: 8px;">🗳️</div>
+                            <h4 style="margin: 0 0 6px 0; color: var(--text-main);">No Active Polls</h4>
+                            <p style="margin: 0 0 16px 0; font-size: 0.9rem;">Click "+ Create Poll" or "Poll Group Library" to launch your first game night voting session!</p>
+                            <button class="btn btn-primary" onclick="openVotingSessionModal()" style="font-size: 0.88rem; padding: 8px 16px;">+ Create a Poll</button>
+                        </div>
+                    `;
                 }
             } catch (e) {
                 console.error("Error loading polls:", e);
                 listContainer.innerHTML = `
-                    <div style="text-align: center; padding: 30px; color: var(--danger);">
-                        Failed to load polls list. Please check your connection and try again.
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
+                        <div style="font-size: 2rem; margin-bottom: 8px;">🗳️</div>
+                        <h4 style="margin: 0 0 6px 0; color: var(--text-main);">No Polls Found</h4>
+                        <p style="margin: 0 0 16px 0; font-size: 0.9rem;">Click "+ Create Poll" or "Poll Group Library" to launch your first game night voting session!</p>
+                        <button class="btn btn-primary" onclick="openVotingSessionModal()" style="font-size: 0.88rem; padding: 8px 16px;">+ Create a Poll</button>
                     </div>
                 `;
             }

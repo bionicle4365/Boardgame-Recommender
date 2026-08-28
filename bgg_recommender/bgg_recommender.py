@@ -326,14 +326,21 @@ def _handle_delete_session(params):
 def _handle_list_sessions(query_params, event):
     import sessions
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
-    creator_id = claims.get('sub') or claims.get('username') or query_params.get('creator_id')
+    creator_id = claims.get('sub') or claims.get('username') or query_params.get('creator_id') or query_params.get('username')
 
     if not creator_id:
-        return {
-            'statusCode': 400,
-            'headers': _cors_headers(),
-            'body': json.dumps({'error': 'creator_id or authenticated user required'})
-        }
+        auth_header = (event.get('headers') or {}).get('authorization') or (event.get('headers') or {}).get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            try:
+                import base64
+                token_parts = auth_header.split(' ')[1].split('.')
+                if len(token_parts) >= 2:
+                    payload_b64 = token_parts[1]
+                    payload_b64 += '=' * (-len(payload_b64) % 4)
+                    payload_json = json.loads(base64.b64decode(payload_b64).decode('utf-8'))
+                    creator_id = payload_json.get('sub') or payload_json.get('cognito:username') or payload_json.get('username') or payload_json.get('email')
+            except Exception as jwt_err:
+                logger.debug(f"Could not parse JWT in authorization header: {jwt_err}")
 
     try:
         session_list = sessions.list_creator_sessions(creator_id)
@@ -343,7 +350,7 @@ def _handle_list_sessions(query_params, event):
             'body': json.dumps({'sessions': session_list})
         }
     except Exception as e:
-        logger.error(f"Error listing sessions for {creator_id}: {e}", exc_info=True)
+        logger.error(f"Error listing sessions for creator {creator_id}: {e}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': _cors_headers(),

@@ -408,3 +408,45 @@ def test_lambda_handler_close_and_delete_session(monkeypatch):
     resp_del = bgg_recommender.lambda_handler(del_event, None)
     assert resp_del['statusCode'] == 200
     mock_cancel.assert_called_once_with('sess99')
+
+
+def test_list_creator_sessions_scan_mode(sample_candidates):
+    mock_table = MagicMock()
+    now = datetime.now(timezone.utc).isoformat()
+    mock_table.scan.return_value = {
+        'Items': [
+            {
+                'session_id': 'sess_scan_1',
+                'creator_id': 'alice',
+                'group_name': 'Game Night',
+                'created_at': now,
+                'closes_at': now,
+                'candidates': sample_candidates,
+                'votes': {}
+            }
+        ]
+    }
+    
+    # When creator_id is None, it scans all items
+    sessions_all = list_creator_sessions(None, table=mock_table)
+    assert len(sessions_all) == 1
+    assert sessions_all[0]['session_id'] == 'sess_scan_1'
+
+
+def test_lambda_handler_list_sessions_route(monkeypatch):
+    import bgg_recommender
+    import sessions
+    
+    mock_list = MagicMock(return_value=[{'session_id': 'sess_list_1'}])
+    monkeypatch.setattr(sessions, 'list_creator_sessions', mock_list)
+    
+    event = {
+        'rawPath': '/sessions',
+        'httpMethod': 'GET',
+        'queryStringParameters': {}
+    }
+    resp = bgg_recommender.lambda_handler(event, None)
+    assert resp['statusCode'] == 200
+    body = json.loads(resp['body'])
+    assert 'sessions' in body
+    assert len(body['sessions']) == 1
