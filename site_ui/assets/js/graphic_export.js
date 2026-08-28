@@ -27,13 +27,19 @@
         if (stroke) ctx.stroke();
     }
 
-    // Helper to load image safely with crossOrigin and timeout fallback
-    function loadImage(url, timeoutMs = 2500) {
+    // Helper to load image safely with CORS proxy and timeout fallback
+    function loadImage(rawUrl, timeoutMs = 3500) {
         return new Promise((resolve) => {
-            if (!url || url.includes('placeholder_thumb')) {
+            if (!rawUrl || rawUrl.includes('placeholder_thumb')) {
                 resolve(null);
                 return;
             }
+
+            // Route through wsrv.nl to bypass CDN CORS restrictions when exporting HTML5 canvas
+            const proxiedUrl = rawUrl.startsWith('http') 
+                ? `https://wsrv.nl/?url=${encodeURIComponent(rawUrl)}&w=250&output=jpg` 
+                : rawUrl;
+
             const img = new Image();
             img.crossOrigin = 'anonymous';
             let timedOut = false;
@@ -49,12 +55,31 @@
                 }
             };
             img.onerror = () => {
-                if (!timedOut) {
-                    clearTimeout(timer);
-                    resolve(null);
+                // Fallback to alternate images.weserv.nl if wsrv fails
+                if (rawUrl.startsWith('http')) {
+                    const fallbackImg = new Image();
+                    fallbackImg.crossOrigin = 'anonymous';
+                    fallbackImg.onload = () => {
+                        if (!timedOut) {
+                            clearTimeout(timer);
+                            resolve(fallbackImg);
+                        }
+                    };
+                    fallbackImg.onerror = () => {
+                        if (!timedOut) {
+                            clearTimeout(timer);
+                            resolve(null);
+                        }
+                    };
+                    fallbackImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(rawUrl)}&w=250&output=jpg`;
+                } else {
+                    if (!timedOut) {
+                        clearTimeout(timer);
+                        resolve(null);
+                    }
                 }
             };
-            img.src = url;
+            img.src = proxiedUrl;
         });
     }
 
@@ -136,14 +161,6 @@
         ctx.fillStyle = '#818cf8';
         const displaySubtitle = subtitleText ? `Top 10 Picks for ${subtitleText}` : 'Top 10 Personalized Picks';
         ctx.fillText(displaySubtitle, 48, 72);
-
-        // Header Accent Badge on right
-        ctx.font = 'bold 12px "Inter", sans-serif';
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.2)';
-        roundRect(ctx, 1010, 28, 142, 28, 14, true, false);
-        ctx.fillStyle = '#a5b4fc';
-        ctx.textAlign = 'center';
-        ctx.fillText('AI DISCOVERY', 1081, 46);
         ctx.restore();
 
         // 3. Preload all thumbnails
@@ -204,8 +221,14 @@
             ctx.clip();
 
             const img = loadedImages[i];
-            if (img) {
-                ctx.drawImage(img, imgX, imgY, imgW, imgH);
+            if (img && img.width > 0 && img.height > 0) {
+                const hRatio = imgW / img.width;
+                const vRatio = imgH / img.height;
+                const ratio = Math.max(hRatio, vRatio);
+                const centerShiftX = (imgW - img.width * ratio) / 2;
+                const centerShiftY = (imgH - img.height * ratio) / 2;
+                ctx.drawImage(img, 0, 0, img.width, img.height,
+                    imgX + centerShiftX, imgY + centerShiftY, img.width * ratio, img.height * ratio);
             } else {
                 // Fallback gradient placeholder
                 const pGrad = ctx.createLinearGradient(imgX, imgY, imgX + imgW, imgY + imgH);
@@ -286,7 +309,7 @@
         ctx.font = '500 12px "Inter", sans-serif';
         ctx.fillStyle = '#64748b';
         ctx.textAlign = 'left';
-        ctx.fillText('Find your perfect tabletop games at boardgamerecommender.com', 48, 648);
+        ctx.fillText('Find your perfect tabletop games at bionicle4365.github.io/Boardgame-Recommender', 48, 648);
 
         ctx.textAlign = 'right';
         ctx.fillText(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }), 1152, 648);
