@@ -59,39 +59,27 @@ Add a lightweight, unobtrusive "Score My Game" tool to the recommender page that
 
 ---
 
-## Milestone 57: Async Game Night Voting & Veto Session
+## Milestone 60: Playgroup Organizer Clean Modern Redesign
 
 ### Objective
-Enable playgroup hosts to generate a lightweight, shareable voting link from their group recommendations where attendees can vote (👍 Want to Play / 😐 Fine / ❌ Veto) on a candidate shortlist, automatically calculating the group consensus pick, locking results at a user-defined deadline, and preserving past poll history for the creator.
+Redesign the Playgroup Organizer planner view (`site_ui/groups/index.html`) with a clean, uncluttered modern layout featuring interactive attendee avatar chips, an integrated attendance counter, streamlined group header controls, and balanced two-column filter inputs.
 
 ### Design Notes
-- **Frictionless Participant Flow:** No registration or login required for participants. Group members simply open the link, enter their name (or select from the playgroup roster), and vote with 1-click reaction buttons on 3–6 candidate games.
-- **Configurable Poll Duration & Deadline:** The creator selects how long the poll remains open (e.g., 2 hours, 6 hours, 24 hours, 3 days, or 7 days). A live countdown is shown on the voting page; once expired, voting automatically locks and the final consensus winner is declared.
-- **Veto-Aware Consensus Algorithm:** Calculates the winning game by scoring:
-  - 👍 `+2 points`
-  - 😐 `+1 point`
-  - ❌ `-99 points` (Hard Veto: immediately disqualifies the game if any attendee vetoes it).
-  - Tie-breaker: Highest original playgroup recommendation score.
-- **Creator History & Results Archive:** The original poll creator can view a "📜 Poll History" dashboard in their Playgroup Planner (`groups/index.html`) to review past sessions, see who voted what, and look back at past game night winners.
+- **Interactive Member Avatar Chips:** Replace the oversized rectangular checkbox boxes with sleek, tactile avatar chips (`[● B player1 ✓]`, `[● J player2 ✓]`, `[● T player3 ✓]`). Toggling attendance updates the chip styling with emerald accents and active checkmarks.
+- **Integrated Attendance Header:** Eliminate the empty standalone "Attendance Count" bar by embedding the live player counter directly into the section subheader (`Who is playing tonight? (3 attending)`), with clean `Select All` / `Clear` text action buttons.
+- **Streamlined Group Header:** Display the active playgroup name with a compact total member badge and clean Edit/Delete action links.
+- **Balanced Filter Controls:** Organize Pacing and Complexity dropdowns into a clean two-column grid with standardized glassmorphic input styling and a prominent, elegant `🎲 Generate Recommendations` action button.
 
 ### Architecture Decisions
-- **Storage:** DynamoDB `bgg-game-night-sessions` table with partition key `session_id` (8-char nanoid) and TTL expiration attribute `expires_at` (set to `closes_at + 60 days` so historical results persist well after the poll closes). Items store `creator_id` (Cognito Sub / BGG username), `group_name`, `created_at`, `closes_at`, `candidates` array, and a `votes` map `{ participant_name: { game_id: "yes"|"neutral"|"veto" } }`.
-- **Global Secondary Index (GSI):** Add a `creator_id-created_at-index` GSI to DynamoDB to allow fast queries for all past sessions created by a user.
-- **Lambda Routes:** Add route handlers in `bgg_recommender.py`:
-  - `POST /session` (Authenticated): Creates a new voting session with candidates and custom `duration_hours`.
-  - `GET /session/{session_id}` (Public): Retrieves the session candidates, deadline countdown, and current vote tallies.
-  - `POST /session/{session_id}/vote` (Public): Submits or updates a participant's vote payload before `closes_at`.
-  - `GET /sessions` (Authenticated): Retrieves all past and active sessions created by `creator_id` for the history dashboard.
-- **Frontend Voting Interface:** Add a standalone, mobile-first page `site_ui/vote/index.html` with live countdown and voting controls.
+- **Frontend Design System Updates:** Enhance `.member-chip`, `.groups-header-actions`, and `.planner-section` styling in `site_ui/assets/css/design-system.css` and `site_ui/groups/index.html`.
+- **Vanilla JS Toggle Handlers:** Update `selectGroup`, `toggleMemberChecked`, `selectAll`, and `selectNone` in `groups/index.html` to manipulate chip classes and update the inline counter.
 
 ### Tasks
-- [ ] **DynamoDB Table & GSI:** Define `bgg-game-night-sessions` table in Terraform with `session_id` partition key, `creator_id-created_at-index` GSI, and TTL attribute `expires_at`.
-- [ ] **Session Backend API:** Implement `create_session` (with `duration_hours`), `get_session` (with deadline enforcement), `submit_vote`, and `list_creator_sessions` route handlers in the recommender Lambda.
-- [ ] **Consensus Scoring Function:** Implement consensus tallying math in `scoring.py` with hard veto disqualification, tie-breaking, and closed-poll status checks.
-- [ ] **Playgroup Host Session Creator:** Add a "🗳️ Start Voting Session" modal on `groups/index.html` with candidate picker and duration selector (2h / 6h / 24h / 3d / 7d).
-- [ ] **Playgroup History Dashboard:** Add a "📜 Past Polls" tab on `groups/index.html` listing past game night polls, attendance, and winners.
-- [ ] **Participant Voting Page:** Build `site_ui/vote/index.html` with countdown timer, glassmorphic cards, candidate box art, 👍/😐/❌ vote buttons, and a live results banner showing the consensus pick.
-- [ ] **Unit Tests & Verification:** Test duration calculation, deadline expiration locking, GSI history queries, vote serialization, and consensus calculation with vetoes.
+- [ ] **Attendee Avatar Chip Component:** Design and style `.member-chip` with circular initials avatar, member username, checkmark indicator, and active/inactive state transitions.
+- [ ] **Inline Attendance Counter & Actions:** Redesign the attendance section header to include the inline attending badge and reposition Select All / Clear action links.
+- [ ] **Group Header Alignment:** Refactor the active group header to display group title, member count pill, and Edit/Delete action buttons in a clean row.
+- [ ] **Filter Controls & CTA Restyling:** Align Pacing and Complexity selects in a balanced grid and restyle the primary recommendation generator button.
+- [ ] **Responsive & Theme Verification:** Verify layout across dark and light modes, and ensure smooth wrapping on mobile viewports (320px–768px).
 
 ---
 
@@ -175,5 +163,7 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 58: Collection Browser Loading State & Skeleton Redesign** (Maintained visible persistent filter sidebar in loading state to eliminate layout jumping, rendered 8-card shimmering card grid skeleton matching default Card View)
 * **Milestone 59: User Profile Skeleton Animation & Viewport Alignment Fix** (Fixed @keyframes shimmer in design-system.css and profile/index.html to animate background-position instead of transform: translateX, eliminating offscreen lateral drift during profile dashboard load)
 * **Milestone 50: Local Development Environment** (Gitignored _config.local.yml and .env.local overrides, gen_local_config.py generator script, comprehensive LOCAL_DEVELOPMENT.md guide, and enhanced offline mock API handlers for /profile, /groups, and /preferences)
+* **Milestone 57: Async Game Night Voting & Veto Session** (Defined bgg-game-night-sessions DynamoDB table with GSI and TTL, built sessions.py consensus engine with +2/+1/-99 veto scoring and tie-breaking, created standalone vote/index.html voting page with live countdown timer, and added host poll modal & Past Polls history tab on groups/index.html)
+
 
 

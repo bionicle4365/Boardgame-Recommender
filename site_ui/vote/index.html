@@ -1,0 +1,571 @@
+---
+layout: default
+title: "Game Night Vote & Veto Session"
+description: "Vote on candidate board games for tonight's session. Real-time veto-aware consensus voting for tabletop playgroups."
+---
+
+<style>
+.vote-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 20px 80px 20px;
+}
+
+.vote-hero {
+    background: var(--surface-bg);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.vote-hero-title {
+    margin: 0 0 6px 0;
+    font-size: 1.75rem;
+    font-weight: 800;
+    font-family: 'Outfit', sans-serif;
+    color: var(--text-main);
+}
+
+.vote-hero-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.timer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.timer-pill.closed {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.participant-card {
+    background: var(--surface-bg);
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+}
+
+.participant-input-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.participant-input {
+    flex: 1;
+    min-width: 220px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--input-bg, #0f172a);
+    color: var(--text-main);
+    font-size: 1rem;
+}
+
+.candidates-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.candidate-card {
+    background: var(--surface-bg);
+    border: 1.5px solid var(--border-light);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.candidate-card:hover {
+    border-color: var(--primary, #6366f1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.candidate-card.is-vetoed {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.cand-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+}
+
+.cand-thumb {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cand-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cand-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.cand-name:hover {
+    color: var(--primary, #818cf8);
+}
+
+.cand-stats {
+    display: flex;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.vote-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.vote-btn {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--input-bg, #0f172a);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.vote-btn:hover {
+    border-color: var(--text-main);
+    color: var(--text-main);
+}
+
+.vote-btn.active-yes {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border-color: #10b981;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+.vote-btn.active-neutral {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border-color: #f59e0b;
+}
+
+.vote-btn.active-veto {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: #ef4444;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.submit-vote-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+    transition: transform 0.15s ease;
+}
+
+.submit-vote-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.results-banner {
+    margin-top: 36px;
+    background: var(--surface-bg);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 24px 28px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.winner-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(99, 102, 241, 0.15));
+    border: 2px solid #10b981;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.winner-badge {
+    background: #10b981;
+    color: #064e3b;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+@media (max-width: 640px) {
+    .candidate-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .vote-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .vote-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+</style>
+
+<div class="vote-container">
+    <!-- Hero Header -->
+    <div class="vote-hero">
+        <div>
+            <h1 class="vote-hero-title" id="poll-group-name">Loading Poll...</h1>
+            <p class="vote-hero-subtitle" id="poll-creator-text">Game Night Voting & Veto Session</p>
+        </div>
+        <div class="timer-pill" id="poll-timer">
+            <span>⏱️</span> <span id="timer-text">Loading deadline...</span>
+        </div>
+    </div>
+
+    <!-- Voter Identity Card -->
+    <div class="participant-card" id="voter-identity-box">
+        <label style="font-weight: 700; color: var(--text-main); font-size: 1rem;">Who is voting?</label>
+        <div class="participant-input-group">
+            <select id="voter-select" class="participant-input" style="display: none;" onchange="onRosterSelected(this.value)">
+                <option value="">-- Choose from roster --</option>
+            </select>
+            <input type="text" id="voter-name-input" class="participant-input" placeholder="Enter your name or BGG username" required>
+        </div>
+    </div>
+
+    <!-- Candidate Games List -->
+    <div class="candidates-grid" id="candidates-container">
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <div class="spinner" style="margin: 0 auto 16px auto;"></div>
+            Loading candidate games...
+        </div>
+    </div>
+
+    <!-- Submit Action -->
+    <button class="submit-vote-btn" id="submit-ballot-btn" onclick="submitBallot()">
+        🗳️ Submit My Vote
+    </button>
+
+    <!-- Live Consensus & Results Section -->
+    <div class="results-banner" id="results-banner" style="display: none;">
+        <h2 style="margin: 0 0 12px 0; font-size: 1.4rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">
+            🏆 Live Consensus Leaderboard
+        </h2>
+        <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9rem;" id="results-summary-text">
+            Votes from 0 participants recorded.
+        </p>
+        <div id="winner-display-container"></div>
+        <div id="rankings-list-container" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let currentSession = null;
+    let userVotes = {}; // game_id -> 'yes' | 'neutral' | 'veto'
+    let countdownInterval = null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('id') || urlParams.get('session_id') || 'demo';
+
+    async function loadSession() {
+        try {
+            const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(sessionId)}`);
+            if (!resp.ok) {
+                const errData = await resp.json().catch(() => ({}));
+                document.getElementById('poll-group-name').textContent = "Session Not Found";
+                document.getElementById('candidates-container').innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #ef4444;">
+                        <h3>Poll Not Found</h3>
+                        <p>${window.escapeHTML(errData.error || "This voting session may have expired or does not exist.")}</p>
+                    </div>
+                `;
+                document.getElementById('submit-ballot-btn').style.display = "none";
+                return;
+            }
+
+            currentSession = await resp.json();
+            renderSession();
+        } catch (e) {
+            console.error("Error loading session:", e);
+        }
+    }
+
+    function renderSession() {
+        document.getElementById('poll-group-name').textContent = currentSession.group_name || "Game Night Session";
+        document.getElementById('poll-creator-text').textContent = `Created by ${currentSession.creator_id || 'Host'} • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates`;
+
+        // Populate roster if present
+        if (currentSession.roster && currentSession.roster.length > 0) {
+            const select = document.getElementById('voter-select');
+            select.style.display = "block";
+            let opts = '<option value="">-- Choose from roster --</option>';
+            currentSession.roster.forEach(m => {
+                opts += `<option value="${window.escapeHTML(m)}">${window.escapeHTML(m)}</option>`;
+            });
+            select.innerHTML = opts;
+        }
+
+        // Start live countdown
+        updateCountdown();
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = setInterval(updateCountdown, 1000);
+
+        // Render Candidates
+        renderCandidates();
+
+        // Render Live Results
+        renderResults();
+    }
+
+    function updateCountdown() {
+        if (!currentSession || !currentSession.closes_at) return;
+        const now = new Date();
+        const deadline = new Date(currentSession.closes_at);
+        const diffMs = deadline - now;
+
+        const timerPill = document.getElementById('poll-timer');
+        const timerText = document.getElementById('timer-text');
+        const submitBtn = document.getElementById('submit-ballot-btn');
+
+        if (diffMs <= 0) {
+            currentSession.is_closed = true;
+            timerPill.classList.add('closed');
+            timerText.textContent = "🔴 Voting Closed";
+            submitBtn.disabled = true;
+            submitBtn.textContent = "🔒 Voting Has Ended";
+            submitBtn.style.opacity = "0.6";
+            submitBtn.style.cursor = "not-allowed";
+        } else {
+            timerPill.classList.remove('closed');
+            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+            timerText.textContent = `${hours}h ${minutes}m ${seconds}s remaining`;
+        }
+    }
+
+    window.onRosterSelected = function(val) {
+        if (val) {
+            document.getElementById('voter-name-input').value = val;
+            // Preload voter's existing ballot if present
+            if (currentSession && currentSession.votes && currentSession.votes[val]) {
+                userVotes = { ...currentSession.votes[val] };
+                renderCandidates();
+            }
+        }
+    };
+
+    function renderCandidates() {
+        const container = document.getElementById('candidates-container');
+        if (!currentSession.candidates || currentSession.candidates.length === 0) {
+            container.innerHTML = '<p>No candidates in this session.</p>';
+            return;
+        }
+
+        let html = '';
+        currentSession.candidates.forEach(cand => {
+            const candId = String(cand.id);
+            const currentChoice = userVotes[candId] || 'neutral';
+            const isVetoed = currentSession.consensus && currentSession.consensus.vetoed_games && currentSession.consensus.vetoed_games.includes(candId);
+
+            html += `
+                <div class="candidate-card ${isVetoed ? 'is-vetoed' : ''}" id="cand-card-${candId}">
+                    <div class="cand-left">
+                        <img class="cand-thumb" src="${cand.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}" alt="${window.escapeHTML(cand.name)}">
+                        <div class="cand-details">
+                            <a href="https://boardgamegeek.com/boardgame/${cand.id}" target="_blank" class="cand-name">${window.escapeHTML(cand.name)}</a>
+                            <div class="cand-stats">
+                                ${cand.rating ? `<span>★ ${cand.rating.toFixed(1)}</span>` : ''}
+                                ${cand.complexity ? `<span>⚙ ${cand.complexity.toFixed(1)}/5</span>` : ''}
+                                ${cand.playing_time ? `<span>🕒 ${cand.playing_time} min</span>` : ''}
+                                ${cand.min_players ? `<span>👥 ${cand.min_players}-${cand.max_players}p</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vote-actions">
+                        <button type="button" class="vote-btn ${currentChoice === 'yes' ? 'active-yes' : ''}" onclick="setVote('${candId}', 'yes')">
+                            👍 Want to Play
+                        </button>
+                        <button type="button" class="vote-btn ${currentChoice === 'neutral' ? 'active-neutral' : ''}" onclick="setVote('${candId}', 'neutral')">
+                            😐 Fine
+                        </button>
+                        <button type="button" class="vote-btn ${currentChoice === 'veto' ? 'active-veto' : ''}" onclick="setVote('${candId}', 'veto')">
+                            ❌ Veto
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    window.setVote = function(candId, choice) {
+        if (currentSession.is_closed) return;
+        userVotes[candId] = choice;
+        renderCandidates();
+    };
+
+    window.submitBallot = async function() {
+        const nameInput = document.getElementById('voter-name-input');
+        const participantName = nameInput.value.trim();
+        if (!participantName) {
+            alert("Please enter your name or select yourself from the roster before submitting your vote.");
+            nameInput.focus();
+            return;
+        }
+
+        // Fill defaults for untouched candidates
+        currentSession.candidates.forEach(c => {
+            const cid = String(c.id);
+            if (!userVotes[cid]) userVotes[cid] = 'neutral';
+        });
+
+        const btn = document.getElementById('submit-ballot-btn');
+        btn.disabled = true;
+        btn.textContent = "Submitting...";
+
+        try {
+            const resp = await window.fetchApi('/session/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: currentSession.session_id,
+                    participant_name: participantName,
+                    votes: userVotes
+                })
+            });
+
+            if (resp.ok) {
+                currentSession = await resp.json();
+                renderSession();
+                btn.textContent = "✓ Vote Recorded! Update Anytime";
+                btn.style.background = "#10b981";
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = "🗳️ Update My Vote";
+                    btn.style.background = "";
+                }, 2500);
+            } else {
+                const errData = await resp.json().catch(() => ({}));
+                alert(errData.error || "Failed to submit vote.");
+                btn.disabled = false;
+                btn.textContent = "🗳️ Submit My Vote";
+            }
+        } catch (e) {
+            console.error("Submission error:", e);
+            btn.disabled = false;
+            btn.textContent = "🗳️ Submit My Vote";
+        }
+    };
+
+    function renderResults() {
+        const banner = document.getElementById('results-banner');
+        if (!currentSession.consensus) return;
+        banner.style.display = "block";
+
+        const { total_voters, winner, rankings, vetoed_games } = currentSession.consensus;
+        document.getElementById('results-summary-text').textContent = `Votes from ${total_voters} participant${total_voters !== 1 ? 's' : ''} recorded${currentSession.is_closed ? ' • 🔒 Poll Finalized' : ''}.`;
+
+        const winnerContainer = document.getElementById('winner-display-container');
+        if (winner) {
+            winnerContainer.innerHTML = `
+                <div class="winner-card">
+                    <img style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;" src="${winner.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}">
+                    <div>
+                        <span class="winner-badge">Consensus Pick</span>
+                        <h3 style="margin: 4px 0; font-size: 1.3rem; color: var(--text-main);">${window.escapeHTML(winner.name)}</h3>
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">Lead with unanimous or highest positive group support</span>
+                    </div>
+                </div>
+            `;
+        } else if (vetoed_games && vetoed_games.length === currentSession.candidates.length && total_voters > 0) {
+            winnerContainer.innerHTML = `
+                <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #ef4444; border-radius: 12px; padding: 16px 20px; color: #f87171;">
+                    ⚠️ All candidate games were vetoed by group members. Consider generating a new batch of recommendations!
+                </div>
+            `;
+        } else {
+            winnerContainer.innerHTML = '';
+        }
+
+        const rankingsContainer = document.getElementById('rankings-list-container');
+        let html = '';
+        (rankings || []).forEach((r, idx) => {
+            html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid var(--border-light);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-weight: 800; color: ${idx === 0 && !r.is_vetoed ? '#10b981' : 'var(--text-muted)'};">#${idx + 1}</span>
+                        <span style="font-weight: 600; color: var(--text-main);">${window.escapeHTML(r.name)}</span>
+                        ${r.is_vetoed ? '<span style="background: #ef4444; color: white; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">VETOED</span>' : ''}
+                    </div>
+                    <div style="display: flex; gap: 12px; font-size: 0.85rem;">
+                        <span style="color: #34d399;" title="${(r.voters_yes || []).join(', ')}">👍 ${r.yes_count}</span>
+                        <span style="color: #fbbf24;" title="${(r.voters_neutral || []).join(', ')}">😐 ${r.neutral_count}</span>
+                        <span style="color: #f87171;" title="${(r.voters_veto || []).join(', ')}">❌ ${r.veto_count}</span>
+                    </div>
+                </div>
+            `;
+        });
+        rankingsContainer.innerHTML = html;
+    }
+
+    // Load initial session on DOM ready
+    document.addEventListener('DOMContentLoaded', loadSession);
+})();
+</script>

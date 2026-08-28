@@ -70,6 +70,30 @@ resource "aws_apigatewayv2_route" "bgg_conventions_route" {
   target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_create_session_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "POST /session"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_get_session_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /session"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_vote_session_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "POST /session/vote"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_list_sessions_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /sessions"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
 resource "aws_lambda_permission" "apigw_lambda" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"

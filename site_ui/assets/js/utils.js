@@ -193,6 +193,94 @@ window.fetchApi = async function(endpoint, options = {}) {
                 rating_distribution: { "1-4": 1, "5-6": 6, "7-8": 22, "9-10": 13 },
                 generated_at: new Date().toISOString()
             };
+        } else if (endpoint.startsWith('/sessions')) {
+            const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            data = { sessions };
+        } else if (endpoint.startsWith('/session/vote') || (endpoint.startsWith('/session') && options.method === 'POST' && options.body && options.body.includes('participant_name'))) {
+            let sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            const payload = JSON.parse(options.body || '{}');
+            const targetSession = sessions.find(s => s.session_id === payload.session_id);
+            if (targetSession) {
+                targetSession.votes = targetSession.votes || {};
+                targetSession.votes[payload.participant_name] = payload.votes || {};
+                
+                // Recalculate consensus
+                const totalVoters = Object.keys(targetSession.votes).length;
+                const rankings = (targetSession.candidates || []).map((cand, idx) => {
+                    let score = 0, yes = 0, neutral = 0, veto = 0;
+                    const votersYes = [], votersNeutral = [], votersVeto = [];
+                    Object.entries(targetSession.votes).forEach(([voter, b]) => {
+                        const v = (b[cand.id] || 'neutral').toLowerCase();
+                        if (v === 'yes') { score += 2; yes++; votersYes.push(voter); }
+                        else if (v === 'neutral') { score += 1; neutral++; votersNeutral.push(voter); }
+                        else if (v === 'veto') { score -= 99; veto++; votersVeto.push(voter); }
+                    });
+                    return {
+                        id: String(cand.id),
+                        name: cand.name,
+                        original_rank: idx,
+                        score,
+                        yes_count: yes,
+                        neutral_count: neutral,
+                        veto_count: veto,
+                        is_vetoed: veto > 0,
+                        voters_yes: votersYes,
+                        voters_neutral: votersNeutral,
+                        voters_veto: votersVeto,
+                        candidate: cand
+                    };
+                });
+                rankings.sort((a, b) => (a.is_vetoed === b.is_vetoed ? b.score - a.score || a.original_rank - b.original_rank : a.is_vetoed ? 1 : -1));
+                targetSession.consensus = {
+                    total_voters: totalVoters,
+                    winner: rankings.length && !rankings[0].is_vetoed ? rankings[0].candidate : null,
+                    rankings,
+                    vetoed_games: rankings.filter(r => r.is_vetoed).map(r => r.id)
+                };
+                localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
+                data = targetSession;
+            } else {
+                data = { error: "Session not found" };
+            }
+        } else if (endpoint.startsWith('/session') && options.method === 'POST') {
+            const payload = JSON.parse(options.body || '{}');
+            const now = new Date();
+            const durationHours = parseFloat(payload.duration_hours || 24);
+            const closesAt = new Date(now.getTime() + durationHours * 3600 * 1000).toISOString();
+            const newSession = {
+                session_id: Math.random().toString(36).substring(2, 10),
+                creator_id: payload.creator_id || 'gamer123',
+                group_name: payload.group_name || 'Friday Game Night',
+                created_at: now.toISOString(),
+                closes_at: closesAt,
+                duration_hours: durationHours,
+                candidates: payload.candidates || [],
+                roster: payload.roster || [],
+                votes: {},
+                is_closed: false,
+                consensus: {
+                    total_voters: 0,
+                    winner: payload.candidates && payload.candidates.length ? payload.candidates[0] : null,
+                    rankings: (payload.candidates || []).map(c => ({ id: String(c.id), name: c.name, score: 0, yes_count: 0, neutral_count: 0, veto_count: 0, is_vetoed: false, candidate: c })),
+                    vetoed_games: []
+                }
+            };
+            const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            sessions.unshift(newSession);
+            localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
+            data = newSession;
+        } else if (endpoint.startsWith('/session')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const sessionId = urlParams.get('session_id') || urlParams.get('id') || endpoint.split('/session/')[1];
+            const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            const found = sessions.find(s => s.session_id === sessionId) || sessions[0];
+            if (found) {
+                const now = new Date();
+                found.is_closed = now >= new Date(found.closes_at);
+                data = found;
+            } else {
+                data = { error: "Session not found" };
+            }
         } else if (endpoint.startsWith('/similar')) {
             data = {
                 similar_games: [

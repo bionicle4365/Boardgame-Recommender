@@ -148,6 +148,149 @@ def _handle_conventions():
     }
 
 
+def _handle_create_session(body_params, event):
+    import sessions
+    claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
+    creator_id = claims.get('sub') or claims.get('username') or body_params.get('creator_id') or 'anonymous_host'
+    group_name = body_params.get('group_name', 'Game Night')
+    candidates = body_params.get('candidates', [])
+    duration_hours = float(body_params.get('duration_hours', 24.0))
+    roster = body_params.get('roster', [])
+
+    if not candidates:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'candidates array is required and cannot be empty'})
+        }
+
+    try:
+        session = sessions.create_session(
+            creator_id=creator_id,
+            group_name=group_name,
+            candidates=candidates,
+            duration_hours=duration_hours,
+            roster=roster
+        )
+        return {
+            'statusCode': 201,
+            'headers': _cors_headers(),
+            'body': json.dumps(session)
+        }
+    except Exception as e:
+        logger.error(f"Error creating voting session: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(e)})
+        }
+
+
+def _handle_get_session(params):
+    import sessions
+    session_id = params.get('session_id') or params.get('id')
+    if not session_id:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'session_id is required'})
+        }
+
+    try:
+        session = sessions.get_session(session_id)
+        if not session:
+            return {
+                'statusCode': 404,
+                'headers': _cors_headers(),
+                'body': json.dumps({'error': f"Session '{session_id}' not found"})
+            }
+        return {
+            'statusCode': 200,
+            'headers': _cors_headers(),
+            'body': json.dumps(session)
+        }
+    except Exception as e:
+        logger.error(f"Error getting voting session {session_id}: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(e)})
+        }
+
+
+def _handle_vote_session(body_params):
+    import sessions
+    session_id = body_params.get('session_id') or body_params.get('id')
+    participant_name = body_params.get('participant_name') or body_params.get('participant')
+    votes = body_params.get('votes', {})
+
+    if not session_id or not participant_name:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'session_id and participant_name are required'})
+        }
+
+    try:
+        updated_session = sessions.submit_vote(
+            session_id=session_id,
+            participant_name=participant_name,
+            votes_map=votes
+        )
+        return {
+            'statusCode': 200,
+            'headers': _cors_headers(),
+            'body': json.dumps(updated_session)
+        }
+    except KeyError:
+        return {
+            'statusCode': 404,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': f"Session '{session_id}' not found"})
+        }
+    except ValueError as ve:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(ve)})
+        }
+    except Exception as e:
+        logger.error(f"Error submitting vote for session {session_id}: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(e)})
+        }
+
+
+def _handle_list_sessions(query_params, event):
+    import sessions
+    claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
+    creator_id = claims.get('sub') or claims.get('username') or query_params.get('creator_id')
+
+    if not creator_id:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'creator_id or authenticated user required'})
+        }
+
+    try:
+        session_list = sessions.list_creator_sessions(creator_id)
+        return {
+            'statusCode': 200,
+            'headers': _cors_headers(),
+            'body': json.dumps({'sessions': session_list})
+        }
+    except Exception as e:
+        logger.error(f"Error listing sessions for {creator_id}: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(e)})
+        }
+
+
 def _handle_recommendations(query_params):
     """
     Two-phase recommendation pipeline.
@@ -632,11 +775,25 @@ def lambda_handler(event, context):
         combined_params = {**query_params, **body_params}
 
         path = event.get('rawPath', '') or event.get('requestContext', {}).get('http', {}).get('path', '')
+        http_method = event.get('requestContext', {}).get('http', {}).get('method', '').upper() or event.get('httpMethod', '').upper()
 
         if '/profile' in path:
             response = _handle_profile(query_params)
         elif '/conventions' in path:
             response = _handle_conventions()
+        elif path.rstrip('/') == '/sessions':
+            response = _handle_list_sessions(query_params, event)
+        elif '/session/vote' in path or (path.startswith('/session') and http_method == 'POST' and ('vote' in path or 'participant_name' in body_params)):
+            response = _handle_vote_session(combined_params)
+        elif path.startswith('/session') and http_method == 'POST':
+            response = _handle_create_session(body_params, event)
+        elif path.startswith('/session') and (http_method == 'GET' or not http_method):
+            # Extract session_id if in path: /session/{session_id}
+            stripped = path.strip('/')
+            parts = stripped.split('/')
+            if len(parts) > 1 and parts[0] == 'session':
+                combined_params['session_id'] = parts[1]
+            response = _handle_get_session(combined_params)
         else:
             response = _handle_recommendations(combined_params)
 
@@ -667,4 +824,7 @@ def __getattr__(name):
     if name == 'bedrock':
         import narration
         return narration.bedrock
+    if name == 'sessions':
+        import sessions
+        return sessions
     raise AttributeError(f"module {__name__} has no attribute {name}")

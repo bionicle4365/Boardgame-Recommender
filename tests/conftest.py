@@ -10,6 +10,14 @@ os.environ['USER_SQS_QUEUE_URL'] = 'https://sqs.test.com'
 os.environ['BGG_API_TOKEN'] = 'test-token'
 os.environ['BGG_TESTING'] = 'true'
 
+# Add Lambda source directories to sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_recommender'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_api_proxy'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_preferences_handler'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_user_data_scraper'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_game_scraper'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_game_data_scraper'))
+
 # Mock aws_lambda_powertools inject_lambda_context to avoid AttributeError when context is None in tests
 try:
     import aws_lambda_powertools

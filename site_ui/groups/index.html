@@ -713,6 +713,9 @@ description: "Combine collections, plan board game sessions, and get group conse
                         <button class="groups-tab-btn" id="tab-analytics-btn" type="button">
                             📊 Playgroup Analytics
                         </button>
+                        <button class="groups-tab-btn" id="tab-polls-btn" type="button">
+                            📜 Past Polls
+                        </button>
                     </div>
 
                     <!-- Tab Contents -->
@@ -854,7 +857,67 @@ description: "Combine collections, plan board game sessions, and get group conse
                                 <p style="margin: 0; font-size: 0.95rem;">Please select at least one playgroup member to view aggregated collection statistics and taste analytics.</p>
                             </div>
                         </div>
+
+                        <!-- Tab 3: Past Polls History Content -->
+                        <div id="tab-polls-content" class="groups-tab-content">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 20px 0;">
+                                <h3 style="margin: 0; font-size: 1.1rem; font-family: 'Outfit', sans-serif; color: var(--text-main);">Game Night Voting History</h3>
+                                <button class="btn btn-secondary" onclick="loadPastPolls()" style="font-size: 0.85rem; padding: 6px 14px;">🔄 Refresh</button>
+                            </div>
+                            <div id="past-polls-list" style="display: flex; flex-direction: column; gap: 14px;">
+                                <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
+                                    No past polls found for this group. Run recommendations and launch a voting session to see results here!
+                                </div>
+                            </div>
+                        </div>
                     </div>
+            </div>
+
+            <!-- Voting Session Modal -->
+            <div id="voting-session-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+                <div style="background: var(--surface-bg, #1e293b); border: 1.5px solid var(--border); border-radius: 16px; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0; font-size: 1.25rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">🗳️ Create Game Night Poll</h3>
+                        <button type="button" onclick="closeVotingSessionModal()" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+                    </div>
+                    
+                    <div id="modal-step-config">
+                        <p style="margin: 0 0 14px 0; font-size: 0.9rem; color: var(--text-muted);">
+                            Select candidates from your recommendations and set a poll duration. Attendees can vote 👍 Want to Play, 😐 Fine, or ❌ Veto.
+                        </p>
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Candidate Games:</label>
+                        <div id="modal-candidates-list" style="margin: 8px 0 16px 0; display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding-right: 4px;"></div>
+                        
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Poll Duration (Closes At):</label>
+                        <select id="modal-poll-duration" style="width: 100%; margin-top: 6px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem;">
+                            <option value="2">2 Hours (Quick Game Night)</option>
+                            <option value="6">6 Hours (Tonight's Decision)</option>
+                            <option value="24" selected>24 Hours (Next Day Decision)</option>
+                            <option value="72">3 Days (Weekend Planning)</option>
+                            <option value="168">7 Days (Weekly Schedule)</option>
+                        </select>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                            <button type="button" class="btn btn-secondary" onclick="closeVotingSessionModal()">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="create-poll-submit-btn" onclick="createVotingSession()">🚀 Launch Poll</button>
+                        </div>
+                    </div>
+
+                    <div id="modal-step-created" style="display: none; text-align: center; padding: 10px 0;">
+                        <div style="font-size: 2.5rem; margin-bottom: 8px;">🎉</div>
+                        <h4 style="margin: 0 0 8px 0; color: var(--text-main); font-size: 1.2rem;">Poll Created Successfully!</h4>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Share this link with your playgroup attendees:</p>
+                        <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+                            <input type="text" id="share-poll-url-input" readonly style="flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.85rem;">
+                            <button class="btn btn-secondary" id="copy-poll-link-btn" onclick="copyPollLink()">📋 Copy</button>
+                        </div>
+                        <div style="display: flex; justify-content: center; gap: 12px;">
+                            <button class="btn btn-secondary" onclick="closeVotingSessionModal()">Done</button>
+                            <a id="open-poll-link-btn" href="#" target="_blank" class="btn btn-primary">Open Voting Page ↗</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
             </div>
 
             <!-- Empty State - displayed when no group is active/selected -->
@@ -1294,51 +1357,206 @@ description: "Combine collections, plan board game sessions, and get group conse
         // Tab Switching Logic
         const tabRecsBtn = document.getElementById("tab-recommendations-btn");
         const tabAnalBtn = document.getElementById("tab-analytics-btn");
+        const tabPollsBtn = document.getElementById("tab-polls-btn");
         const tabRecsContent = document.getElementById("tab-recommendations-content");
         const tabAnalContent = document.getElementById("tab-analytics-content");
+        const tabPollsContent = document.getElementById("tab-polls-content");
 
         window.switchTab = function(targetTab) {
-            if (!tabRecsBtn || !tabAnalBtn || !tabRecsContent || !tabAnalContent) return;
-            
-            if (targetTab === "recommendations") {
-                tabRecsBtn.classList.add("active");
-                tabAnalBtn.classList.remove("active");
-                
-                tabAnalContent.classList.remove("active");
-                setTimeout(() => {
-                    if (!tabRecsBtn.classList.contains("active")) return; // Guard in case of double-toggle
-                    tabAnalContent.style.display = "none";
-                    tabRecsContent.style.display = "block";
-                    tabRecsContent.offsetHeight; // Reflow
-                    tabRecsContent.classList.add("active");
-                }, 150);
-            } else if (targetTab === "analytics") {
-                tabAnalBtn.classList.add("active");
-                tabRecsBtn.classList.remove("active");
-                
-                tabRecsContent.classList.remove("active");
-                setTimeout(() => {
-                    if (!tabAnalBtn.classList.contains("active")) return;
-                    tabRecsContent.style.display = "none";
-                    tabAnalContent.style.display = "block";
-                    tabAnalContent.offsetHeight; // Reflow
-                    tabAnalContent.classList.add("active");
-                    
-                    // Resize Chart.js graphs to fit updated display size
-                    const activeCharts = [chartGroupMechanics, chartGroupCategories, chartGroupComplexity, chartGroupDurations];
-                    activeCharts.forEach(chart => {
-                        if (chart) {
-                            chart.resize();
-                        }
-                    });
-                }, 150);
+            const allBtns = [tabRecsBtn, tabAnalBtn, tabPollsBtn].filter(Boolean);
+            const allContents = [
+                { id: "recommendations", btn: tabRecsBtn, content: tabRecsContent },
+                { id: "analytics", btn: tabAnalBtn, content: tabAnalContent },
+                { id: "polls", btn: tabPollsBtn, content: tabPollsContent }
+            ];
+
+            allContents.forEach(item => {
+                if (!item.btn || !item.content) return;
+                if (item.id === targetTab) {
+                    item.btn.classList.add("active");
+                    item.content.style.display = "block";
+                    item.content.offsetHeight; // reflow
+                    item.content.classList.add("active");
+                } else {
+                    item.btn.classList.remove("active");
+                    item.content.classList.remove("active");
+                    item.content.style.display = "none";
+                }
+            });
+
+            if (targetTab === "analytics") {
+                const activeCharts = [chartGroupMechanics, chartGroupCategories, chartGroupComplexity, chartGroupDurations];
+                activeCharts.forEach(chart => {
+                    if (chart) chart.resize();
+                });
+            } else if (targetTab === "polls") {
+                loadPastPolls();
             }
         };
 
-        if (tabRecsBtn && tabAnalBtn) {
-            tabRecsBtn.addEventListener("click", () => window.switchTab("recommendations"));
-            tabAnalBtn.addEventListener("click", () => window.switchTab("analytics"));
-        }
+        if (tabRecsBtn) tabRecsBtn.addEventListener("click", () => window.switchTab("recommendations"));
+        if (tabAnalBtn) tabAnalBtn.addEventListener("click", () => window.switchTab("analytics"));
+        if (tabPollsBtn) tabPollsBtn.addEventListener("click", () => window.switchTab("polls"));
+
+        let currentActiveRecs = [];
+
+        // Voting Session Modal Handlers
+        window.openVotingSessionModal = function(recs) {
+            currentActiveRecs = recs || currentActiveRecs || [];
+            if (!currentActiveRecs || currentActiveRecs.length === 0) {
+                alert("Please generate recommendations first before creating a voting poll!");
+                return;
+            }
+
+            const modal = document.getElementById("voting-session-modal");
+            const stepConfig = document.getElementById("modal-step-config");
+            const stepCreated = document.getElementById("modal-step-created");
+            const candidatesList = document.getElementById("modal-candidates-list");
+
+            stepConfig.style.display = "block";
+            stepCreated.style.display = "none";
+
+            // Render candidate checkboxes (pre-select top 5)
+            let html = "";
+            currentActiveRecs.slice(0, 10).forEach((rec, idx) => {
+                const isChecked = idx < 5 ? "checked" : "";
+                html += `
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" class="poll-candidate-cb" value="${rec.id}" ${isChecked} style="accent-color: var(--primary);">
+                        <img src="${rec.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover;">
+                        <span style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${window.escapeHTML(rec.name)}</span>
+                        ${rec.rating ? `<span style="font-size: 0.8rem; color: #b45309; margin-left: auto;">★ ${rec.rating.toFixed(1)}</span>` : ''}
+                    </label>
+                `;
+            });
+            candidatesList.innerHTML = html;
+            modal.style.display = "flex";
+        };
+
+        window.closeVotingSessionModal = function() {
+            const modal = document.getElementById("voting-session-modal");
+            if (modal) modal.style.display = "none";
+        };
+
+        window.createVotingSession = async function() {
+            const selectedIds = Array.from(document.querySelectorAll(".poll-candidate-cb:checked")).map(cb => cb.value);
+            if (selectedIds.length === 0) {
+                alert("Please select at least one candidate game for the voting poll!");
+                return;
+            }
+
+            const chosenCandidates = currentActiveRecs.filter(r => selectedIds.includes(String(r.id)));
+            const durationHours = parseFloat(document.getElementById("modal-poll-duration").value || 24);
+            const groupName = activeGroup ? activeGroup.name : "Game Night";
+            const roster = activeGroup ? activeGroup.members : getCheckedUsernames();
+
+            const submitBtn = document.getElementById("create-poll-submit-btn");
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Creating...";
+
+            try {
+                const resp = await window.fetchApi("/session", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        group_name: groupName,
+                        candidates: chosenCandidates,
+                        duration_hours: durationHours,
+                        roster: roster
+                    })
+                });
+
+                if (resp.ok) {
+                    const sessionData = await resp.json();
+                    const voteUrl = `${window.location.origin}${window.location.pathname.replace(/\/groups\/?$/, '')}/vote/?id=${sessionData.session_id}`;
+                    
+                    document.getElementById("share-poll-url-input").value = voteUrl;
+                    document.getElementById("open-poll-link-btn").href = voteUrl;
+
+                    document.getElementById("modal-step-config").style.display = "none";
+                    document.getElementById("modal-step-created").style.display = "block";
+                } else {
+                    const errData = await resp.json().catch(() => ({}));
+                    alert(errData.error || "Failed to create voting session.");
+                }
+            } catch (e) {
+                console.error("Error creating session:", e);
+                alert("Error creating voting session. Please check your connection.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "🚀 Launch Poll";
+            }
+        };
+
+        window.copyPollLink = function() {
+            const input = document.getElementById("share-poll-url-input");
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value);
+            const copyBtn = document.getElementById("copy-poll-link-btn");
+            copyBtn.textContent = "✓ Copied!";
+            setTimeout(() => { copyBtn.textContent = "📋 Copy"; }, 2000);
+        };
+
+        window.loadPastPolls = async function() {
+            const listContainer = document.getElementById("past-polls-list");
+            if (!listContainer) return;
+
+            try {
+                const resp = await window.fetchApi("/sessions");
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const sessions = data.sessions || [];
+                    if (sessions.length === 0) {
+                        listContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
+                                No past polls found. Generate recommendations and click "Start Async Voting Poll" to launch your first session!
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = "";
+                    sessions.forEach(sess => {
+                        const totalVoters = sess.consensus ? sess.consensus.total_voters : 0;
+                        const winner = sess.consensus ? sess.consensus.winner : null;
+                        const createdDate = new Date(sess.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                        const statusBadge = sess.is_closed 
+                            ? `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">🔒 CLOSED</span>`
+                            : `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">⏱️ ACTIVE</span>`;
+
+                        const voteUrl = `${window.location.origin}${window.location.pathname.replace(/\/groups\/?$/, '')}/vote/?id=${sess.session_id}`;
+
+                        html += `
+                            <div style="background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <strong style="font-size: 1.1rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">${window.escapeHTML(sess.group_name || 'Game Night')}</strong>
+                                        ${statusBadge}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                        Created ${createdDate} • ${totalVoters} voter${totalVoters !== 1 ? 's' : ''} • ${sess.candidates ? sess.candidates.length : 0} candidates
+                                    </div>
+                                    ${winner ? `
+                                        <div style="font-size: 0.88rem; color: #10b981; font-weight: 600; margin-top: 4px;">
+                                            🏆 Winner: ${window.escapeHTML(winner.name)}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <a href="${voteUrl}" target="_blank" class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 14px;">
+                                        ${sess.is_closed ? 'View Results ↗' : 'Vote Now ↗'}
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    listContainer.innerHTML = html;
+                }
+            } catch (e) {
+                console.error("Error loading past polls:", e);
+            }
+        };
 
         // Restore and bind duration/complexity preferences
         const durationPref = localStorage.getItem("bgg_rec_duration_pref") || "any";
@@ -1513,7 +1731,10 @@ description: "Combine collections, plan board game sessions, and get group conse
             });
 
             html += `
-                <div class="rec-actions-bar">
+                <div class="rec-actions-bar" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary" id="group-start-poll-btn" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <span>🗳️ Start Async Voting Poll</span>
+                    </button>
                     <button type="button" class="btn btn-secondary" id="group-export-graphic-btn" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600;">
                         <span>🖼️ Export Shareable Image</span>
                     </button>
@@ -1521,6 +1742,13 @@ description: "Combine collections, plan board game sessions, and get group conse
             `;
 
             resultsContainer.innerHTML = html;
+
+            const pollBtn = document.getElementById("group-start-poll-btn");
+            if (pollBtn) {
+                pollBtn.onclick = () => {
+                    window.openVotingSessionModal(recs);
+                };
+            }
 
             const exportBtn = document.getElementById("group-export-graphic-btn");
             if (exportBtn) {
