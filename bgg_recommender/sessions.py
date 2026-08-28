@@ -6,13 +6,14 @@ Handles session creation, vote submissions, deadline enforcement,
 and consensus scoring with hard veto disqualification.
 """
 
+from __future__ import annotations
 import os
 import json
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
 
 logger = logging.getLogger(__name__)
 
