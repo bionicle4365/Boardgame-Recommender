@@ -183,32 +183,7 @@ Enable full local Jekyll development with real API endpoints and Cognito credent
 - [ ] **Mock API Enhancement:** Review and update the existing `fetchApi` mock fallback in `utils.js` to cover more endpoints accurately for fully offline development when even the real API URL is unavailable.
 - [ ] **Verification:** Confirm both approaches produce a working local site with functional API calls and Cognito authentication when real credentials are provided.
 
----
 
-## Milestone 52: New User AI Narration Context
-
-### Objective
-Detect inline/new-user recommendation requests (Quick Taste Test and Personality Test) and use a tailored Bedrock narration prompt that generates meaningful, contextual explanations without referencing a user's BGG collection — which doesn't exist for these users.
-
-### Design Notes
-- **Problem:** The current Bedrock narration prompt instructs the LLM to "relate the recommended game to 1 or 2 specific board games they already like or own from their list." For Quick Taste Test users, this list is just the 5-11 seed games they thumbs-upped (e.g., Catan, Wingspan). For Personality Test users, this list is *completely empty* ("No games rated/owned yet"). The resulting AI narration sounds nonsensical — referencing games the user never mentioned, or producing generic filler text.
-- **Fix Strategy:** Detect `is_inline` mode in the narration pipeline and switch to an alternative prompt that:
-  - For **taste test users** (who have a sparse `liked_games_str` from seed games): References their seed game preferences but acknowledges the profile is approximate. Focuses on mechanic/thematic alignment rather than deep collection knowledge.
-  - For **personality test users** (who have only `inline_weights` and no liked games): Focuses entirely on the user's declared playstyle preferences (cooperative vs competitive, complexity level, play time, theme, luck preference, etc.) rather than referencing any games.
-- **Personality Context Forwarding:** The compiled personality answers (q1-q7 values) should be forwarded through `query_params` or the `inline_weights` object so the narration prompt can reference the user's specific quiz answers (e.g., "Since you prefer cooperative games with moderate complexity...").
-
-### Architecture Decisions
-- **Narration Module Change:** Add an `is_inline` flag and `inline_weights` context to `narrate_recommendations()` in `narration.py`. When `is_inline` is true, use an alternative prompt template that omits the "relate to games they already like" instruction.
-- **Personality Context:** Include the personality quiz answer labels (not just the derived weights) in the `inline_weights` payload so the prompt can reference natural-language preferences like "cooperative", "heavy brain-burner", "sci-fi & fantasy", etc.
-- **No Scoring Changes:** The scoring pipeline remains unchanged — only the narration prompt text differs for inline users.
-
-### Tasks
-- [ ] **Pass Inline Context to Narration:** Update `_handle_recommendations` in `bgg_recommender.py` to pass `is_inline` and `inline_weights` to the `narrate_recommendations` function.
-- [ ] **Alternative Narration Prompt:** Create a new prompt template in `narration.py` for inline users. For taste test users, reference seed games lightly. For personality test users, reference playstyle preferences (format, complexity, theme, interaction style) directly.
-- [ ] **Forward Personality Labels:** Update the frontend `compilePersonalityWeights()` in `recommender.js` to include a `personality_answers` object (e.g., `{format: "cooperative", complexity: "heavy", theme: "scifi", ...}`) alongside the derived mechanic/category/complexity weights.
-- [ ] **Backend Parsing:** Ensure `bgg_recommender.py` extracts the `personality_answers` from the `inline_weights` payload and passes it through to the narration module.
-- [ ] **Unit Tests:** Test the alternative prompt generation for both taste-test and personality-test user types. Verify the prompt does not contain "relate to games they already like" for inline users. Verify personality labels are correctly injected.
-- [ ] **Verification:** Run both new user paths end-to-end and confirm the AI narration references appropriate context (seed game preferences for taste test, playstyle descriptors for personality test).
 
 ---
 
@@ -284,5 +259,6 @@ Redesign the recommendation results cards to be more compact and space-efficient
 * **Milestone 55: Wizard Write-In Game Search & Expanded Seed Catalog** (50-game auto-generated SEED_CATALOG, 9 adaptive Round 2 picks, static minified 5,000-game autocomplete database, debounced vanilla JS search with keyboard navigation, 3 write-in slots in Taste Test & Personality Test with 9.0 rating assignment)
 * **Milestone 56: Monthly Stats Refresh for Recent Board Games** (Added `recent` mode to `bgg_game_scraper.py` with `--window` support, EventBridge monthly schedule `cron(0 3 1 * ? *)` with container environment overrides, SQS batch queuing of recent game IDs `[start_id - 2500, start_id]`)
 * **Milestone 44: Recommender Latency Optimization** (Parallelized S3 profile checks, parquet downloads, and taste profile loading with ThreadPoolExecutor, Bedrock maxTokens reduced to 800 with 15-word concise narration constraint, removed redundant catalog copies, and cached catalog data conversions)
+* **Milestone 52: New User AI Narration Context** (Added prompt branching in narration.py for Casual Personality Test and Quick Taste Test, forwarded personality quiz answers from frontend to backend, tuned punchy/direct 1-sentence explanations aiming for 12–15 words, and raised generation maxTokens to 1,200 at 0.6 temperature)
 
 

@@ -98,13 +98,13 @@ def test_narrate_recommendations_success(mock_bedrock_func):
     assert recs[1]['name'] == 'Carcassonne'
     assert recs[1]['reason'] == 'Love the tile placement, just like your favorite games.'
 
-    # Verify Bedrock Converse call parameters for latency optimization
+    # Verify Bedrock Converse call parameters for latency optimization & punchy style
     mock_bedrock.converse.assert_called_once()
     call_kwargs = mock_bedrock.converse.call_args[1]
-    assert call_kwargs['inferenceConfig']['maxTokens'] == 800
+    assert call_kwargs['inferenceConfig']['maxTokens'] == 1200
     assert call_kwargs['inferenceConfig']['temperature'] == 0.6
-    assert "maximum 15 words per reason" in call_kwargs['system'][0]['text']
-    assert "maximum 15 words" in call_kwargs['messages'][0]['content'][0]['text']
+    assert "aim for 12–15 words per reason" in call_kwargs['system'][0]['text']
+    assert "aim for 12–15 words" in call_kwargs['messages'][0]['content'][0]['text']
 
 @patch('narration._bedrock')
 def test_narrate_recommendations_markdown_json(mock_bedrock_func):
@@ -232,3 +232,132 @@ def test_narrate_recommendations_fill_in_logic(mock_bedrock_func):
     assert recs[8]['id'] == '9'
     assert recs[8]['reason'] == 'Highly ranked catalog match sharing key mechanics: Mech.'
     assert recs[9]['id'] == '10'
+
+
+def test_format_personality_context():
+    answers = {
+        'format': 'cooperative',
+        'complexity': 'heavy',
+        'duration': 'long',
+        'theme': 'scifi',
+        'luck': 'low',
+        'style': 'worker',
+        'interaction': 'social'
+    }
+    desc = narration.format_personality_context(answers)
+    assert "Cooperative gameplay" in desc
+    assert "Heavy brain-burner strategy" in desc
+    assert "Epic, immersive sessions" in desc
+    assert "Sci-Fi, fantasy" in desc
+    assert "Low-luck deterministic strategy" in desc
+    assert "Worker placement" in desc
+    assert "Social negotiation" in desc
+
+    # Empty / none fallback
+    empty_desc = narration.format_personality_context({})
+    assert "Balanced modern board games" in empty_desc
+
+
+@patch('narration._bedrock')
+def test_narrate_recommendations_personality_test_user(mock_bedrock_func):
+    mock_bedrock = MagicMock()
+    mock_bedrock_func.return_value = mock_bedrock
+
+    mock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': json.dumps({
+                            'recommendations': [
+                                {'name': 'Pandemic', 'reason': 'Cooperative tension and tactical teamwork deliver your favorite strategic feel.'}
+                            ]
+                        })
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_response
+
+    candidates = [
+        {'id': '1', 'name': 'Pandemic', 'rating': 7.6, 'complexity': 2.4, 'mechanics': ['Cooperative Game']}
+    ]
+
+    inline_weights = {
+        'mech_weights': {'Cooperative Game': 10.0},
+        'personality_answers': {
+            'format': 'cooperative',
+            'complexity': 'medium',
+            'duration': 'medium',
+            'theme': 'nature',
+            'luck': 'low',
+            'style': 'engine',
+            'interaction': 'solitaire'
+        }
+    }
+
+    recs = narration.narrate_recommendations(
+        candidates, "", "Weight context", {},
+        is_inline=True, inline_weights=inline_weights, inline_profile=None
+    )
+
+    assert recs is not None
+    assert len(recs) == 1
+    assert recs[0]['name'] == 'Pandemic'
+
+    mock_bedrock.converse.assert_called_once()
+    call_kwargs = mock_bedrock.converse.call_args[1]
+    prompt_text = call_kwargs['messages'][0]['content'][0]['text']
+
+    # Must contain personality context and instructions for new quiz players
+    assert "The user is a new board game player who completed a playstyle preference quiz" in prompt_text
+    assert "Cooperative gameplay" in prompt_text
+    assert "Do NOT mention collection or ownership history" in prompt_text
+    assert "No games rated/owned yet" not in prompt_text
+
+
+@patch('narration._bedrock')
+def test_narrate_recommendations_taste_test_user(mock_bedrock_func):
+    mock_bedrock = MagicMock()
+    mock_bedrock_func.return_value = mock_bedrock
+
+    mock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': json.dumps({
+                            'recommendations': [
+                                {'name': 'Azul', 'reason': 'Tile drafting and pattern building echo your enjoyment of Catan.'}
+                            ]
+                        })
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_response
+
+    candidates = [
+        {'id': '2', 'name': 'Azul', 'rating': 7.8, 'complexity': 1.8, 'mechanics': ['Tile Placement']}
+    ]
+
+    liked_str = "- Catan (User Rating: 9.0, Categories: Strategy, Mechanics: Trading)"
+
+    recs = narration.narrate_recommendations(
+        candidates, liked_str, "Weight context", {},
+        is_inline=True, inline_weights=None, inline_profile=[{'id': '13', 'rating': 9.0}]
+    )
+
+    assert recs is not None
+    assert len(recs) == 1
+    assert recs[0]['name'] == 'Azul'
+
+    mock_bedrock.converse.assert_called_once()
+    call_kwargs = mock_bedrock.converse.call_args[1]
+    prompt_text = call_kwargs['messages'][0]['content'][0]['text']
+
+    assert "The user recently completed a Quick Taste Test" in prompt_text
+    assert "Directly connect the recommended game to 1 or 2 specific titles they liked above" in prompt_text
+

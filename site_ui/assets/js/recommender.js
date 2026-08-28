@@ -1892,12 +1892,23 @@ document.addEventListener("DOMContentLoaded", function () {
             mech_weights["Set Collection"] = 5.0;
         }
 
+        const personality_answers = {
+            format: q1,
+            complexity: q2,
+            duration: q3,
+            theme: q4,
+            luck: q5,
+            style: q6,
+            interaction: q7
+        };
+
         const weightsObj = {
             mech_weights: mech_weights,
             cat_weights: cat_weights,
             complexity_weights: complexity_weights,
             designer_weights: {},
-            publisher_weights: {}
+            publisher_weights: {},
+            personality_answers: personality_answers
         };
 
         return weightsObj;

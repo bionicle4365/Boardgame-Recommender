@@ -509,7 +509,10 @@ def _handle_recommendations(query_params):
 
     # 9. Call Bedrock for personalized narration
     weight_context = build_weight_context(query_params, weights)
-    narrated_recs = narrate_recommendations(top_candidates[:25], liked_games_str, weight_context, query_params)
+    narrated_recs = narrate_recommendations(
+        top_candidates[:25], liked_games_str, weight_context, query_params,
+        is_inline=is_inline, inline_weights=inline_weights, inline_profile=inline_profile
+    )
 
     if narrated_recs is not None:
         recs_list = narrated_recs

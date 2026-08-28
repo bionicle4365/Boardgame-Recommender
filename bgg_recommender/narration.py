@@ -34,7 +34,69 @@ def __getattr__(name):
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-def narrate_recommendations(top_candidates, liked_games_str, weight_context, query_params):
+def format_personality_context(personality_answers):
+    """
+    Formats the user's personality quiz choices into a natural-language playstyle description.
+    """
+    if not personality_answers or not isinstance(personality_answers, dict):
+        return "- Playstyle preferences: Balanced modern board games across mechanics and themes."
+
+    lines = []
+    fmt = personality_answers.get('format')
+    if fmt == 'cooperative':
+        lines.append("- Format Preference: Cooperative gameplay (working together as a team against the board)")
+    elif fmt == 'competitive':
+        lines.append("- Format Preference: Competitive head-to-head strategy")
+
+    comp = personality_answers.get('complexity')
+    if comp == 'light':
+        lines.append("- Complexity Preference: Lightweight and accessible (easy to learn, breezy rules)")
+    elif comp == 'medium':
+        lines.append("- Complexity Preference: Medium-weight tactical depth (rewarding strategy without steep learning curves)")
+    elif comp == 'heavy':
+        lines.append("- Complexity Preference: Heavy brain-burner strategy (deep systems, complex decision trees)")
+
+    dur = personality_answers.get('duration')
+    if dur == 'short':
+        lines.append("- Play Time Preference: Quick sessions (30-45 minutes)")
+    elif dur == 'medium':
+        lines.append("- Play Time Preference: Standard game night length (45-90 minutes)")
+    elif dur == 'long':
+        lines.append("- Play Time Preference: Epic, immersive sessions (90+ minutes)")
+
+    theme = personality_answers.get('theme')
+    if theme == 'nature':
+        lines.append("- Theme Preference: Wildlife, nature, animals, and environmental worldbuilding")
+    elif theme == 'scifi':
+        lines.append("- Theme Preference: Sci-Fi, fantasy, and heroic adventure")
+    elif theme == 'economic':
+        lines.append("- Theme Preference: Economic growth, historical development, and industry building")
+
+    luck = personality_answers.get('luck')
+    if luck == 'high':
+        lines.append("- Luck Preference: High excitement, dice rolling, and tactical adaptability")
+    elif luck == 'low':
+        lines.append("- Luck Preference: Low-luck deterministic strategy and pure player agency")
+
+    style = personality_answers.get('style')
+    if style == 'engine':
+        lines.append("- Mechanism Preference: Engine building, deck building, and satisfying card combos")
+    elif style == 'worker':
+        lines.append("- Mechanism Preference: Worker placement, action drafting, and area control")
+
+    inter = personality_answers.get('interaction')
+    if inter == 'conflict':
+        lines.append("- Interaction Style: Direct player conflict, area competition, and tactical attacks")
+    elif inter == 'social':
+        lines.append("- Interaction Style: Social negotiation, trading, bluffing, and table talk")
+    elif inter == 'solitaire':
+        lines.append("- Interaction Style: Multi-path puzzle solving, hand management, and low direct conflict")
+
+    return "\n".join(lines) if lines else "- Playstyle preferences: Balanced modern board games."
+
+
+def narrate_recommendations(top_candidates, liked_games_str, weight_context, query_params,
+                            is_inline=False, inline_weights=None, inline_profile=None):
     """
     Calls Bedrock to generate personalized 1-sentence reasons for each recommendation.
 
@@ -43,6 +105,9 @@ def narrate_recommendations(top_candidates, liked_games_str, weight_context, que
         liked_games_str: Formatted string of user's liked games for the prompt.
         weight_context: Formatted string of user's weight preferences for the prompt.
         query_params: Original query parameters dict.
+        is_inline: Whether request is an inline/wizard request.
+        inline_weights: Dict of inline weights including optional personality_answers.
+        inline_profile: Optional list of inline ratings dicts.
 
     Returns:
         List of recommendation dicts with 'name', 'reason', 'id', and rich metadata.
@@ -72,13 +137,47 @@ def narrate_recommendations(top_candidates, liked_games_str, weight_context, que
             )
         candidates_str = "\n".join(cand_list)
 
-    user_prompt = f"""You are a board game recommendation expert.
+    # Determine prompt mode: Personality Test, Quick Taste Test, or Collection Profile
+    if is_inline and inline_weights and not liked_games_str:
+        # Casual Personality Test user (no rated games, purely quiz answers)
+        personality_answers = inline_weights.get('personality_answers') if isinstance(inline_weights, dict) else None
+        personality_desc = format_personality_context(personality_answers)
+        user_prompt = f"""You are a board game recommendation expert.
+     
+The user is a new board game player who completed a playstyle preference quiz with the following declared preferences:
+{personality_desc}
+{weight_context}
+Please recommend 10 board games for the user.
+"""
+        explanation_instructions = """For each recommended game:
+1. Provide the exact name of the game.
+2. Provide a punchy, direct 1-sentence explanation of why they will love playing it (aim for 12–15 words, maximum 18 words). Explain how the game delivers on their declared playstyle preferences (e.g. cooperative teamwork, engine-building satisfaction, strategic worker placement, or thematic immersion). Do NOT mention collection or ownership history. Use active verbs and highlight concrete mechanics or gameplay dynamics. Rotate through distinct framing angles across the 10 recommendations. No two recommendations may begin with the same word or phrase."""
+
+    elif is_inline and liked_games_str:
+        # Quick Taste Test user (liked seed games and write-in favorites)
+        user_prompt = f"""You are a board game recommendation expert.
+     
+The user recently completed a Quick Taste Test and indicated they enjoy the following board games:
+{liked_games_str}
+{weight_context}
+Please recommend 10 board games for the user.
+"""
+        explanation_instructions = """For each recommended game:
+1. Provide the exact name of the game.
+2. Provide a punchy, direct 1-sentence explanation of why they will love playing it (aim for 12–15 words, maximum 18 words). Directly connect the recommended game to 1 or 2 specific titles they liked above, highlighting shared mechanics (e.g. tile drafting, card combos, resource management), pacing, or tactical feel. Use active verbs and direct comparisons. Rotate through distinct framing angles across the 10 recommendations. No two recommendations may begin with the same word or phrase."""
+
+    else:
+        # Standard BGG User Profile (collection games with ratings)
+        user_prompt = f"""You are a board game recommendation expert.
      
 The user has the following board games in their collection with their ratings (where higher is better):
 {liked_games_str if liked_games_str else "- No games rated/owned yet."}
 {weight_context}
 Please recommend 10 board games for the user.
 """
+        explanation_instructions = """For each recommended game:
+1. Provide the exact name of the game.
+2. Provide a punchy, direct 1-sentence explanation of why they will love playing it (aim for 12–15 words, maximum 18 words). Directly connect the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics, strategic dynamics, or thematic elements. Use active verbs and avoid filler phrases. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences."""
 
     if candidates_str:
         user_prompt += f"""
@@ -93,10 +192,8 @@ Review the candidate list for variants, new editions, or implementations of the 
 Please recommend 10 great board games from your general knowledge.
 """
 
-    user_prompt += """
-For each recommended game:
-1. Provide the exact name of the game.
-2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it (maximum 15 words). This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences.
+    user_prompt += f"""
+{explanation_instructions}
 
 Format your response as a JSON object with a single key "recommendations", which is a list of objects containing "name" and "reason".
 Do not include any introductory or concluding text (e.g. do not say "Here are your recommendations:" or use markdown code blocks). Output only raw, valid JSON.
@@ -112,7 +209,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
 
         system_prompts = [
             {
-                "text": "You are a board game recommendation expert. Your job is to select the best games and write concise, highly varied, and expressive 1-sentence explanations (maximum 15 words per reason). Avoid repetitive sentence structures (e.g., do not start multiple sentences with 'If you enjoyed...'). Do NOT hallucinate themes or mechanics that are not explicitly present in the provided context lists. Ensure you output raw, valid JSON matching the requested schema."
+                "text": "You are a board game recommendation expert. Your job is to select the best games and write punchy, direct, and engaging 1-sentence explanations (aim for 12–15 words per reason, maximum 18 words). Use active verbs and highlight concrete mechanics, pacing, or thematic dynamics. Avoid generic filler (e.g., do NOT start sentences with 'If you enjoyed...', 'This game is perfect for...', or 'A great choice because...'). Do NOT hallucinate themes or mechanics that are not explicitly present in the provided context lists. Ensure you output raw, valid JSON matching the requested schema."
             }
         ]
 
@@ -122,7 +219,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
             messages=messages,
             system=system_prompts,
             inferenceConfig={
-                "maxTokens": 800,
+                "maxTokens": 1200,
                 "temperature": 0.6
             }
         )
