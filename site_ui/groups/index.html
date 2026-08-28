@@ -715,7 +715,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                             📊 Playgroup Analytics
                         </button>
                         <button class="groups-tab-btn" id="tab-polls-btn" type="button">
-                            📜 Past Polls
+                            🗳️ Polls
                         </button>
                     </div>
 
@@ -864,18 +864,21 @@ description: "Combine collections, plan board game sessions, and get group conse
                             </div>
                         </div>
 
-                        <!-- Tab 3: Past Polls History Content -->
+                        <!-- Tab 3: Game Night Polls Content -->
                         <div id="tab-polls-content" class="groups-tab-content">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 20px 0; gap: 10px; flex-wrap: wrap;">
-                                <h3 style="margin: 0; font-size: 1.1rem; font-family: 'Outfit', sans-serif; color: var(--text-main);">Game Night Voting History</h3>
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.15rem; font-family: 'Outfit', sans-serif; color: var(--text-main);">Game Night Polls</h3>
+                                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Active voting sessions and completed game night consensus results.</p>
+                                </div>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="btn btn-primary" onclick="openVotingSessionModal()" style="font-size: 0.85rem; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;">🗳️ + Create Poll</button>
-                                    <button class="btn btn-secondary" onclick="loadPastPolls()" style="font-size: 0.85rem; padding: 6px 14px;">🔄 Refresh</button>
+                                    <button class="btn btn-primary" onclick="openVotingSessionModal()" style="font-size: 0.85rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px;">🗳️ + Create Poll</button>
+                                    <button class="btn btn-secondary" onclick="loadPastPolls()" style="font-size: 0.85rem; padding: 7px 14px;">🔄 Refresh</button>
                                 </div>
                             </div>
-                            <div id="past-polls-list" style="display: flex; flex-direction: column; gap: 14px;">
+                            <div id="past-polls-list" style="display: flex; flex-direction: column; gap: 20px;">
                                 <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
-                                    No past polls found for this group. Click "+ Create Poll" or run recommendations to launch a voting session!
+                                    Loading polls...
                                 </div>
                             </div>
                         </div>
@@ -907,6 +910,9 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                         <div id="modal-candidates-list" style="margin: 8px 0 16px 0; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px;"></div>
                         
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Host / Created By (Voting as):</label>
+                        <input type="text" id="modal-poll-creator" placeholder="e.g. your_bgg_username" style="width: 100%; margin-top: 6px; margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem; box-sizing: border-box;">
+
                         <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Poll Duration (Closes At):</label>
                         <select id="modal-poll-duration" style="width: 100%; margin-top: 6px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem;">
                             <option value="2">2 Hours (Quick Game Night)</option>
@@ -1429,6 +1435,13 @@ description: "Combine collections, plan board game sessions, and get group conse
                 const response = await fetchApi('/preferences');
                 if (response.ok) {
                     const data = await response.json();
+                    if (data.bgg_username) {
+                        if (window.Auth && window.Auth.setBggUsername) window.Auth.setBggUsername(data.bgg_username);
+                        else {
+                            localStorage.setItem("bgg_username", data.bgg_username);
+                            localStorage.setItem("bgg_last_username", data.bgg_username);
+                        }
+                    }
                     if (data.playgroups && Array.isArray(data.playgroups)) {
                         playgroups = data.playgroups;
                         localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
@@ -1647,6 +1660,16 @@ description: "Combine collections, plan board game sessions, and get group conse
 
             modal.style.display = "flex";
 
+            // Pre-populate Host / Created By field
+            const hostInput = document.getElementById("modal-poll-creator");
+            if (hostInput) {
+                const detectedUser = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) ||
+                                     (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "") ||
+                                     (activeGroup && activeGroup.members && activeGroup.members.length ? activeGroup.members[0] : "") ||
+                                     (window.Auth && window.Auth.getEmail ? window.Auth.getEmail().split('@')[0] : "");
+                hostInput.value = detectedUser;
+            }
+
             if (hasExplicitRecs) {
                 if (sourceDesc) {
                     sourceDesc.textContent = "Select candidate games from your recommendation shortlist or filter by title. Attendees vote 👍 Want to Play, 😐 Fine, or ❌ Veto.";
@@ -1713,7 +1736,21 @@ description: "Combine collections, plan board game sessions, and get group conse
             submitBtn.disabled = true;
             submitBtn.textContent = "Creating...";
 
-            const creatorName = localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || (typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getEmail() : '') || 'Host';
+            const hostInput = document.getElementById("modal-poll-creator");
+            let creatorName = (hostInput ? hostInput.value.trim() : "") ||
+                              (window.Auth && window.Auth.getBggUsername ? window.Auth.getBggUsername() : "") ||
+                              (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "") ||
+                              (activeGroup && activeGroup.members && activeGroup.members.length ? activeGroup.members[0] : "") ||
+                              (typeof Auth !== 'undefined' && Auth.isLoggedIn() ? (Auth.getEmail() || "").split('@')[0] : "") ||
+                              "Host";
+
+            if (creatorName && creatorName !== "Host") {
+                if (window.Auth && window.Auth.setBggUsername) window.Auth.setBggUsername(creatorName);
+                else {
+                    localStorage.setItem("bgg_username", creatorName);
+                    localStorage.setItem("bgg_last_username", creatorName);
+                }
+            }
 
             try {
                 const resp = await window.fetchApi("/session", {
@@ -1731,6 +1768,8 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                 if (resp.ok) {
                     const sessionData = await resp.json();
+                    localStorage.setItem("bgg_poll_host_" + sessionData.session_id, creatorName);
+
                     const voteUrl = `${window.location.origin}${window.location.pathname.replace(/\/groups\/?$/, '')}/vote/?id=${sessionData.session_id}`;
                     
                     document.getElementById("share-poll-url-input").value = voteUrl;
@@ -1738,6 +1777,7 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                     document.getElementById("modal-step-config").style.display = "none";
                     document.getElementById("modal-step-created").style.display = "block";
+                    loadPastPolls();
                 } else {
                     const errData = await resp.json().catch(() => ({}));
                     alert(errData.error || "Failed to create voting session.");
@@ -1773,59 +1813,145 @@ description: "Combine collections, plan board game sessions, and get group conse
                     if (sessions.length === 0) {
                         listContainer.innerHTML = `
                             <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
-                                No past polls found. Generate recommendations and click "Start Async Voting Poll" to launch your first session!
+                                <div style="font-size: 2rem; margin-bottom: 8px;">🗳️</div>
+                                <h4 style="margin: 0 0 6px 0; color: var(--text-main);">No Polls Created Yet</h4>
+                                <p style="margin: 0 0 16px 0; font-size: 0.9rem;">Click "+ Create Poll" or "Poll Group Library" to launch your first game night voting session!</p>
+                                <button class="btn btn-primary" onclick="openVotingSessionModal()" style="font-size: 0.88rem; padding: 8px 16px;">+ Create a Poll</button>
                             </div>
                         `;
                         return;
                     }
 
+                    const activeSessions = sessions.filter(s => !s.is_closed);
+                    const closedSessions = sessions.filter(s => s.is_closed);
+
+                    function getRemainingTimeStr(closesAt) {
+                        const diffMs = new Date(closesAt) - new Date();
+                        if (diffMs <= 0) return "Closing soon";
+                        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        if (hours > 24) {
+                            const days = Math.floor(hours / 24);
+                            return `${days} day${days > 1 ? 's' : ''} left`;
+                        }
+                        if (hours > 0) return `${hours}h ${minutes}m left`;
+                        return `${minutes}m left`;
+                    }
+
                     let html = "";
-                    sessions.forEach(sess => {
-                        const totalVoters = sess.consensus ? sess.consensus.total_voters : 0;
-                        const winner = sess.consensus ? sess.consensus.winner : null;
-                        const createdDate = new Date(sess.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                        const statusBadge = sess.is_closed 
-                            ? `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">🔒 CLOSED</span>`
-                            : `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">⏱️ ACTIVE</span>`;
 
-                        const voteUrl = `${window.location.origin}${window.location.pathname.replace(/\/groups\/?$/, '')}/vote/?id=${sess.session_id}`;
+                    // 1. ACTIVE POLLS SECTION
+                    html += `
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);">🟢 Active Polls</span>
+                                <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-weight: 800; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;">${activeSessions.length}</span>
+                            </div>
+                    `;
 
+                    if (activeSessions.length === 0) {
                         html += `
-                            <div style="background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 12px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <strong style="font-size: 1.1rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">${window.escapeHTML(sess.group_name || 'Game Night')}</strong>
-                                        ${statusBadge}
-                                    </div>
-                                    <div style="font-size: 0.85rem; color: var(--text-muted);">
-                                        Created ${createdDate} • ${totalVoters} voter${totalVoters !== 1 ? 's' : ''} • ${sess.candidates ? sess.candidates.length : 0} candidates
-                                    </div>
-                                    ${winner ? `
-                                        <div style="font-size: 0.88rem; color: #10b981; font-weight: 600; margin-top: 4px;">
-                                            🏆 Winner: ${window.escapeHTML(winner.name)}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                                <div style="display: flex; gap: 8px; align-items: center;">
-                                    ${!sess.is_closed ? `
-                                        <button type="button" class="btn btn-secondary" onclick="closeSessionEarly('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);" title="End voting early and finalize results">
-                                            🔒 Close
-                                        </button>
-                                    ` : ''}
-                                    <button type="button" class="btn btn-secondary" onclick="cancelSessionPrompt('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #f87171; border-color: rgba(239, 68, 68, 0.4);" title="Cancel and delete this poll">
-                                        🗑️ Delete
-                                    </button>
-                                    <a href="${voteUrl}" target="_blank" class="btn btn-primary" style="font-size: 0.82rem; padding: 8px 14px;">
-                                        ${sess.is_closed ? 'View Results ↗' : 'Vote Now ↗'}
-                                    </a>
-                                </div>
+                            <div style="padding: 18px 20px; background: rgba(99, 102, 241, 0.04); border: 1px dashed var(--border); border-radius: 12px; font-size: 0.88rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                <span>No active voting sessions open right now.</span>
+                                <button class="btn btn-outline" onclick="openVotingSessionModal()" style="font-size: 0.8rem; padding: 5px 12px;">+ Start New Poll</button>
                             </div>
                         `;
-                    });
+                    } else {
+                        html += `<div style="display: flex; flex-direction: column; gap: 12px;">`;
+                        activeSessions.forEach(sess => {
+                            const totalVoters = sess.consensus ? sess.consensus.total_voters : 0;
+                            const createdDate = new Date(sess.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                            const voteUrl = `${window.location.origin}${window.location.pathname.replace(/\/groups\/?$/, '')}/vote/?id=${sess.session_id}`;
+                            const timeLeft = sess.closes_at ? getRemainingTimeStr(sess.closes_at) : 'Active';
+
+                            html += `
+                                <div style="background: var(--card-bg); border: 1.5px solid rgba(16, 185, 129, 0.4); box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08); border-radius: 12px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                            <strong style="font-size: 1.1rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">${window.escapeHTML(sess.group_name || 'Game Night')}</strong>
+                                            <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">⏱️ ACTIVE • ${timeLeft}</span>
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                            Created ${createdDate} by <strong>${window.escapeHTML(sess.creator_name || 'Host')}</strong> • ${totalVoters} vote${totalVoters !== 1 ? 's' : ''} recorded • ${sess.candidates ? sess.candidates.length : 0} candidate games
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                        <button type="button" class="btn btn-secondary" onclick="navigator.clipboard.writeText('${voteUrl}'); alert('Voting link copied to clipboard!');" style="font-size: 0.82rem; padding: 8px 12px;" title="Copy shareable voting link">
+                                            📋 Share Link
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" onclick="closeSessionEarly('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);" title="End voting early and finalize results">
+                                            🔒 Close Early
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" onclick="cancelSessionPrompt('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #f87171; border-color: rgba(239, 68, 68, 0.4);" title="Cancel and delete this poll">
+                                            🗑️
+                                        </button>
+                                        <a href="${voteUrl}" target="_blank" class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 16px; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669); border: none;">
+                                            🗳️ Vote / View ↗
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += `</div>`;
+                    }
+                    html += `</div>`;
+
+                    // 2. COMPLETED POLLS SECTION
+                    if (closedSessions.length > 0) {
+                        html += `
+                            <div style="margin-top: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                    <span style="font-weight: 700; font-size: 1rem; color: var(--text-main);">📜 Completed Polls</span>
+                                    <span style="background: rgba(148, 163, 184, 0.2); color: var(--text-muted); font-weight: 800; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;">${closedSessions.length}</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                        `;
+
+                        closedSessions.forEach(sess => {
+                            const totalVoters = sess.consensus ? sess.consensus.total_voters : 0;
+                            const winner = sess.consensus ? sess.consensus.winner : null;
+                            const createdDate = new Date(sess.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                            const voteUrl = `${window.location.origin}${window.location.pathname.replace(/\/groups\/?$/, '')}/vote/?id=${sess.session_id}`;
+
+                            html += `
+                                <div style="background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; opacity: 0.92;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <strong style="font-size: 1.05rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">${window.escapeHTML(sess.group_name || 'Game Night')}</strong>
+                                            <span style="background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); padding: 2px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">🔒 FINALIZED</span>
+                                        </div>
+                                        <div style="font-size: 0.82rem; color: var(--text-muted);">
+                                            Closed ${createdDate} • ${totalVoters} voter${totalVoters !== 1 ? 's' : ''} • ${sess.candidates ? sess.candidates.length : 0} candidates
+                                        </div>
+                                        ${winner ? `
+                                            <div style="font-size: 0.88rem; color: #10b981; font-weight: 600; margin-top: 2px;">
+                                                🏆 Consensus Winner: <strong>${window.escapeHTML(winner.name)}</strong>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <button type="button" class="btn btn-secondary" onclick="cancelSessionPrompt('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #f87171; border-color: rgba(239, 68, 68, 0.4);" title="Delete from history">
+                                            🗑️ Delete
+                                        </button>
+                                        <a href="${voteUrl}" target="_blank" class="btn btn-secondary" style="font-size: 0.82rem; padding: 8px 14px;">
+                                            📊 View Results ↗
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += `</div></div>`;
+                    }
+
                     listContainer.innerHTML = html;
                 }
             } catch (e) {
-                console.error("Error loading past polls:", e);
+                console.error("Error loading polls:", e);
+                listContainer.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: var(--danger);">
+                        Failed to load polls list. Please check your connection and try again.
+                    </div>
+                `;
             }
         };
 

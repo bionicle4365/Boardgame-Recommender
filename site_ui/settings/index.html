@@ -532,6 +532,12 @@ description: "Manage your Boardgame Recommender settings, configure your account
                 });
 
                 if (res.ok) {
+                    if (username && window.Auth && window.Auth.setBggUsername) {
+                        window.Auth.setBggUsername(username);
+                    } else if (username) {
+                        localStorage.setItem("bgg_username", username);
+                        localStorage.setItem("bgg_last_username", username);
+                    }
                     showToast(bggToast, "success", "✅ BGG username saved successfully!");
                 } else {
                     const err = await res.json().catch(() => ({}));

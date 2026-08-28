@@ -403,6 +403,21 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     const sessionId = urlParams.get('id') || urlParams.get('session_id') || 'demo';
 
     async function loadSession() {
+        // Auto-fetch user's saved BGG username if logged in
+        if (window.Auth && window.Auth.isLoggedIn() && !window.Auth.getBggUsername()) {
+            try {
+                const prefResp = await window.fetchApi('/preferences');
+                if (prefResp.ok) {
+                    const prefData = await prefResp.json();
+                    if (prefData.bgg_username) {
+                        window.Auth.setBggUsername(prefData.bgg_username);
+                    }
+                }
+            } catch (err) {
+                console.log("Preferences check error:", err);
+            }
+        }
+
         try {
             const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(sessionId)}`);
             if (!resp.ok) {
@@ -426,14 +441,33 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     }
 
     function resolveVoterIdentity() {
-        let userBgg = (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "").toLowerCase().trim();
+        let userBgg = (window.Auth && window.Auth.getBggUsername ? window.Auth.getBggUsername() : (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "")).toLowerCase().trim();
         let userEmail = (typeof Auth !== 'undefined' && Auth.isLoggedIn() ? (Auth.getEmail() || "") : "").toLowerCase().trim();
-        
+        const isCreatorBrowser = localStorage.getItem("bgg_poll_host_" + (currentSession ? currentSession.session_id : sessionId));
+
+        if (!userBgg && isCreatorBrowser) {
+            userBgg = isCreatorBrowser.toLowerCase().trim();
+        }
+
+        const creatorId = (currentSession.creator_id || "").toLowerCase().trim();
+        const creatorName = (currentSession.creator_name || "").toLowerCase().trim();
+
         const roster = (currentSession && currentSession.roster) ? currentSession.roster : [];
-        const matchedRosterMember = roster.find(m => m.toLowerCase().trim() === userBgg && userBgg.length > 0);
+        let matchedRosterMember = roster.find(m => m.toLowerCase().trim() === userBgg && userBgg.length > 0);
+
+        // If not directly matched by username but this browser is host and creator name is in roster
+        if (!matchedRosterMember && (userBgg === creatorName || userBgg === creatorId || isCreatorBrowser)) {
+            matchedRosterMember = roster.find(m => m.toLowerCase().trim() === creatorName || m.toLowerCase().trim() === creatorId);
+        }
 
         if (matchedRosterMember) {
             currentVoterName = matchedRosterMember;
+            isRosterMember = true;
+        } else if (userBgg && (userBgg === creatorName || userBgg === creatorId || isCreatorBrowser)) {
+            currentVoterName = currentSession.creator_name || userBgg;
+            isRosterMember = true;
+        } else if (userBgg) {
+            currentVoterName = userBgg;
             isRosterMember = true;
         } else {
             let anonId = localStorage.getItem("bgg_anon_voter_id");
@@ -446,10 +480,9 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
         }
 
         // Check if current user is the host
-        const creatorId = (currentSession.creator_id || "").toLowerCase().trim();
-        const creatorName = (currentSession.creator_name || "").toLowerCase().trim();
         isHost = (userBgg && (userBgg === creatorId || userBgg === creatorName)) ||
-                 (userEmail && (userEmail === creatorId || userEmail === creatorName));
+                 (userEmail && (userEmail === creatorId || userEmail === creatorName)) ||
+                 !!isCreatorBrowser;
 
         // Preload existing votes for this voter if already submitted
         if (currentSession && currentSession.votes && currentSession.votes[currentVoterName]) {
@@ -457,15 +490,35 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
         }
     }
 
+    window.promptSetVoterName = function() {
+        let msg = "Enter your BGG username to vote:";
+        if (currentSession && currentSession.roster && currentSession.roster.length > 0) {
+            msg = `Select or type your name from the group roster (${currentSession.roster.join(', ')}):`;
+        }
+        const currentVal = currentVoterName.startsWith("Anonymous") ? "" : currentVoterName;
+        const chosen = prompt(msg, currentVal);
+        if (chosen !== null && chosen.trim() !== "") {
+            const clean = chosen.trim();
+            if (window.Auth && window.Auth.setBggUsername) window.Auth.setBggUsername(clean);
+            else {
+                localStorage.setItem("bgg_username", clean);
+                localStorage.setItem("bgg_last_username", clean);
+            }
+            renderSession();
+        }
+    };
+
     function renderSession() {
         resolveVoterIdentity();
 
         document.getElementById('poll-group-name').textContent = currentSession.group_name || "Game Night Session";
         
         const creatorDisplay = currentSession.creator_name || currentSession.creator_id || 'Host';
+        const changeVoterBtn = `<button type="button" onclick="promptSetVoterName()" style="background: none; border: none; text-decoration: underline; color: inherit; cursor: pointer; font-size: 0.75rem; padding: 0 2px; margin-left: 6px; opacity: 0.85;" title="Change which playgroup member you are voting as">change</button>`;
+
         const voterBadge = isRosterMember
-            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">👤 Voting as ${window.escapeHTML(currentVoterName)}</span>`
-            : `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-left: 6px;">👤 Voting anonymously</span>`;
+            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">👤 Voting as ${window.escapeHTML(currentVoterName)} ${changeVoterBtn}</span>`
+            : `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-left: 6px;">👤 Voting anonymously ${changeVoterBtn}</span>`;
 
         document.getElementById('poll-creator-text').innerHTML = `Created by <strong>${window.escapeHTML(creatorDisplay)}</strong> • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates • ${voterBadge}`;
 

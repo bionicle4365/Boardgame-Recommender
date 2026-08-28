@@ -46,6 +46,18 @@ window.Auth = {
     getEmail() {
         return localStorage.getItem("bgg_auth_email");
     },
+    getBggUsername() {
+        return (localStorage.getItem("bgg_username") || 
+                localStorage.getItem("bgg_last_username") || 
+                "").trim();
+    },
+    setBggUsername(username) {
+        if (username && String(username).trim()) {
+            const clean = String(username).trim();
+            localStorage.setItem("bgg_username", clean);
+            localStorage.setItem("bgg_last_username", clean);
+        }
+    },
     logout() {
         localStorage.removeItem("bgg_auth_id_token");
         localStorage.removeItem("bgg_auth_refresh_token");
@@ -342,6 +354,10 @@ window.fetchApi = async function(endpoint, options = {}) {
             data = {};
         }
         
+        if (endpoint.startsWith('/preferences') && data && data.bgg_username) {
+            window.Auth.setBggUsername(data.bgg_username);
+        }
+
         return {
             ok: true,
             status: 200,
@@ -361,7 +377,18 @@ window.fetchApi = async function(endpoint, options = {}) {
         }
     }
     
-    return fetch(url, options);
+    const response = await fetch(url, options);
+    
+    // Auto-sync preferences bgg_username if fetched
+    if (endpoint.startsWith('/preferences') && response.ok && options.method !== 'DELETE') {
+        response.clone().json().then(prefData => {
+            if (prefData && prefData.bgg_username) {
+                window.Auth.setBggUsername(prefData.bgg_username);
+            }
+        }).catch(() => {});
+    }
+
+    return response;
 };
 
 // XSS Sanitizer
