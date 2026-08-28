@@ -302,34 +302,44 @@ def list_creator_sessions(creator_id: Optional[Union[str, List[str]]] = None, ta
                     KeyConditionExpression=Key('creator_id').eq(cid),
                     ScanIndexForward=False
                 )
-                for itm in resp.get('Items', []):
-                    items_dict[itm['session_id']] = itm
+                items_list = resp.get('Items', []) if isinstance(resp, dict) else []
+                if isinstance(items_list, list):
+                    for itm in items_list:
+                        if isinstance(itm, dict) and 'session_id' in itm:
+                            items_dict[itm['session_id']] = itm
             except Exception as e:
                 logger.debug(f"GSI query for '{cid}' not found or failed: {e}")
 
-        # Scan fallback to match sessions by creator_name, email, or roster membership
-        try:
-            resp = table.scan()
-            all_items = resp.get('Items', [])
-            cid_lower_set = {cid.lower() for cid in candidate_ids}
-            for itm in all_items:
-                c_id = (itm.get('creator_id') or '').lower()
-                c_name = (itm.get('creator_name') or '').lower()
-                roster = [str(r).lower() for r in (itm.get('roster') or []) if r]
+        # Scan fallback only if GSI returned no items or to match sessions by creator_name, email, or roster membership
+        if not items_dict:
+            try:
+                resp = table.scan()
+                all_items = resp.get('Items', []) if isinstance(resp, dict) else []
+                if isinstance(all_items, list):
+                    cid_lower_set = {str(cid).lower() for cid in candidate_ids}
+                    for itm in all_items:
+                        if not isinstance(itm, dict):
+                            continue
+                        c_id = str(itm.get('creator_id') or '').lower()
+                        c_name = str(itm.get('creator_name') or '').lower()
+                        raw_roster = itm.get('roster') or []
+                        roster = [str(r).lower() for r in raw_roster if r] if isinstance(raw_roster, list) else []
 
-                # Match if any candidate identifier matches creator_id, creator_name, or roster
-                if c_id in cid_lower_set or c_name in cid_lower_set or any(r in cid_lower_set for r in roster):
-                    items_dict[itm['session_id']] = itm
-        except Exception as scan_err:
-            logger.error(f"Scan fallback failed: {scan_err}")
+                        # Match if any candidate identifier matches creator_id, creator_name, or roster
+                        if c_id in cid_lower_set or c_name in cid_lower_set or any(r in cid_lower_set for r in roster):
+                            if 'session_id' in itm:
+                                items_dict[itm['session_id']] = itm
+            except Exception as scan_err:
+                logger.error(f"Scan fallback failed: {scan_err}")
 
         items = list(items_dict.values())
-        items.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        items.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
     else:
         try:
             resp = table.scan()
-            items = resp.get('Items', [])
-            items.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+            raw_items = resp.get('Items', []) if isinstance(resp, dict) else []
+            items = [i for i in raw_items if isinstance(i, dict)]
+            items.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
             items = items[:50]
         except Exception as scan_err:
             logger.error(f"Scan failed: {scan_err}")
@@ -338,12 +348,14 @@ def list_creator_sessions(creator_id: Optional[Union[str, List[str]]] = None, ta
     items = decimals_to_floats(items)
     now = datetime.now(timezone.utc)
     for item in items:
+        if not isinstance(item, dict):
+            continue
         if item.get('creator_name') == 'anonymous_host':
             item['creator_name'] = 'Host'
         if item.get('creator_id') == 'anonymous_host':
             item['creator_id'] = 'Host'
         try:
-            closes_at = datetime.fromisoformat(item['closes_at'].replace('Z', '+00:00'))
+            closes_at = datetime.fromisoformat(str(item['closes_at']).replace('Z', '+00:00'))
             item['is_closed'] = now >= closes_at
         except Exception:
             item['is_closed'] = False

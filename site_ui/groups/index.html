@@ -1685,7 +1685,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                     sourceDesc.textContent = "Select candidate games from your recommendation shortlist or filter by title. Attendees vote 👍 Want to Play, 😐 Fine, or ❌ Veto.";
                 }
                 modalCandidatePool = recs.map(r => ({ ...r, id: String(r.id) }));
-                modalSelectedCandidateIds = new Set(modalCandidatePool.slice(0, 5).map(r => String(r.id)));
+                modalSelectedCandidateIds = new Set();
                 renderModalCandidatesList();
             } else {
                 if (sourceDesc) {
@@ -1713,7 +1713,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                         sourceDesc.textContent = `Found ${ownedGames.length} unique owned games across ${attendees.length} members. Select games to include in tonight's voting poll:`;
                     }
                     modalCandidatePool = ownedGames;
-                    modalSelectedCandidateIds = new Set(ownedGames.slice(0, 5).map(g => String(g.id)));
+                    modalSelectedCandidateIds = new Set();
                     renderModalCandidatesList();
                 } catch (e) {
                     console.error("Error loading group library for poll:", e);
