@@ -275,39 +275,56 @@ def submit_vote(
     return session
 
 
-def list_creator_sessions(creator_id: Optional[str] = None, table=None) -> List[Dict[str, Any]]:
+def list_creator_sessions(creator_id: Optional[Union[str, List[str]]] = None, table=None) -> List[Dict[str, Any]]:
     """
-    Lists past and active sessions created by creator_id via GSI query,
-    or lists all recent sessions if creator_id is not specified.
+    Lists past and active sessions created by creator_id (or a list of candidate identifiers:
+    BGG username, Cognito email, Cognito sub UUID, roster member) via GSI query or scan fallback.
+    If creator_id is omitted, lists all recent sessions.
     """
     if table is None:
         table = get_dynamodb_table()
 
-    items = []
-    if creator_id:
-        try:
-            from boto3.dynamodb.conditions import Key
-            resp = table.query(
-                IndexName='creator_id-created_at-index',
-                KeyConditionExpression=Key('creator_id').eq(creator_id),
-                ScanIndexForward=False  # Most recent first
-            )
-            items = resp.get('Items', [])
-        except Exception as e:
-            logger.warning(f"GSI query for {creator_id} failed: {e}. Falling back to scan.")
+    # Normalize candidate identifiers
+    candidate_ids = []
+    if isinstance(creator_id, list):
+        candidate_ids = [str(cid).strip() for cid in creator_id if cid]
+    elif isinstance(creator_id, str) and creator_id.strip():
+        candidate_ids = [cid.strip() for cid in creator_id.split(',') if cid.strip()]
+
+    items_dict = {}
+
+    if candidate_ids:
+        for cid in candidate_ids:
             try:
-                resp = table.scan()
-                all_items = resp.get('Items', [])
-                items = [
-                    i for i in all_items
-                    if i.get('creator_id') == creator_id
-                    or i.get('creator_name') == creator_id
-                    or (isinstance(i.get('roster'), list) and creator_id in i.get('roster'))
-                ]
-                items.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-            except Exception as scan_err:
-                logger.error(f"Scan fallback failed: {scan_err}")
-                items = []
+                from boto3.dynamodb.conditions import Key
+                resp = table.query(
+                    IndexName='creator_id-created_at-index',
+                    KeyConditionExpression=Key('creator_id').eq(cid),
+                    ScanIndexForward=False
+                )
+                for itm in resp.get('Items', []):
+                    items_dict[itm['session_id']] = itm
+            except Exception as e:
+                logger.debug(f"GSI query for '{cid}' not found or failed: {e}")
+
+        # Scan fallback to match sessions by creator_name, email, or roster membership
+        try:
+            resp = table.scan()
+            all_items = resp.get('Items', [])
+            cid_lower_set = {cid.lower() for cid in candidate_ids}
+            for itm in all_items:
+                c_id = (itm.get('creator_id') or '').lower()
+                c_name = (itm.get('creator_name') or '').lower()
+                roster = [str(r).lower() for r in (itm.get('roster') or []) if r]
+
+                # Match if any candidate identifier matches creator_id, creator_name, or roster
+                if c_id in cid_lower_set or c_name in cid_lower_set or any(r in cid_lower_set for r in roster):
+                    items_dict[itm['session_id']] = itm
+        except Exception as scan_err:
+            logger.error(f"Scan fallback failed: {scan_err}")
+
+        items = list(items_dict.values())
+        items.sort(key=lambda x: x.get('created_at', ''), reverse=True)
     else:
         try:
             resp = table.scan()

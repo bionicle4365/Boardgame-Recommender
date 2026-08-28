@@ -1816,8 +1816,10 @@ description: "Combine collections, plan board game sessions, and get group conse
             if (!listContainer) return;
 
             try {
-                const currentUsername = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) || localStorage.getItem("bgg_username") || "";
-                const url = currentUsername ? `/sessions?creator_id=${encodeURIComponent(currentUsername)}` : "/sessions";
+                const userBgg = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) || localStorage.getItem("bgg_username") || "";
+                const userEmail = (window.Auth && window.Auth.isLoggedIn && window.Auth.isLoggedIn() && window.Auth.getEmail && window.Auth.getEmail()) || "";
+                const identifiers = [userBgg, userEmail].filter(Boolean).join(",");
+                const url = identifiers ? `/sessions?creator_id=${encodeURIComponent(identifiers)}` : "/sessions";
                 const resp = await window.fetchApi(url);
                 if (resp.ok) {
                     const data = await resp.json();

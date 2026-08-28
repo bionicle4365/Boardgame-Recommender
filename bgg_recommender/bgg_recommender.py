@@ -326,31 +326,45 @@ def _handle_delete_session(params):
 def _handle_list_sessions(query_params, event):
     import sessions
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
-    creator_id = claims.get('sub') or claims.get('username') or query_params.get('creator_id') or query_params.get('username')
+    
+    candidates = []
+    if claims.get('sub'): candidates.append(claims['sub'])
+    if claims.get('cognito:username'): candidates.append(claims['cognito:username'])
+    if claims.get('username'): candidates.append(claims['username'])
+    if claims.get('email'): candidates.append(claims['email'])
 
-    if not creator_id:
-        auth_header = (event.get('headers') or {}).get('authorization') or (event.get('headers') or {}).get('Authorization', '')
-        if auth_header.startswith('Bearer '):
-            try:
-                import base64
-                token_parts = auth_header.split(' ')[1].split('.')
-                if len(token_parts) >= 2:
-                    payload_b64 = token_parts[1]
-                    payload_b64 += '=' * (-len(payload_b64) % 4)
-                    payload_json = json.loads(base64.b64decode(payload_b64).decode('utf-8'))
-                    creator_id = payload_json.get('sub') or payload_json.get('cognito:username') or payload_json.get('username') or payload_json.get('email')
-            except Exception as jwt_err:
-                logger.debug(f"Could not parse JWT in authorization header: {jwt_err}")
+    auth_header = (event.get('headers') or {}).get('authorization') or (event.get('headers') or {}).get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        try:
+            import base64
+            token_parts = auth_header.split(' ')[1].split('.')
+            if len(token_parts) >= 2:
+                payload_b64 = token_parts[1]
+                payload_b64 += '=' * (-len(payload_b64) % 4)
+                payload_json = json.loads(base64.b64decode(payload_b64).decode('utf-8'))
+                for k in ['sub', 'cognito:username', 'username', 'email']:
+                    if payload_json.get(k):
+                        candidates.append(payload_json[k])
+        except Exception as jwt_err:
+            logger.debug(f"Could not parse JWT in authorization header: {jwt_err}")
+
+    for qk in ['creator_id', 'username', 'bgg_username', 'email']:
+        if query_params.get(qk):
+            candidates.extend(query_params[qk].split(','))
+
+    # Deduplicate while preserving order
+    seen = set()
+    unique_candidates = [c.strip() for c in candidates if c and str(c).strip() and not (c.strip() in seen or seen.add(c.strip()))]
 
     try:
-        session_list = sessions.list_creator_sessions(creator_id)
+        session_list = sessions.list_creator_sessions(unique_candidates if unique_candidates else None)
         return {
             'statusCode': 200,
             'headers': _cors_headers(),
             'body': json.dumps({'sessions': session_list})
         }
     except Exception as e:
-        logger.error(f"Error listing sessions for creator {creator_id}: {e}", exc_info=True)
+        logger.error(f"Error listing sessions: {e}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': _cors_headers(),
