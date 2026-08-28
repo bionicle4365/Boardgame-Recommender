@@ -230,6 +230,41 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
     const thumbUrl = rec.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
     const loadingClass = isPending ? "loading" : "";
     
+    const affinitiesHtml = (function() {
+        if (!rec.member_affinities || Object.keys(rec.member_affinities).length === 0) {
+            return "";
+        }
+        let html = `<div class="member-affinities-container">`;
+        html += `<div class="member-affinities-title">Group Member Taste Alignment:</div>`;
+        html += `<div class="member-affinities-list">`;
+        
+        Object.entries(rec.member_affinities).forEach(([user, val]) => {
+            // Scale cosine similarity (which maxes around 0.60 due to dimensionality differences) to a 0-100% display scale
+            const displayPct = Math.min(100, Math.max(0, Math.round((val / 0.60) * 100)));
+            
+            // Dynamic color determination based on percentage thresholds
+            let barColor = "linear-gradient(90deg, #ef4444, #f87171)"; // Crimson/Red for <40%
+            if (displayPct >= 70) {
+                barColor = "linear-gradient(90deg, #10b981, #34d399)"; // Emerald/Green for >=70%
+            } else if (displayPct >= 40) {
+                barColor = "linear-gradient(90deg, #f59e0b, #fbbf24)"; // Amber/Yellow for 40-70%
+            }
+            
+            html += `
+                <div class="member-affinity-row">
+                    <span class="member-affinity-name">${window.escapeHTML(user)}</span>
+                    <div class="member-affinity-bar-track">
+                        <div class="member-affinity-bar-fill" style="width: ${displayPct}%; background: ${barColor};"></div>
+                    </div>
+                    <span class="member-affinity-value">${displayPct}%</span>
+                </div>
+            `;
+        });
+        
+        html += `</div></div>`;
+        return html;
+    })();
+
     return `
         <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
             <div class="rec-card-body">
@@ -244,43 +279,10 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
                     <div class="rec-stats-container">
                         ${statsHtml}
                     </div>
-                    <p class="rec-reason ${loadingClass}" data-game-id="${rec.id || ''}">${window.escapeHTML(rec.reason)}</p>
-                    ${(function() {
-                        let affinitiesHtml = "";
-                        if (rec.member_affinities && Object.keys(rec.member_affinities).length > 0) {
-                            affinitiesHtml += `<div class="member-affinities-container">`;
-                            affinitiesHtml += `<div class="member-affinities-title">Group Member Taste Alignment:</div>`;
-                            affinitiesHtml += `<div class="member-affinities-list">`;
-                            
-                            Object.entries(rec.member_affinities).forEach(([user, val]) => {
-                                // Scale cosine similarity (which maxes around 0.60 due to dimensionality differences) to a 0-100% display scale
-                                const displayPct = Math.min(100, Math.max(0, Math.round((val / 0.60) * 100)));
-                                
-                                // Dynamic color determination based on percentage thresholds
-                                let barColor = "linear-gradient(90deg, #ef4444, #f87171)"; // Crimson/Red for <40%
-                                if (displayPct >= 70) {
-                                    barColor = "linear-gradient(90deg, #10b981, #34d399)"; // Emerald/Green for >=70%
-                                } else if (displayPct >= 40) {
-                                    barColor = "linear-gradient(90deg, #f59e0b, #fbbf24)"; // Amber/Yellow for 40-70%
-                                }
-                                
-                                affinitiesHtml += `
-                                    <div class="member-affinity-row">
-                                        <span class="member-affinity-name">${window.escapeHTML(user)}</span>
-                                        <div class="member-affinity-bar-track">
-                                            <div class="member-affinity-bar-fill" style="width: ${displayPct}%; background: ${barColor};"></div>
-                                        </div>
-                                        <span class="member-affinity-value">${displayPct}%</span>
-                                    </div>
-                                `;
-                            });
-                            
-                            affinitiesHtml += `</div></div>`;
-                        }
-                        return affinitiesHtml;
-                    })()}
                 </div>
             </div>
+            <p class="rec-reason ${loadingClass}" data-game-id="${rec.id || ''}">${window.escapeHTML(rec.reason)}</p>
+            ${affinitiesHtml}
         </div>
     `;
 };
@@ -303,9 +305,9 @@ window.renderSkeletonCards = function(container, count = 4) {
                             <div class="skeleton skeleton-text" style="width: 70px; height: 22px; border-radius: 6px; margin: 0;"></div>
                             <div class="skeleton skeleton-text" style="width: 85px; height: 22px; border-radius: 6px; margin: 0;"></div>
                         </div>
-                        <div class="skeleton skeleton-text paragraph" style="width: 100%; height: 42px; border-radius: 6px; margin-top: 10px;"></div>
                     </div>
                 </div>
+                <div class="skeleton skeleton-text paragraph" style="width: 100%; height: 42px; border-radius: 6px; margin-top: 10px;"></div>
             </div>
         `;
     }
