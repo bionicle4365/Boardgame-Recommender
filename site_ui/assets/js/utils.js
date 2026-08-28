@@ -242,6 +242,28 @@ window.fetchApi = async function(endpoint, options = {}) {
             } else {
                 data = { error: "Session not found" };
             }
+        } else if (endpoint.startsWith('/session/close') || (endpoint.startsWith('/session') && options.method === 'PUT')) {
+            const payload = JSON.parse(options.body || '{}');
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const sessionId = payload.session_id || urlParams.get('session_id') || urlParams.get('id');
+            const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            const found = sessions.find(s => s.session_id === sessionId);
+            if (found) {
+                found.closes_at = new Date().toISOString();
+                found.is_closed = true;
+                localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
+                data = found;
+            } else {
+                data = { error: "Session not found" };
+            }
+        } else if (endpoint.startsWith('/session/cancel') || (endpoint.startsWith('/session') && options.method === 'DELETE')) {
+            const payload = JSON.parse(options.body || '{}');
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const sessionId = payload.session_id || urlParams.get('session_id') || urlParams.get('id') || endpoint.split('/session/')[1];
+            let sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            sessions = sessions.filter(s => s.session_id !== sessionId);
+            localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
+            data = { message: "Session cancelled successfully", session_id: sessionId };
         } else if (endpoint.startsWith('/session') && options.method === 'POST') {
             const payload = JSON.parse(options.body || '{}');
             const now = new Date();
@@ -249,7 +271,8 @@ window.fetchApi = async function(endpoint, options = {}) {
             const closesAt = new Date(now.getTime() + durationHours * 3600 * 1000).toISOString();
             const newSession = {
                 session_id: Math.random().toString(36).substring(2, 10),
-                creator_id: payload.creator_id || 'gamer123',
+                creator_id: payload.creator_id || payload.creator_name || 'Host',
+                creator_name: payload.creator_name || payload.creator_id || 'Host',
                 group_name: payload.group_name || 'Friday Game Night',
                 created_at: now.toISOString(),
                 closes_at: closesAt,
@@ -269,18 +292,45 @@ window.fetchApi = async function(endpoint, options = {}) {
             sessions.unshift(newSession);
             localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
             data = newSession;
-        } else if (endpoint.startsWith('/session')) {
+        } else if (endpoint.startsWith('/collection')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
-            const sessionId = urlParams.get('session_id') || urlParams.get('id') || endpoint.split('/session/')[1];
-            const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
-            const found = sessions.find(s => s.session_id === sessionId) || sessions[0];
-            if (found) {
-                const now = new Date();
-                found.is_closed = now >= new Date(found.closes_at);
-                data = found;
-            } else {
-                data = { error: "Session not found" };
+            const username = (urlParams.get('username') || '').toLowerCase();
+            if (!username || username.startsWith('invalid') || username === 'ghost_user' || username === 'unknown_player') {
+                const errXml = `<?xml version="1.0" encoding="utf-8"?><errors><error><message>Invalid username specified</message></error></errors>`;
+                return {
+                    ok: false,
+                    status: 400,
+                    text: async () => errXml,
+                    json: async () => ({ error: "Invalid username" })
+                };
             }
+            const sampleXml = `<?xml version="1.0" encoding="utf-8"?>
+            <items totalitems="2" termsofuse="https://boardgamegeek.com/xmlapi/termsofuse" pubdate="Fri, 28 Aug 2026 12:00:00 +0000">
+                <item objectid="174430" subtype="boardgame" collid="1">
+                    <name sortindex="1">Gloomhaven</name>
+                    <yearpublished>2017</yearpublished>
+                    <thumbnail>https://cf.geekdo-images.com/sZYp_3BTDGjh2XdAnAqBulk_thumb.jpg</thumbnail>
+                    <status own="1" prevowned="0" fortrade="0" want="0" wanttoplay="0" wanttobuy="0" wishlist="0"/>
+                    <stats minplayers="1" maxplayers="4" minplaytime="60" maxplaytime="120" playingtime="120" numowned="50000">
+                        <rating value="9"><bayesaverage value="8.4"/></rating>
+                    </stats>
+                </item>
+                <item objectid="266192" subtype="boardgame" collid="2">
+                    <name sortindex="1">Wingspan</name>
+                    <yearpublished>2019</yearpublished>
+                    <thumbnail>https://cf.geekdo-images.com/yLZJ0aJR-_liNq0Azxhl0Ew_thumb.jpg</thumbnail>
+                    <status own="1" prevowned="0" fortrade="0" want="0" wanttoplay="0" wanttobuy="0" wishlist="0"/>
+                    <stats minplayers="1" maxplayers="5" minplaytime="40" maxplaytime="70" playingtime="70" numowned="80000">
+                        <rating value="8"><bayesaverage value="8.1"/></rating>
+                    </stats>
+                </item>
+            </items>`;
+            return {
+                ok: true,
+                status: 200,
+                text: async () => sampleXml,
+                json: async () => ({ totalitems: 2 })
+            };
         } else if (endpoint.startsWith('/similar')) {
             data = {
                 similar_games: [

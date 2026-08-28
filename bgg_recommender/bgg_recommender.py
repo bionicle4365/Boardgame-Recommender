@@ -151,7 +151,8 @@ def _handle_conventions():
 def _handle_create_session(body_params, event):
     import sessions
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
-    creator_id = claims.get('sub') or claims.get('username') or body_params.get('creator_id') or 'anonymous_host'
+    creator_id = claims.get('sub') or claims.get('username') or body_params.get('creator_id') or 'Host'
+    creator_name = body_params.get('creator_name') or claims.get('cognito:username') or claims.get('email') or body_params.get('creator_id') or 'Host'
     group_name = body_params.get('group_name', 'Game Night')
     candidates = body_params.get('candidates', [])
     duration_hours = float(body_params.get('duration_hours', 24.0))
@@ -170,7 +171,8 @@ def _handle_create_session(body_params, event):
             group_name=group_name,
             candidates=candidates,
             duration_hours=duration_hours,
-            roster=roster
+            roster=roster,
+            creator_name=creator_name
         )
         return {
             'statusCode': 201,
@@ -256,6 +258,64 @@ def _handle_vote_session(body_params):
         }
     except Exception as e:
         logger.error(f"Error submitting vote for session {session_id}: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(e)})
+        }
+
+
+def _handle_close_session(params):
+    import sessions
+    session_id = params.get('session_id') or params.get('id')
+    if not session_id:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'session_id is required'})
+        }
+
+    try:
+        updated_session = sessions.close_session(session_id)
+        return {
+            'statusCode': 200,
+            'headers': _cors_headers(),
+            'body': json.dumps(updated_session)
+        }
+    except KeyError:
+        return {
+            'statusCode': 404,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': f"Session '{session_id}' not found"})
+        }
+    except Exception as e:
+        logger.error(f"Error closing session {session_id}: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(e)})
+        }
+
+
+def _handle_delete_session(params):
+    import sessions
+    session_id = params.get('session_id') or params.get('id')
+    if not session_id:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'session_id is required'})
+        }
+
+    try:
+        sessions.cancel_session(session_id)
+        return {
+            'statusCode': 200,
+            'headers': _cors_headers(),
+            'body': json.dumps({'message': 'Session cancelled successfully', 'session_id': session_id})
+        }
+    except Exception as e:
+        logger.error(f"Error cancelling session {session_id}: {e}", exc_info=True)
         return {
             'statusCode': 500,
             'headers': _cors_headers(),
@@ -783,6 +843,14 @@ def lambda_handler(event, context):
             response = _handle_conventions()
         elif path.rstrip('/') == '/sessions':
             response = _handle_list_sessions(query_params, event)
+        elif '/session/close' in path or (path.startswith('/session') and http_method == 'PUT'):
+            response = _handle_close_session(combined_params)
+        elif '/session/cancel' in path or (path.startswith('/session') and http_method == 'DELETE'):
+            stripped = path.strip('/')
+            parts = stripped.split('/')
+            if len(parts) > 1 and parts[0] == 'session':
+                combined_params['session_id'] = parts[1]
+            response = _handle_delete_session(combined_params)
         elif '/session/vote' in path or (path.startswith('/session') and http_method == 'POST' and ('vote' in path or 'participant_name' in body_params)):
             response = _handle_vote_session(combined_params)
         elif path.startswith('/session') and http_method == 'POST':

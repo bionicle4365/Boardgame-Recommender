@@ -141,90 +141,94 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     font-weight: 700;
     color: var(--text-main);
     text-decoration: none;
+    font-family: 'Outfit', sans-serif;
 }
 
 .cand-name:hover {
-    color: var(--primary, #818cf8);
+    color: var(--primary, #6366f1);
 }
 
 .cand-stats {
     display: flex;
-    gap: 10px;
-    font-size: 0.82rem;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
     color: var(--text-muted);
-    flex-wrap: wrap;
 }
 
 .vote-actions {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
 }
 
 .vote-btn {
-    padding: 10px 14px;
+    padding: 10px 16px;
     border-radius: 10px;
-    border: 1.5px solid var(--border);
-    background: var(--input-bg, #0f172a);
-    color: var(--text-muted);
-    cursor: pointer;
-    font-weight: 600;
     font-size: 0.9rem;
-    display: inline-flex;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1.5px solid var(--border-light);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    display: flex;
     align-items: center;
     gap: 6px;
-    transition: all 0.15s ease;
 }
 
 .vote-btn:hover {
-    border-color: var(--text-main);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--text-main);
 }
 
 .vote-btn.active-yes {
     background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
     border-color: #10b981;
+    color: #34d399;
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
 }
 
 .vote-btn.active-neutral {
     background: rgba(245, 158, 11, 0.2);
-    color: #fbbf24;
     border-color: #f59e0b;
+    color: #fbbf24;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
 }
 
 .vote-btn.active-veto {
     background: rgba(239, 68, 68, 0.2);
-    color: #f87171;
     border-color: #ef4444;
+    color: #f87171;
     box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
 }
 
 .submit-vote-btn {
     width: 100%;
-    padding: 14px;
-    border-radius: 10px;
-    font-size: 1.1rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    padding: 18px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary, #6366f1), #8b5cf6);
     color: white;
+    font-size: 1.15rem;
+    font-weight: 800;
     border: none;
     cursor: pointer;
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
-    transition: transform 0.15s ease;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    margin-bottom: 36px;
 }
 
 .submit-vote-btn:hover:not(:disabled) {
     transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.5);
 }
 
 .results-banner {
-    margin-top: 36px;
     background: var(--surface-bg);
     border: 1px solid var(--border-light);
     border-radius: 16px;
-    padding: 24px 28px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    padding: 24px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
 }
 
 .winner-card {
@@ -249,6 +253,66 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     letter-spacing: 0.5px;
 }
 
+.host-banner {
+    background: rgba(99, 102, 241, 0.08);
+    border: 1.5px dashed var(--primary, #6366f1);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.host-banner-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.host-banner-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-host-close {
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-host-close:hover {
+    background: rgba(245, 158, 11, 0.25);
+}
+
+.btn-host-cancel {
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-host-cancel:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
 @media (max-width: 640px) {
     .candidate-card {
         flex-direction: column;
@@ -261,6 +325,13 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     .vote-btn {
         flex: 1;
         justify-content: center;
+    }
+    .host-banner {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .host-banner-actions {
+        justify-content: flex-end;
     }
 }
 </style>
@@ -277,14 +348,19 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
         </div>
     </div>
 
-    <!-- Voter Identity Card -->
-    <div class="participant-card" id="voter-identity-box">
-        <label style="font-weight: 700; color: var(--text-main); font-size: 1rem;">Who is voting?</label>
-        <div class="participant-input-group">
-            <select id="voter-select" class="participant-input" style="display: none;" onchange="onRosterSelected(this.value)">
-                <option value="">-- Choose from roster --</option>
-            </select>
-            <input type="text" id="voter-name-input" class="participant-input" placeholder="Enter your name or BGG username" required>
+    <!-- Host Controls Bar (visible only to creator) -->
+    <div class="host-banner" id="host-controls-banner" style="display: none;">
+        <div class="host-banner-title">
+            <span>👑 Host Controls</span>
+            <span style="font-size: 0.82rem; font-weight: 400; color: var(--text-muted);">Manage this game night poll</span>
+        </div>
+        <div class="host-banner-actions">
+            <button type="button" class="btn-host-close" id="host-close-early-btn" onclick="closePollEarly()">
+                🔒 Close Poll Now
+            </button>
+            <button type="button" class="btn-host-cancel" id="host-cancel-btn" onclick="cancelPoll()">
+                🗑️ Cancel Poll
+            </button>
         </div>
     </div>
 
@@ -319,6 +395,9 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     let currentSession = null;
     let userVotes = {}; // game_id -> 'yes' | 'neutral' | 'veto'
     let countdownInterval = null;
+    let currentVoterName = "Anonymous";
+    let isRosterMember = false;
+    let isHost = false;
 
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('id') || urlParams.get('session_id') || 'demo';
@@ -332,7 +411,7 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
                 document.getElementById('candidates-container').innerHTML = `
                     <div style="text-align: center; padding: 40px; color: #ef4444;">
                         <h3>Poll Not Found</h3>
-                        <p>${window.escapeHTML(errData.error || "This voting session may have expired or does not exist.")}</p>
+                        <p>${window.escapeHTML(errData.error || "This voting session may have expired, been cancelled, or does not exist.")}</p>
                     </div>
                 `;
                 document.getElementById('submit-ballot-btn').style.display = "none";
@@ -346,19 +425,62 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
         }
     }
 
-    function renderSession() {
-        document.getElementById('poll-group-name').textContent = currentSession.group_name || "Game Night Session";
-        document.getElementById('poll-creator-text').textContent = `Created by ${currentSession.creator_id || 'Host'} • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates`;
+    function resolveVoterIdentity() {
+        let userBgg = (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "").toLowerCase().trim();
+        let userEmail = (typeof Auth !== 'undefined' && Auth.isLoggedIn() ? (Auth.getEmail() || "") : "").toLowerCase().trim();
+        
+        const roster = (currentSession && currentSession.roster) ? currentSession.roster : [];
+        const matchedRosterMember = roster.find(m => m.toLowerCase().trim() === userBgg && userBgg.length > 0);
 
-        // Populate roster if present
-        if (currentSession.roster && currentSession.roster.length > 0) {
-            const select = document.getElementById('voter-select');
-            select.style.display = "block";
-            let opts = '<option value="">-- Choose from roster --</option>';
-            currentSession.roster.forEach(m => {
-                opts += `<option value="${window.escapeHTML(m)}">${window.escapeHTML(m)}</option>`;
-            });
-            select.innerHTML = opts;
+        if (matchedRosterMember) {
+            currentVoterName = matchedRosterMember;
+            isRosterMember = true;
+        } else {
+            let anonId = localStorage.getItem("bgg_anon_voter_id");
+            if (!anonId) {
+                anonId = "anon_" + Math.random().toString(36).substring(2, 8);
+                localStorage.setItem("bgg_anon_voter_id", anonId);
+            }
+            currentVoterName = `Anonymous (${anonId.substring(5)})`;
+            isRosterMember = false;
+        }
+
+        // Check if current user is the host
+        const creatorId = (currentSession.creator_id || "").toLowerCase().trim();
+        const creatorName = (currentSession.creator_name || "").toLowerCase().trim();
+        isHost = (userBgg && (userBgg === creatorId || userBgg === creatorName)) ||
+                 (userEmail && (userEmail === creatorId || userEmail === creatorName));
+
+        // Preload existing votes for this voter if already submitted
+        if (currentSession && currentSession.votes && currentSession.votes[currentVoterName]) {
+            userVotes = { ...currentSession.votes[currentVoterName] };
+        }
+    }
+
+    function renderSession() {
+        resolveVoterIdentity();
+
+        document.getElementById('poll-group-name').textContent = currentSession.group_name || "Game Night Session";
+        
+        const creatorDisplay = currentSession.creator_name || currentSession.creator_id || 'Host';
+        const voterBadge = isRosterMember
+            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">👤 Voting as ${window.escapeHTML(currentVoterName)}</span>`
+            : `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-left: 6px;">👤 Voting anonymously</span>`;
+
+        document.getElementById('poll-creator-text').innerHTML = `Created by <strong>${window.escapeHTML(creatorDisplay)}</strong> • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates • ${voterBadge}`;
+
+        // Update Host Controls visibility
+        const hostBanner = document.getElementById('host-controls-banner');
+        if (hostBanner) {
+            if (isHost) {
+                hostBanner.style.display = 'flex';
+                const closeBtn = document.getElementById('host-close-early-btn');
+                if (closeBtn) {
+                    closeBtn.style.display = currentSession.is_closed ? 'none' : 'inline-block';
+                }
+            } else {
+                hostBanner.style.display = 'none';
+            }
         }
 
         // Start live countdown
@@ -372,6 +494,65 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
         // Render Live Results
         renderResults();
     }
+
+    window.closePollEarly = async function() {
+        if (!confirm("Are you sure you want to close this poll now? Voting will immediately end and finalize results.")) return;
+        const btn = document.getElementById("host-close-early-btn");
+        if (btn) { btn.disabled = true; btn.textContent = "Closing..."; }
+        try {
+            const resp = await window.fetchApi('/session/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: currentSession.session_id })
+            });
+            if (resp.ok) {
+                currentSession = await resp.json();
+                renderSession();
+            } else {
+                const err = await resp.json().catch(() => ({}));
+                alert(err.error || "Failed to close poll.");
+                if (btn) { btn.disabled = false; btn.textContent = "🔒 Close Poll Now"; }
+            }
+        } catch (e) {
+            console.error("Error closing poll:", e);
+            alert("Network error closing poll.");
+            if (btn) { btn.disabled = false; btn.textContent = "🔒 Close Poll Now"; }
+        }
+    };
+
+    window.cancelPoll = async function() {
+        if (!confirm("Are you sure you want to cancel and delete this voting poll? This action cannot be undone.")) return;
+        const btn = document.getElementById("host-cancel-btn");
+        if (btn) { btn.disabled = true; btn.textContent = "Cancelling..."; }
+        try {
+            const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(currentSession.session_id)}`, {
+                method: 'DELETE'
+            });
+            if (resp.ok) {
+                document.getElementById('poll-group-name').textContent = "Poll Cancelled";
+                document.getElementById('candidates-container').innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--danger, #ef4444);">
+                        <h3 style="margin-bottom: 8px;">🗑️ Poll Cancelled</h3>
+                        <p style="color: var(--text-muted);">This voting poll has been cancelled and removed by the host.</p>
+                        <a href="../groups/" style="display: inline-block; margin-top: 16px; padding: 10px 20px; background: var(--primary, #6366f1); color: white; border-radius: 8px; text-decoration: none; font-weight: 700;">Return to Playgroup Organizer</a>
+                    </div>
+                `;
+                document.getElementById('submit-ballot-btn').style.display = "none";
+                const hostBanner = document.getElementById('host-controls-banner');
+                if (hostBanner) hostBanner.style.display = "none";
+                const results = document.getElementById('results-banner');
+                if (results) results.style.display = "none";
+            } else {
+                const err = await resp.json().catch(() => ({}));
+                alert(err.error || "Failed to cancel poll.");
+                if (btn) { btn.disabled = false; btn.textContent = "🗑️ Cancel Poll"; }
+            }
+        } catch (e) {
+            console.error("Error cancelling poll:", e);
+            alert("Network error cancelling poll.");
+            if (btn) { btn.disabled = false; btn.textContent = "🗑️ Cancel Poll"; }
+        }
+    };
 
     function updateCountdown() {
         if (!currentSession || !currentSession.closes_at) return;
@@ -399,17 +580,6 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
             timerText.textContent = `${hours}h ${minutes}m ${seconds}s remaining`;
         }
     }
-
-    window.onRosterSelected = function(val) {
-        if (val) {
-            document.getElementById('voter-name-input').value = val;
-            // Preload voter's existing ballot if present
-            if (currentSession && currentSession.votes && currentSession.votes[val]) {
-                userVotes = { ...currentSession.votes[val] };
-                renderCandidates();
-            }
-        }
-    };
 
     function renderCandidates() {
         const container = document.getElementById('candidates-container');
@@ -462,14 +632,6 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     };
 
     window.submitBallot = async function() {
-        const nameInput = document.getElementById('voter-name-input');
-        const participantName = nameInput.value.trim();
-        if (!participantName) {
-            alert("Please enter your name or select yourself from the roster before submitting your vote.");
-            nameInput.focus();
-            return;
-        }
-
         // Fill defaults for untouched candidates
         currentSession.candidates.forEach(c => {
             const cid = String(c.id);
@@ -486,7 +648,7 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     session_id: currentSession.session_id,
-                    participant_name: participantName,
+                    participant_name: currentVoterName,
                     votes: userVotes
                 })
             });
@@ -494,7 +656,7 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
             if (resp.ok) {
                 currentSession = await resp.json();
                 renderSession();
-                btn.textContent = "✓ Vote Recorded! Update Anytime";
+                btn.textContent = isRosterMember ? `✓ Vote Recorded as ${currentVoterName}!` : "✓ Anonymous Vote Recorded!";
                 btn.style.background = "#10b981";
                 setTimeout(() => {
                     btn.disabled = false;

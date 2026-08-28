@@ -668,6 +668,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                         <label for="group-members-input">BGG Usernames (comma-separated)</label>
                         <textarea id="group-members-input" placeholder="e.g. player1, player2, player3" rows="3" required></textarea>
                     </div>
+                    <div id="group-form-error" style="display: none; margin-top: 12px; padding: 10px 14px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #f87171; font-size: 0.85rem; line-height: 1.4;"></div>
                     <div class="form-actions" style="margin-top: 15px;">
                         <button type="button" class="btn btn-secondary" id="cancel-form-btn">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="save-group-btn">Save Group</button>
@@ -1189,6 +1190,8 @@ description: "Combine collections, plan board game sessions, and get group conse
         window.editGroup = function(id) {
             const g = playgroups.find(g => g.id === id);
             if (g) {
+                const formError = document.getElementById("group-form-error");
+                if (formError) formError.style.display = "none";
                 editGroupId.value = g.id;
                 groupNameInput.value = g.name;
                 groupMembersInput.value = g.members.join(", ");
@@ -1199,6 +1202,8 @@ description: "Combine collections, plan board game sessions, and get group conse
         };
 
         showCreateFormBtn.addEventListener("click", function () {
+            const formError = document.getElementById("group-form-error");
+            if (formError) formError.style.display = "none";
             editGroupId.value = "";
             groupNameInput.value = "";
             groupMembersInput.value = "";
@@ -1208,48 +1213,132 @@ description: "Combine collections, plan board game sessions, and get group conse
         });
 
         cancelFormBtn.addEventListener("click", function () {
+            const formError = document.getElementById("group-form-error");
+            if (formError) formError.style.display = "none";
             groupFormCard.style.display = "none";
             showCreateFormBtn.style.display = "block";
         });
 
-        groupForm.addEventListener("submit", function (e) {
+        async function validateBggUsername(username) {
+            const trimmed = username.trim();
+            if (!trimmed) {
+                return { valid: false, username: trimmed, reason: "Username cannot be empty" };
+            }
+            if (!/^[a-zA-Z0-9_]{1,25}$/.test(trimmed)) {
+                return { valid: false, username: trimmed, reason: "Invalid format (must be 1–25 letters, numbers, or underscores)" };
+            }
+
+            try {
+                const xmlDoc = await fetchUserXml(trimmed);
+                if (!xmlDoc) {
+                    return { valid: false, username: trimmed, reason: "Account not found on BoardGameGeek" };
+                }
+
+                // Check for errors tag in BGG XML response
+                const errors = xmlDoc.getElementsByTagName('errors');
+                if (errors.length > 0) {
+                    const errMsg = errors[0].getElementsByTagName('error')[0]?.textContent || "User not found on BoardGameGeek";
+                    return { valid: false, username: trimmed, reason: errMsg };
+                }
+
+                return { valid: true, username: trimmed };
+            } catch (e) {
+                console.warn(`Validation failed for BGG username ${trimmed}:`, e);
+                return { valid: false, username: trimmed, reason: "Account does not exist on BoardGameGeek" };
+            }
+        }
+
+        groupForm.addEventListener("submit", async function (e) {
             e.preventDefault();
+            const formError = document.getElementById("group-form-error");
+            if (formError) formError.style.display = "none";
+
             const name = groupNameInput.value.trim();
             const membersRaw = groupMembersInput.value;
-            const members = membersRaw.split(",").map(m => m.trim()).filter(m => m.length > 0);
+            const members = Array.from(new Set(membersRaw.split(",").map(m => m.trim()).filter(m => m.length > 0)));
 
-            if (members.length === 0) {
-                alert("Please add at least 1 member username!");
+            if (!name) {
+                if (formError) {
+                    formError.innerHTML = "⚠️ Please enter a group name.";
+                    formError.style.display = "block";
+                }
                 return;
             }
 
-            const id = editGroupId.value;
-            if (id) {
-                // Update
-                const g = playgroups.find(g => g.id === id);
-                if (g) {
-                    g.name = name;
-                    g.members = members;
+            if (members.length === 0) {
+                if (formError) {
+                    formError.innerHTML = "⚠️ Please enter at least 1 BGG username.";
+                    formError.style.display = "block";
                 }
-            } else {
-                // Create
-                const newGroup = {
-                    id: Date.now().toString(),
-                    name: name,
-                    members: members
-                };
-                playgroups.push(newGroup);
+                return;
             }
 
-            localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
-            syncPreferencesToBackend();
-            groupFormCard.style.display = "none";
-            showCreateFormBtn.style.display = "block";
-            renderGroupList();
-            
-            // Re-select if updated active group
-            if (id && activeGroup && activeGroup.id === id) {
-                selectGroup(id);
+            const saveBtn = document.getElementById("save-group-btn");
+            const originalBtnText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = "🔍 Verifying BGG accounts...";
+
+            try {
+                // Validate all usernames in parallel
+                const validationResults = await Promise.all(members.map(m => validateBggUsername(m)));
+                const invalidUsers = validationResults.filter(r => !r.valid);
+
+                if (invalidUsers.length > 0) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = originalBtnText;
+
+                    if (formError) {
+                        const listHtml = invalidUsers.map(u => `<li><strong>${escapeHTML(u.username || 'empty')}</strong>: ${escapeHTML(u.reason)}</li>`).join("");
+                        formError.innerHTML = `
+                            <strong>⚠️ Invalid BGG Account${invalidUsers.length > 1 ? 's' : ''}:</strong>
+                            <ul style="margin: 6px 0 6px 16px; padding: 0;">${listHtml}</ul>
+                            <span style="font-size: 0.8rem; opacity: 0.9;">Please correct any typos before saving this playgroup.</span>
+                        `;
+                        formError.style.display = "block";
+                    }
+                    return;
+                }
+
+                // If all valid, save the group
+                const id = editGroupId.value;
+                if (id) {
+                    // Update
+                    const g = playgroups.find(g => g.id === id);
+                    if (g) {
+                        g.name = name;
+                        g.members = members;
+                    }
+                } else {
+                    // Create
+                    const newGroup = {
+                        id: Date.now().toString(),
+                        name: name,
+                        members: members
+                    };
+                    playgroups.push(newGroup);
+                }
+
+                localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
+                syncPreferencesToBackend();
+                groupFormCard.style.display = "none";
+                showCreateFormBtn.style.display = "block";
+                renderGroupList();
+                
+                // Re-select if updated active group or newly created
+                if (id && activeGroup && activeGroup.id === id) {
+                    selectGroup(id);
+                } else if (!id && playgroups.length > 0) {
+                    selectGroup(playgroups[playgroups.length - 1].id);
+                }
+            } catch (err) {
+                console.error("Error saving playgroup:", err);
+                if (formError) {
+                    formError.innerHTML = "⚠️ An error occurred while validating usernames. Please try again.";
+                    formError.style.display = "block";
+                }
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalBtnText;
             }
         });
 
@@ -1624,12 +1713,16 @@ description: "Combine collections, plan board game sessions, and get group conse
             submitBtn.disabled = true;
             submitBtn.textContent = "Creating...";
 
+            const creatorName = localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || (typeof Auth !== 'undefined' && Auth.isLoggedIn() ? Auth.getEmail() : '') || 'Host';
+
             try {
                 const resp = await window.fetchApi("/session", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         group_name: groupName,
+                        creator_name: creatorName,
+                        creator_id: creatorName,
                         candidates: chosenCandidates,
                         duration_hours: durationHours,
                         roster: roster
@@ -1713,8 +1806,16 @@ description: "Combine collections, plan board game sessions, and get group conse
                                         </div>
                                     ` : ''}
                                 </div>
-                                <div style="display: flex; gap: 10px;">
-                                    <a href="${voteUrl}" target="_blank" class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 14px;">
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    ${!sess.is_closed ? `
+                                        <button type="button" class="btn btn-secondary" onclick="closeSessionEarly('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);" title="End voting early and finalize results">
+                                            🔒 Close
+                                        </button>
+                                    ` : ''}
+                                    <button type="button" class="btn btn-secondary" onclick="cancelSessionPrompt('${sess.session_id}')" style="font-size: 0.82rem; padding: 8px 12px; color: #f87171; border-color: rgba(239, 68, 68, 0.4);" title="Cancel and delete this poll">
+                                        🗑️ Delete
+                                    </button>
+                                    <a href="${voteUrl}" target="_blank" class="btn btn-primary" style="font-size: 0.82rem; padding: 8px 14px;">
                                         ${sess.is_closed ? 'View Results ↗' : 'Vote Now ↗'}
                                     </a>
                                 </div>
@@ -1725,6 +1826,44 @@ description: "Combine collections, plan board game sessions, and get group conse
                 }
             } catch (e) {
                 console.error("Error loading past polls:", e);
+            }
+        };
+
+        window.closeSessionEarly = async function(sessionId) {
+            if (!confirm("Are you sure you want to close this poll now? Voting will end immediately.")) return;
+            try {
+                const resp = await window.fetchApi('/session/close', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                if (resp.ok) {
+                    loadPastPolls();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    alert(err.error || "Failed to close poll.");
+                }
+            } catch (e) {
+                console.error("Error closing session:", e);
+                alert("Error closing poll.");
+            }
+        };
+
+        window.cancelSessionPrompt = async function(sessionId) {
+            if (!confirm("Are you sure you want to cancel and delete this voting poll? This cannot be undone.")) return;
+            try {
+                const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(sessionId)}`, {
+                    method: 'DELETE'
+                });
+                if (resp.ok) {
+                    loadPastPolls();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    alert(err.error || "Failed to cancel poll.");
+                }
+            } catch (e) {
+                console.error("Error cancelling session:", e);
+                alert("Error cancelling poll.");
             }
         };
 

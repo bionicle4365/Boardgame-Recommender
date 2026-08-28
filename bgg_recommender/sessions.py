@@ -146,6 +146,7 @@ def create_session(
     candidates: List[Dict[str, Any]],
     duration_hours: float = 24.0,
     roster: Optional[List[str]] = None,
+    creator_name: Optional[str] = None,
     table=None
 ) -> Dict[str, Any]:
     """
@@ -163,7 +164,8 @@ def create_session(
 
     item = {
         'session_id': session_id,
-        'creator_id': creator_id or 'anonymous_host',
+        'creator_id': creator_id or 'Host',
+        'creator_name': creator_name or creator_id or 'Host',
         'group_name': group_name or 'Game Night',
         'created_at': now.isoformat(),
         'closes_at': closes_at.isoformat(),
@@ -179,7 +181,7 @@ def create_session(
 
     dynamo_item = floats_to_decimals(item)
     table.put_item(Item=dynamo_item)
-    logger.info(f"Created voting session {session_id} for creator {creator_id}, closes at {item['closes_at']}")
+    logger.info(f"Created voting session {session_id} for creator {item['creator_name']}, closes at {item['closes_at']}")
 
     # Calculate initial consensus
     item['is_closed'] = False
@@ -305,3 +307,41 @@ def list_creator_sessions(creator_id: str, table=None) -> List[Dict[str, Any]]:
         item['consensus'] = calculate_consensus(item.get('candidates', []), item.get('votes', {}))
 
     return items
+
+
+def close_session(session_id: str, table=None) -> Dict[str, Any]:
+    """
+    Closes a voting session immediately by setting its deadline to the current time.
+    """
+    if not session_id:
+        raise ValueError("session_id is required.")
+
+    if table is None:
+        table = get_dynamodb_table()
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    table.update_item(
+        Key={'session_id': session_id},
+        UpdateExpression="SET closes_at = :now",
+        ExpressionAttributeValues={':now': now_iso}
+    )
+    logger.info(f"Closed session {session_id} at {now_iso}")
+    session = get_session(session_id, table=table)
+    if not session:
+        raise KeyError(f"Session '{session_id}' not found.")
+    return session
+
+
+def cancel_session(session_id: str, table=None) -> bool:
+    """
+    Cancels and deletes a voting session from DynamoDB.
+    """
+    if not session_id:
+        raise ValueError("session_id is required.")
+
+    if table is None:
+        table = get_dynamodb_table()
+
+    table.delete_item(Key={'session_id': session_id})
+    logger.info(f"Deleted / cancelled session {session_id}")
+    return True

@@ -88,6 +88,24 @@ resource "aws_apigatewayv2_route" "bgg_vote_session_route" {
   target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_close_session_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "POST /session/close"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_delete_session_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "DELETE /session"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_cancel_session_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "POST /session/cancel"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
 resource "aws_apigatewayv2_route" "bgg_list_sessions_route" {
   api_id    = aws_apigatewayv2_api.bgg_api.id
   route_key = "GET /sessions"

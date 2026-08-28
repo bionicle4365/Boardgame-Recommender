@@ -344,3 +344,67 @@ def test_decimal_serialization_roundtrip(sample_candidates):
     # Check JSON serializability
     json_str = json.dumps(converted)
     assert "Dune: Imperium" in json_str
+
+
+def test_close_session(sample_candidates):
+    from sessions import close_session
+    mock_table = MagicMock()
+    
+    # Mock get_item returning the updated closed session
+    now = datetime.now(timezone.utc).isoformat()
+    mock_table.get_item.return_value = {
+        'Item': {
+            'session_id': 'close123',
+            'creator_id': 'user_123',
+            'creator_name': 'HostAlice',
+            'group_name': 'Euro Night',
+            'created_at': now,
+            'closes_at': now,
+            'candidates': sample_candidates,
+            'votes': {}
+        }
+    }
+    
+    res = close_session('close123', table=mock_table)
+    mock_table.update_item.assert_called_once()
+    assert res['session_id'] == 'close123'
+    assert res['is_closed'] is True
+
+
+def test_cancel_session():
+    from sessions import cancel_session
+    mock_table = MagicMock()
+    
+    res = cancel_session('del123', table=mock_table)
+    mock_table.delete_item.assert_called_once_with(Key={'session_id': 'del123'})
+    assert res is True
+
+
+def test_lambda_handler_close_and_delete_session(monkeypatch):
+    import bgg_recommender
+    import sessions
+    
+    mock_close = MagicMock(return_value={'session_id': 'sess99', 'is_closed': True})
+    mock_cancel = MagicMock(return_value=True)
+    monkeypatch.setattr(sessions, 'close_session', mock_close)
+    monkeypatch.setattr(sessions, 'cancel_session', mock_cancel)
+    
+    # Test POST /session/close
+    close_event = {
+        'rawPath': '/session/close',
+        'httpMethod': 'POST',
+        'body': json.dumps({'session_id': 'sess99'})
+    }
+    resp_close = bgg_recommender.lambda_handler(close_event, None)
+    assert resp_close['statusCode'] == 200
+    mock_close.assert_called_once_with('sess99')
+    
+    # Test DELETE /session
+    del_event = {
+        'rawPath': '/session',
+        'httpMethod': 'DELETE',
+        'queryStringParameters': {'session_id': 'sess99'}
+    }
+    resp_del = bgg_recommender.lambda_handler(del_event, None)
+    assert resp_del['statusCode'] == 200
+    mock_cancel.assert_called_once_with('sess99')
