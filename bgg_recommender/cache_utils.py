@@ -180,7 +180,16 @@ def get_catalog():
         local_path = "/tmp/catalog.parquet"
         logger.info(f"Downloading catalog file: {key}")
         _s3().download_file(bucket, key, local_path)
-        bgg_recommender.CATALOG_CACHE = pd.read_parquet(local_path)
+        df = pd.read_parquet(local_path)
+        if 'year_published' in df.columns:
+            df['year_published'] = pd.to_numeric(df['year_published'], errors='coerce')
+        if 'rating' in df.columns:
+            df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+        if 'complexity' in df.columns:
+            df['complexity'] = pd.to_numeric(df['complexity'], errors='coerce')
+        if 'id' in df.columns:
+            df['id'] = df['id'].astype(str)
+        bgg_recommender.CATALOG_CACHE = df
         logger.info(f"Successfully loaded and cached catalog with {len(bgg_recommender.CATALOG_CACHE)} games.")
         return bgg_recommender.CATALOG_CACHE
     except Exception as e:

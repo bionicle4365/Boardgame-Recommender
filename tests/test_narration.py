@@ -98,6 +98,14 @@ def test_narrate_recommendations_success(mock_bedrock_func):
     assert recs[1]['name'] == 'Carcassonne'
     assert recs[1]['reason'] == 'Love the tile placement, just like your favorite games.'
 
+    # Verify Bedrock Converse call parameters for latency optimization
+    mock_bedrock.converse.assert_called_once()
+    call_kwargs = mock_bedrock.converse.call_args[1]
+    assert call_kwargs['inferenceConfig']['maxTokens'] == 800
+    assert call_kwargs['inferenceConfig']['temperature'] == 0.6
+    assert "maximum 15 words per reason" in call_kwargs['system'][0]['text']
+    assert "maximum 15 words" in call_kwargs['messages'][0]['content'][0]['text']
+
 @patch('narration._bedrock')
 def test_narrate_recommendations_markdown_json(mock_bedrock_func):
     mock_bedrock = MagicMock()

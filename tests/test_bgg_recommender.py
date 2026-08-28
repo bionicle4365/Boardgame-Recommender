@@ -1595,6 +1595,67 @@ def test_milestone_54_scoring_corrections():
     assert len(filtered_disliked) == 0
 
 
+@patch('bgg_recommender.s3')
+@patch('bgg_recommender.get_catalog')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.narrate_recommendations')
+def test_multi_user_parallel_s3_recommender(mock_narrate, mock_hotness, mock_catalog, mock_s3):
+    now = datetime.now(timezone.utc)
+    mock_s3.head_object.return_value = {'LastModified': now - timedelta(hours=2)}
+    
+    # Return valid mock catalog
+    mock_catalog.return_value = pd.DataFrame([
+        {'id': '101', 'name': 'Game A', 'rating': 8.0, 'year_published': 2020, 'complexity': 2.5,
+         'categories': ['Strategy'], 'mechanics': ['Hand Management'], 'min_players': 2, 'max_players': 4,
+         'playing_time': 60, 'min_playtime': 45, 'max_playtime': 90, 'min_age': 10,
+         'thumbnail': '', 'image': '', 'designers': ['Designer 1'], 'publishers': ['Publisher 1']}
+    ])
+    mock_hotness.return_value = []
+    mock_narrate.return_value = [{'id': '101', 'name': 'Game A', 'reason': 'Great game'}]
+
+    # Mock downloading user parquet files for user1, user2, user3
+    def mock_download(bucket, key, local_path):
+        if 'user1.parquet' in key:
+            df = pd.DataFrame([{'id': '1', 'rating': 8.0, 'own': True}])
+            df.to_parquet(local_path)
+        elif 'user2.parquet' in key:
+            df = pd.DataFrame([{'id': '2', 'rating': 9.0, 'own': True}])
+            df.to_parquet(local_path)
+        elif 'user3.parquet' in key:
+            df = pd.DataFrame([{'id': '3', 'rating': 7.5, 'own': True}])
+            df.to_parquet(local_path)
+        elif '_taste_profile.json' in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'generated_at': (now - timedelta(hours=1)).isoformat(),
+                    'mech_weights': {'Hand Management': 2.0},
+                    'cat_weights': {'Strategy': 2.0},
+                    'designer_weights': {},
+                    'publisher_weights': {},
+                    'complexity_weights': {'Medium-Light': 2.0}
+                }, f)
+
+    mock_s3.download_file.side_effect = mock_download
+
+    event = {
+        'rawPath': '/recommendations',
+        'queryStringParameters': {
+            'username': 'user1,user2,user3',
+            'refresh': 'false'
+        }
+    }
+    resp = bgg_recommender.lambda_handler(event, None)
+    assert resp['statusCode'] == 200
+    body = json.loads(resp['body'])
+    assert body['status'] == 'ready'
+    assert len(body['recommendations']) == 1
+    assert 'member_affinities' in body['recommendations'][0]
+    assert 'user1' in body['recommendations'][0]['member_affinities']
+    assert 'user2' in body['recommendations'][0]['member_affinities']
+    assert 'user3' in body['recommendations'][0]['member_affinities']
+
+
+
 
 
 

@@ -23,12 +23,13 @@ from cache_utils import (
 
 def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=None):
     """
-    Computes taste profiles for each user, loading pre-computed S3 profiles when available
+    Computes taste profiles for each user, loading pre-computed S3 profiles concurrently when available
     and falling back to inline computation when stale or missing.
 
     Returns (mech_weights, cat_weights, user_designers, user_publishers, complexity_weights).
     """
     import json
+    from concurrent.futures import ThreadPoolExecutor
 
     mech_weights = {}
     cat_weights = {}
@@ -41,22 +42,9 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
         "Heavy": 0.0
     }
 
-    for u in usernames:
-        profile_loaded = False
+    def _fetch_user_taste_profile(u):
         profile_key = f"data/users/{u}_taste_profile.json"
         local_profile_path = f"/tmp/{u}_taste_profile.json"
-
-        u_mech_weights = {}
-        u_cat_weights = {}
-        u_user_designers = {}
-        u_user_publishers = {}
-        u_complexity_weights = {
-            "Light": 0.0,
-            "Medium-Light": 0.0,
-            "Medium-Heavy": 0.0,
-            "Heavy": 0.0
-        }
-
         parquet_modified = user_parquet_modified.get(u)
         try:
             cache_utils.s3.head_object(Bucket=bucket, Key=profile_key)
@@ -74,12 +62,7 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
 
                 if generated_at >= parquet_modified:
                     logger.info(f"Loaded fresh pre-computed taste profile for {u}")
-                    u_mech_weights = prof_data.get('mech_weights', {})
-                    u_cat_weights = prof_data.get('cat_weights', {})
-                    u_user_designers = prof_data.get('designer_weights', {})
-                    u_user_publishers = prof_data.get('publisher_weights', {})
-                    u_complexity_weights = prof_data.get('complexity_weights', {})
-                    profile_loaded = True
+                    return (u, True, prof_data)
                 else:
                     logger.info(f"Pre-computed taste profile for {u} is stale (generated={generated_at}, parquet={parquet_modified})")
             else:
@@ -91,6 +74,41 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                 logger.error(f"S3 error loading taste profile for {u}: {ce}")
         except Exception as e:
             logger.error(f"Error loading taste profile for {u}: {e}")
+        return (u, False, None)
+
+    fetched_profiles = {}
+    if len(usernames) > 1:
+        with ThreadPoolExecutor(max_workers=min(10, len(usernames))) as executor:
+            results = executor.map(_fetch_user_taste_profile, usernames)
+            for u, loaded, prof_data in results:
+                if loaded and prof_data:
+                    fetched_profiles[u] = prof_data
+    elif len(usernames) == 1:
+        u, loaded, prof_data = _fetch_user_taste_profile(usernames[0])
+        if loaded and prof_data:
+            fetched_profiles[u] = prof_data
+
+    for u in usernames:
+        profile_loaded = False
+        u_mech_weights = {}
+        u_cat_weights = {}
+        u_user_designers = {}
+        u_user_publishers = {}
+        u_complexity_weights = {
+            "Light": 0.0,
+            "Medium-Light": 0.0,
+            "Medium-Heavy": 0.0,
+            "Heavy": 0.0
+        }
+
+        if u in fetched_profiles:
+            prof_data = fetched_profiles[u]
+            u_mech_weights = prof_data.get('mech_weights', {})
+            u_cat_weights = prof_data.get('cat_weights', {})
+            u_user_designers = prof_data.get('designer_weights', {})
+            u_user_publishers = prof_data.get('publisher_weights', {})
+            u_complexity_weights = prof_data.get('complexity_weights', {})
+            profile_loaded = True
 
         if not profile_loaded:
             logger.info(f"Computing taste profile inline for user: {u}")

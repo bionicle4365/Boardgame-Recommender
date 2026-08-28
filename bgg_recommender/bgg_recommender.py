@@ -12,6 +12,7 @@ import math
 
 import pandas as pd
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 
 # Define global caches at module level for backwards compatibility with tests
 CATALOG_CACHE = None
@@ -235,18 +236,32 @@ def _handle_recommendations(query_params):
     user_parquet_modified = {}
 
     if not is_inline:
-        for u in usernames:
+        def _check_user_status(u):
             try:
                 exists, is_stale, u_modified = bgg_rec.get_user_profile_status(u, ttl_hours=0 if refresh else 24)
-                if u_modified:
-                    user_parquet_modified[u] = u_modified
+                return (u, exists, is_stale, u_modified, None)
             except Exception as s3_check_err:
-                logger.error(f"S3 checks failed for {u}: {s3_check_err}")
+                return (u, False, False, None, s3_check_err)
+
+        if len(usernames) > 1:
+            with ThreadPoolExecutor(max_workers=min(10, len(usernames))) as executor:
+                status_results = list(executor.map(_check_user_status, usernames))
+        else:
+            status_results = [_check_user_status(usernames[0])]
+
+        for u, exists, is_stale, u_modified, err in status_results:
+            if err:
+                logger.error(f"S3 checks failed for {u}: {err}")
                 return {
                     'statusCode': 500,
                     'headers': _cors_headers(),
                     'body': json.dumps({'error': f'Failed checking user profile status for {u}'})
                 }
+
+            if u_modified:
+                user_parquet_modified[u] = u_modified
+                if profile_last_modified is None or u_modified > profile_last_modified:
+                    profile_last_modified = u_modified
 
             if not exists:
                 logger.info(f"User profile for '{u}' not found. Queueing scrape job.")
@@ -255,10 +270,6 @@ def _handle_recommendations(query_params):
             elif is_stale:
                 logger.info(f"User profile for '{u}' is stale. Queueing background update scrape job.")
                 bgg_rec.trigger_background_scrape(u)
-
-            if u_modified:
-                if profile_last_modified is None or u_modified > profile_last_modified:
-                    profile_last_modified = u_modified
 
         if scraping_users:
             return {
@@ -314,7 +325,7 @@ def _handle_recommendations(query_params):
         else:
             owned_ids = set()
     else:
-        for u in usernames:
+        def _fetch_user_parquet(u):
             user_key = f"data/users/{u}.parquet"
             local_user_path = f"/tmp/{u}.parquet"
             try:
@@ -323,16 +334,28 @@ def _handle_recommendations(query_params):
                 u_df = pd.read_parquet(local_user_path)
                 u_df['id'] = u_df['id'].astype(str)
                 u_df['username'] = u
-                user_dfs.append(u_df)
-                if not u_df.empty:
-                    owned_ids.update(u_df[u_df['own']]['id'].tolist())
+                return (u, u_df, None)
             except Exception as user_load_err:
-                logger.error(f"Error loading user profile {u}: {user_load_err}")
+                return (u, None, user_load_err)
+
+        if len(usernames) > 1:
+            with ThreadPoolExecutor(max_workers=min(10, len(usernames))) as executor:
+                parquet_results = list(executor.map(_fetch_user_parquet, usernames))
+        else:
+            parquet_results = [_fetch_user_parquet(usernames[0])]
+
+        for u, u_df, err in parquet_results:
+            if err:
+                logger.error(f"Error loading user profile {u}: {err}")
                 return {
                     'statusCode': 500,
                     'headers': _cors_headers(),
                     'body': json.dumps({'error': f'Failed reading user profile for {u}'})
                 }
+            if u_df is not None:
+                user_dfs.append(u_df)
+                if not u_df.empty:
+                    owned_ids.update(u_df[u_df['own']]['id'].tolist())
 
         user_df = pd.concat(user_dfs, ignore_index=True) if user_dfs else pd.DataFrame(columns=['id', 'username', 'rating', 'own'])
         
@@ -365,14 +388,17 @@ def _handle_recommendations(query_params):
             })
         }
 
-    # Clean catalog types
-    catalog_df['year_published'] = pd.to_numeric(catalog_df['year_published'], errors='coerce')
-    catalog_df['rating'] = pd.to_numeric(catalog_df['rating'], errors='coerce')
-    if 'complexity' in catalog_df.columns:
+    # Clean catalog types if needed
+    if 'year_published' in catalog_df.columns and not pd.api.types.is_numeric_dtype(catalog_df['year_published']):
+        catalog_df['year_published'] = pd.to_numeric(catalog_df['year_published'], errors='coerce')
+    if 'rating' in catalog_df.columns and not pd.api.types.is_numeric_dtype(catalog_df['rating']):
+        catalog_df['rating'] = pd.to_numeric(catalog_df['rating'], errors='coerce')
+    if 'complexity' in catalog_df.columns and not pd.api.types.is_numeric_dtype(catalog_df['complexity']):
         catalog_df['complexity'] = pd.to_numeric(catalog_df['complexity'], errors='coerce')
 
     user_df['id'] = user_df['id'].astype(str)
-    catalog_df['id'] = catalog_df['id'].astype(str)
+    if 'id' in catalog_df.columns and not pd.api.types.is_string_dtype(catalog_df['id']):
+        catalog_df['id'] = catalog_df['id'].astype(str)
 
     liked_games = user_df[user_df['rating'] >= 7.0]
     if liked_games.empty:
@@ -391,7 +417,7 @@ def _handle_recommendations(query_params):
     liked_games_str = "\n".join(liked_games_profile)
 
     # 5. Filter candidates
-    candidates = catalog_df.copy()
+    candidates = catalog_df
 
     # Convention filter
     convention_id = query_params.get('convention_id')

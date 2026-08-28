@@ -96,7 +96,7 @@ Please recommend 10 great board games from your general knowledge.
     user_prompt += """
 For each recommended game:
 1. Provide the exact name of the game.
-2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it. This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences.
+2. Provide a compelling, personalized 1-sentence explanation of why they would enjoy it (maximum 15 words). This explanation must directly relate the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics or thematic elements. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences.
 
 Format your response as a JSON object with a single key "recommendations", which is a list of objects containing "name" and "reason".
 Do not include any introductory or concluding text (e.g. do not say "Here are your recommendations:" or use markdown code blocks). Output only raw, valid JSON.
@@ -112,7 +112,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
 
         system_prompts = [
             {
-                "text": "You are a board game recommendation expert. Your job is to select the best games and write highly varied, engaging, and expressive 1-sentence explanations. Avoid repetitive sentence structures (e.g., do not start multiple sentences with 'If you enjoyed...'). Do NOT hallucinate themes or mechanics that are not explicitly present in the provided context lists. Ensure you output raw, valid JSON matching the requested schema."
+                "text": "You are a board game recommendation expert. Your job is to select the best games and write concise, highly varied, and expressive 1-sentence explanations (maximum 15 words per reason). Avoid repetitive sentence structures (e.g., do not start multiple sentences with 'If you enjoyed...'). Do NOT hallucinate themes or mechanics that are not explicitly present in the provided context lists. Ensure you output raw, valid JSON matching the requested schema."
             }
         ]
 
@@ -122,7 +122,7 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
             messages=messages,
             system=system_prompts,
             inferenceConfig={
-                "maxTokens": 2048,
+                "maxTokens": 800,
                 "temperature": 0.6
             }
         )

@@ -4,27 +4,7 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
-## Milestone 44: Recommender Latency Optimization
 
-### Objective
-Reduce the recommendation refresh latency from 20+ seconds to under 8 seconds. This will be achieved by parallelizing S3 I/O operations and optimizing the Bedrock prompt and output token budgets without changing the LLM's selection capability or reducing recommendation diversity.
-
-### Design Notes
-- **Concise AI Explanations:** Enforce a strict length limit (e.g., maximum 12 words) on recommendation reasons in the Bedrock system prompt. Generating fewer output tokens dramatically reduces LLM latency since generation is the primary bottleneck.
-- **25 Candidate Pool:** Retain the candidate shortlist at 25 games to preserve recommendation diversity and refresh variety, as input token count has negligible impact on prefill phase latency.
-- **Parallel S3 Reads:** Use Python `concurrent.futures.ThreadPoolExecutor` to fetch user profiles, taste profiles, and hotness data from S3 concurrently rather than sequentially.
-
-### Architecture Decisions
-- **Token Constraints:** Set Bedrock `inferenceConfig` `maxTokens` limit lower (e.g., 800 tokens instead of 2048) to cap the execution time and enforce concise output.
-- **Threading Model:** Use standard Python multiprocessing/threading libraries to run S3 operations concurrently within the Lambda execution environment.
-
-### Tasks
-- [ ] **Parallel S3 Fetching:** Refactor S3 calls in `bgg_recommender.py` and `scoring.py` to use a `ThreadPoolExecutor` for parallel downloads of user parquets, taste profiles, and hotness cache files.
-- [ ] **Prompt Tuning (Concise Narration):** Update `narrate_recommendations` in `narration.py` to prompt Bedrock for short, punchy reasons (max 12 words) and adjust the `maxTokens` inference config down to 800.
-- [ ] **Scoring Performance Tweaks:** Remove the redundant `catalog_df.copy()` operations from the recommendation routing path.
-- [ ] **Verification:** Validate via logs that refresh requests return in < 8 seconds. Confirm that recommendations remain high-quality and reasons are concise.
-
----
 
 ## Milestone 31: Similar Games API Endpoint
 
@@ -303,5 +283,6 @@ Redesign the recommendation results cards to be more compact and space-efficient
 * **Milestone 49: Mobile UI Polish Pass** (Comprehensive responsiveness audit, WCAG 2.1 44px touch targets, mobile wizard modal & taste test carousel, adaptive filters and affinity bars, table overflow protection, and responsive layouts across all viewports from 320px to 768px)
 * **Milestone 55: Wizard Write-In Game Search & Expanded Seed Catalog** (50-game auto-generated SEED_CATALOG, 9 adaptive Round 2 picks, static minified 5,000-game autocomplete database, debounced vanilla JS search with keyboard navigation, 3 write-in slots in Taste Test & Personality Test with 9.0 rating assignment)
 * **Milestone 56: Monthly Stats Refresh for Recent Board Games** (Added `recent` mode to `bgg_game_scraper.py` with `--window` support, EventBridge monthly schedule `cron(0 3 1 * ? *)` with container environment overrides, SQS batch queuing of recent game IDs `[start_id - 2500, start_id]`)
+* **Milestone 44: Recommender Latency Optimization** (Parallelized S3 profile checks, parquet downloads, and taste profile loading with ThreadPoolExecutor, Bedrock maxTokens reduced to 800 with 15-word concise narration constraint, removed redundant catalog copies, and cached catalog data conversions)
 
 
