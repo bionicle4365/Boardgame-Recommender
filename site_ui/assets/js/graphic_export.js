@@ -211,10 +211,10 @@
             }
 
             // Thumbnail (Image or Placeholder)
-            const imgW = 90;
-            const imgH = 90;
+            const imgW = 92;
+            const imgH = 92;
             const imgX = x + (cardWidth - imgW) / 2;
-            const imgY = y + 32;
+            const imgY = y + 34;
 
             ctx.save();
             roundRect(ctx, imgX, imgY, imgW, imgH, 8, false, false);
@@ -239,7 +239,7 @@
                 ctx.font = 'bold 28px sans-serif';
                 ctx.fillStyle = '#64748b';
                 ctx.textAlign = 'center';
-                ctx.fillText('🎲', imgX + imgW / 2, imgY + 55);
+                ctx.fillText('🎲', imgX + imgW / 2, imgY + 56);
             }
             ctx.restore();
 
@@ -248,21 +248,25 @@
             ctx.lineWidth = 1;
             roundRect(ctx, imgX, imgY, imgW, imgH, 8, false, true);
 
-            // Game Title
-            ctx.font = 'bold 12.5px "Inter", sans-serif';
+            // Game Title (Symmetrically centered between thumbnail bottom y+126 and stat badges top y+208)
+            const titleZoneCenterY = y + 126 + 82 / 2; // y + 167
             ctx.fillStyle = '#f8fafc';
             ctx.textAlign = 'center';
-            const lines = wrapText(ctx, rec.name || 'Untitled Game', cardWidth - 20, 2);
+            ctx.font = 'bold 12.5px "Inter", sans-serif';
+            const lines = wrapText(ctx, rec.name || 'Untitled Game', cardWidth - 18, 2);
+
             if (lines.length === 1) {
-                ctx.fillText(lines[0], x + cardWidth / 2, y + 140);
+                ctx.font = 'bold 13px "Inter", sans-serif';
+                ctx.fillText(lines[0], x + cardWidth / 2, titleZoneCenterY + 4.5);
             } else {
-                ctx.fillText(lines[0], x + cardWidth / 2, y + 134);
-                ctx.fillText(lines[1], x + cardWidth / 2, y + 149);
+                ctx.font = 'bold 11.5px "Inter", sans-serif';
+                ctx.fillText(lines[0], x + cardWidth / 2, titleZoneCenterY - 4.5);
+                ctx.fillText(lines[1], x + cardWidth / 2, titleZoneCenterY + 12.5);
             }
 
             // Stat Badges Bar (Bottom row inside card)
-            const badgeY = y + 195;
-            const badgeH = 22;
+            const badgeY = y + 208;
+            const badgeH = 24;
             const badgeW = 41;
             const badgeGap = 4;
             const badgesStartX = x + 12;
@@ -274,7 +278,7 @@
             ctx.font = 'bold 10px "Inter", sans-serif';
             ctx.fillStyle = '#fde68a';
             ctx.textAlign = 'center';
-            ctx.fillText(`★${ratingVal}`, badgesStartX + badgeW / 2, badgeY + 15);
+            ctx.fillText(`★${ratingVal}`, badgesStartX + badgeW / 2, badgeY + 16);
 
             // Complexity Badge (⚙)
             const compVal = rec.complexity ? rec.complexity.toFixed(1) : 'N/A';
@@ -282,7 +286,7 @@
             ctx.fillStyle = 'rgba(168, 85, 247, 0.15)';
             roundRect(ctx, b2X, badgeY, badgeW, badgeH, 5, true, false);
             ctx.fillStyle = '#f5d0fe';
-            ctx.fillText(`⚙${compVal}`, b2X + badgeW / 2, badgeY + 15);
+            ctx.fillText(`⚙${compVal}`, b2X + badgeW / 2, badgeY + 16);
 
             // Players Badge (👥)
             const b3X = b2X + badgeW + badgeGap;
@@ -291,7 +295,7 @@
             ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
             roundRect(ctx, b3X, badgeY, badgeW, badgeH, 5, true, false);
             ctx.fillStyle = '#a7f3d0';
-            ctx.fillText(`👥${playerVal}`, b3X + badgeW / 2, badgeY + 15);
+            ctx.fillText(`👥${playerVal}`, b3X + badgeW / 2, badgeY + 16);
 
             // Playtime Badge (🕒)
             const b4X = b3X + badgeW + badgeGap;
@@ -299,7 +303,7 @@
             ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
             roundRect(ctx, b4X, badgeY, badgeW, badgeH, 5, true, false);
             ctx.fillStyle = '#bae6fd';
-            ctx.fillText(`🕒${playVal}`, b4X + badgeW / 2, badgeY + 15);
+            ctx.fillText(`🕒${playVal}`, b4X + badgeW / 2, badgeY + 16);
 
             ctx.restore();
         }
