@@ -291,19 +291,19 @@ window.renderSkeletonCards = function(container, count = 4) {
     for (let i = 0; i < count; i++) {
         html += `
             <div class="rec-card skeleton-card-placeholder">
-                <div class="rec-card-body" style="display: flex; gap: 20px; flex-direction: row; align-items: flex-start;">
-                    <div class="skeleton skeleton-avatar"></div>
-                    <div class="rec-card-content" style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;">
-                        <div class="rec-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%;">
-                            <div class="skeleton skeleton-text title" style="width: 50%; height: 20px; margin: 0;"></div>
-                            <div class="skeleton skeleton-text" style="width: 80px; height: 20px; border-radius: 9999px; margin: 0;"></div>
+                <div class="rec-card-body" style="display: flex; gap: 16px; flex-direction: row; align-items: flex-start;">
+                    <div class="skeleton skeleton-avatar" style="width: 76px; height: 76px; border-radius: 12px; flex-shrink: 0;"></div>
+                    <div class="rec-card-content" style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                        <div class="rec-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; width: 100%;">
+                            <div class="skeleton skeleton-text title" style="width: 55%; height: 20px; margin: 0;"></div>
+                            <div class="skeleton skeleton-text" style="width: 75px; height: 20px; border-radius: 9999px; margin: 0;"></div>
                         </div>
-                        <div class="rec-stats-container" style="display: flex; gap: 8px; margin-top: 2px; margin-bottom: 6px; flex-wrap: wrap;">
-                            <div class="skeleton skeleton-text" style="width: 60px; height: 24px; border-radius: 6px; margin: 0;"></div>
-                            <div class="skeleton skeleton-text" style="width: 80px; height: 24px; border-radius: 6px; margin: 0;"></div>
-                            <div class="skeleton skeleton-text" style="width: 90px; height: 24px; border-radius: 6px; margin: 0;"></div>
+                        <div class="rec-stats-container" style="display: flex; gap: 6px; margin-top: 2px; margin-bottom: 4px; flex-wrap: wrap;">
+                            <div class="skeleton skeleton-text" style="width: 55px; height: 22px; border-radius: 6px; margin: 0;"></div>
+                            <div class="skeleton skeleton-text" style="width: 70px; height: 22px; border-radius: 6px; margin: 0;"></div>
+                            <div class="skeleton skeleton-text" style="width: 85px; height: 22px; border-radius: 6px; margin: 0;"></div>
                         </div>
-                        <div class="skeleton skeleton-text paragraph" style="width: 100%; height: 50px; border-radius: 4px; margin-top: 12px;"></div>
+                        <div class="skeleton skeleton-text paragraph" style="width: 100%; height: 42px; border-radius: 6px; margin-top: 10px;"></div>
                     </div>
                 </div>
             </div>
