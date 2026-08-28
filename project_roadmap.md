@@ -55,31 +55,7 @@ Add a lightweight, unobtrusive "Score My Game" tool to the recommender page that
 - [ ] **Frontend Inspector UI:** Add a "🔍 Score a game" collapsible link below `#recommendations-results` in `site_ui/recommender/index.html`. When expanded, show a text input for game name/ID with a "Check Score" button. On submit, call `GET /score` and render a compact breakdown card showing each score dimension as a labelled bar (0–100%), the composite score, and the filter status. Style consistently with the existing glassmorphism card system.
 - [ ] **Unit Tests:** Test single-game scoring against a known taste profile (verify per-dimension math matches `score_candidates` output), filter status detection for each exclusion reason, and edge cases (game not in catalog, invalid game ID).
 
----
 
-
-## Milestone 41: Shareable Recommendation Links
-
-### Objective
-Enable users to generate a unique shareable URL for their recommendation results that others can view without logging in, driving organic discovery and social sharing.
-
-### Design Notes
-- **Social Value:** Board gaming is inherently social. Enabling "here are my recommendations — what do you think?" sharing creates organic traffic, enables community discussion, and adds a viral growth mechanism with zero marketing spend.
-- **Snapshot Model:** Shared links display a frozen snapshot of the recommendation results at the time of sharing, not a live re-computation. This avoids exposing the user's BGG credentials to viewers and keeps the share page fast (no Lambda cold start).
-- **Privacy:** The shared page shows recommendation results only — game names, reasons, and metadata. It does not expose the sharer's BGG username, collection, taste profile, or weight configuration.
-
-### Architecture Decisions
-- **Storage:** Store recommendation snapshots in DynamoDB (new `bgg-shared-recommendations` table) keyed by a short hash (8-char base62). Each item contains: `hash_id`, `recommendations` (list of game objects), `created_at`, and `ttl` (DynamoDB TTL attribute, set to 90 days).
-- **Share Endpoint:** Add a `POST /share` route (authenticated) that accepts a recommendations payload, generates the hash, stores in DynamoDB, and returns the share URL. Add a `GET /share/{hash}` route (unauthenticated) that retrieves and returns the snapshot.
-- **Frontend Flow:** Add a "Share Results" button to the recommendation results area. On click, POST the current recommendations to `/share`, receive the short URL, and display a copy-to-clipboard modal. The share URL renders a read-only recommendation card layout.
-
-### Tasks
-- [ ] **DynamoDB Table:** Add a `bgg-shared-recommendations` DynamoDB table to the Terraform `dynamodb` module with `hash_id` as partition key and a TTL attribute on `expires_at`.
-- [ ] **Share API Lambda:** Add `POST /share` and `GET /share/{hash_id}` route handlers. `POST` generates an 8-char base62 hash, stores the snapshot, and returns the URL. `GET` retrieves the snapshot by hash.
-- [ ] **API Gateway Routes:** Add `/share` POST (authenticated) and GET (unauthenticated) routes in the API Gateway Terraform configuration.
-- [ ] **Share Button UI:** Add a "Share Results ↗" button below the recommendation results. On click, call `POST /share` with the current recommendations, display a modal with the shareable URL, and provide a "Copy Link" button.
-- [ ] **Shared Results Page:** Create `site_ui/shared/index.html` that reads the hash from the URL query parameter, fetches the snapshot via `GET /share/{hash}`, and renders read-only recommendation cards with a "Get your own recommendations →" CTA.
-- [ ] **Unit Tests:** Test hash generation uniqueness, DynamoDB storage/retrieval, TTL expiration behavior, and graceful handling of invalid/expired hash lookups.
 
 ---
 
@@ -233,5 +209,6 @@ Enable full local Jekyll development with real API endpoints and Cognito credent
 * **Milestone 44: Recommender Latency Optimization** (Parallelized S3 profile checks, parquet downloads, and taste profile loading with ThreadPoolExecutor, Bedrock maxTokens reduced to 800 with 15-word concise narration constraint, removed redundant catalog copies, and cached catalog data conversions)
 * **Milestone 52: New User AI Narration Context** (Added prompt branching in narration.py for Casual Personality Test and Quick Taste Test, forwarded personality quiz answers from frontend to backend, tuned punchy/direct 1-sentence explanations aiming for 12–15 words, and raised generation maxTokens to 1,200 at 0.6 temperature)
 * **Milestone 53: Recommendation Card Redesign** (Explored visual mockup options, implemented Option A 2-column desktop grid for ≥1024px monitors in design-system.css, updated card padding, flex alignment, member affinity bar tracks, and aligned skeleton loading placeholders)
+* **Milestone 41: Shareable Top 10 Recommendation Graphic & Image Export** (Implemented HTML5 Canvas generator module graphic_export.js for generating 1200x675 high-res social graphics of top 10 recommended games without AI text, added Export Image modal with live preview, 1-click Download PNG, Clipboard copy, and mobile Web Share API integration)
 
 

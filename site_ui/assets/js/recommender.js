@@ -1973,7 +1973,29 @@ document.addEventListener("DOMContentLoaded", function () {
         recs.forEach((rec, index) => {
             html += window.renderRecommendationCard(rec, index, isPending);
         });
+
+        if (recs && recs.length > 0) {
+            html += `
+                <div class="rec-actions-bar">
+                    <button type="button" class="btn btn-secondary" id="export-graphic-btn" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <span>🖼️ Export Shareable Image</span>
+                    </button>
+                </div>
+            `;
+        }
+
         resultsContainer.innerHTML = html;
+
+        const exportBtn = document.getElementById("export-graphic-btn");
+        if (exportBtn) {
+            exportBtn.onclick = () => {
+                const userEl = document.getElementById("username");
+                const username = userEl ? userEl.value.trim() : "";
+                if (typeof window.openGraphicExportModal === 'function') {
+                    window.openGraphicExportModal(recs, username);
+                }
+            };
+        }
     }
 
     function updateNarrationReasons(recs) {

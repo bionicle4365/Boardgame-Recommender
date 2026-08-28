@@ -866,6 +866,7 @@ description: "Combine collections, plan board game sessions, and get group conse
     </div>
 </div>
 
+<script src="{{ '/assets/js/graphic_export.js' | relative_url }}"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         // Elements
@@ -1510,7 +1511,26 @@ description: "Combine collections, plan board game sessions, and get group conse
             recs.forEach((rec, index) => {
                 html += window.renderRecommendationCard(rec, index);
             });
+
+            html += `
+                <div class="rec-actions-bar">
+                    <button type="button" class="btn btn-secondary" id="group-export-graphic-btn" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600;">
+                        <span>🖼️ Export Shareable Image</span>
+                    </button>
+                </div>
+            `;
+
             resultsContainer.innerHTML = html;
+
+            const exportBtn = document.getElementById("group-export-graphic-btn");
+            if (exportBtn) {
+                exportBtn.onclick = () => {
+                    const groupTitle = activeGroupName ? activeGroupName.textContent : "Game Night";
+                    if (typeof window.openGraphicExportModal === 'function') {
+                        window.openGraphicExportModal(recs, groupTitle);
+                    }
+                };
+            }
         }
 
         async function fetchUserXml(username) {
