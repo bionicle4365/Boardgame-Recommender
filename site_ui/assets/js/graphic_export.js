@@ -365,10 +365,7 @@
             modalEl.innerHTML = `
                 <div class="export-modal-dialog">
                     <div class="export-modal-header">
-                        <div>
-                            <h3 style="margin: 0 0 2px 0;">🖼️ Shareable Recommendation Card</h3>
-                            <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted);">Compact image of your Top 10 recommendations without AI text — perfect for Discord & Reddit</p>
-                        </div>
+                        <h3 style="margin: 0;">🖼️ Shareable Recommendation Graphic</h3>
                         <button class="export-modal-close" onclick="window.closeGraphicExportModal()">&times;</button>
                     </div>
                     <div class="export-modal-body">
