@@ -59,14 +59,15 @@ describe('renderRecommendationCard', () => {
     const container = document.createElement('div');
     container.innerHTML = html;
 
-    expect(html).toContain('Match #1');
+    expect(html).not.toContain('Match #');
     expect(html).toContain('Gloomhaven');
     expect(html).toContain('https://boardgamegeek.com/boardgame/12345');
     expect(container.textContent).toContain('★ 8.8');
     expect(container.textContent).toContain('⚙ 3.9/5');
     expect(container.textContent).toContain('👥 1-4 Players');
     expect(container.textContent).toContain('🕒 60-150 Min');
-    expect(container.textContent).toContain('📅 2017');
+    expect(container.textContent).toContain('2017');
+    expect(html).toContain('year-badge');
     expect(html).toContain('It matches your love for tactical combat.');
     expect(html).toContain('https://images.com/gloomhaven.jpg');
   });
@@ -85,7 +86,7 @@ describe('renderRecommendationCard', () => {
     const container = document.createElement('div');
     container.innerHTML = html;
 
-    expect(html).toContain('Match #2');
+    expect(html).not.toContain('Match #');
     expect(html).toContain('Chess');
     expect(container.textContent).toContain('👥 2 Players');
     expect(container.textContent).toContain('🕒 60 Min');

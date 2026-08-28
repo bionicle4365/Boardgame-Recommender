@@ -220,15 +220,10 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
                 <span style="color: #0369a1; font-weight: bold; margin-right: 2px;">🕒</span> ${playStr} Min
             </span>`;
     }
-    if (rec.year_published) {
-        statsHtml += `
-            <span class="stat-badge year" title="Year Published">
-                <span style="color: #475569; font-weight: bold; margin-right: 2px;">📅</span> ${rec.year_published}
-            </span>`;
-    }
 
     const thumbUrl = rec.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
     const loadingClass = isPending ? "loading" : "";
+    const yearHtml = rec.year_published ? `<span class="badge year-badge" title="Year Published">${rec.year_published}</span>` : "";
     
     const affinitiesHtml = (function() {
         if (!rec.member_affinities || Object.keys(rec.member_affinities).length === 0) {
@@ -274,7 +269,7 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
                 <div class="rec-card-content">
                     <div class="rec-card-header">
                         <a href="${gameLink}" target="_blank" class="rec-title">${window.escapeHTML(rec.name)}</a>
-                        <span class="badge">Match #${index + 1}</span>
+                        ${yearHtml}
                     </div>
                     <div class="rec-stats-container">
                         ${statsHtml}
@@ -297,8 +292,8 @@ window.renderSkeletonCards = function(container, count = 4) {
                     <div class="skeleton skeleton-avatar" style="width: 76px; height: 76px; border-radius: 12px; flex-shrink: 0;"></div>
                     <div class="rec-card-content" style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
                         <div class="rec-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; width: 100%;">
-                            <div class="skeleton skeleton-text title" style="width: 55%; height: 20px; margin: 0;"></div>
-                            <div class="skeleton skeleton-text" style="width: 75px; height: 20px; border-radius: 9999px; margin: 0;"></div>
+                            <div class="skeleton skeleton-text title" style="width: 60%; height: 20px; margin: 0;"></div>
+                            <div class="skeleton skeleton-text" style="width: 48px; height: 20px; border-radius: 9999px; margin: 0;"></div>
                         </div>
                         <div class="rec-stats-container" style="display: flex; gap: 6px; margin-top: 2px; margin-bottom: 4px; flex-wrap: wrap;">
                             <div class="skeleton skeleton-text" style="width: 55px; height: 22px; border-radius: 6px; margin: 0;"></div>
