@@ -88,65 +88,65 @@ description: "Get personalized board game recommendations from your BGG library 
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Section 3: Recommendation Profile (Full Width) -->
-            <div class="form-section" style="margin-top: 16px;">
-                <h3 class="section-title">
-                    <span class="section-title-icon"
-                        style="background: linear-gradient(135deg, #e0e7ff, #a5b4fc);">🤖</span>
-                    AI Personalization
-                </h3>
-                <div class="form-group">
-                    <label for="preset_profile">Recommendation Profile Preset</label>
-                    <select id="preset_profile">
-                        <option value="balanced" selected>Balanced Choice (Default)</option>
-                        <option value="thematic">Theme & Story (Thematic)</option>
-                        <option value="strategy">Gameplay & Strategy (Mechanics)</option>
-                        <option value="trending">Hot & Trending</option>
-                        <option value="crowd_pleaser">Crowd Pleasers (Top Rated)</option>
-                        <option value="custom">Custom (Fine-Tune Sliders)</option>
-                    </select>
-                    <p id="preset_desc" class="preset-desc"
-                        style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; margin-bottom: 8px; line-height: 1.4;">
-                    </p>
-                </div>
+                <!-- Section 3: Recommendation Profile -->
+                <div class="form-section" id="ai-personalization-section">
+                    <h3 class="section-title">
+                        <span class="section-title-icon"
+                            style="background: linear-gradient(135deg, #e0e7ff, #a5b4fc);">🤖</span>
+                        AI Personalization
+                    </h3>
+                    <div class="form-group">
+                        <label for="preset_profile">Recommendation Profile Preset</label>
+                        <select id="preset_profile">
+                            <option value="balanced" selected>Balanced Choice (Default)</option>
+                            <option value="thematic">Theme & Story (Thematic)</option>
+                            <option value="strategy">Gameplay & Strategy (Mechanics)</option>
+                            <option value="trending">Hot & Trending</option>
+                            <option value="crowd_pleaser">Crowd Pleasers (Top Rated)</option>
+                            <option value="custom">Custom (Fine-Tune Sliders)</option>
+                        </select>
+                        <p id="preset_desc" class="preset-desc"
+                            style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; margin-bottom: 8px; line-height: 1.4;">
+                        </p>
+                    </div>
 
-                <div class="form-group" id="custom-sliders-group" style="display: none; margin-top: 10px;">
-                    <label style="margin-bottom: 8px; display: block;">Fine-tune Recommendation Weights</label>
-                    <div class="sliders-container">
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <span>Mechanics Match</span>
-                                <span id="w_mech_val" class="slider-badge">50%</span>
+                    <div class="form-group" id="custom-sliders-group" style="display: none; margin-top: 10px;">
+                        <label style="margin-bottom: 8px; display: block;">Fine-tune Recommendation Weights</label>
+                        <div class="sliders-container">
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <span>Mechanics Match</span>
+                                    <span id="w_mech_val" class="slider-badge">50%</span>
+                                </div>
+                                <input type="range" id="w_mech" min="0" max="100" value="50" class="weight-slider">
+                                <span class="slider-desc">Weight of matching games with mechanics you enjoy</span>
                             </div>
-                            <input type="range" id="w_mech" min="0" max="100" value="50" class="weight-slider">
-                            <span class="slider-desc">Weight of matching games with mechanics you enjoy</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <span>Categories Match</span>
-                                <span id="w_cat_val" class="slider-badge">50%</span>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <span>Categories Match</span>
+                                    <span id="w_cat_val" class="slider-badge">50%</span>
+                                </div>
+                                <input type="range" id="w_cat" min="0" max="100" value="50" class="weight-slider">
+                                <span class="slider-desc">Weight of matching games with categories/themes you enjoy</span>
                             </div>
-                            <input type="range" id="w_cat" min="0" max="100" value="50" class="weight-slider">
-                            <span class="slider-desc">Weight of matching games with categories/themes you enjoy</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <span>Popularity Average</span>
-                                <span id="w_pop_val" class="slider-badge">50%</span>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <span>Popularity Average</span>
+                                    <span id="w_pop_val" class="slider-badge">50%</span>
+                                </div>
+                                <input type="range" id="w_pop" min="0" max="100" value="50" class="weight-slider">
+                                <span class="slider-desc">Weight of overall BGG ratings and community popularity</span>
                             </div>
-                            <input type="range" id="w_pop" min="0" max="100" value="50" class="weight-slider">
-                            <span class="slider-desc">Weight of overall BGG ratings and community popularity</span>
-                        </div>
-                        <div class="slider-group">
-                            <div class="slider-header">
-                                <span>Hotness / Trending</span>
-                                <span id="w_hot_val" class="slider-badge">0%</span>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <span>Hotness / Trending</span>
+                                    <span id="w_hot_val" class="slider-badge">0%</span>
+                                </div>
+                                <input type="range" id="w_hot" min="0" max="100" value="0" class="weight-slider">
+                                <span class="slider-desc">Bias recommendations towards currently trending hot games on
+                                    BGG</span>
                             </div>
-                            <input type="range" id="w_hot" min="0" max="100" value="0" class="weight-slider">
-                            <span class="slider-desc">Bias recommendations towards currently trending hot games on
-                                BGG</span>
                         </div>
                     </div>
                 </div>
@@ -172,39 +172,7 @@ description: "Get personalized board game recommendations from your BGG library 
     </div>
 
     <!-- Recommendations Results -->
-    <div id="recommendations-results" class="results-grid">
-        <div class="recommender-empty-state" id="recommender-empty-state-card" style="grid-column: 1 / -1; width: 100%; box-sizing: border-box;">
-            <!-- Blurred cards preview -->
-            <div class="empty-state-preview-cards">
-                <div class="dummy-card blurred">
-                    <div class="dummy-image"></div>
-                    <div class="dummy-title"></div>
-                    <div class="dummy-tags"><span></span><span></span></div>
-                </div>
-                <div class="dummy-card blurred">
-                    <div class="dummy-image"></div>
-                    <div class="dummy-title"></div>
-                    <div class="dummy-tags"><span></span><span></span></div>
-                </div>
-                <div class="dummy-card blurred">
-                    <div class="dummy-image"></div>
-                    <div class="dummy-title"></div>
-                    <div class="dummy-tags"><span></span><span></span></div>
-                </div>
-            </div>
-            
-            <!-- Overlay CTA -->
-            <div class="empty-state-overlay">
-                <h2>Discover Your Next Favorite Game</h2>
-                <p>Sync your BoardGameGeek profile or take our quick quiz to get personalized recommendations narrated by AI.</p>
-                <div class="empty-state-actions">
-                    <button type="button" class="btn btn-submit" id="empty-state-wizard-btn" style="max-width: 320px; font-weight: 600; padding: 12px 24px; display: inline-flex; justify-content: center; height: auto;">
-                        Start New User Wizard
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="recommendations-results" class="results-grid"></div>
 </div>
 
 <!-- New User Wizard Modal -->
