@@ -2,14 +2,21 @@
     font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-main);
     max-width: 1100px;
+    width: 100%;
     margin: 0 auto;
     padding: 20px;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .form-sections-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 16px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
@@ -27,6 +34,11 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px 22px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 /* Section header with coloured icon tile */
@@ -57,9 +69,22 @@
 .year-inputs {
     display: flex;
     gap: 15px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
-@media (max-width: 576px) {
+.year-inputs input,
+.year-inputs select {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
     .year-inputs {
         flex-direction: column;
         gap: 10px;
@@ -81,6 +106,9 @@
     margin-top: 25px;
     align-items: stretch;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 @media (max-width: 480px) {
@@ -617,10 +645,15 @@
 .autocomplete-wrapper {
     position: relative;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .wizard-writein-input {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     box-sizing: border-box;
     min-height: 44px;
     padding: 10px 36px 10px 14px;
@@ -676,8 +709,12 @@
     top: calc(100% + 4px);
     left: 0;
     right: 0;
+    width: 100%;
+    max-width: 100%;
     max-height: 220px;
     overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
     background: var(--card-bg, #1a1c23);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -702,6 +739,21 @@
     justify-content: space-between;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     transition: background 0.12s ease, color 0.12s ease;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+}
+
+.autocomplete-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    width: 100%;
+    max-width: 100%;
 }
 
 .autocomplete-item:last-child {
