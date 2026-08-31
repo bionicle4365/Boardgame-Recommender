@@ -65,21 +65,23 @@ description: "Get personalized board game recommendations from your BGG library 
                     <div class="form-group">
                         <label>Publishing Year (Optional)</label>
                         <div class="year-inputs">
-                            <input type="number" id="year_start" placeholder="From (e.g. 2023)" min="1900" max="2100">
-                            <input type="number" id="year_end" placeholder="To (e.g. 2026)" min="1900" max="2100">
+                            <input type="number" id="year_start" placeholder="From (e.g. 2023)" min="1900" max="2100"
+                                style="flex-grow: 1;">
+                            <input type="number" id="year_end" placeholder="To (e.g. 2026)" min="1900" max="2100"
+                                style="flex-grow: 1;">
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label>Pacing &amp; Complexity (Optional)</label>
                         <div class="year-inputs">
-                            <select id="duration_pref">
+                            <select id="duration_pref" style="flex-grow: 1;">
                                 <option value="any" selected>Any Pacing / Play Time</option>
                                 <option value="short">Short (&lt; 45 mins)</option>
                                 <option value="medium">Medium (45 - 90 mins)</option>
                                 <option value="long">Long (&gt; 90 mins)</option>
                             </select>
-                            <select id="complexity_pref">
+                            <select id="complexity_pref" style="flex-grow: 1;">
                                 <option value="any" selected>Any Complexity</option>
                                 <option value="light">Light (Weight 1-2)</option>
                                 <option value="medium">Medium (Weight 2-3.5)</option>
