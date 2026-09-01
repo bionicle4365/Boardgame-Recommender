@@ -24,34 +24,36 @@ description: "Get personalized board game recommendations from your BGG library 
         <form id="recommender-form">
             <div class="form-sections-grid">
                 <!-- Section 1: User & Scope -->
-                <div class="form-section">
+                <div class="form-section form-section-wide">
                     <h3 class="section-title">
                         <span class="section-title-icon"
                             style="background: linear-gradient(135deg, #ede9fe, #c4b5fd);">👤</span>
                         User Profile
                     </h3>
-                    <div class="form-group">
-                        <label for="username">BoardGameGeek Username</label>
-                        <input type="text" id="username" placeholder="e.g. username" required>
-                        <div class="username-wizard-hint" style="margin-top: 6px; font-size: 0.85rem;">
-                            No BGG account? <a href="#" id="launch-wizard-btn" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Launch New User Wizard</a>
+                    <div class="form-section-inner-grid">
+                        <div class="form-group">
+                            <label for="username">BoardGameGeek Username</label>
+                            <input type="text" id="username" placeholder="e.g. username" required>
+                            <div class="username-wizard-hint" style="margin-top: 6px; font-size: 0.85rem;">
+                                No BGG account? <a href="#" id="launch-wizard-btn" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Launch New User Wizard</a>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="own_status">Ownership Scope</label>
-                        <select id="own_status">
-                            <option value="unowned" selected>Recommend games I don't own yet</option>
-                            <option value="owned">Recommend games I already own</option>
-                            <option value="any">Show any recommendations</option>
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label for="own_status">Ownership Scope</label>
+                            <select id="own_status">
+                                <option value="unowned" selected>Recommend games I don't own yet</option>
+                                <option value="owned">Recommend games I already own</option>
+                                <option value="any">Show any recommendations</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group" id="convention-group" style="display: none;">
-                        <label for="conventionSelect">Upcoming Convention Filter</label>
-                        <select id="conventionSelect">
-                            <option value="">All Games</option>
-                        </select>
+                        <div class="form-group" id="convention-group" style="display: none;">
+                            <label for="conventionSelect">Upcoming Convention Filter</label>
+                            <select id="conventionSelect">
+                                <option value="">All Games</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -74,14 +76,14 @@ description: "Get personalized board game recommendations from your BGG library 
 
                     <div class="form-group">
                         <label>Pacing &amp; Complexity (Optional)</label>
-                        <div class="year-inputs">
-                            <select id="duration_pref" style="flex-grow: 1;">
+                        <div class="pacing-complexity-inputs">
+                            <select id="duration_pref">
                                 <option value="any" selected>Any Pacing / Play Time</option>
                                 <option value="short">Short (&lt; 45 mins)</option>
                                 <option value="medium">Medium (45 - 90 mins)</option>
                                 <option value="long">Long (&gt; 90 mins)</option>
                             </select>
-                            <select id="complexity_pref" style="flex-grow: 1;">
+                            <select id="complexity_pref">
                                 <option value="any" selected>Any Complexity</option>
                                 <option value="light">Light (Weight 1-2)</option>
                                 <option value="medium">Medium (Weight 2-3.5)</option>

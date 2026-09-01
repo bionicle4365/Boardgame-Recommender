@@ -1,14 +1,12 @@
 .recommender-container {
     font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-main);
-    max-width: 1240px;
-    width: 100%;
     max-width: 1100px;
+    width: 100%;
     margin: 0 auto;
-    padding: 10px 20px;
+    padding: 20px;
     box-sizing: border-box;
     overflow-x: hidden;
-    padding: 20px;
 }
 
 .header-section {
@@ -21,19 +19,14 @@
     gap: 16px;
 }
 
-@media (min-width: 640px) and (max-width: 991px) {
+@media (min-width: 640px) {
     .form-sections-grid {
         grid-template-columns: 1fr 1fr;
     }
 
-    .form-sections-grid .form-section:nth-child(3) {
+    /* User Profile section spans full width */
+    .form-sections-grid .form-section:first-child {
         grid-column: 1 / -1;
-    }
-}
-
-@media (min-width: 992px) {
-    .form-sections-grid {
-        grid-template-columns: 1fr 1fr 1fr;
     }
 }
 
@@ -45,13 +38,26 @@
     background: var(--section-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 18px 20px;
+    padding: 20px 22px;
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
     overflow-x: hidden;
-    padding: 20px 22px;
+}
+
+/* Horizontal inner layout for the full-width User Profile section */
+.form-section-inner-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+@media (min-width: 640px) {
+    .form-section-inner-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
 }
 
 /* Section header with coloured icon tile */
@@ -81,7 +87,14 @@
 
 .year-inputs {
     display: flex;
-    gap: 15px;
+    gap: 12px;
+}
+
+/* Pacing & Complexity selects stack vertically to prevent text truncation */
+.pacing-complexity-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 @media (max-width: 576px) {
