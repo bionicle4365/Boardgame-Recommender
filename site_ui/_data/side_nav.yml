@@ -1,8 +1,8 @@
 - name: Home
-  link: /Boardgame-Recommender/
+  link: /
 - name: BGG Collection Browser
-  link: /Boardgame-Recommender/collection
+  link: /collection
 - name: Boardgame Recommender
-  link: /Boardgame-Recommender/recommender
+  link: /recommender
 - name: Playgroup Organizer
-  link: /Boardgame-Recommender/groups
+  link: /groups
