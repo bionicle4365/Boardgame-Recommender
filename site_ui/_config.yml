@@ -1,7 +1,7 @@
 title: BG Recommender
 description: "A premium AI-powered BoardGameGeek collection explorer and recommendation engine. Discover customized tabletop matches tailored to your taste profile, mechanics, and playgroups."
-baseurl: "/Boardgame-Recommender"
-url: "https://bionicle4365.github.io"
+baseurl: ""
+url: "https://www.meeplemanifesto.com"
 api_url: "PLACEHOLDER_API_URL"
 cognito_region: "us-east-1"
 cognito_client_id: "PLACEHOLDER_COGNITO_CLIENT_ID"

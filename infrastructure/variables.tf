@@ -18,9 +18,9 @@ variable "user_lambda_concurrency_limit" {
 }
 
 variable "cors_allowed_origins" {
-  description = "Allowed origins for CORS configuration in API Gateway"
-  type        = list(string)
-  default     = [
+  default = [
+    "https://www.meeplemanifesto.com",
+    "https://meeplemanifesto.com",
     "https://bionicle4365.github.io",
     "http://localhost:4000",
     "http://127.0.0.1:4000"
