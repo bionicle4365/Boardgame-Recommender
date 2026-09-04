@@ -148,7 +148,7 @@ description: "Personalized board game recommendations powered by AI. Browse your
 
 <div class="home-container">
     <div class="welcome-banner">
-        <h1>Boardgame Recommender</h1>
+        <h1>BMeeple Manifesto</h1>
         <p>A smart, AI-powered catalog explorer and recommendation engine. Discover new tabletop experiences tailored to your personal collection, themes, and mechanics.</p>
     </div>
 
