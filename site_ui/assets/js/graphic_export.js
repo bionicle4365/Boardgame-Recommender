@@ -4,13 +4,13 @@
  * (without AI text) using HTML5 Canvas.
  */
 
-(function() {
+(function () {
     // Helper to draw a rounded rectangle
     function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
         if (typeof radius === 'number') {
-            radius = {tl: radius, tr: radius, br: radius, bl: radius};
+            radius = { tl: radius, tr: radius, br: radius, bl: radius };
         } else {
-            radius = Object.assign({tl: 0, tr: 0, br: 0, bl: 0}, radius);
+            radius = Object.assign({ tl: 0, tr: 0, br: 0, bl: 0 }, radius);
         }
         ctx.beginPath();
         ctx.moveTo(x + radius.tl, y);
@@ -36,8 +36,8 @@
             }
 
             // Route through wsrv.nl to bypass CDN CORS restrictions when exporting HTML5 canvas
-            const proxiedUrl = rawUrl.startsWith('http') 
-                ? `https://wsrv.nl/?url=${encodeURIComponent(rawUrl)}&w=250&output=jpg` 
+            const proxiedUrl = rawUrl.startsWith('http')
+                ? `https://wsrv.nl/?url=${encodeURIComponent(rawUrl)}&w=250&output=jpg`
                 : rawUrl;
 
             const img = new Image();
@@ -119,7 +119,7 @@
     }
 
     // Main graphic generator (Mobile-First 9:16 Vertical Poster: 1080 x 1920)
-    window.generateRecommendationGraphic = async function(recs, titleText = "Personalized Recommendations", subtitleText = "") {
+    window.generateRecommendationGraphic = async function (recs, titleText = "Personalized Recommendations", subtitleText = "") {
         const top10 = (recs || []).slice(0, 10);
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
@@ -311,8 +311,8 @@
         ctx.font = '500 16px "Inter", sans-serif';
         ctx.fillStyle = '#64748b';
         const siteUrlText = (typeof window !== 'undefined' && window.location && window.location.host)
-            ? `${window.location.host}${window.location.pathname.startsWith('/Boardgame-Recommender') ? '/Boardgame-Recommender' : ''}`
-            : 'Boardgame-Recommender';
+            ? `${window.location.host}${window.location.pathname}`
+            : '';
         ctx.fillText(`Find your perfect tabletop games at ${siteUrlText}`, 50, 1885);
 
         ctx.textAlign = 'right';
@@ -331,7 +331,7 @@
     };
 
     // Modal UI Controller
-    window.openGraphicExportModal = async function(recs, subtitleContext = "") {
+    window.openGraphicExportModal = async function (recs, subtitleContext = "") {
         if (!recs || recs.length === 0) {
             alert('Please generate recommendations before exporting a graphic.');
             return;
@@ -469,7 +469,7 @@
         }
     };
 
-    window.closeGraphicExportModal = function() {
+    window.closeGraphicExportModal = function () {
         const modalEl = document.getElementById('graphic-export-modal');
         if (modalEl) {
             modalEl.style.display = 'none';

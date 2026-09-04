@@ -75,13 +75,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 wCatInput.value = preset.weights.cat;
                 wPopInput.value = preset.weights.pop;
                 wHotInput.value = preset.weights.hot;
-                
+
                 // Update badges
                 wMechVal.textContent = `${preset.weights.mech}%`;
                 wCatVal.textContent = `${preset.weights.cat}%`;
                 wPopVal.textContent = `${preset.weights.pop}%`;
                 wHotVal.textContent = `${preset.weights.hot}%`;
-                
+
                 saveSlidersToStorage();
             }
         }
@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     [wMechInput, wCatInput, wPopInput, wHotInput].forEach(input => {
-        input.addEventListener("input", function() {
+        input.addEventListener("input", function () {
             const valSpan = document.getElementById(`${input.id}_val`);
             if (valSpan) valSpan.textContent = `${input.value}%`;
             saveSlidersToStorage();
@@ -138,17 +138,17 @@ document.addEventListener("DOMContentLoaded", function () {
         applyPreset(presetSelect.value, true);
     });
 
-    document.getElementById("duration_pref").addEventListener("change", function() {
+    document.getElementById("duration_pref").addEventListener("change", function () {
         localStorage.setItem("bgg_rec_duration_pref", this.value);
     });
-    document.getElementById("complexity_pref").addEventListener("change", function() {
+    document.getElementById("complexity_pref").addEventListener("change", function () {
         localStorage.setItem("bgg_rec_complexity_pref", this.value);
     });
 
     // Preferences Sync functions
     async function syncPreferencesToBackend() {
         if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
-        
+
         // Fetch current preferences first so we don't clobber fields like bgg_username
         let currentPrefs = {};
         try {
@@ -157,14 +157,14 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (e) {
             console.error("Failed fetching current preferences:", e);
         }
-        
+
         const weights = {
             mech: wMechInput.value,
             cat: wCatInput.value,
             pop: wPopInput.value,
             hot: wHotInput.value
         };
-        
+
         try {
             // Note: playgroups is defined globally on the window in playgroup integrations
             const playgroups = window.playgroups || [];
@@ -187,7 +187,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     async function loadPreferencesFromBackend() {
         if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
-        
+
         try {
             const response = await fetchApi('/preferences');
             if (response.ok) {
@@ -205,7 +205,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (weights.pop !== undefined) wPopInput.value = weights.pop;
                     if (weights.hot !== undefined) wHotInput.value = weights.hot;
                     localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
-                    
+
                     wMechVal.textContent = `${wMechInput.value}%`;
                     wCatVal.textContent = `${wCatInput.value}%`;
                     wPopVal.textContent = `${wPopInput.value}%`;
@@ -226,23 +226,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (conventions && conventions.length > 0) {
                     const select = document.getElementById("conventionSelect");
                     const group = document.getElementById("convention-group");
-                    
+
                     // Clear any existing options except the first "All Games" one
                     select.innerHTML = '<option value="">All Games</option>';
-                    
+
                     conventions.forEach(conv => {
                         const opt = document.createElement("option");
                         opt.value = conv.convention_id;
                         opt.textContent = `${conv.name} (${conv.game_count} games)`;
                         select.appendChild(opt);
                     });
-                    
+
                     // Update label to show active count
                     const label = group.querySelector("label");
                     if (label) {
                         label.innerHTML = `Upcoming Convention Filter <span style="color: var(--success); font-weight: 800; font-size: 0.7rem; background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; text-transform: uppercase;">${conventions.length} Active</span>`;
                     }
-                    
+
                     group.style.display = "flex";
                 }
             }
@@ -257,7 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
     loadConventions();
 
     // Listen to custom login event to load preferences immediately upon login
-    document.addEventListener("bgg_login_success", function() {
+    document.addEventListener("bgg_login_success", function () {
         loadPreferencesFromBackend();
     });
 
@@ -267,603 +267,603 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const SEED_CATALOG = [
         {
-                "id": "13",
-                "name": "Catan",
-                "image": "https://cf.geekdo-images.com/0XODRpReiZBFUffEcqT5-Q__original/img/oRc0AomWA9ZtFqQDZiZbIyKE1j0=/0x0/filters:format(png)/pic9156909.png",
-                "mechanics": [
-                        "Chaining",
-                        "Dice Rolling",
-                        "Hand Management",
-                        "Hexagon Grid",
-                        "Hidden Victory Points"
-                ]
+            "id": "13",
+            "name": "Catan",
+            "image": "https://cf.geekdo-images.com/0XODRpReiZBFUffEcqT5-Q__original/img/oRc0AomWA9ZtFqQDZiZbIyKE1j0=/0x0/filters:format(png)/pic9156909.png",
+            "mechanics": [
+                "Chaining",
+                "Dice Rolling",
+                "Hand Management",
+                "Hexagon Grid",
+                "Hidden Victory Points"
+            ]
         },
         {
-                "id": "9209",
-                "name": "Ticket to Ride",
-                "image": "https://cf.geekdo-images.com/kdWYkW-7AqG63HhqPL6ekA__original/img/rWF8r4JXXCQQ7QhiWHhmT-rQ3Pc=/0x0/filters:format(jpeg)/pic8937637.jpg",
-                "mechanics": [
-                        "Connections",
-                        "Contracts",
-                        "End Game Bonuses",
-                        "Hand Management",
-                        "Network and Route Building"
-                ]
+            "id": "9209",
+            "name": "Ticket to Ride",
+            "image": "https://cf.geekdo-images.com/kdWYkW-7AqG63HhqPL6ekA__original/img/rWF8r4JXXCQQ7QhiWHhmT-rQ3Pc=/0x0/filters:format(jpeg)/pic8937637.jpg",
+            "mechanics": [
+                "Connections",
+                "Contracts",
+                "End Game Bonuses",
+                "Hand Management",
+                "Network and Route Building"
+            ]
         },
         {
-                "id": "30549",
-                "name": "Pandemic",
-                "image": "https://cf.geekdo-images.com/S3ybV1LAp-8SnHIXLLjVqA__original/img/IsrvRLpUV1TEyZsO5rC-btXaPz0=/0x0/filters:format(jpeg)/pic1534148.jpg",
-                "mechanics": [
-                        "Action Points",
-                        "Chaining",
-                        "Contracts",
-                        "Cooperative Game",
-                        "Events"
-                ]
+            "id": "30549",
+            "name": "Pandemic",
+            "image": "https://cf.geekdo-images.com/S3ybV1LAp-8SnHIXLLjVqA__original/img/IsrvRLpUV1TEyZsO5rC-btXaPz0=/0x0/filters:format(jpeg)/pic1534148.jpg",
+            "mechanics": [
+                "Action Points",
+                "Chaining",
+                "Contracts",
+                "Cooperative Game",
+                "Events"
+            ]
         },
         {
-                "id": "178900",
-                "name": "Codenames",
-                "image": "https://cf.geekdo-images.com/nC6ifPCDnAItwoKSKXVrnw__original/img/Id-jjIer_61ZbvI2_RVRCeBZFY4=/0x0/filters:format(jpeg)/pic8907965.jpg",
-                "mechanics": [
-                        "Communication Limits",
-                        "Deduction",
-                        "Memory",
-                        "Race",
-                        "Team-Based Game"
-                ]
+            "id": "178900",
+            "name": "Codenames",
+            "image": "https://cf.geekdo-images.com/nC6ifPCDnAItwoKSKXVrnw__original/img/Id-jjIer_61ZbvI2_RVRCeBZFY4=/0x0/filters:format(jpeg)/pic8907965.jpg",
+            "mechanics": [
+                "Communication Limits",
+                "Deduction",
+                "Memory",
+                "Race",
+                "Team-Based Game"
+            ]
         },
         {
-                "id": "230802",
-                "name": "Azul",
-                "image": "https://cf.geekdo-images.com/aPSHJO0d0XOpQR5X-wJonw__original/img/AkbtYVc6xXJF3c9EUrakklcclKw=/0x0/filters:format(png)/pic6973671.png",
-                "mechanics": [
-                        "Chaining",
-                        "End Game Bonuses",
-                        "Grid Coverage",
-                        "Open Drafting",
-                        "Pattern Building"
-                ]
+            "id": "230802",
+            "name": "Azul",
+            "image": "https://cf.geekdo-images.com/aPSHJO0d0XOpQR5X-wJonw__original/img/AkbtYVc6xXJF3c9EUrakklcclKw=/0x0/filters:format(png)/pic6973671.png",
+            "mechanics": [
+                "Chaining",
+                "End Game Bonuses",
+                "Grid Coverage",
+                "Open Drafting",
+                "Pattern Building"
+            ]
         },
         {
-                "id": "266192",
-                "name": "Wingspan",
-                "image": "https://cf.geekdo-images.com/yLZJCVLlIx4c7eJEWUNJ7w__original/img/cI782Zis9cT66j2MjSHKJGnFPNw=/0x0/filters:format(jpeg)/pic4458123.jpg",
-                "mechanics": [
-                        "Action Queue",
-                        "Dice Rolling",
-                        "End Game Bonuses",
-                        "Hand Management",
-                        "Once-Per-Game Abilities"
-                ]
+            "id": "266192",
+            "name": "Wingspan",
+            "image": "https://cf.geekdo-images.com/yLZJCVLlIx4c7eJEWUNJ7w__original/img/cI782Zis9cT66j2MjSHKJGnFPNw=/0x0/filters:format(jpeg)/pic4458123.jpg",
+            "mechanics": [
+                "Action Queue",
+                "Dice Rolling",
+                "End Game Bonuses",
+                "Hand Management",
+                "Once-Per-Game Abilities"
+            ]
         },
         {
-                "id": "363622",
-                "name": "The Castles of Burgundy: Special Edition",
-                "image": "https://cf.geekdo-images.com/JUrmY8GgFPQlENiPT7BGZw__original/img/whCMdZhta-uXHgNJfVnetnjZueU=/0x0/filters:format(jpeg)/pic6884563.jpg",
-                "mechanics": [
-                        "Dice Rolling",
-                        "End Game Bonuses",
-                        "Grid Movement",
-                        "Set Collection",
-                        "Solo / Solitaire Game"
-                ]
+            "id": "363622",
+            "name": "The Castles of Burgundy: Special Edition",
+            "image": "https://cf.geekdo-images.com/JUrmY8GgFPQlENiPT7BGZw__original/img/whCMdZhta-uXHgNJfVnetnjZueU=/0x0/filters:format(jpeg)/pic6884563.jpg",
+            "mechanics": [
+                "Dice Rolling",
+                "End Game Bonuses",
+                "Grid Movement",
+                "Set Collection",
+                "Solo / Solitaire Game"
+            ]
         },
         {
-                "id": "224517",
-                "name": "Brass: Birmingham",
-                "image": "https://cf.geekdo-images.com/x3zxjr-Vw5iU4yDPg70Jgw__original/img/FpyxH41Y6_ROoePAilPNEhXnzO8=/0x0/filters:format(jpeg)/pic3490053.jpg",
-                "mechanics": [
-                        "Chaining",
-                        "End Game Bonuses",
-                        "Hand Management",
-                        "Income",
-                        "Loans"
-                ]
+            "id": "224517",
+            "name": "Brass: Birmingham",
+            "image": "https://cf.geekdo-images.com/x3zxjr-Vw5iU4yDPg70Jgw__original/img/FpyxH41Y6_ROoePAilPNEhXnzO8=/0x0/filters:format(jpeg)/pic3490053.jpg",
+            "mechanics": [
+                "Chaining",
+                "End Game Bonuses",
+                "Hand Management",
+                "Income",
+                "Loans"
+            ]
         },
         {
-                "id": "342942",
-                "name": "Ark Nova",
-                "image": "https://cf.geekdo-images.com/SoU8p28Sk1s8MSvoM4N8pQ__original/img/g4S18szTdrXCdIwVKzMKrZrYAcM=/0x0/filters:format(jpeg)/pic6293412.jpg",
-                "mechanics": [
-                        "Contracts",
-                        "End Game Bonuses",
-                        "Events",
-                        "Grid Coverage",
-                        "Hand Management"
-                ]
+            "id": "342942",
+            "name": "Ark Nova",
+            "image": "https://cf.geekdo-images.com/SoU8p28Sk1s8MSvoM4N8pQ__original/img/g4S18szTdrXCdIwVKzMKrZrYAcM=/0x0/filters:format(jpeg)/pic6293412.jpg",
+            "mechanics": [
+                "Contracts",
+                "End Game Bonuses",
+                "Events",
+                "Grid Coverage",
+                "Hand Management"
+            ]
         },
         {
-                "id": "161936",
-                "name": "Pandemic Legacy: Season 1",
-                "image": "https://cf.geekdo-images.com/-Qer2BBPG7qGGDu6KcVDIw__original/img/PlzAH7swN1nsFxOXbfUvE3TkE5w=/0x0/filters:format(png)/pic2452831.png",
-                "mechanics": [
-                        "Action Points",
-                        "Cooperative Game",
-                        "Hand Management",
-                        "Legacy Game",
-                        "Multi-Use Cards"
-                ]
+            "id": "161936",
+            "name": "Pandemic Legacy: Season 1",
+            "image": "https://cf.geekdo-images.com/-Qer2BBPG7qGGDu6KcVDIw__original/img/PlzAH7swN1nsFxOXbfUvE3TkE5w=/0x0/filters:format(png)/pic2452831.png",
+            "mechanics": [
+                "Action Points",
+                "Cooperative Game",
+                "Hand Management",
+                "Legacy Game",
+                "Multi-Use Cards"
+            ]
         },
         {
-                "id": "174430",
-                "name": "Gloomhaven",
-                "image": "https://cf.geekdo-images.com/sZYp_3BTDGjh2unaZfZmuA__original/img/7d-lj5Gd1e8PFnD97LYFah2c45M=/0x0/filters:format(jpeg)/pic2437871.jpg",
-                "mechanics": [
-                        "Action Queue",
-                        "Action Retrieval",
-                        "Campaign / Battle Card Driven",
-                        "Card Play Conflict Resolution",
-                        "Communication Limits"
-                ]
+            "id": "174430",
+            "name": "Gloomhaven",
+            "image": "https://cf.geekdo-images.com/sZYp_3BTDGjh2unaZfZmuA__original/img/7d-lj5Gd1e8PFnD97LYFah2c45M=/0x0/filters:format(jpeg)/pic2437871.jpg",
+            "mechanics": [
+                "Action Queue",
+                "Action Retrieval",
+                "Campaign / Battle Card Driven",
+                "Card Play Conflict Resolution",
+                "Communication Limits"
+            ]
         },
         {
-                "id": "397598",
-                "name": "Dune: Imperium \u2013 Uprising",
-                "image": "https://cf.geekdo-images.com/UVUkjMV_Q2paVUIUP30Vvw__original/img/BoUtCkd1NRO0bR1R5EwL51xIuXA=/0x0/filters:format(jpeg)/pic7664424.jpg",
-                "mechanics": [
-                        "Automatic Resource Growth",
-                        "Card Play Conflict Resolution",
-                        "Contracts",
-                        "Deck, Bag, and Pool Building",
-                        "Delayed Purchase"
-                ]
+            "id": "397598",
+            "name": "Dune: Imperium \u2013 Uprising",
+            "image": "https://cf.geekdo-images.com/UVUkjMV_Q2paVUIUP30Vvw__original/img/BoUtCkd1NRO0bR1R5EwL51xIuXA=/0x0/filters:format(jpeg)/pic7664424.jpg",
+            "mechanics": [
+                "Automatic Resource Growth",
+                "Card Play Conflict Resolution",
+                "Contracts",
+                "Deck, Bag, and Pool Building",
+                "Delayed Purchase"
+            ]
         },
         {
-                "id": "316554",
-                "name": "Dune: Imperium",
-                "image": "https://cf.geekdo-images.com/PhjygpWSo-0labGrPBMyyg__original/img/mZzaBAEEJpMlHWWmC0R6Su0OibQ=/0x0/filters:format(jpeg)/pic5666597.jpg",
-                "mechanics": [
-                        "Card Play Conflict Resolution",
-                        "Deck, Bag, and Pool Building",
-                        "Delayed Purchase",
-                        "Force Commitment",
-                        "Increase Value of Unchosen Resources"
-                ]
+            "id": "316554",
+            "name": "Dune: Imperium",
+            "image": "https://cf.geekdo-images.com/PhjygpWSo-0labGrPBMyyg__original/img/mZzaBAEEJpMlHWWmC0R6Su0OibQ=/0x0/filters:format(jpeg)/pic5666597.jpg",
+            "mechanics": [
+                "Card Play Conflict Resolution",
+                "Deck, Bag, and Pool Building",
+                "Delayed Purchase",
+                "Force Commitment",
+                "Increase Value of Unchosen Resources"
+            ]
         },
         {
-                "id": "233078",
-                "name": "Twilight Imperium: Fourth Edition",
-                "image": "https://cf.geekdo-images.com/_Ppn5lssO5OaildSE-FgFA__original/img/kVpZ0Maa_LeQGWxOqsYKP3N4KUY=/0x0/filters:format(jpeg)/pic3727516.jpg",
-                "mechanics": [
-                        "Action Drafting",
-                        "Area-Impulse",
-                        "Dice Rolling",
-                        "Follow",
-                        "Grid Movement"
-                ]
+            "id": "233078",
+            "name": "Twilight Imperium: Fourth Edition",
+            "image": "https://cf.geekdo-images.com/_Ppn5lssO5OaildSE-FgFA__original/img/kVpZ0Maa_LeQGWxOqsYKP3N4KUY=/0x0/filters:format(jpeg)/pic3727516.jpg",
+            "mechanics": [
+                "Action Drafting",
+                "Area-Impulse",
+                "Dice Rolling",
+                "Follow",
+                "Grid Movement"
+            ]
         },
         {
-                "id": "115746",
-                "name": "War of the Ring: Second Edition",
-                "image": "https://cf.geekdo-images.com/ImPgGag98W6gpV1KV812aA__original/img/38jB7fN07DwlrGKYAf-J0vsNdgs=/0x0/filters:format(jpeg)/pic1215633.jpg",
-                "mechanics": [
-                        "Area Majority / Influence",
-                        "Area Movement",
-                        "Campaign / Battle Card Driven",
-                        "Card Play Conflict Resolution",
-                        "Dice Rolling"
-                ]
+            "id": "115746",
+            "name": "War of the Ring: Second Edition",
+            "image": "https://cf.geekdo-images.com/ImPgGag98W6gpV1KV812aA__original/img/38jB7fN07DwlrGKYAf-J0vsNdgs=/0x0/filters:format(jpeg)/pic1215633.jpg",
+            "mechanics": [
+                "Area Majority / Influence",
+                "Area Movement",
+                "Campaign / Battle Card Driven",
+                "Card Play Conflict Resolution",
+                "Dice Rolling"
+            ]
         },
         {
-                "id": "167791",
-                "name": "Terraforming Mars",
-                "image": "https://cf.geekdo-images.com/wg9oOLcsKvDesSUdZQ4rxw__original/img/thIqWDnH9utKuoKVEUqveDixprI=/0x0/filters:format(jpeg)/pic3536616.jpg",
-                "mechanics": [
-                        "Closed Drafting",
-                        "Contracts",
-                        "End Game Bonuses",
-                        "Hand Management",
-                        "Hexagon Grid"
-                ]
+            "id": "167791",
+            "name": "Terraforming Mars",
+            "image": "https://cf.geekdo-images.com/wg9oOLcsKvDesSUdZQ4rxw__original/img/thIqWDnH9utKuoKVEUqveDixprI=/0x0/filters:format(jpeg)/pic3536616.jpg",
+            "mechanics": [
+                "Closed Drafting",
+                "Contracts",
+                "End Game Bonuses",
+                "Hand Management",
+                "Hexagon Grid"
+            ]
         },
         {
-                "id": "187645",
-                "name": "Star Wars: Rebellion",
-                "image": "https://cf.geekdo-images.com/7SrPNGBKg9IIsP4UQpOi8g__original/img/GKueTbkCk2Ramf6ai8mDj-BP6cI=/0x0/filters:format(jpeg)/pic4325841.jpg",
-                "mechanics": [
-                        "Area Majority / Influence",
-                        "Area Movement",
-                        "Card Play Conflict Resolution",
-                        "Contracts",
-                        "Delayed Purchase"
-                ]
+            "id": "187645",
+            "name": "Star Wars: Rebellion",
+            "image": "https://cf.geekdo-images.com/7SrPNGBKg9IIsP4UQpOi8g__original/img/GKueTbkCk2Ramf6ai8mDj-BP6cI=/0x0/filters:format(jpeg)/pic4325841.jpg",
+            "mechanics": [
+                "Area Majority / Influence",
+                "Area Movement",
+                "Card Play Conflict Resolution",
+                "Contracts",
+                "Delayed Purchase"
+            ]
         },
         {
-                "id": "162886",
-                "name": "Spirit Island",
-                "image": "https://cf.geekdo-images.com/kjCm4ZvPjIZxS-mYgSPy1g__original/img/9uLd9C3XAvInLCLhAoXqKVk56zs=/0x0/filters:format(jpeg)/pic7013651.jpg",
-                "mechanics": [
-                        "Action Retrieval",
-                        "Area Majority / Influence",
-                        "Automatic Resource Growth",
-                        "Campaign / Battle Card Driven",
-                        "Cooperative Game"
-                ]
+            "id": "162886",
+            "name": "Spirit Island",
+            "image": "https://cf.geekdo-images.com/kjCm4ZvPjIZxS-mYgSPy1g__original/img/9uLd9C3XAvInLCLhAoXqKVk56zs=/0x0/filters:format(jpeg)/pic7013651.jpg",
+            "mechanics": [
+                "Action Retrieval",
+                "Area Majority / Influence",
+                "Automatic Resource Growth",
+                "Campaign / Battle Card Driven",
+                "Cooperative Game"
+            ]
         },
         {
-                "id": "291457",
-                "name": "Gloomhaven: Jaws of the Lion",
-                "image": "https://cf.geekdo-images.com/_HhIdavYW-hid20Iq3hhmg__original/img/PBzsLRqNKQKJxGnzpb7o3qLWPQM=/0x0/filters:format(jpeg)/pic5055631.jpg",
-                "mechanics": [
-                        "Action Queue",
-                        "Action Retrieval",
-                        "Campaign / Battle Card Driven",
-                        "Communication Limits",
-                        "Cooperative Game"
-                ]
+            "id": "291457",
+            "name": "Gloomhaven: Jaws of the Lion",
+            "image": "https://cf.geekdo-images.com/_HhIdavYW-hid20Iq3hhmg__original/img/PBzsLRqNKQKJxGnzpb7o3qLWPQM=/0x0/filters:format(jpeg)/pic5055631.jpg",
+            "mechanics": [
+                "Action Queue",
+                "Action Retrieval",
+                "Campaign / Battle Card Driven",
+                "Communication Limits",
+                "Cooperative Game"
+            ]
         },
         {
-                "id": "220308",
-                "name": "Gaia Project",
-                "image": "https://cf.geekdo-images.com/hGWFm3hbMlCDsfCsauOQ4g__original/img/tjlflQtUPFiTpLpwk1NCVCS29Ic=/0x0/filters:format(png)/pic5375625.png",
-                "mechanics": [
-                        "End Game Bonuses",
-                        "Hexagon Grid",
-                        "Income",
-                        "Modular Board",
-                        "Network and Route Building"
-                ]
+            "id": "220308",
+            "name": "Gaia Project",
+            "image": "https://cf.geekdo-images.com/hGWFm3hbMlCDsfCsauOQ4g__original/img/tjlflQtUPFiTpLpwk1NCVCS29Ic=/0x0/filters:format(png)/pic5375625.png",
+            "mechanics": [
+                "End Game Bonuses",
+                "Hexagon Grid",
+                "Income",
+                "Modular Board",
+                "Network and Route Building"
+            ]
         },
         {
-                "id": "12333",
-                "name": "Twilight Struggle",
-                "image": "https://cf.geekdo-images.com/pNCiUUphnoeWOYfsWq0kng__original/img/Iae47UtAd_RXVd5tJ3YzbDHOv4E=/0x0/filters:format(jpeg)/pic3530661.jpg",
-                "mechanics": [
-                        "Action / Event",
-                        "Advantage Token",
-                        "Area Majority / Influence",
-                        "Campaign / Battle Card Driven",
-                        "Dice Rolling"
-                ]
+            "id": "12333",
+            "name": "Twilight Struggle",
+            "image": "https://cf.geekdo-images.com/pNCiUUphnoeWOYfsWq0kng__original/img/Iae47UtAd_RXVd5tJ3YzbDHOv4E=/0x0/filters:format(jpeg)/pic3530661.jpg",
+            "mechanics": [
+                "Action / Event",
+                "Advantage Token",
+                "Area Majority / Influence",
+                "Campaign / Battle Card Driven",
+                "Dice Rolling"
+            ]
         },
         {
-                "id": "418059",
-                "name": "SETI: Search for Extraterrestrial Intelligence",
-                "image": "https://cf.geekdo-images.com/_BUXOVRDU9g_eRwgpR5ZZw__original/img/28ob2JiASW8iX8XoVzp5Y25-h24=/0x0/filters:format(jpeg)/pic8160466.jpg",
-                "mechanics": [
-                        "Area Majority / Influence",
-                        "End Game Bonuses",
-                        "Income",
-                        "Multi-Use Cards",
-                        "Resource to Move"
-                ]
+            "id": "418059",
+            "name": "SETI: Search for Extraterrestrial Intelligence",
+            "image": "https://cf.geekdo-images.com/_BUXOVRDU9g_eRwgpR5ZZw__original/img/28ob2JiASW8iX8XoVzp5Y25-h24=/0x0/filters:format(jpeg)/pic8160466.jpg",
+            "mechanics": [
+                "Area Majority / Influence",
+                "End Game Bonuses",
+                "Income",
+                "Multi-Use Cards",
+                "Resource to Move"
+            ]
         },
         {
-                "id": "338960",
-                "name": "Slay the Spire: The Board Game",
-                "image": "https://cf.geekdo-images.com/PQzVclEoOQ_wr4e1V86kxA__original/img/KXOf1hP1cIJQLabKhZulWP-e9wI=/0x0/filters:format(png)/pic8157856.png",
-                "mechanics": [
-                        "Cooperative Game",
-                        "Deck, Bag, and Pool Building",
-                        "Dice Rolling",
-                        "Hand Management",
-                        "Simultaneous Action Selection"
-                ]
+            "id": "338960",
+            "name": "Slay the Spire: The Board Game",
+            "image": "https://cf.geekdo-images.com/PQzVclEoOQ_wr4e1V86kxA__original/img/KXOf1hP1cIJQLabKhZulWP-e9wI=/0x0/filters:format(png)/pic8157856.png",
+            "mechanics": [
+                "Cooperative Game",
+                "Deck, Bag, and Pool Building",
+                "Dice Rolling",
+                "Hand Management",
+                "Simultaneous Action Selection"
+            ]
         },
         {
-                "id": "84876",
-                "name": "The Castles of Burgundy",
-                "image": "https://cf.geekdo-images.com/sH2YTQ10dHj1ibfS-KKtGA__original/img/L_gsMsuhbAe0kyq1QLAmyeKOeSs=/0x0/filters:format(jpeg)/pic8745814.jpg",
-                "mechanics": [
-                        "Delayed Purchase",
-                        "Dice Rolling",
-                        "End Game Bonuses",
-                        "Grid Coverage",
-                        "Hexagon Grid"
-                ]
+            "id": "84876",
+            "name": "The Castles of Burgundy",
+            "image": "https://cf.geekdo-images.com/sH2YTQ10dHj1ibfS-KKtGA__original/img/L_gsMsuhbAe0kyq1QLAmyeKOeSs=/0x0/filters:format(jpeg)/pic8745814.jpg",
+            "mechanics": [
+                "Delayed Purchase",
+                "Dice Rolling",
+                "End Game Bonuses",
+                "Grid Coverage",
+                "Hexagon Grid"
+            ]
         },
         {
-                "id": "271320",
-                "name": "The Castles of Burgundy",
-                "image": "https://cf.geekdo-images.com/EXvERyhT9ta6LrPR0Un7wA__original/img/-OPQd4l4QQL1y4NB08IV7euVQbA=/0x0/filters:format(jpeg)/pic8573872.jpg",
-                "mechanics": [
-                        "Dice Rolling",
-                        "End Game Bonuses",
-                        "Grid Coverage",
-                        "Hexagon Grid",
-                        "Pattern Building"
-                ]
+            "id": "271320",
+            "name": "The Castles of Burgundy",
+            "image": "https://cf.geekdo-images.com/EXvERyhT9ta6LrPR0Un7wA__original/img/-OPQd4l4QQL1y4NB08IV7euVQbA=/0x0/filters:format(jpeg)/pic8573872.jpg",
+            "mechanics": [
+                "Dice Rolling",
+                "End Game Bonuses",
+                "Grid Coverage",
+                "Hexagon Grid",
+                "Pattern Building"
+            ]
         },
         {
-                "id": "182028",
-                "name": "Through the Ages: A New Story of Civilization",
-                "image": "https://cf.geekdo-images.com/fVwPntkJKgaEo0rIC0RwpA__original/img/1jawNpljTXwnT4km_2CjGwoUPR8=/0x0/filters:format(jpeg)/pic2663291.jpg",
-                "mechanics": [
-                        "Action Points",
-                        "Auction / Bidding",
-                        "Auction: Dutch",
-                        "Events",
-                        "Income"
-                ]
+            "id": "182028",
+            "name": "Through the Ages: A New Story of Civilization",
+            "image": "https://cf.geekdo-images.com/fVwPntkJKgaEo0rIC0RwpA__original/img/1jawNpljTXwnT4km_2CjGwoUPR8=/0x0/filters:format(jpeg)/pic2663291.jpg",
+            "mechanics": [
+                "Action Points",
+                "Auction / Bidding",
+                "Auction: Dutch",
+                "Events",
+                "Income"
+            ]
         },
         {
-                "id": "421006",
-                "name": "The Lord of the Rings: Duel for Middle-earth",
-                "image": "https://cf.geekdo-images.com/EybxJlUc9rz7F7HVFLqsdw__original/img/Ts4M5eOW38r2oTvJmkx0uwNodv4=/0x0/filters:format(jpeg)/pic8378939.jpg",
-                "mechanics": [
-                        "Area Majority / Influence",
-                        "Hand Management",
-                        "Income",
-                        "Layering",
-                        "Market"
-                ]
+            "id": "421006",
+            "name": "The Lord of the Rings: Duel for Middle-earth",
+            "image": "https://cf.geekdo-images.com/EybxJlUc9rz7F7HVFLqsdw__original/img/Ts4M5eOW38r2oTvJmkx0uwNodv4=/0x0/filters:format(jpeg)/pic8378939.jpg",
+            "mechanics": [
+                "Area Majority / Influence",
+                "Hand Management",
+                "Income",
+                "Layering",
+                "Market"
+            ]
         },
         {
-                "id": "248562",
-                "name": "Mage Knight: Ultimate Edition",
-                "image": "https://cf.geekdo-images.com/jgsT5y5qKlOR08CuHG7xfw__original/img/mnPgX4nM_l1JnXFE16dAZjGS8sw=/0x0/filters:format(jpeg)/pic4411189.jpg",
-                "mechanics": [
-                        "Card Play Conflict Resolution",
-                        "Cooperative Game",
-                        "Deck, Bag, and Pool Building",
-                        "Dice Rolling",
-                        "Grid Movement"
-                ]
+            "id": "248562",
+            "name": "Mage Knight: Ultimate Edition",
+            "image": "https://cf.geekdo-images.com/jgsT5y5qKlOR08CuHG7xfw__original/img/mnPgX4nM_l1JnXFE16dAZjGS8sw=/0x0/filters:format(jpeg)/pic4411189.jpg",
+            "mechanics": [
+                "Card Play Conflict Resolution",
+                "Cooperative Game",
+                "Deck, Bag, and Pool Building",
+                "Dice Rolling",
+                "Grid Movement"
+            ]
         },
         {
-                "id": "295770",
-                "name": "Frosthaven",
-                "image": "https://cf.geekdo-images.com/cwUgf-f-qwri8UHBUnifuQ__original/img/Tk7wFDJuaU8RPjNkmyC3AWYOPpU=/0x0/filters:format(png)/pic5092291.png",
-                "mechanics": [
-                        "Campaign / Battle Card Driven",
-                        "Communication Limits",
-                        "Cooperative Game",
-                        "Deck Construction",
-                        "Deck, Bag, and Pool Building"
-                ]
+            "id": "295770",
+            "name": "Frosthaven",
+            "image": "https://cf.geekdo-images.com/cwUgf-f-qwri8UHBUnifuQ__original/img/Tk7wFDJuaU8RPjNkmyC3AWYOPpU=/0x0/filters:format(png)/pic5092291.png",
+            "mechanics": [
+                "Campaign / Battle Card Driven",
+                "Communication Limits",
+                "Cooperative Game",
+                "Deck Construction",
+                "Deck, Bag, and Pool Building"
+            ]
         },
         {
-                "id": "193738",
-                "name": "Great Western Trail",
-                "image": "https://cf.geekdo-images.com/u1l0gH7sb_vnvDvoO_QHqA__original/img/2zv_XMQoPFWk9Dn0oS4JY1IeFzw=/0x0/filters:format(jpeg)/pic4887376.jpg",
-                "mechanics": [
-                        "Contracts",
-                        "Deck, Bag, and Pool Building",
-                        "Hand Management",
-                        "Income",
-                        "Ownership"
-                ]
+            "id": "193738",
+            "name": "Great Western Trail",
+            "image": "https://cf.geekdo-images.com/u1l0gH7sb_vnvDvoO_QHqA__original/img/2zv_XMQoPFWk9Dn0oS4JY1IeFzw=/0x0/filters:format(jpeg)/pic4887376.jpg",
+            "mechanics": [
+                "Contracts",
+                "Deck, Bag, and Pool Building",
+                "Hand Management",
+                "Income",
+                "Ownership"
+            ]
         },
         {
-                "id": "28720",
-                "name": "Brass: Lancashire",
-                "image": "https://cf.geekdo-images.com/tHVtPzu82mBpeQbbZkV6EA__original/img/3ffdJj5Pz6HQrg09Kh8ecTen-TY=/0x0/filters:format(jpeg)/pic3469216.jpg",
-                "mechanics": [
-                        "Chaining",
-                        "End Game Bonuses",
-                        "Hand Management",
-                        "Income",
-                        "Loans"
-                ]
+            "id": "28720",
+            "name": "Brass: Lancashire",
+            "image": "https://cf.geekdo-images.com/tHVtPzu82mBpeQbbZkV6EA__original/img/3ffdJj5Pz6HQrg09Kh8ecTen-TY=/0x0/filters:format(jpeg)/pic3469216.jpg",
+            "mechanics": [
+                "Chaining",
+                "End Game Bonuses",
+                "Hand Management",
+                "Income",
+                "Loans"
+            ]
         },
         {
-                "id": "246900",
-                "name": "Eclipse: Second Dawn for the Galaxy",
-                "image": "https://cf.geekdo-images.com/Oh3kHw6lweg6ru71Q16h2Q__original/img/yW7d4RNfU1ndISCaPlfGYUyxnRU=/0x0/filters:format(jpeg)/pic5235277.jpg",
-                "mechanics": [
-                        "Alliances",
-                        "Area Majority / Influence",
-                        "Area-Impulse",
-                        "Dice Rolling",
-                        "Grid Movement"
-                ]
+            "id": "246900",
+            "name": "Eclipse: Second Dawn for the Galaxy",
+            "image": "https://cf.geekdo-images.com/Oh3kHw6lweg6ru71Q16h2Q__original/img/yW7d4RNfU1ndISCaPlfGYUyxnRU=/0x0/filters:format(jpeg)/pic5235277.jpg",
+            "mechanics": [
+                "Alliances",
+                "Area Majority / Influence",
+                "Area-Impulse",
+                "Dice Rolling",
+                "Grid Movement"
+            ]
         },
         {
-                "id": "173346",
-                "name": "7 Wonders Duel",
-                "image": "https://cf.geekdo-images.com/zdagMskTF7wJBPjX74XsRw__original/img/Ju836WNSaW7Mab9Vjq2TJ_FqhWQ=/0x0/filters:format(jpeg)/pic2576399.jpg",
-                "mechanics": [
-                        "End Game Bonuses",
-                        "Income",
-                        "Melding and Splaying",
-                        "Modular Board",
-                        "Multi-Use Cards"
-                ]
+            "id": "173346",
+            "name": "7 Wonders Duel",
+            "image": "https://cf.geekdo-images.com/zdagMskTF7wJBPjX74XsRw__original/img/Ju836WNSaW7Mab9Vjq2TJ_FqhWQ=/0x0/filters:format(jpeg)/pic2576399.jpg",
+            "mechanics": [
+                "End Game Bonuses",
+                "Income",
+                "Melding and Splaying",
+                "Modular Board",
+                "Multi-Use Cards"
+            ]
         },
         {
-                "id": "167355",
-                "name": "Nemesis",
-                "image": "https://cf.geekdo-images.com/4KSmlm59w0GwLIlgDnJDAQ__original/img/f0VmAKrPrMRQOUcOJHekRvuysDE=/0x0/filters:format(png)/pic8211747.png",
-                "mechanics": [
-                        "Campaign / Battle Card Driven",
-                        "Cooperative Game",
-                        "Dice Rolling",
-                        "Hand Management",
-                        "Hidden Roles"
-                ]
+            "id": "167355",
+            "name": "Nemesis",
+            "image": "https://cf.geekdo-images.com/4KSmlm59w0GwLIlgDnJDAQ__original/img/f0VmAKrPrMRQOUcOJHekRvuysDE=/0x0/filters:format(png)/pic8211747.png",
+            "mechanics": [
+                "Campaign / Battle Card Driven",
+                "Cooperative Game",
+                "Dice Rolling",
+                "Hand Management",
+                "Hidden Roles"
+            ]
         },
         {
-                "id": "169786",
-                "name": "Scythe",
-                "image": "https://cf.geekdo-images.com/7k_nOxpO9OGIjhLq2BUZdA__original/img/HlDb9F365w0tSP8uD1vf1pfniQE=/0x0/filters:format(jpeg)/pic3163924.jpg",
-                "mechanics": [
-                        "Area Majority / Influence",
-                        "Card Play Conflict Resolution",
-                        "Contracts",
-                        "End Game Bonuses",
-                        "Force Commitment"
-                ]
+            "id": "169786",
+            "name": "Scythe",
+            "image": "https://cf.geekdo-images.com/7k_nOxpO9OGIjhLq2BUZdA__original/img/HlDb9F365w0tSP8uD1vf1pfniQE=/0x0/filters:format(jpeg)/pic3163924.jpg",
+            "mechanics": [
+                "Area Majority / Influence",
+                "Card Play Conflict Resolution",
+                "Contracts",
+                "End Game Bonuses",
+                "Force Commitment"
+            ]
         },
         {
-                "id": "177736",
-                "name": "A Feast for Odin",
-                "image": "https://cf.geekdo-images.com/s9oGMCo1fcfV4Dk3EnqLZw__original/img/N1X-0JB1GapFVhl98nP4tNFXMcM=/0x0/filters:format(png)/pic3146943.png",
-                "mechanics": [
-                        "Action Points",
-                        "Automatic Resource Growth",
-                        "Dice Rolling",
-                        "Enclosure",
-                        "Grid Coverage"
-                ]
+            "id": "177736",
+            "name": "A Feast for Odin",
+            "image": "https://cf.geekdo-images.com/s9oGMCo1fcfV4Dk3EnqLZw__original/img/N1X-0JB1GapFVhl98nP4tNFXMcM=/0x0/filters:format(png)/pic3146943.png",
+            "mechanics": [
+                "Action Points",
+                "Automatic Resource Growth",
+                "Dice Rolling",
+                "Enclosure",
+                "Grid Coverage"
+            ]
         },
         {
-                "id": "266507",
-                "name": "Clank! Legacy: Acquisitions Incorporated",
-                "image": "https://cf.geekdo-images.com/hc2NDafu5c24iLJh_IZmyg__original/img/1Fpyz7j7rTvMPRiDdPjn0Vf0m2k=/0x0/filters:format(png)/pic4885780.png",
-                "mechanics": [
-                        "Deck, Bag, and Pool Building",
-                        "Delayed Purchase",
-                        "End Game Bonuses",
-                        "Events",
-                        "Legacy Game"
-                ]
+            "id": "266507",
+            "name": "Clank! Legacy: Acquisitions Incorporated",
+            "image": "https://cf.geekdo-images.com/hc2NDafu5c24iLJh_IZmyg__original/img/1Fpyz7j7rTvMPRiDdPjn0Vf0m2k=/0x0/filters:format(png)/pic4885780.png",
+            "mechanics": [
+                "Deck, Bag, and Pool Building",
+                "Delayed Purchase",
+                "End Game Bonuses",
+                "Events",
+                "Legacy Game"
+            ]
         },
         {
-                "id": "124361",
-                "name": "Concordia",
-                "image": "https://cf.geekdo-images.com/CzwSm8i7tkLz6cBnrILZBg__original/img/BhJ3sB3uk-eSdR1iW4EP3cu0Wi0=/0x0/filters:format(jpeg)/pic3453267.jpg",
-                "mechanics": [
-                        "Action Retrieval",
-                        "Advantage Token",
-                        "Auction: Dutch",
-                        "Deck, Bag, and Pool Building",
-                        "End Game Bonuses"
-                ]
+            "id": "124361",
+            "name": "Concordia",
+            "image": "https://cf.geekdo-images.com/CzwSm8i7tkLz6cBnrILZBg__original/img/BhJ3sB3uk-eSdR1iW4EP3cu0Wi0=/0x0/filters:format(jpeg)/pic3453267.jpg",
+            "mechanics": [
+                "Action Retrieval",
+                "Advantage Token",
+                "Auction: Dutch",
+                "Deck, Bag, and Pool Building",
+                "End Game Bonuses"
+            ]
         },
         {
-                "id": "312484",
-                "name": "Lost Ruins of Arnak",
-                "image": "https://cf.geekdo-images.com/6GqH14TJJhza86BX5HCLEQ__original/img/CXqwimJPonWy1oyXEMgPN_ZVmUI=/0x0/filters:format(jpeg)/pic5674958.jpg",
-                "mechanics": [
-                        "Area Movement",
-                        "Contracts",
-                        "Deck, Bag, and Pool Building",
-                        "Delayed Purchase",
-                        "End Game Bonuses"
-                ]
+            "id": "312484",
+            "name": "Lost Ruins of Arnak",
+            "image": "https://cf.geekdo-images.com/6GqH14TJJhza86BX5HCLEQ__original/img/CXqwimJPonWy1oyXEMgPN_ZVmUI=/0x0/filters:format(jpeg)/pic5674958.jpg",
+            "mechanics": [
+                "Area Movement",
+                "Contracts",
+                "Deck, Bag, and Pool Building",
+                "Delayed Purchase",
+                "End Game Bonuses"
+            ]
         },
         {
-                "id": "341169",
-                "name": "Great Western Trail: Second Edition",
-                "image": "https://cf.geekdo-images.com/gDn7AhrDlmfCLSz9ZqoNFQ__original/img/yecB1xO32nnjBAyskVOTq9LBuLo=/0x0/filters:format(jpeg)/pic5988511.jpg",
-                "mechanics": [
-                        "Deck, Bag, and Pool Building",
-                        "Hand Management",
-                        "Ownership",
-                        "Set Collection",
-                        "Solo / Solitaire Game"
-                ]
+            "id": "341169",
+            "name": "Great Western Trail: Second Edition",
+            "image": "https://cf.geekdo-images.com/gDn7AhrDlmfCLSz9ZqoNFQ__original/img/yecB1xO32nnjBAyskVOTq9LBuLo=/0x0/filters:format(jpeg)/pic5988511.jpg",
+            "mechanics": [
+                "Deck, Bag, and Pool Building",
+                "Hand Management",
+                "Ownership",
+                "Set Collection",
+                "Solo / Solitaire Game"
+            ]
         },
         {
-                "id": "373106",
-                "name": "Sky Team",
-                "image": "https://cf.geekdo-images.com/uXMeQzNenHb3zK7Hoa6b2w__original/img/mWOQnkpyYBorh_Y1-0Y2o-ew17k=/0x0/filters:format(jpeg)/pic7398904.jpg",
-                "mechanics": [
-                        "Communication Limits",
-                        "Cooperative Game",
-                        "Dice Rolling",
-                        "Scenario / Mission / Campaign Game",
-                        "Turn Order: Progressive"
-                ]
+            "id": "373106",
+            "name": "Sky Team",
+            "image": "https://cf.geekdo-images.com/uXMeQzNenHb3zK7Hoa6b2w__original/img/mWOQnkpyYBorh_Y1-0Y2o-ew17k=/0x0/filters:format(jpeg)/pic7398904.jpg",
+            "mechanics": [
+                "Communication Limits",
+                "Cooperative Game",
+                "Dice Rolling",
+                "Scenario / Mission / Campaign Game",
+                "Turn Order: Progressive"
+            ]
         },
         {
-                "id": "205637",
-                "name": "Arkham Horror: The Card Game",
-                "image": "https://cf.geekdo-images.com/B5F5ulz0UivNgrI9Ky0euA__original/img/guEKCewM_2e5ugltSN3dTSwdZJI=/0x0/filters:format(jpeg)/pic3122349.jpg",
-                "mechanics": [
-                        "Action Points",
-                        "Area Movement",
-                        "Communication Limits",
-                        "Cooperative Game",
-                        "Deck Construction"
-                ]
+            "id": "205637",
+            "name": "Arkham Horror: The Card Game",
+            "image": "https://cf.geekdo-images.com/B5F5ulz0UivNgrI9Ky0euA__original/img/guEKCewM_2e5ugltSN3dTSwdZJI=/0x0/filters:format(jpeg)/pic3122349.jpg",
+            "mechanics": [
+                "Action Points",
+                "Area Movement",
+                "Communication Limits",
+                "Cooperative Game",
+                "Deck Construction"
+            ]
         },
         {
-                "id": "237182",
-                "name": "Root",
-                "image": "https://cf.geekdo-images.com/JUAUWaVUzeBgzirhZNmHHw__original/img/E0s2LvtFA1L5YKk-_44D4u2VD2s=/0x0/filters:format(jpeg)/pic4254509.jpg",
-                "mechanics": [
-                        "Action Points",
-                        "Action Queue",
-                        "Action Retrieval",
-                        "Area Majority / Influence",
-                        "Area Movement"
-                ]
+            "id": "237182",
+            "name": "Root",
+            "image": "https://cf.geekdo-images.com/JUAUWaVUzeBgzirhZNmHHw__original/img/E0s2LvtFA1L5YKk-_44D4u2VD2s=/0x0/filters:format(jpeg)/pic4254509.jpg",
+            "mechanics": [
+                "Action Points",
+                "Action Queue",
+                "Action Retrieval",
+                "Area Majority / Influence",
+                "Area Movement"
+            ]
         },
         {
-                "id": "164928",
-                "name": "Orl\u00e9ans",
-                "image": "https://cf.geekdo-images.com/nagl1li6kYt9elV9jbfVQw__original/img/Qn6vlBaTUaHNFsqohIUjd0EA4z0=/0x0/filters:format(jpeg)/pic6228507.jpg",
-                "mechanics": [
-                        "Contracts",
-                        "Deck, Bag, and Pool Building",
-                        "End Game Bonuses",
-                        "Events",
-                        "Kill Steal"
-                ]
+            "id": "164928",
+            "name": "Orl\u00e9ans",
+            "image": "https://cf.geekdo-images.com/nagl1li6kYt9elV9jbfVQw__original/img/Qn6vlBaTUaHNFsqohIUjd0EA4z0=/0x0/filters:format(jpeg)/pic6228507.jpg",
+            "mechanics": [
+                "Contracts",
+                "Deck, Bag, and Pool Building",
+                "End Game Bonuses",
+                "Events",
+                "Kill Steal"
+            ]
         },
         {
-                "id": "120677",
-                "name": "Terra Mystica",
-                "image": "https://cf.geekdo-images.com/bre12I1YiXkZr7elvriz4A__original/img/_dZS7fVfdc4DhJPbqnDpwTT4uF0=/0x0/filters:format(jpeg)/pic5375624.jpg",
-                "mechanics": [
-                        "Chaining",
-                        "End Game Bonuses",
-                        "Hexagon Grid",
-                        "Income",
-                        "Increase Value of Unchosen Resources"
-                ]
+            "id": "120677",
+            "name": "Terra Mystica",
+            "image": "https://cf.geekdo-images.com/bre12I1YiXkZr7elvriz4A__original/img/_dZS7fVfdc4DhJPbqnDpwTT4uF0=/0x0/filters:format(jpeg)/pic5375624.jpg",
+            "mechanics": [
+                "Chaining",
+                "End Game Bonuses",
+                "Hexagon Grid",
+                "Income",
+                "Increase Value of Unchosen Resources"
+            ]
         },
         {
-                "id": "192135",
-                "name": "Too Many Bones",
-                "image": "https://cf.geekdo-images.com/wKwRk0wYBcrtLAfgn4PCdg__original/img/Wpp0vzsVe4HxXGUqiZ1hDvwAHZU=/0x0/filters:format(png)/pic6624445.png",
-                "mechanics": [
-                        "Cooperative Game",
-                        "Dice Rolling",
-                        "Die Icon Resolution",
-                        "Grid Movement",
-                        "Narrative Choice / Paragraph"
-                ]
+            "id": "192135",
+            "name": "Too Many Bones",
+            "image": "https://cf.geekdo-images.com/wKwRk0wYBcrtLAfgn4PCdg__original/img/Wpp0vzsVe4HxXGUqiZ1hDvwAHZU=/0x0/filters:format(png)/pic6624445.png",
+            "mechanics": [
+                "Cooperative Game",
+                "Dice Rolling",
+                "Die Icon Resolution",
+                "Grid Movement",
+                "Narrative Choice / Paragraph"
+            ]
         },
         {
-                "id": "251247",
-                "name": "Barrage",
-                "image": "https://cf.geekdo-images.com/jEPmWvvYpqkWrKOzqIHFsg__original/img/rkHKwkUqpQC7PAGG7n2gbrcQiUY=/0x0/filters:format(png)/pic4336469.png",
-                "mechanics": [
-                        "Contracts",
-                        "End Game Bonuses",
-                        "Income",
-                        "Network and Route Building",
-                        "Ownership"
-                ]
+            "id": "251247",
+            "name": "Barrage",
+            "image": "https://cf.geekdo-images.com/jEPmWvvYpqkWrKOzqIHFsg__original/img/rkHKwkUqpQC7PAGG7n2gbrcQiUY=/0x0/filters:format(png)/pic4336469.png",
+            "mechanics": [
+                "Contracts",
+                "End Game Bonuses",
+                "Income",
+                "Network and Route Building",
+                "Ownership"
+            ]
         },
         {
-                "id": "96848",
-                "name": "Mage Knight Board Game",
-                "image": "https://cf.geekdo-images.com/DUO2hz9AlLOH8p9ED-lCWg__original/img/PDDH38Vf9NEB_4ODURxcJKNBfVQ=/0x0/filters:format(jpeg)/pic1083380.jpg",
-                "mechanics": [
-                        "Card Play Conflict Resolution",
-                        "Cooperative Game",
-                        "Deck, Bag, and Pool Building",
-                        "Dice Rolling",
-                        "Grid Movement"
-                ]
+            "id": "96848",
+            "name": "Mage Knight Board Game",
+            "image": "https://cf.geekdo-images.com/DUO2hz9AlLOH8p9ED-lCWg__original/img/PDDH38Vf9NEB_4ODURxcJKNBfVQ=/0x0/filters:format(jpeg)/pic1083380.jpg",
+            "mechanics": [
+                "Card Play Conflict Resolution",
+                "Cooperative Game",
+                "Deck, Bag, and Pool Building",
+                "Dice Rolling",
+                "Grid Movement"
+            ]
         },
         {
-                "id": "321608",
-                "name": "Hegemony: Lead Your Class to Victory",
-                "image": "https://cf.geekdo-images.com/DCLgJlrvB-EqL6A3WgQLMQ__original/img/vGpYcxjDBCOVcI0BcWOevspTQMQ=/0x0/filters:format(jpeg)/pic5715770.jpg",
-                "mechanics": [
-                        "Action / Event",
-                        "Hand Management",
-                        "Simulation",
-                        "Variable Player Powers",
-                        "Voting"
-                ]
+            "id": "321608",
+            "name": "Hegemony: Lead Your Class to Victory",
+            "image": "https://cf.geekdo-images.com/DCLgJlrvB-EqL6A3WgQLMQ__original/img/vGpYcxjDBCOVcI0BcWOevspTQMQ=/0x0/filters:format(jpeg)/pic5715770.jpg",
+            "mechanics": [
+                "Action / Event",
+                "Hand Management",
+                "Simulation",
+                "Variable Player Powers",
+                "Voting"
+            ]
         },
         {
-                "id": "284378",
-                "name": "Kanban EV",
-                "image": "https://cf.geekdo-images.com/L2Wn-zUqkcHgqvwvY212Ig__original/img/Htra4hvxjBlejtNEIUns_B3CNNc=/0x0/filters:format(jpeg)/pic4924232.jpg",
-                "mechanics": [
-                        "Action Points",
-                        "Hand Management",
-                        "Variable Phase Order",
-                        "Worker Placement"
-                ]
+            "id": "284378",
+            "name": "Kanban EV",
+            "image": "https://cf.geekdo-images.com/L2Wn-zUqkcHgqvwvY212Ig__original/img/Htra4hvxjBlejtNEIUns_B3CNNc=/0x0/filters:format(jpeg)/pic4924232.jpg",
+            "mechanics": [
+                "Action Points",
+                "Hand Management",
+                "Variable Phase Order",
+                "Worker Placement"
+            ]
         }
     ];
 
@@ -878,7 +878,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             resultsContainer.innerHTML = "";
         }
-        
+
         const spinner = statusCard.querySelector(".spinner");
         if (spinner) spinner.style.display = "none";
 
@@ -976,7 +976,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (durationPref && durationPref !== 'any') bodyPayload.duration_pref = durationPref;
         if (complexityPref && complexityPref !== 'any') bodyPayload.complexity_pref = complexityPref;
         if (convention_id) bodyPayload.convention_id = convention_id;
-        
+
         if (inlineProfile) bodyPayload.inline_profile = inlineProfile;
         if (inlineWeights) bodyPayload.inline_weights = inlineWeights;
 
@@ -1014,7 +1014,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         statusCard.style.display = "none";
                         submitBtn.disabled = false;
                         if (refreshBtn) refreshBtn.disabled = false;
-                        
+
                         // Launch the wizard!
                         launchWizardFromRedirect(data.reason);
                     } else if (data.status === "ready") {
@@ -1166,7 +1166,7 @@ document.addEventListener("DOMContentLoaded", function () {
             headingText = "Sparse BGG Profile";
             bodyText = "Your BoardGameGeek profile has very few rated games. Let's supplement your profile manually using one of the options below:";
         }
-        
+
         const welcomeTitle = welcomeScreen.querySelector("h2");
         const welcomeText = welcomeScreen.querySelector("p");
         if (welcomeTitle) welcomeTitle.textContent = headingText;
@@ -1228,7 +1228,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (gameNamesCache) return gameNamesCache;
         if (gameNamesFetchPromise) return gameNamesFetchPromise;
 
-        const url = window.BGG_GAME_NAMES_URL || "/Boardgame-Recommender/assets/data/game_names.json";
+        const url = window.BGG_GAME_NAMES_URL || "assets/data/game_names.json";
         isFetchingGameNames = true;
         gameNamesFetchPromise = fetch(url)
             .then(res => {
@@ -1277,7 +1277,7 @@ document.addEventListener("DOMContentLoaded", function () {
             matches.forEach((item, idx) => {
                 const itemEl = document.createElement("div");
                 itemEl.className = "autocomplete-item";
-                
+
                 // Highlight query substring
                 const nameLower = item.name.toLowerCase();
                 const matchPos = nameLower.indexOf(lowerQuery);
@@ -1424,10 +1424,10 @@ document.addEventListener("DOMContentLoaded", function () {
     function loadTasteTestGame() {
         if (tasteGameIndex < tasteRoundGames.length) {
             const game = tasteRoundGames[tasteGameIndex];
-            
+
             if (tasteGameImg) tasteGameImg.src = game.image;
             if (tasteGameTitle) tasteGameTitle.textContent = game.name;
-            
+
             if (tasteGameMechanics) {
                 tasteGameMechanics.innerHTML = "";
                 game.mechanics.forEach(mech => {
@@ -1436,7 +1436,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     tasteGameMechanics.appendChild(tag);
                 });
             }
-            
+
             updateTasteTestProgress();
         } else {
             if (tasteRoundGames.length === 6) {
@@ -1445,7 +1445,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.log("Completed rating all available seeds! Total ratings collected:", tasteRatings.length, JSON.stringify(tasteRatings));
                 // Update the progress UI one last time to include the final game's rating
                 updateTasteTestProgress();
-                
+
                 // Create or find summary container
                 let summaryContainer = document.querySelector(".taste-test-summary-container");
                 if (!summaryContainer) {
@@ -1528,7 +1528,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         </div>
                     </div>
                 `;
-                
+
                 if (summaryContainer) {
                     summaryContainer.innerHTML = summaryHtml;
                     summaryContainer.style.display = "block";
@@ -1575,7 +1575,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         const round1Ids = ["13", "9209", "30549", "178900", "230802", "266192"];
-        
+
         // Helper to detect common franchise roots for deduplication within the same test
         function getFranchiseRoot(name) {
             const lower = name.toLowerCase();
@@ -1627,15 +1627,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function rateGame(ratingValue) {
         const game = tasteRoundGames[tasteGameIndex];
-        
+
         tasteRatings = tasteRatings.filter(r => r.id !== game.id);
-        
+
         if (ratingValue !== null) {
             tasteRatings.push({ id: game.id, rating: ratingValue });
         }
-        
+
         console.log(`[Taste Test] Rated ${game.name} (${game.id}) -> ${ratingValue}. Total ratings: ${tasteRatings.length}`);
-        
+
         tasteGameIndex++;
         loadTasteTestGame();
     }
@@ -1644,12 +1644,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const count = tasteRatings.length;
         const target = 5;
         const progressPct = Math.min(100, (count / target) * 100);
-        
+
         if (wizardProgressBar) wizardProgressBar.style.width = `${progressPct}%`;
         if (wizardProgressText) {
             wizardProgressText.textContent = `${count} of ${target} ratings collected ${count >= target ? '— Ready!' : ''}`;
         }
-        
+
         if (tasteTestRecommendBtn) {
             tasteTestRecommendBtn.disabled = count < target;
         }
@@ -1659,10 +1659,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (rateDislikeBtn) rateDislikeBtn.addEventListener("click", () => rateGame(3.0));
     if (rateSkipBtn) rateSkipBtn.addEventListener("click", () => rateGame(null));
     if (tasteTestBackBtn) tasteTestBackBtn.addEventListener("click", () => showScreen(welcomeScreen));
-    
+
     if (tasteTestRecommendBtn) tasteTestRecommendBtn.addEventListener("click", () => {
         closeModal();
-        
+
         // Collect any write-in games from summary screen
         [1, 2, 3].forEach(num => {
             const inputEl = document.getElementById(`taste-writein-${num}`);

@@ -1,7 +1,8 @@
 ---
 layout: default
 title: Playgroup Organizer
-description: "Combine collections, plan board game sessions, and get group consensus recommendations matching your game night attendees."
+description: "Combine collections, plan board game sessions, and get group consensus recommendations matching your game
+night attendees."
 ---
 
 <style>
@@ -48,7 +49,8 @@ description: "Combine collections, plan board game sessions, and get group conse
     }
 
     /* Cards styling */
-    .sidebar-card, .planner-card {
+    .sidebar-card,
+    .planner-card {
         background: var(--card-bg);
         border: 1px solid var(--border);
         border-radius: 16px;
@@ -58,7 +60,9 @@ description: "Combine collections, plan board game sessions, and get group conse
     }
 
     @media (max-width: 480px) {
-        .sidebar-card, .planner-card {
+
+        .sidebar-card,
+        .planner-card {
             padding: 16px 12px;
             border-radius: 12px;
         }
@@ -112,7 +116,8 @@ description: "Combine collections, plan board game sessions, and get group conse
         letter-spacing: 0.05em;
     }
 
-    .form-group input, .form-group textarea {
+    .form-group input,
+    .form-group textarea {
         padding: 10px 14px;
         border: 1.5px solid var(--border);
         border-radius: 8px;
@@ -123,7 +128,8 @@ description: "Combine collections, plan board game sessions, and get group conse
         transition: all 0.2s ease;
     }
 
-    .form-group input:focus, .form-group textarea:focus {
+    .form-group input:focus,
+    .form-group textarea:focus {
         border-color: var(--primary);
         background-color: var(--input-focus-bg);
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
@@ -154,11 +160,29 @@ description: "Combine collections, plan board game sessions, and get group conse
         transform: translateY(-1px);
     }
 
-    .btn-primary { background-color: var(--primary); color: white; }
-    .btn-primary:hover { background-color: var(--primary-hover); }
-    .btn-secondary { background-color: var(--btn-secondary-bg); color: var(--text-main); }
-    .btn-secondary:hover { background-color: var(--btn-secondary-hover-bg); }
-    .btn-outline { background-color: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+        background-color: var(--btn-secondary-bg);
+        color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--btn-secondary-hover-bg);
+    }
+
+    .btn-outline {
+        background-color: transparent;
+        border: 1.5px solid var(--primary);
+        color: var(--primary);
+    }
 
     .planner-section {
         display: flex;
@@ -508,12 +532,15 @@ description: "Combine collections, plan board game sessions, and get group conse
             padding: 10px 10px;
             font-size: 0.85rem;
         }
+
         .attendee-summary {
             padding: 12px 14px;
         }
+
         .metric-card {
             padding: 12px 10px;
         }
+
         .metric-value {
             font-size: 1.25rem;
         }
@@ -630,10 +657,12 @@ description: "Combine collections, plan board game sessions, and get group conse
             padding: 8px 10px;
             gap: 8px;
         }
+
         .member-affinity-name {
             min-width: 50px;
             font-size: 0.78rem;
         }
+
         .member-affinity-value {
             font-size: 0.78rem;
             min-width: 30px;
@@ -644,7 +673,8 @@ description: "Combine collections, plan board game sessions, and get group conse
 <div class="groups-container">
     <div class="header-section">
         <h1>Playgroup Organizer</h1>
-        <p>Save your board gaming groups, select attendees, and find games collectively owned that match the players.</p>
+        <p>Save your board gaming groups, select attendees, and find games collectively owned that match the players.
+        </p>
     </div>
 
     <div class="dashboard-layout">
@@ -666,9 +696,12 @@ description: "Combine collections, plan board game sessions, and get group conse
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label for="group-members-input">BGG Usernames (comma-separated)</label>
-                        <textarea id="group-members-input" placeholder="e.g. player1, player2, player3" rows="3" required></textarea>
+                        <textarea id="group-members-input" placeholder="e.g. player1, player2, player3" rows="3"
+                            required></textarea>
                     </div>
-                    <div id="group-form-error" style="display: none; margin-top: 12px; padding: 10px 14px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #f87171; font-size: 0.85rem; line-height: 1.4;"></div>
+                    <div id="group-form-error"
+                        style="display: none; margin-top: 12px; padding: 10px 14px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #f87171; font-size: 0.85rem; line-height: 1.4;">
+                    </div>
                     <div class="form-actions" style="margin-top: 15px;">
                         <button type="button" class="btn btn-secondary" id="cancel-form-btn">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="save-group-btn">Save Group</button>
@@ -693,7 +726,8 @@ description: "Combine collections, plan board game sessions, and get group conse
                             <button class="btn btn-secondary" id="select-none-btn">Clear</button>
                         </div>
                     </div>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: -10px 0 0 0;">Check which group members are attending the session tonight:</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: -10px 0 0 0;">Check which group
+                        members are attending the session tonight:</p>
 
                     <!-- Attendee Grid Checkboxes -->
                     <div class="member-grid" id="member-checkboxes-container">
@@ -708,10 +742,12 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                     <!-- Tabs Switcher Navigation -->
                     <div class="groups-tabs-nav">
-                        <button class="groups-tab-btn active" id="tab-recommendations-btn" onclick="switchTab('recommendations')" type="button">
+                        <button class="groups-tab-btn active" id="tab-recommendations-btn"
+                            onclick="switchTab('recommendations')" type="button">
                             🎯 Recommendations
                         </button>
-                        <button class="groups-tab-btn" id="tab-analytics-btn" onclick="switchTab('analytics')" type="button">
+                        <button class="groups-tab-btn" id="tab-analytics-btn" onclick="switchTab('analytics')"
+                            type="button">
                             📊 Playgroup Analytics
                         </button>
                         <button class="groups-tab-btn" id="tab-polls-btn" onclick="switchTab('polls')" type="button">
@@ -725,15 +761,18 @@ description: "Combine collections, plan board game sessions, and get group conse
                         <div id="tab-recommendations-content" class="groups-tab-content active">
                             <!-- Pacing & Complexity Preferences -->
                             <div class="form-group" style="margin-top: 15px; margin-bottom: 15px;">
-                                <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Pacing & Complexity Preferences (Optional)</label>
+                                <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Pacing &
+                                    Complexity Preferences (Optional)</label>
                                 <div class="year-inputs" style="display: flex; gap: 15px; margin-top: 8px;">
-                                    <select id="duration_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
+                                    <select id="duration_pref"
+                                        style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
                                         <option value="any" selected>Any Pacing / Play Time</option>
                                         <option value="short">Short (&lt; 45 mins)</option>
                                         <option value="medium">Medium (45 - 90 mins)</option>
                                         <option value="long">Long (&gt; 90 mins)</option>
                                     </select>
-                                    <select id="complexity_pref" style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
+                                    <select id="complexity_pref"
+                                        style="flex-grow: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background-color: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 0.95rem;">
                                         <option value="any" selected>Any Complexity</option>
                                         <option value="low">Low (&lt; 2.0 / 5)</option>
                                         <option value="medium">Medium (2.0 - 3.5 / 5)</option>
@@ -755,28 +794,32 @@ description: "Combine collections, plan board game sessions, and get group conse
                                                 <span>Mechanics Match</span>
                                                 <span id="w_mech_val" class="slider-badge">50%</span>
                                             </div>
-                                            <input type="range" id="w_mech" min="0" max="100" value="50" class="weight-slider">
+                                            <input type="range" id="w_mech" min="0" max="100" value="50"
+                                                class="weight-slider">
                                         </div>
                                         <div class="slider-group">
                                             <div class="slider-header">
                                                 <span>Categories Match</span>
                                                 <span id="w_cat_val" class="slider-badge">50%</span>
                                             </div>
-                                            <input type="range" id="w_cat" min="0" max="100" value="50" class="weight-slider">
+                                            <input type="range" id="w_cat" min="0" max="100" value="50"
+                                                class="weight-slider">
                                         </div>
                                         <div class="slider-group">
                                             <div class="slider-header">
                                                 <span>Popularity Average</span>
                                                 <span id="w_pop_val" class="slider-badge">50%</span>
                                             </div>
-                                            <input type="range" id="w_pop" min="0" max="100" value="50" class="weight-slider">
+                                            <input type="range" id="w_pop" min="0" max="100" value="50"
+                                                class="weight-slider">
                                         </div>
                                         <div class="slider-group">
                                             <div class="slider-header">
                                                 <span>Hotness / Trending</span>
                                                 <span id="w_hot_val" class="slider-badge">0%</span>
                                             </div>
-                                            <input type="range" id="w_hot" min="0" max="100" value="0" class="weight-slider">
+                                            <input type="range" id="w_hot" min="0" max="100" value="0"
+                                                class="weight-slider">
                                         </div>
                                     </div>
                                 </div>
@@ -784,10 +827,14 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                             <!-- Action Buttons Row -->
                             <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-                                <button class="btn btn-primary" style="flex: 1; min-width: 260px; padding: 12px; font-size: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" id="generate-plan-btn">
+                                <button class="btn btn-primary"
+                                    style="flex: 1; min-width: 260px; padding: 12px; font-size: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);"
+                                    id="generate-plan-btn">
                                     Generate Game Night Planner Recommendations
                                 </button>
-                                <button type="button" class="btn btn-secondary" onclick="openVotingSessionModal()" style="padding: 12px 18px; font-size: 0.95rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;" title="Create a poll directly from all unique games owned by this playgroup">
+                                <button type="button" class="btn btn-secondary" onclick="openVotingSessionModal()"
+                                    style="padding: 12px 18px; font-size: 0.95rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;"
+                                    title="Create a poll directly from all unique games owned by this playgroup">
                                     🗳️ Poll Group Library
                                 </button>
                             </div>
@@ -806,16 +853,20 @@ description: "Combine collections, plan board game sessions, and get group conse
                         <div id="tab-analytics-content" class="groups-tab-content">
                             <!-- Playgroup Taste Analytics Container -->
                             <div id="playgroup-taste-analytics" style="margin-top: 0px; display: none;">
-                                <h3 style="margin-top: 0px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); font-family: 'Outfit', sans-serif; display: none;">Playgroup Taste Analytics</h3>
-                                
+                                <h3
+                                    style="margin-top: 0px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); font-family: 'Outfit', sans-serif; display: none;">
+                                    Playgroup Taste Analytics</h3>
+
                                 <!-- Summary Cards Row -->
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; margin-top: 15px;">
+                                <div
+                                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; margin-top: 15px;">
                                     <div class="metric-card">
                                         <span class="metric-title">Total Unique Games</span>
                                         <span class="metric-value" id="group-card-unique-games">-</span>
                                     </div>
                                     <div class="metric-card">
-                                        <span class="metric-title" id="group-card-complexity-title">Player Count Match</span>
+                                        <span class="metric-title" id="group-card-complexity-title">Player Count
+                                            Match</span>
                                         <span class="metric-value" id="group-card-complexity">-</span>
                                     </div>
                                     <div class="metric-card">
@@ -826,7 +877,8 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                                 <!-- Charts Grid -->
                                 <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px;">
-                                    <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                                    <div class="group-charts-grid"
+                                        style="display: grid; grid-template-columns: 1fr; gap: 16px;">
                                         <div class="chart-container-card">
                                             <span class="chart-title">Group Mechanics Affinity</span>
                                             <div class="chart-wrapper">
@@ -840,7 +892,8 @@ description: "Combine collections, plan board game sessions, and get group conse
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="group-charts-grid" style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                                    <div class="group-charts-grid"
+                                        style="display: grid; grid-template-columns: 1fr; gap: 16px;">
                                         <div class="chart-container-card">
                                             <span class="chart-title">Attendee Complexity Preferences</span>
                                             <div class="chart-wrapper">
@@ -856,129 +909,179 @@ description: "Combine collections, plan board game sessions, and get group conse
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Fallback empty state for Analytics when attendee list is empty -->
-                            <div id="analytics-empty-state" class="empty-state" style="padding: 40px; margin-top: 15px; display: block;">
+                            <div id="analytics-empty-state" class="empty-state"
+                                style="padding: 40px; margin-top: 15px; display: block;">
                                 <h3 style="margin-top: 0;">No Analytics Available</h3>
-                                <p style="margin: 0; font-size: 0.95rem;">Please select at least one playgroup member to view aggregated collection statistics and taste analytics.</p>
+                                <p style="margin: 0; font-size: 0.95rem;">Please select at least one playgroup member to
+                                    view aggregated collection statistics and taste analytics.</p>
                             </div>
                         </div>
 
                         <!-- Tab 3: Game Night Polls Content -->
                         <div id="tab-polls-content" class="groups-tab-content">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 20px 0; gap: 10px; flex-wrap: wrap;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 20px 0; gap: 10px; flex-wrap: wrap;">
                                 <div>
-                                    <h3 style="margin: 0; font-size: 1.15rem; font-family: 'Outfit', sans-serif; color: var(--text-main);">Game Night Polls</h3>
-                                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Active voting sessions and completed game night consensus results.</p>
+                                    <h3
+                                        style="margin: 0; font-size: 1.15rem; font-family: 'Outfit', sans-serif; color: var(--text-main);">
+                                        Game Night Polls</h3>
+                                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Active
+                                        voting sessions and completed game night consensus results.</p>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="btn btn-primary" onclick="openVotingSessionModal()" style="font-size: 0.85rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px;">🗳️ + Create Poll</button>
-                                    <button class="btn btn-secondary" onclick="loadPastPolls()" style="font-size: 0.85rem; padding: 7px 14px;">🔄 Refresh</button>
+                                    <button class="btn btn-primary" onclick="openVotingSessionModal()"
+                                        style="font-size: 0.85rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px;">🗳️
+                                        + Create Poll</button>
+                                    <button class="btn btn-secondary" onclick="loadPastPolls()"
+                                        style="font-size: 0.85rem; padding: 7px 14px;">🔄 Refresh</button>
                                 </div>
                             </div>
                             <div id="past-polls-list" style="display: flex; flex-direction: column; gap: 20px;">
-                                <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
+                                <div
+                                    style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 12px;">
                                     Loading polls...
                                 </div>
                             </div>
                         </div>
                     </div>
-            </div>
+                </div>
 
-            <!-- Voting Session Modal -->
-            <div id="voting-session-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
-                <div style="background: var(--surface-bg, #1e293b); border: 1.5px solid var(--border); border-radius: 16px; max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin: 0; font-size: 1.25rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">🗳️ Create Game Night Poll</h3>
-                        <button type="button" onclick="closeVotingSessionModal()" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;">&times;</button>
-                    </div>
-                    
-                    <div id="modal-step-config">
-                        <p id="modal-source-desc" style="margin: 0 0 14px 0; font-size: 0.9rem; color: var(--text-muted);">
-                            Select candidates from your group's library or recommendations. Attendees can vote 👍 Want to Play, 😐 Fine, or ❌ Veto.
-                        </p>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Candidate Games:</label>
-                            <span id="modal-selection-count" style="font-size: 0.82rem; font-weight: 700; color: var(--primary);">0 selected</span>
+                <!-- Voting Session Modal -->
+                <div id="voting-session-modal"
+                    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+                    <div
+                        style="background: var(--surface-bg, #1e293b); border: 1.5px solid var(--border); border-radius: 16px; max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3
+                                style="margin: 0; font-size: 1.25rem; color: var(--text-main); font-family: 'Outfit', sans-serif;">
+                                🗳️ Create Game Night Poll</h3>
+                            <button type="button" onclick="closeVotingSessionModal()"
+                                style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer;">&times;</button>
                         </div>
 
-                        <!-- Search and Filter Bar -->
-                        <div style="margin-bottom: 10px;">
-                            <input type="text" id="modal-candidate-search" placeholder="🔍 Filter games by title..." oninput="filterModalCandidates(this.value)" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.88rem; box-sizing: border-box;">
-                        </div>
+                        <div id="modal-step-config">
+                            <p id="modal-source-desc"
+                                style="margin: 0 0 14px 0; font-size: 0.9rem; color: var(--text-muted);">
+                                Select candidates from your group's library or recommendations. Attendees can vote 👍
+                                Want to Play, 😐 Fine, or ❌ Veto.
+                            </p>
 
-                        <div id="modal-candidates-list" style="margin: 8px 0 16px 0; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px;"></div>
-                        
-                        <!-- Host Identity: Displayed automatically when BGG username is set in settings -->
-                        <div id="modal-host-linked-container" style="display: none; margin-bottom: 16px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 1.25rem;">👑</span>
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Host / Creator</span>
-                                    <span id="modal-host-username-display" style="font-weight: 700; color: var(--text-main); font-size: 0.98rem; font-family: 'Outfit', sans-serif;"></span>
-                                </div>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Candidate
+                                    Games:</label>
+                                <span id="modal-selection-count"
+                                    style="font-size: 0.82rem; font-weight: 700; color: var(--primary);">0
+                                    selected</span>
                             </div>
-                            <span style="font-size: 0.78rem; color: #818cf8; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); padding: 3px 9px; border-radius: 6px; font-weight: 600;">Linked from Settings</span>
-                        </div>
 
-                        <!-- Missing BGG Username: Inline input prompt when username is not set in settings -->
-                        <div id="modal-host-missing-container" style="display: none; margin-bottom: 16px; padding: 14px 16px; background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px;">
-                            <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
-                                <span style="font-size: 1.25rem; line-height: 1;">⚠️</span>
-                                <div>
-                                    <div style="font-weight: 700; font-size: 0.92rem; color: #fbbf24; margin-bottom: 2px;">BGG Username Required to Host Polls</div>
-                                    <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
-                                        Enter your BoardGameGeek username to link this poll to your account. This will automatically be saved to your settings.
+                            <!-- Search and Filter Bar -->
+                            <div style="margin-bottom: 10px;">
+                                <input type="text" id="modal-candidate-search" placeholder="🔍 Filter games by title..."
+                                    oninput="filterModalCandidates(this.value)"
+                                    style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.88rem; box-sizing: border-box;">
+                            </div>
+
+                            <div id="modal-candidates-list"
+                                style="margin: 8px 0 16px 0; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px;">
+                            </div>
+
+                            <!-- Host Identity: Displayed automatically when BGG username is set in settings -->
+                            <div id="modal-host-linked-container"
+                                style="display: none; margin-bottom: 16px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1.25rem;">👑</span>
+                                    <div style="display: flex; flex-direction: column;">
+                                        <span
+                                            style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Host
+                                            / Creator</span>
+                                        <span id="modal-host-username-display"
+                                            style="font-weight: 700; color: var(--text-main); font-size: 0.98rem; font-family: 'Outfit', sans-serif;"></span>
                                     </div>
                                 </div>
+                                <span
+                                    style="font-size: 0.78rem; color: #818cf8; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); padding: 3px 9px; border-radius: 6px; font-weight: 600;">Linked
+                                    from Settings</span>
                             </div>
-                            <input type="text" id="modal-inline-bgg-username" placeholder="e.g. your_bgg_username" oninput="clearInlineBggError()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem; box-sizing: border-box;">
-                            <div id="modal-inline-bgg-error" style="display: none; color: #f87171; font-size: 0.8rem; font-weight: 600; margin-top: 6px;"></div>
+
+                            <!-- Missing BGG Username: Inline input prompt when username is not set in settings -->
+                            <div id="modal-host-missing-container"
+                                style="display: none; margin-bottom: 16px; padding: 14px 16px; background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px;">
+                                <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
+                                    <span style="font-size: 1.25rem; line-height: 1;">⚠️</span>
+                                    <div>
+                                        <div
+                                            style="font-weight: 700; font-size: 0.92rem; color: #fbbf24; margin-bottom: 2px;">
+                                            BGG Username Required to Host Polls</div>
+                                        <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+                                            Enter your BoardGameGeek username to link this poll to your account. This
+                                            will automatically be saved to your settings.
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="text" id="modal-inline-bgg-username" placeholder="e.g. your_bgg_username"
+                                    oninput="clearInlineBggError()"
+                                    style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem; box-sizing: border-box;">
+                                <div id="modal-inline-bgg-error"
+                                    style="display: none; color: #f87171; font-size: 0.8rem; font-weight: 600; margin-top: 6px;">
+                                </div>
+                            </div>
+
+                            <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Poll Duration
+                                (Closes At):</label>
+                            <select id="modal-poll-duration"
+                                style="width: 100%; margin-top: 6px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem;">
+                                <option value="2">2 Hours (Quick Game Night)</option>
+                                <option value="6">6 Hours (Tonight's Decision)</option>
+                                <option value="24" selected>24 Hours (Next Day Decision)</option>
+                                <option value="72">3 Days (Weekend Planning)</option>
+                                <option value="168">7 Days (Weekly Schedule)</option>
+                            </select>
+
+                            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="closeVotingSessionModal()">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="create-poll-submit-btn"
+                                    onclick="createVotingSession()">🚀 Launch Poll</button>
+                            </div>
                         </div>
 
-                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Poll Duration (Closes At):</label>
-                        <select id="modal-poll-duration" style="width: 100%; margin-top: 6px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem;">
-                            <option value="2">2 Hours (Quick Game Night)</option>
-                            <option value="6">6 Hours (Tonight's Decision)</option>
-                            <option value="24" selected>24 Hours (Next Day Decision)</option>
-                            <option value="72">3 Days (Weekend Planning)</option>
-                            <option value="168">7 Days (Weekly Schedule)</option>
-                        </select>
-
-                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                            <button type="button" class="btn btn-secondary" onclick="closeVotingSessionModal()">Cancel</button>
-                            <button type="button" class="btn btn-primary" id="create-poll-submit-btn" onclick="createVotingSession()">🚀 Launch Poll</button>
-                        </div>
-                    </div>
-
-                    <div id="modal-step-created" style="display: none; text-align: center; padding: 10px 0;">
-                        <div style="font-size: 2.5rem; margin-bottom: 8px;">🎉</div>
-                        <h4 style="margin: 0 0 8px 0; color: var(--text-main); font-size: 1.2rem;">Poll Created Successfully!</h4>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Share this link with your playgroup attendees:</p>
-                        <div style="display: flex; gap: 8px; margin-bottom: 20px;">
-                            <input type="text" id="share-poll-url-input" readonly style="flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.85rem;">
-                            <button class="btn btn-secondary" id="copy-poll-link-btn" onclick="copyPollLink()">📋 Copy</button>
-                        </div>
-                        <div style="display: flex; justify-content: center; gap: 12px;">
-                            <button class="btn btn-secondary" onclick="closeVotingSessionModal()">Done</button>
-                            <a id="open-poll-link-btn" href="#" target="_blank" class="btn btn-primary">Open Voting Page ↗</a>
+                        <div id="modal-step-created" style="display: none; text-align: center; padding: 10px 0;">
+                            <div style="font-size: 2.5rem; margin-bottom: 8px;">🎉</div>
+                            <h4 style="margin: 0 0 8px 0; color: var(--text-main); font-size: 1.2rem;">Poll Created
+                                Successfully!</h4>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Share this link
+                                with your playgroup attendees:</p>
+                            <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+                                <input type="text" id="share-poll-url-input" readonly
+                                    style="flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.85rem;">
+                                <button class="btn btn-secondary" id="copy-poll-link-btn" onclick="copyPollLink()">📋
+                                    Copy</button>
+                            </div>
+                            <div style="display: flex; justify-content: center; gap: 12px;">
+                                <button class="btn btn-secondary" onclick="closeVotingSessionModal()">Done</button>
+                                <a id="open-poll-link-btn" href="#" target="_blank" class="btn btn-primary">Open Voting
+                                    Page ↗</a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             </div>
 
             <!-- Empty State - displayed when no group is active/selected -->
             <div id="planner-empty-state" class="empty-state">
                 <h3>No Playgroup Selected</h3>
-                <p style="margin: 0;">Select an existing playgroup from the left sidebar, or create a new one to begin planning your game night session.</p>
+                <p style="margin: 0;">Select an existing playgroup from the left sidebar, or create a new one to begin
+                    planning your game night session.</p>
             </div>
         </div>
     </div>
 </div>
 
-<script src="{{ '/assets/js/graphic_export.js' | relative_url }}"></script>
+<script src="{{ 'assets/js/graphic_export.js' | relative_url }}"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         // Elements
@@ -1122,7 +1225,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             groupListContainer.innerHTML = html;
         }
 
-        window.selectGroup = function(id) {
+        window.selectGroup = function (id) {
             // Cancel any active polling
             isPollingActive = false;
             if (pollingTimeout) clearTimeout(pollingTimeout);
@@ -1136,7 +1239,7 @@ description: "Combine collections, plan board game sessions, and get group conse
 
             activeGroup = playgroups.find(g => g.id === id);
             renderGroupList(); // Update active highlights
-            
+
             if (activeGroup) {
                 plannerEmptyState.style.display = "none";
                 plannerActiveView.style.display = "block";
@@ -1158,7 +1261,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
-        window.toggleMemberChecked = function(memberId) {
+        window.toggleMemberChecked = function (memberId) {
             const label = document.getElementById(`label-for-${memberId}`);
             const checkbox = label.querySelector("input");
             if (checkbox.checked) {
@@ -1175,7 +1278,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             attendanceCountBadge.textContent = `${checkedCount} player${checkedCount !== 1 ? 's' : ''}`;
         }
 
-        selectAllBtn.addEventListener("click", function() {
+        selectAllBtn.addEventListener("click", function () {
             document.querySelectorAll(".member-checkbox").forEach(cb => {
                 cb.checked = true;
                 cb.parentElement.classList.add("checked");
@@ -1184,7 +1287,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             updateGroupAnalytics();
         });
 
-        selectNoneBtn.addEventListener("click", function() {
+        selectNoneBtn.addEventListener("click", function () {
             document.querySelectorAll(".member-checkbox").forEach(cb => {
                 cb.checked = false;
                 cb.parentElement.classList.remove("checked");
@@ -1201,23 +1304,23 @@ description: "Combine collections, plan board game sessions, and get group conse
             return names;
         }
 
-        window.deleteGroup = function(id) {
+        window.deleteGroup = function (id) {
             if (confirm("Are you sure you want to delete this playgroup?")) {
                 playgroups = playgroups.filter(g => g.id !== id);
                 localStorage.setItem("bgg_playgroups", JSON.stringify(playgroups));
                 syncPreferencesToBackend();
-                
+
                 if (activeGroup && activeGroup.id === id) {
                     activeGroup = null;
                     plannerActiveView.style.display = "none";
                     plannerEmptyState.style.display = "block";
                 }
-                
+
                 renderGroupList();
             }
         };
 
-        window.editGroup = function(id) {
+        window.editGroup = function (id) {
             const g = playgroups.find(g => g.id === id);
             if (g) {
                 const formError = document.getElementById("group-form-error");
@@ -1353,7 +1456,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                 groupFormCard.style.display = "none";
                 showCreateFormBtn.style.display = "block";
                 renderGroupList();
-                
+
                 // Re-select if updated active group or newly created
                 if (id && activeGroup && activeGroup.id === id) {
                     selectGroup(id);
@@ -1407,7 +1510,7 @@ description: "Combine collections, plan board game sessions, and get group conse
         }
 
         [wMechInput, wCatInput, wPopInput, wHotInput].forEach(input => {
-            input.addEventListener("input", function() {
+            input.addEventListener("input", function () {
                 const valSpan = document.getElementById(`${input.id}_val`);
                 if (valSpan) valSpan.textContent = `${input.value}%`;
                 saveSlidersToStorage();
@@ -1417,7 +1520,7 @@ description: "Combine collections, plan board game sessions, and get group conse
         // Preferences Sync functions
         async function syncPreferencesToBackend() {
             if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
-            
+
             // Fetch current preferences first so we don't clobber fields like bgg_username
             let currentPrefs = {};
             try {
@@ -1426,14 +1529,14 @@ description: "Combine collections, plan board game sessions, and get group conse
             } catch (e) {
                 console.error("Failed fetching current preferences:", e);
             }
-            
+
             const weights = {
                 mech: wMechInput.value,
                 cat: wCatInput.value,
                 pop: wPopInput.value,
                 hot: wHotInput.value
             };
-            
+
             try {
                 await fetchApi('/preferences', {
                     method: "POST",
@@ -1454,7 +1557,7 @@ description: "Combine collections, plan board game sessions, and get group conse
 
         async function loadPreferencesFromBackend() {
             if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
-            
+
             try {
                 const response = await fetchApi('/preferences');
                 if (response.ok) {
@@ -1478,7 +1581,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                         if (weights.pop !== undefined) wPopInput.value = weights.pop;
                         if (weights.hot !== undefined) wHotInput.value = weights.hot;
                         localStorage.setItem("bgg_rec_weights", JSON.stringify(weights));
-                        
+
                         wMechVal.textContent = `${wMechInput.value}%`;
                         wCatVal.textContent = `${wCatInput.value}%`;
                         wPopVal.textContent = `${wPopInput.value}%`;
@@ -1495,7 +1598,7 @@ description: "Combine collections, plan board game sessions, and get group conse
         loadPastPolls();
 
         // Listen to custom login event to load preferences immediately upon login
-        document.addEventListener("bgg_login_success", function() {
+        document.addEventListener("bgg_login_success", function () {
             loadPreferencesFromBackend();
             loadPastPolls();
         });
@@ -1508,7 +1611,7 @@ description: "Combine collections, plan board game sessions, and get group conse
         const tabAnalContent = document.getElementById("tab-analytics-content");
         const tabPollsContent = document.getElementById("tab-polls-content");
 
-        window.switchTab = function(targetTab) {
+        window.switchTab = function (targetTab) {
             const tabRecsBtn = document.getElementById("tab-recommendations-btn");
             const tabAnalBtn = document.getElementById("tab-analytics-btn");
             const tabPollsBtn = document.getElementById("tab-polls-btn");
@@ -1654,7 +1757,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             candidatesList.innerHTML = html;
         }
 
-        window.toggleModalCandidate = function(candId) {
+        window.toggleModalCandidate = function (candId) {
             candId = String(candId);
             if (modalSelectedCandidateIds.has(candId)) {
                 modalSelectedCandidateIds.delete(candId);
@@ -1667,12 +1770,12 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
-        window.filterModalCandidates = function(query) {
+        window.filterModalCandidates = function (query) {
             renderModalCandidatesList(query);
         };
 
         // Voting Session Modal Handlers
-        window.openVotingSessionModal = async function(recs) {
+        window.openVotingSessionModal = async function (recs) {
             const modal = document.getElementById("voting-session-modal");
             const stepConfig = document.getElementById("modal-step-config");
             const stepCreated = document.getElementById("modal-step-created");
@@ -1764,12 +1867,12 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
-        window.closeVotingSessionModal = function() {
+        window.closeVotingSessionModal = function () {
             const modal = document.getElementById("voting-session-modal");
             if (modal) modal.style.display = "none";
         };
 
-        window.clearInlineBggError = function() {
+        window.clearInlineBggError = function () {
             const inlineError = document.getElementById("modal-inline-bgg-error");
             if (inlineError) {
                 inlineError.textContent = "";
@@ -1777,7 +1880,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
-        window.createVotingSession = async function() {
+        window.createVotingSession = async function () {
             if (modalSelectedCandidateIds.size === 0) {
                 alert("Please select at least one candidate game for the voting poll!");
                 return;
@@ -1856,7 +1959,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                     localStorage.setItem("bgg_poll_host_" + sessionData.session_id, creatorName);
 
                     const voteUrl = `${window.location.origin}${window.location.pathname.replace(/\/groups\/?$/, '')}/vote/?id=${sessionData.session_id}`;
-                    
+
                     document.getElementById("share-poll-url-input").value = voteUrl;
                     document.getElementById("open-poll-link-btn").href = voteUrl;
 
@@ -1876,7 +1979,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
-        window.copyPollLink = function() {
+        window.copyPollLink = function () {
             const input = document.getElementById("share-poll-url-input");
             input.select();
             input.setSelectionRange(0, 99999);
@@ -2057,7 +2160,7 @@ description: "Combine collections, plan board game sessions, and get group conse
         }
         window.loadPastPolls = loadPastPolls;
 
-        window.closeSessionEarly = async function(sessionId) {
+        window.closeSessionEarly = async function (sessionId) {
             if (!confirm("Are you sure you want to close this poll now? Voting will end immediately.")) return;
             try {
                 const resp = await window.fetchApi('/session/close', {
@@ -2077,7 +2180,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
-        window.deleteSessionPrompt = async function(sessionId) {
+        window.deleteSessionPrompt = async function (sessionId) {
             if (!confirm("Are you sure you want to permanently delete this completed poll from your history?")) return;
             try {
                 const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(sessionId)}`, {
@@ -2095,7 +2198,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             }
         };
 
-        window.cancelSessionPrompt = async function(sessionId) {
+        window.cancelSessionPrompt = async function (sessionId) {
             if (!confirm("Are you sure you want to cancel and remove this active voting poll?")) return;
             try {
                 const resp = await window.fetchApi(`/session?session_id=${encodeURIComponent(sessionId)}`, {
@@ -2119,15 +2222,15 @@ description: "Combine collections, plan board game sessions, and get group conse
         document.getElementById("duration_pref").value = durationPref;
         document.getElementById("complexity_pref").value = complexityPref;
 
-        document.getElementById("duration_pref").addEventListener("change", function() {
+        document.getElementById("duration_pref").addEventListener("change", function () {
             localStorage.setItem("bgg_rec_duration_pref", this.value);
         });
-        document.getElementById("complexity_pref").addEventListener("change", function() {
+        document.getElementById("complexity_pref").addEventListener("change", function () {
             localStorage.setItem("bgg_rec_complexity_pref", this.value);
         });
 
         // Collapsible sliders behavior
-        weightsToggleBar.addEventListener("click", function() {
+        weightsToggleBar.addEventListener("click", function () {
             const isVisible = weightsExpandableContent.style.display === "block";
             if (isVisible) {
                 weightsExpandableContent.style.display = "none";
@@ -2143,7 +2246,7 @@ description: "Combine collections, plan board game sessions, and get group conse
         });
 
         // 3. API polling recommendation fetching
-        generatePlanBtn.addEventListener("click", function() {
+        generatePlanBtn.addEventListener("click", function () {
             const usernames = getCheckedUsernames();
             if (usernames.length === 0) {
                 alert("Please check at least one attending playgroup member!");
@@ -2158,7 +2261,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             // Cancel any active polling
             isPollingActive = false;
             if (pollingTimeout) clearTimeout(pollingTimeout);
-            
+
             if (window.renderSkeletonCards) {
                 window.renderSkeletonCards(resultsContainer, 4);
             } else {
@@ -2475,7 +2578,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                 "Medium-Heavy": 0,
                 "Heavy": 0
             };
-            
+
             let soloCount = 0;
             let highPlayerCount = 0;
             let shortTimeCount = 0;
@@ -2576,7 +2679,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             const usernames = getCheckedUsernames();
             const analyticsDiv = document.getElementById("playgroup-taste-analytics");
             const emptyState = document.getElementById("analytics-empty-state");
-            
+
             if (usernames.length === 0) {
                 if (analyticsDiv) analyticsDiv.style.display = "none";
                 if (emptyState) emptyState.style.display = "block";
@@ -2663,12 +2766,12 @@ description: "Combine collections, plan board game sessions, and get group conse
                     const max = parseInt(g.maxPlayers);
                     return !isNaN(min) && !isNaN(max) && attendeeCount >= min && attendeeCount <= max;
                 }).length;
-                
+
                 const bggRatedGames = uniqueGames.filter(g => g.bggRating !== 'N/A' && !isNaN(g.bggRating));
-                const avgBggRating = bggRatedGames.length > 0 
-                    ? (bggRatedGames.reduce((sum, g) => sum + g.bggRating, 0) / bggRatedGames.length).toFixed(1) 
+                const avgBggRating = bggRatedGames.length > 0
+                    ? (bggRatedGames.reduce((sum, g) => sum + g.bggRating, 0) / bggRatedGames.length).toFixed(1)
                     : 'N/A';
- 
+
                 document.getElementById("group-card-unique-games").textContent = totalUniqueGamesCount;
                 document.getElementById("group-card-complexity-title").textContent = `Games for ${attendeeCount} Player${attendeeCount !== 1 ? 's' : ''}`;
                 document.getElementById("group-card-complexity").textContent = matchingPlayerCountGames;
@@ -2696,7 +2799,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             const sortedMechs = Object.entries(mechs)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 8);
-            
+
             const labelsMech = sortedMechs.map(item => item[0]);
             const dataMech = sortedMechs.map(item => item[1]);
 
@@ -2741,7 +2844,7 @@ description: "Combine collections, plan board game sessions, and get group conse
             const sortedCats = Object.entries(cats)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 8);
-            
+
             const labelsCat = sortedCats.map(item => item[0]);
             const dataCat = sortedCats.map(item => item[1]);
 
@@ -2770,12 +2873,12 @@ description: "Combine collections, plan board game sessions, and get group conse
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
-                            x: { 
-                                beginAtZero: true, 
+                            x: {
+                                beginAtZero: true,
                                 grid: { color: gridColor },
                                 ticks: { color: mutedColor }
                             },
-                            y: { 
+                            y: {
                                 grid: { display: false },
                                 ticks: { color: mutedColor }
                             }
@@ -2824,7 +2927,7 @@ description: "Combine collections, plan board game sessions, and get group conse
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { 
+                        legend: {
                             position: 'bottom',
                             labels: { color: textColor }
                         }
@@ -2866,12 +2969,12 @@ description: "Combine collections, plan board game sessions, and get group conse
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { 
-                            beginAtZero: true, 
+                        y: {
+                            beginAtZero: true,
                             grid: { color: gridColor },
                             ticks: { color: mutedColor }
                         },
-                        x: { 
+                        x: {
                             grid: { display: false },
                             ticks: { color: mutedColor }
                         }

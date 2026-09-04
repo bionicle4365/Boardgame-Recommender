@@ -116,25 +116,27 @@
             </div>
             <ul>
                 {% for item in site.data.side_nav %}
-                    {% assign is_active = false %}
-                    {% if page.url == item.link or (item.link != "/Boardgame-Recommender/" and page.url contains item.link) %}
-                        {% assign is_active = true %}
-                    {% endif %}
-                    <li>
-                        <a href="{{ item.link }}" class="nav-item {% if is_active %}active{% endif %}">
-                            <span>{{ item.name }}</span>
-                        </a>
-                    </li>
+                {% assign is_active = false %}
+                {% if page.url == item.link or (item.link != "/" and page.url contains item.link) %}
+                {% assign is_active = true %}
+                {% endif %}
+                <li>
+                    <a href="{{ item.link }}" class="nav-item {% if is_active %}active{% endif %}">
+                        <span>{{ item.name }}</span>
+                    </a>
+                </li>
                 {% endfor %}
                 <!-- Profile: shown only when logged in (controlled by JS below) -->
                 <li id="profile-nav-item" style="display: none;">
-                    <a href="{{ '/profile/' | relative_url }}" class="nav-item {% if page.url contains '/profile' %}active{% endif %}">
+                    <a href="{{ '/profile/' | relative_url }}"
+                        class="nav-item {% if page.url contains '/profile' %}active{% endif %}">
                         <span>👤 View Profile</span>
                     </a>
                 </li>
                 <!-- Settings: shown only when logged in (controlled by JS below) -->
                 <li id="settings-nav-item" style="display: none;">
-                    <a href="{{ '/settings/' | relative_url }}" class="nav-item {% if page.url contains '/settings' %}active{% endif %}">
+                    <a href="{{ '/settings/' | relative_url }}"
+                        class="nav-item {% if page.url contains '/settings' %}active{% endif %}">
                         <span>⚙️ Settings</span>
                     </a>
                 </li>
@@ -160,7 +162,8 @@
         </div>
         <div class="sidebar-footer">
             <a href="http://www.boardgamegeek.com" target="_blank" rel="noopener noreferrer">
-                <img src="{{ '/assets/img/powered_by_BGG_02_MED.png' | relative_url }}" alt="Powered by BGG" class="sidebar-footer-img">
+                <img src="{{ 'assets/img/powered_by_BGG_02_MED.png' | relative_url }}" alt="Powered by BGG"
+                    class="sidebar-footer-img">
             </a>
         </div>
     </div>

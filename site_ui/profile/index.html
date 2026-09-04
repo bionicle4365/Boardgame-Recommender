@@ -1,7 +1,8 @@
 ---
 layout: default
 title: User Profile
-description: "Analyze your board game tastes with detailed breakdowns of your favorite mechanics, categories, and rating distributions."
+description: "Analyze your board game tastes with detailed breakdowns of your favorite mechanics, categories, and rating
+distributions."
 ---
 
 <style>
@@ -172,9 +173,11 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
             gap: 14px;
             padding: 20px 14px;
         }
+
         .profile-meta-row {
             justify-content: center;
         }
+
         .profile-refresh-btn {
             min-height: 44px;
             padding: 8px 16px;
@@ -188,22 +191,27 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
             gap: 4px;
             padding: 4px;
         }
+
         .playground-tab-btn {
             padding: 10px 6px;
             font-size: 0.82rem;
             min-height: 44px;
         }
+
         .panel-card {
             padding: 16px 12px;
             border-radius: 12px;
         }
+
         .stat-card {
             padding: 16px 14px;
             border-radius: 12px;
         }
+
         .stat-card-value {
             font-size: 1.5rem;
         }
+
         .stats-grid {
             grid-template-columns: 1fr;
             gap: 12px;
@@ -484,7 +492,8 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         <!-- Skeletal Shimmer Wrapper -->
         <div id="profile-skeleton">
             <div class="skeleton-header"></div>
-            <div id="profile-skeleton-message" style="margin-top: 10px; margin-bottom: 20px; font-weight: 500; color: var(--text-muted);">
+            <div id="profile-skeleton-message"
+                style="margin-top: 10px; margin-bottom: 20px; font-weight: 500; color: var(--text-muted);">
                 Analyzing user profile data...
             </div>
             <div class="skeleton-grid">
@@ -666,7 +675,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
 
         // Cognito login gate setup
         if (gateLoginBtn) {
-            gateLoginBtn.addEventListener("click", function() {
+            gateLoginBtn.addEventListener("click", function () {
                 // Dispatch event to open auth modal in default layout header
                 const loginBtn = document.getElementById("auth-login-btn");
                 if (loginBtn) loginBtn.click();
@@ -709,7 +718,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
             // Set global defaults
             Chart.defaults.color = mutedColor;
             Chart.defaults.font.family = "'Outfit', 'Inter', sans-serif";
-            
+
             Object.values(charts).forEach(chart => {
                 if (chart) {
                     if (chart.options.scales) {
@@ -743,12 +752,12 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
         // Load statistics
-        window.loadProfileData = async function(force = false) {
+        window.loadProfileData = async function (force = false) {
             const skeletonMessage = document.getElementById("profile-skeleton-message");
             if (skeletonMessage) {
                 skeletonMessage.textContent = force ? "Syncing with BoardGameGeek..." : "Analyzing user profile data...";
             }
-            
+
             // Show skeleton and hide main content
             profileSkeleton.style.display = "block";
             mainContent.style.display = "none";
@@ -784,7 +793,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
 
                 // Load BGG library
                 collectionData = await fetchBggCollection(bggUsername);
-                
+
                 // Load backend taste affinities with polling if status is scraping
                 let attempts = 0;
                 let activeForce = force;
@@ -826,7 +835,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
         loadProfileData(false);
 
         // ── Preset Playground Selector ──────────────────────────────────────
-        window.switchPreset = function(btnEl, presetName) {
+        window.switchPreset = function (btnEl, presetName) {
             // Reset active tab button
             document.querySelectorAll(".playground-tab-btn").forEach(btn => {
                 btn.classList.remove("active");
@@ -861,8 +870,8 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                 return JSON.parse(sessionCache);
             }
 
-            const fetchUrl = apiUrl 
-                ? `/collection?username=${lower}` 
+            const fetchUrl = apiUrl
+                ? `/collection?username=${lower}`
                 : `https://boardgamegeek.com/xmlapi2/collection?username=${lower}&stats=1`;
 
             let attempts = 0;
@@ -985,7 +994,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
             });
 
             const scale = (val) => parseFloat(((val / (games.length || 1)) * 5.0).toFixed(1));
-            
+
             return {
                 mech_weights: Object.fromEntries(Object.entries(mechs).map(([k, v]) => [k, scale(v)])),
                 cat_weights: Object.fromEntries(Object.entries(cats).map(([k, v]) => [k, scale(v)])),
@@ -1001,7 +1010,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                     <h2>BGG Account Required</h2>
                     <p>You have not linked a BoardGameGeek account to your user profile yet.</p>
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Please link a username in settings to scrape and visualize your board game statistics.</p>
-                    <a href="/Boardgame-Recommender/settings/" class="auth-gate-btn" style="text-decoration:none;">Go to Settings</a>
+                    <a href="/settings/" class="auth-gate-btn" style="text-decoration:none;">Go to Settings</a>
                 </div>
             `;
         }
@@ -1028,7 +1037,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
 
             // Average rating calculation
             const rated = games.filter(g => typeof g.userRating === 'number' && !isNaN(g.userRating));
-            const avgRating = rated.length > 0 
+            const avgRating = rated.length > 0
                 ? (rated.reduce((sum, g) => sum + g.userRating, 0) / rated.length).toFixed(2)
                 : "N/A";
             document.getElementById("stat-ov-rating").textContent = avgRating;
@@ -1103,7 +1112,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
             const topMechs = Object.entries(mechWeights)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5);
-            
+
             const mechLabels = topMechs.map(m => m[0]);
             const mechValues = topMechs.map(m => m[1]);
 
@@ -1124,7 +1133,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { 
+                    plugins: {
                         legend: { display: false },
                         tooltip: {
                             backgroundColor: 'rgba(15, 23, 42, 0.9)',
@@ -1134,22 +1143,22 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                             padding: 10
                         }
                     },
-                    scales: { 
-                        x: { 
-                            beginAtZero: true, 
+                    scales: {
+                        x: {
+                            beginAtZero: true,
                             grid: { color: "rgba(226, 232, 240, 0.08)" },
                             ticks: {
                                 font: { family: 'Inter', weight: 500 },
                                 color: 'var(--text-muted)'
                             }
-                        }, 
-                        y: { 
+                        },
+                        y: {
                             grid: { display: false },
                             ticks: {
                                 font: { family: 'Outfit', weight: 600, size: 12 },
                                 color: 'var(--text-main)'
                             }
-                        } 
+                        }
                     }
                 }
             });
@@ -1162,7 +1171,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
             const topCats = Object.entries(catWeights)
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5);
-            
+
             const catLabels = topCats.map(c => c[0]);
             const catValues = topCats.map(c => c[1]);
 
@@ -1183,7 +1192,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { 
+                    plugins: {
                         legend: { display: false },
                         tooltip: {
                             backgroundColor: 'rgba(15, 23, 42, 0.9)',
@@ -1193,22 +1202,22 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                             padding: 10
                         }
                     },
-                    scales: { 
-                        x: { 
-                            beginAtZero: true, 
+                    scales: {
+                        x: {
+                            beginAtZero: true,
                             grid: { color: "rgba(226, 232, 240, 0.08)" },
                             ticks: {
                                 font: { family: 'Inter', weight: 500 },
                                 color: 'var(--text-muted)'
                             }
-                        }, 
-                        y: { 
+                        },
+                        y: {
                             grid: { display: false },
                             ticks: {
                                 font: { family: 'Outfit', weight: 600, size: 12 },
                                 color: 'var(--text-main)'
                             }
-                        } 
+                        }
                     }
                 }
             });
@@ -1244,9 +1253,9 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { 
-                        y: { beginAtZero: true, grid: { color: "rgba(226, 232, 240, 0.1)" } }, 
-                        x: { grid: { display: false } } 
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: "rgba(226, 232, 240, 0.1)" } },
+                        x: { grid: { display: false } }
                     }
                 }
             });
@@ -1283,9 +1292,9 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { 
-                        y: { beginAtZero: true, grid: { color: "rgba(226, 232, 240, 0.1)" } }, 
-                        x: { grid: { display: false } } 
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: "rgba(226, 232, 240, 0.1)" } },
+                        x: { grid: { display: false } }
                     }
                 }
             });
@@ -1353,7 +1362,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
             ratedGames.forEach(g => {
                 const uRating = Math.min(10, Math.max(1, Math.round(g.userRating)));
                 userFrequencies[uRating - 1]++;
-                
+
                 if (typeof g.bggRating === 'number' && !isNaN(g.bggRating)) {
                     const bRating = Math.min(10, Math.max(1, Math.round(g.bggRating)));
                     bggFrequencies[bRating - 1]++;
@@ -1401,7 +1410,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
 
             if (profileAffinities && profileAffinities.designer_weights && Object.keys(profileAffinities.designer_weights).length > 0) {
                 designerList.innerHTML = Object.entries(profileAffinities.designer_weights)
-                    .sort((a,b) => b[1] - a[1])
+                    .sort((a, b) => b[1] - a[1])
                     .slice(0, 5)
                     .map(([name, weight]) => `
                         <div class="creator-item">
@@ -1413,7 +1422,7 @@ description: "Analyze your board game tastes with detailed breakdowns of your fa
 
             if (profileAffinities && profileAffinities.publisher_weights && Object.keys(profileAffinities.publisher_weights).length > 0) {
                 publisherList.innerHTML = Object.entries(profileAffinities.publisher_weights)
-                    .sort((a,b) => b[1] - a[1])
+                    .sort((a, b) => b[1] - a[1])
                     .slice(0, 5)
                     .map(([name, weight]) => `
                         <div class="creator-item">

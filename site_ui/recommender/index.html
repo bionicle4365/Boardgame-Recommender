@@ -4,7 +4,7 @@ title: Boardgame Recommender
 description: "Get personalized board game recommendations from your BGG library powered by Amazon Bedrock."
 ---
 
-<link rel="stylesheet" href="{{ '/assets/css/recommender.css' | relative_url }}">
+<link rel="stylesheet" href="{{ 'assets/css/recommender.css' | relative_url }}">
 
 
 <div class="recommender-container">
@@ -15,8 +15,11 @@ description: "Get personalized board game recommendations from your BGG library 
 
     <!-- Sparse profile warning banner -->
     <div id="sparse-profile-banner" class="sparse-banner" style="display: none; margin-bottom: 20px;">
-        <span>⚠️ Your BGG profile has very few rated games. For better recommendations, try our <a href="#" id="sparse-launch-wizard" style="font-weight: 600; text-decoration: underline; color: inherit;">New User Wizard</a>.</span>
-        <button type="button" id="close-sparse-banner" class="close-btn" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: inherit; margin-left: 15px; vertical-align: middle;">&times;</button>
+        <span>⚠️ Your BGG profile has very few rated games. For better recommendations, try our <a href="#"
+                id="sparse-launch-wizard" style="font-weight: 600; text-decoration: underline; color: inherit;">New User
+                Wizard</a>.</span>
+        <button type="button" id="close-sparse-banner" class="close-btn"
+            style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: inherit; margin-left: 15px; vertical-align: middle;">&times;</button>
     </div>
 
     <!-- Configuration Form -->
@@ -35,7 +38,9 @@ description: "Get personalized board game recommendations from your BGG library 
                             <label for="username">BoardGameGeek Username</label>
                             <input type="text" id="username" placeholder="e.g. username" required>
                             <div class="username-wizard-hint" style="margin-top: 6px; font-size: 0.85rem;">
-                                No BGG account? <a href="#" id="launch-wizard-btn" style="color: var(--primary); font-weight: 600; text-decoration: underline;">Launch New User Wizard</a>
+                                No BGG account? <a href="#" id="launch-wizard-btn"
+                                    style="color: var(--primary); font-weight: 600; text-decoration: underline;">Launch
+                                    New User Wizard</a>
                             </div>
                         </div>
 
@@ -132,7 +137,8 @@ description: "Get personalized board game recommendations from your BGG library 
                                     <span id="w_cat_val" class="slider-badge">50%</span>
                                 </div>
                                 <input type="range" id="w_cat" min="0" max="100" value="50" class="weight-slider">
-                                <span class="slider-desc">Weight of matching games with categories/themes you enjoy</span>
+                                <span class="slider-desc">Weight of matching games with categories/themes you
+                                    enjoy</span>
                             </div>
                             <div class="slider-group">
                                 <div class="slider-header">
@@ -183,34 +189,39 @@ description: "Get personalized board game recommendations from your BGG library 
 <div id="wizard-modal" class="wizard-modal" style="display: none;">
     <div class="wizard-modal-content glassmorphism">
         <button type="button" id="close-wizard-btn" class="wizard-close-btn">&times;</button>
-        
+
         <!-- Welcome Screen -->
         <div id="wizard-welcome-screen" class="wizard-screen active">
             <h2 style="margin-top: 0; font-size: 1.8rem;">Welcome to Boardgame Recommender!</h2>
-            <p style="color: var(--text-muted); margin-bottom: 25px;">To get personalized recommendations, we need to know your taste. Choose one of the options below to get started:</p>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">To get personalized recommendations, we need to
+                know your taste. Choose one of the options below to get started:</p>
             <div class="wizard-path-grid">
                 <button type="button" class="wizard-path-card" id="path-gamer-btn">
                     <span class="path-icon">🎲</span>
                     <h3>Quick Taste Test</h3>
-                    <p>Rate some of the most popular modern board games (👍/👎/skip) to build a precise taste profile.</p>
+                    <p>Rate some of the most popular modern board games (👍/👎/skip) to build a precise taste profile.
+                    </p>
                 </button>
                 <button type="button" class="wizard-path-card" id="path-casual-btn">
                     <span class="path-icon">🧭</span>
                     <h3>Board Game Personality Test</h3>
-                    <p>Answer 7 simple questions about your play style and preferences to generate a custom weight profile.</p>
+                    <p>Answer 7 simple questions about your play style and preferences to generate a custom weight
+                        profile.</p>
                 </button>
             </div>
         </div>
-        
+
         <!-- Quick Taste Test Screen -->
         <div id="wizard-taste-test-screen" class="wizard-screen">
             <h2 style="margin-top: 0;">Quick Taste Test</h2>
-            <p class="wizard-screen-desc" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Rate at least 5 games to unlock your personalized recommendations.</p>
-            
+            <p class="wizard-screen-desc" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">
+                Rate at least 5 games to unlock your personalized recommendations.</p>
+
             <div class="taste-test-carousel" style="margin-bottom: 20px;">
                 <div class="taste-card glassmorphism" id="taste-game-card">
                     <div class="taste-card-image-wrapper">
-                        <img id="taste-game-img" src="" alt="Game Image" onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
+                        <img id="taste-game-img" src="" alt="Game Image"
+                            onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
                     </div>
                     <div class="taste-card-info">
                         <h3 id="taste-game-title">Game Title</h3>
@@ -218,42 +229,51 @@ description: "Get personalized board game recommendations from your BGG library 
                     </div>
                 </div>
             </div>
-            
+
             <div class="taste-test-actions">
                 <button type="button" class="btn btn-rate thumbs-down" id="rate-dislike-btn">👎 Dislike</button>
                 <button type="button" class="btn btn-rate skip" id="rate-skip-btn">Haven't played it</button>
                 <button type="button" class="btn btn-rate thumbs-up" id="rate-like-btn">👍 Like</button>
             </div>
-            
+
             <div class="wizard-progress-container" style="margin-top: 20px; margin-bottom: 20px;">
                 <div class="progress-bar-wrapper">
                     <div class="progress-bar-fill" id="wizard-progress-bar" style="width: 0%;"></div>
                 </div>
-                <div class="progress-text" id="wizard-progress-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">0 of 5 ratings collected</div>
+                <div class="progress-text" id="wizard-progress-text"
+                    style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">0 of 5 ratings collected
+                </div>
             </div>
-            
+
             <div class="wizard-footer-actions" style="display: flex; justify-content: space-between; gap: 15px;">
-                <button type="button" class="btn btn-rate" id="taste-test-back-btn" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); width: 100px;">Back</button>
-                <button type="button" class="btn btn-submit" id="taste-test-recommend-btn" style="height: 45px; display: inline-flex; align-items: center; justify-content: center;" disabled>Get Recommendations</button>
+                <button type="button" class="btn btn-rate" id="taste-test-back-btn"
+                    style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); width: 100px;">Back</button>
+                <button type="button" class="btn btn-submit" id="taste-test-recommend-btn"
+                    style="height: 45px; display: inline-flex; align-items: center; justify-content: center;"
+                    disabled>Get Recommendations</button>
             </div>
         </div>
-        
+
         <!-- Board Game Personality Test Screen -->
         <div id="wizard-personality-screen" class="wizard-screen">
             <h2 style="margin-top: 0;">Board Game Personality Test</h2>
-            <p class="wizard-screen-desc" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Answer 7 simple questions about your play style to help us discover your taste.</p>
-            
-            <div class="personality-questions-container" style="margin-bottom: 20px; min-height: 280px; position: relative;">
+            <p class="wizard-screen-desc" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">
+                Answer 7 simple questions about your play style to help us discover your taste.</p>
+
+            <div class="personality-questions-container"
+                style="margin-bottom: 20px; min-height: 280px; position: relative;">
                 <!-- Q1 -->
                 <div class="personality-question-slide active" data-question="1">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 1 of 7: What is your preferred game format?</h3>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 1 of 7: What is your preferred game
+                        format?</h3>
                     <div class="personality-options-grid">
                         <label class="personality-option-card">
                             <input type="radio" name="q1" value="cooperative">
                             <span class="option-content">
                                 <span class="option-icon">🤝</span>
                                 <span class="option-title">Cooperative</span>
-                                <span class="option-desc">Win or lose together as a team against the game's challenge.</span>
+                                <span class="option-desc">Win or lose together as a team against the game's
+                                    challenge.</span>
                             </span>
                         </label>
                         <label class="personality-option-card">
@@ -261,15 +281,17 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">🏆</span>
                                 <span class="option-title">Competitive</span>
-                                <span class="option-desc">Every player for themselves, competing for the highest score.</span>
+                                <span class="option-desc">Every player for themselves, competing for the highest
+                                    score.</span>
                             </span>
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Q2 -->
                 <div class="personality-question-slide" data-question="2" style="display: none;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 2 of 7: How complex do you want the rules to be?</h3>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 2 of 7: How complex do you want the
+                        rules to be?</h3>
                     <div class="personality-options-grid">
                         <label class="personality-option-card">
                             <input type="radio" name="q2" value="light">
@@ -284,7 +306,8 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">🧠</span>
                                 <span class="option-title">Moderate Strategy</span>
-                                <span class="option-desc">Some strategic depth, interesting choices, moderate rules weight.</span>
+                                <span class="option-desc">Some strategic depth, interesting choices, moderate rules
+                                    weight.</span>
                             </span>
                         </label>
                         <label class="personality-option-card">
@@ -297,10 +320,11 @@ description: "Get personalized board game recommendations from your BGG library 
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Q3 -->
                 <div class="personality-question-slide" data-question="3" style="display: none;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 3 of 7: What is your ideal play time for a game?</h3>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 3 of 7: What is your ideal play time
+                        for a game?</h3>
                     <div class="personality-options-grid">
                         <label class="personality-option-card">
                             <input type="radio" name="q3" value="short">
@@ -328,10 +352,11 @@ description: "Get personalized board game recommendations from your BGG library 
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Q4 -->
                 <div class="personality-question-slide" data-question="4" style="display: none;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 4 of 7: What theme or aesthetic vibe appeals to you most?</h3>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 4 of 7: What theme or aesthetic vibe
+                        appeals to you most?</h3>
                     <div class="personality-options-grid">
                         <label class="personality-option-card">
                             <input type="radio" name="q4" value="nature">
@@ -346,7 +371,8 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">🌌</span>
                                 <span class="option-title">Sci-Fi &amp; Fantasy</span>
-                                <span class="option-desc">Space exploration, wizards, fantasy adventures, and magic.</span>
+                                <span class="option-desc">Space exploration, wizards, fantasy adventures, and
+                                    magic.</span>
                             </span>
                         </label>
                         <label class="personality-option-card">
@@ -354,22 +380,25 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">🚂</span>
                                 <span class="option-title">Modern World &amp; Economy</span>
-                                <span class="option-desc">Trading resources, building industries, history, and train networks.</span>
+                                <span class="option-desc">Trading resources, building industries, history, and train
+                                    networks.</span>
                             </span>
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Q5 -->
                 <div class="personality-question-slide" data-question="5" style="display: none;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 5 of 7: How do you feel about luck in games?</h3>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 5 of 7: How do you feel about luck in
+                        games?</h3>
                     <div class="personality-options-grid">
                         <label class="personality-option-card">
                             <input type="radio" name="q5" value="high">
                             <span class="option-content">
                                 <span class="option-icon">🎲</span>
                                 <span class="option-title">Tactical Chaos (High Luck)</span>
-                                <span class="option-desc">Rolling lots of dice, dealing cards, and adapting to random events.</span>
+                                <span class="option-desc">Rolling lots of dice, dealing cards, and adapting to random
+                                    events.</span>
                             </span>
                         </label>
                         <label class="personality-option-card">
@@ -377,22 +406,25 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">📊</span>
                                 <span class="option-title">Calculated Strategy (No Luck)</span>
-                                <span class="option-desc">Deterministic rules. Pure chess-like skill and planning ahead.</span>
+                                <span class="option-desc">Deterministic rules. Pure chess-like skill and planning
+                                    ahead.</span>
                             </span>
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Q6 -->
                 <div class="personality-question-slide" data-question="6" style="display: none;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 6 of 7: Which core gameplay activity sounds most fun?</h3>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 6 of 7: Which core gameplay activity
+                        sounds most fun?</h3>
                     <div class="personality-options-grid">
                         <label class="personality-option-card">
                             <input type="radio" name="q6" value="engine">
                             <span class="option-content">
                                 <span class="option-icon">⚙️</span>
                                 <span class="option-title">Engine &amp; Collection Building</span>
-                                <span class="option-desc">Building combos, buying cards, and gathering resource sets.</span>
+                                <span class="option-desc">Building combos, buying cards, and gathering resource
+                                    sets.</span>
                             </span>
                         </label>
                         <label class="personality-option-card">
@@ -400,15 +432,17 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">👷</span>
                                 <span class="option-title">Worker Placement &amp; Map Positioning</span>
-                                <span class="option-desc">Placing workers on slots, taking actions, and claiming map areas.</span>
+                                <span class="option-desc">Placing workers on slots, taking actions, and claiming map
+                                    areas.</span>
                             </span>
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Q7 -->
                 <div class="personality-question-slide" data-question="7" style="display: none;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 7 of 7: How do you want to interact with other players?</h3>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Question 7 of 7: How do you want to interact
+                        with other players?</h3>
                     <div class="personality-options-grid">
                         <label class="personality-option-card">
                             <input type="radio" name="q7" value="conflict">
@@ -423,7 +457,8 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">🗣️</span>
                                 <span class="option-title">Social Table Talk &amp; Negotiation</span>
-                                <span class="option-desc">Negotiating, trading resources, or bluffing and reading roles.</span>
+                                <span class="option-desc">Negotiating, trading resources, or bluffing and reading
+                                    roles.</span>
                             </span>
                         </label>
                         <label class="personality-option-card">
@@ -431,7 +466,8 @@ description: "Get personalized board game recommendations from your BGG library 
                             <span class="option-content">
                                 <span class="option-icon">🧩</span>
                                 <span class="option-title">Multiplayer Solitaire</span>
-                                <span class="option-desc">Doing your own puzzle and building without direct attacks.</span>
+                                <span class="option-desc">Doing your own puzzle and building without direct
+                                    attacks.</span>
                             </span>
                         </label>
                     </div>
@@ -443,55 +479,71 @@ description: "Get personalized board game recommendations from your BGG library 
                         <span>Playstyle Profile Complete!</span>
                     </h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;">
-                        We've calculated your playstyle weights. Optionally add up to 3 of your all-time favorite games below to fine-tune your recommendations:
+                        We've calculated your playstyle weights. Optionally add up to 3 of your all-time favorite games
+                        below to fine-tune your recommendations:
                     </p>
                     <div class="wizard-writein-container">
                         <div class="wizard-writein-group">
-                            <label for="personality-writein-1">Favorite Game 1 <span class="optional-badge">Optional</span></label>
+                            <label for="personality-writein-1">Favorite Game 1 <span
+                                    class="optional-badge">Optional</span></label>
                             <div class="autocomplete-wrapper">
-                                <input type="text" id="personality-writein-1" class="wizard-writein-input" placeholder="e.g. Terraforming Mars..." autocomplete="off">
-                                <button type="button" class="autocomplete-clear-btn" style="display: none;" title="Clear">&times;</button>
+                                <input type="text" id="personality-writein-1" class="wizard-writein-input"
+                                    placeholder="e.g. Terraforming Mars..." autocomplete="off">
+                                <button type="button" class="autocomplete-clear-btn" style="display: none;"
+                                    title="Clear">&times;</button>
                                 <div class="autocomplete-dropdown" id="personality-writein-1-dropdown"></div>
                             </div>
                         </div>
                         <div class="wizard-writein-group">
-                            <label for="personality-writein-2">Favorite Game 2 <span class="optional-badge">Optional</span></label>
+                            <label for="personality-writein-2">Favorite Game 2 <span
+                                    class="optional-badge">Optional</span></label>
                             <div class="autocomplete-wrapper">
-                                <input type="text" id="personality-writein-2" class="wizard-writein-input" placeholder="e.g. Scythe..." autocomplete="off">
-                                <button type="button" class="autocomplete-clear-btn" style="display: none;" title="Clear">&times;</button>
+                                <input type="text" id="personality-writein-2" class="wizard-writein-input"
+                                    placeholder="e.g. Scythe..." autocomplete="off">
+                                <button type="button" class="autocomplete-clear-btn" style="display: none;"
+                                    title="Clear">&times;</button>
                                 <div class="autocomplete-dropdown" id="personality-writein-2-dropdown"></div>
                             </div>
                         </div>
                         <div class="wizard-writein-group">
-                            <label for="personality-writein-3">Favorite Game 3 <span class="optional-badge">Optional</span></label>
+                            <label for="personality-writein-3">Favorite Game 3 <span
+                                    class="optional-badge">Optional</span></label>
                             <div class="autocomplete-wrapper">
-                                <input type="text" id="personality-writein-3" class="wizard-writein-input" placeholder="e.g. 7 Wonders Duel..." autocomplete="off">
-                                <button type="button" class="autocomplete-clear-btn" style="display: none;" title="Clear">&times;</button>
+                                <input type="text" id="personality-writein-3" class="wizard-writein-input"
+                                    placeholder="e.g. 7 Wonders Duel..." autocomplete="off">
+                                <button type="button" class="autocomplete-clear-btn" style="display: none;"
+                                    title="Clear">&times;</button>
                                 <div class="autocomplete-dropdown" id="personality-writein-3-dropdown"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="personality-progress-container" style="margin-top: 15px; margin-bottom: 20px;">
                 <div class="progress-bar-wrapper">
                     <div class="progress-bar-fill" id="personality-progress-bar" style="width: 14.3%;"></div>
                 </div>
-                <div class="progress-text" id="personality-progress-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">Question 1 of 7</div>
+                <div class="progress-text" id="personality-progress-text"
+                    style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">Question 1 of 7</div>
             </div>
-            
+
             <div class="wizard-footer-actions" style="display: flex; justify-content: space-between; gap: 15px;">
-                <button type="button" class="btn btn-rate" id="personality-back-btn" style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); width: 100px;">Back</button>
-                <button type="button" class="btn btn-submit" id="personality-next-btn" style="height: 45px; display: inline-flex; align-items: center; justify-content: center;" disabled>Next</button>
-                <button type="button" class="btn btn-submit" id="personality-recommend-btn" style="height: 45px; display: none; align-items: center; justify-content: center;">Get Recommendations</button>
+                <button type="button" class="btn btn-rate" id="personality-back-btn"
+                    style="background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); width: 100px;">Back</button>
+                <button type="button" class="btn btn-submit" id="personality-next-btn"
+                    style="height: 45px; display: inline-flex; align-items: center; justify-content: center;"
+                    disabled>Next</button>
+                <button type="button" class="btn btn-submit" id="personality-recommend-btn"
+                    style="height: 45px; display: none; align-items: center; justify-content: center;">Get
+                    Recommendations</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    window.BGG_GAME_NAMES_URL = "{{ '/assets/data/game_names.json' | relative_url }}";
+    window.BGG_GAME_NAMES_URL = "{{ 'assets/data/game_names.json' | relative_url }}";
 </script>
-<script src="{{ '/assets/js/graphic_export.js' | relative_url }}"></script>
-<script src="{{ '/assets/js/recommender.js' | relative_url }}"></script>
+<script src="{{ 'assets/js/graphic_export.js' | relative_url }}"></script>
+<script src="{{ 'assets/js/recommender.js' | relative_url }}"></script>
