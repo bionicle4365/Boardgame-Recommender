@@ -119,6 +119,22 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     align-items: center;
     gap: 16px;
     flex: 1;
+    min-width: 0;
+}
+
+.cand-thumb-link {
+    display: block;
+    position: relative;
+    flex-shrink: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    line-height: 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cand-thumb-link:hover {
+    transform: scale(1.04);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .cand-thumb {
@@ -128,12 +144,21 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     object-fit: cover;
     background: #1e293b;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    display: block;
 }
 
 .cand-details {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cand-header-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .cand-name {
@@ -142,10 +167,62 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     color: var(--text-main);
     text-decoration: none;
     font-family: 'Outfit', sans-serif;
+    transition: color 0.15s ease;
 }
 
 .cand-name:hover {
     color: var(--primary, #6366f1);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.cand-year {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.cand-bgg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.cand-bgg-btn:hover {
+    background: rgba(99, 102, 241, 0.25);
+    border-color: rgba(99, 102, 241, 0.55);
+    color: #a5b4fc;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.cand-name-link {
+    font-weight: 600;
+    color: var(--text-main);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.15s ease;
+}
+
+.cand-name-link:hover {
+    color: var(--primary, #6366f1);
+    text-decoration: underline;
 }
 
 .cand-stats {
@@ -154,6 +231,7 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
     gap: 12px;
     font-size: 0.85rem;
     color: var(--text-muted);
+    flex-wrap: wrap;
 }
 
 .vote-actions {
@@ -628,21 +706,44 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
 
         let html = '';
         currentSession.candidates.forEach(cand => {
-            const candId = String(cand.id);
+            const candId = String(cand.id || '');
             const currentChoice = userVotes[candId] || 'neutral';
             const isVetoed = currentSession.consensus && currentSession.consensus.vetoed_games && currentSession.consensus.vetoed_games.includes(candId);
+
+            const bggUrl = (cand.id && String(cand.id).match(/^\d+$/))
+                ? `https://boardgamegeek.com/boardgame/${cand.id}`
+                : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(cand.name || '')}`;
+
+            const rating = cand.rating || cand.bggRating;
+            const complexity = cand.complexity || cand.averageweight;
+            const playTime = cand.playing_time || cand.playingTime;
+            const minP = cand.min_players || cand.minPlayers;
+            const maxP = cand.max_players || cand.maxPlayers;
+            const year = cand.year_published || cand.yearPublished;
+            const playersStr = (minP && maxP) ? (minP === maxP ? `${minP}p` : `${minP}-${maxP}p`) : (minP ? `${minP}p` : '');
 
             html += `
                 <div class="candidate-card ${isVetoed ? 'is-vetoed' : ''}" id="cand-card-${candId}">
                     <div class="cand-left">
-                        <img class="cand-thumb" src="${cand.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}" alt="${window.escapeHTML(cand.name)}">
+                        <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="cand-thumb-link" title="Research ${window.escapeHTML(cand.name)} on BoardGameGeek">
+                            <img class="cand-thumb" src="${cand.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}" alt="${window.escapeHTML(cand.name)}" onerror="this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png'">
+                        </a>
                         <div class="cand-details">
-                            <a href="https://boardgamegeek.com/boardgame/${cand.id}" target="_blank" class="cand-name">${window.escapeHTML(cand.name)}</a>
+                            <div class="cand-header-row">
+                                <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="cand-name" title="Research ${window.escapeHTML(cand.name)} on BoardGameGeek">
+                                    ${window.escapeHTML(cand.name)}
+                                </a>
+                                ${year && year !== 'N/A' ? `<span class="cand-year">(${year})</span>` : ''}
+                                <a href="${bggUrl}" target="_blank" rel="noopener noreferrer" class="cand-bgg-btn" title="Research ${window.escapeHTML(cand.name)} on BoardGameGeek in a new tab">
+                                    <span>🎲 Research on BGG</span>
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                </a>
+                            </div>
                             <div class="cand-stats">
-                                ${cand.rating ? `<span>★ ${cand.rating.toFixed(1)}</span>` : ''}
-                                ${cand.complexity ? `<span>⚙ ${cand.complexity.toFixed(1)}/5</span>` : ''}
-                                ${cand.playing_time ? `<span>🕒 ${cand.playing_time} min</span>` : ''}
-                                ${cand.min_players ? `<span>👥 ${cand.min_players}-${cand.max_players}p</span>` : ''}
+                                ${rating ? `<span>★ ${typeof rating === 'number' ? rating.toFixed(1) : rating}</span>` : ''}
+                                ${complexity ? `<span>⚙ ${typeof complexity === 'number' ? complexity.toFixed(1) : complexity}/5</span>` : ''}
+                                ${playTime ? `<span>🕒 ${playTime} min</span>` : ''}
+                                ${playersStr ? `<span>👥 ${playersStr}</span>` : ''}
                             </div>
                         </div>
                     </div>
@@ -724,12 +825,26 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
 
         const winnerContainer = document.getElementById('winner-display-container');
         if (winner) {
+            const winnerBggUrl = (winner.id && String(winner.id).match(/^\d+$/))
+                ? `https://boardgamegeek.com/boardgame/${winner.id}`
+                : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(winner.name || '')}`;
+
             winnerContainer.innerHTML = `
                 <div class="winner-card">
-                    <img style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;" src="${winner.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}">
-                    <div>
+                    <a href="${winnerBggUrl}" target="_blank" rel="noopener noreferrer" class="cand-thumb-link" title="Research ${window.escapeHTML(winner.name)} on BoardGameGeek">
+                        <img style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;" src="${winner.thumbnail || 'https://cf.geekdo-images.com/images/placeholder_thumb.png'}" alt="${window.escapeHTML(winner.name)}" onerror="this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png'">
+                    </a>
+                    <div style="flex: 1; min-width: 0;">
                         <span class="winner-badge">Consensus Pick</span>
-                        <h3 style="margin: 4px 0; font-size: 1.3rem; color: var(--text-main);">${window.escapeHTML(winner.name)}</h3>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0;">
+                            <a href="${winnerBggUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 1.3rem; font-weight: 700; color: var(--text-main); text-decoration: none; font-family: 'Outfit', sans-serif;" class="cand-name" title="Research ${window.escapeHTML(winner.name)} on BoardGameGeek">
+                                ${window.escapeHTML(winner.name)}
+                            </a>
+                            <a href="${winnerBggUrl}" target="_blank" rel="noopener noreferrer" class="cand-bgg-btn" title="Research ${window.escapeHTML(winner.name)} on BoardGameGeek in a new tab">
+                                <span>🎲 Research on BGG</span>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            </a>
+                        </div>
                         <span style="font-size: 0.85rem; color: var(--text-muted);">Lead with unanimous or highest positive group support</span>
                     </div>
                 </div>
@@ -747,14 +862,21 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
         const rankingsContainer = document.getElementById('rankings-list-container');
         let html = '';
         (rankings || []).forEach((r, idx) => {
+            const rBggUrl = (r.id && String(r.id).match(/^\d+$/))
+                ? `https://boardgamegeek.com/boardgame/${r.id}`
+                : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(r.name || '')}`;
+
             html += `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid var(--border-light);">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-weight: 800; color: ${idx === 0 && !r.is_vetoed ? '#10b981' : 'var(--text-muted)'};">#${idx + 1}</span>
-                        <span style="font-weight: 600; color: var(--text-main);">${window.escapeHTML(r.name)}</span>
-                        ${r.is_vetoed ? '<span style="background: #ef4444; color: white; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">VETOED</span>' : ''}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid var(--border-light); gap: 12px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+                        <span style="font-weight: 800; color: ${idx === 0 && !r.is_vetoed ? '#10b981' : 'var(--text-muted)'}; flex-shrink: 0;">#${idx + 1}</span>
+                        <a href="${rBggUrl}" target="_blank" rel="noopener noreferrer" class="cand-name-link" title="Research ${window.escapeHTML(r.name)} on BoardGameGeek">
+                            <span>${window.escapeHTML(r.name)}</span>
+                            <span style="font-size: 0.75rem; color: #818cf8; opacity: 0.85;">↗</span>
+                        </a>
+                        ${r.is_vetoed ? '<span style="background: #ef4444; color: white; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; flex-shrink: 0;">VETOED</span>' : ''}
                     </div>
-                    <div style="display: flex; gap: 12px; font-size: 0.85rem;">
+                    <div style="display: flex; gap: 12px; font-size: 0.85rem; flex-shrink: 0;">
                         <span style="color: #34d399;" title="${(r.voters_yes || []).join(', ')}">👍 ${r.yes_count}</span>
                         <span style="color: #fbbf24;" title="${(r.voters_neutral || []).join(', ')}">😐 ${r.neutral_count}</span>
                         <span style="color: #f87171;" title="${(r.voters_veto || []).join(', ')}">❌ ${r.veto_count}</span>
