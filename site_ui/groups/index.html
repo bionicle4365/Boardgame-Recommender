@@ -910,8 +910,32 @@ description: "Combine collections, plan board game sessions, and get group conse
 
                         <div id="modal-candidates-list" style="margin: 8px 0 16px 0; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px;"></div>
                         
-                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Host / Created By (Voting as):</label>
-                        <input type="text" id="modal-poll-creator" placeholder="e.g. your_bgg_username" style="width: 100%; margin-top: 6px; margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem; box-sizing: border-box;">
+                        <!-- Host Identity: Displayed automatically when BGG username is set in settings -->
+                        <div id="modal-host-linked-container" style="display: none; margin-bottom: 16px; padding: 12px 16px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 1.25rem;">👑</span>
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Host / Creator</span>
+                                    <span id="modal-host-username-display" style="font-weight: 700; color: var(--text-main); font-size: 0.98rem; font-family: 'Outfit', sans-serif;"></span>
+                                </div>
+                            </div>
+                            <span style="font-size: 0.78rem; color: #818cf8; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); padding: 3px 9px; border-radius: 6px; font-weight: 600;">Linked from Settings</span>
+                        </div>
+
+                        <!-- Missing BGG Username: Inline input prompt when username is not set in settings -->
+                        <div id="modal-host-missing-container" style="display: none; margin-bottom: 16px; padding: 14px 16px; background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px;">
+                            <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
+                                <span style="font-size: 1.25rem; line-height: 1;">⚠️</span>
+                                <div>
+                                    <div style="font-weight: 700; font-size: 0.92rem; color: #fbbf24; margin-bottom: 2px;">BGG Username Required to Host Polls</div>
+                                    <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+                                        Enter your BoardGameGeek username to link this poll to your account. This will automatically be saved to your settings.
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="text" id="modal-inline-bgg-username" placeholder="e.g. your_bgg_username" oninput="clearInlineBggError()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem; box-sizing: border-box;">
+                            <div id="modal-inline-bgg-error" style="display: none; color: #f87171; font-size: 0.8rem; font-weight: 600; margin-top: 6px;"></div>
+                        </div>
 
                         <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">Poll Duration (Closes At):</label>
                         <select id="modal-poll-duration" style="width: 100%; margin-top: 6px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg, #0f172a); color: var(--text-main); font-size: 0.95rem;">
@@ -1670,14 +1694,28 @@ description: "Combine collections, plan board game sessions, and get group conse
 
             modal.style.display = "flex";
 
-            // Pre-populate Host / Created By field
-            const hostInput = document.getElementById("modal-poll-creator");
-            if (hostInput) {
-                const detectedUser = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) ||
-                                     (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "") ||
-                                     (activeGroup && activeGroup.members && activeGroup.members.length ? activeGroup.members[0] : "") ||
-                                     (window.Auth && window.Auth.getEmail ? window.Auth.getEmail().split('@')[0] : "");
-                hostInput.value = detectedUser;
+            // Host Identity logic: automatically link from settings or prompt inline
+            const linkedContainer = document.getElementById("modal-host-linked-container");
+            const missingContainer = document.getElementById("modal-host-missing-container");
+            const hostDisplay = document.getElementById("modal-host-username-display");
+            const inlineInput = document.getElementById("modal-inline-bgg-username");
+            const inlineError = document.getElementById("modal-inline-bgg-error");
+
+            if (inlineError) {
+                inlineError.textContent = "";
+                inlineError.style.display = "none";
+            }
+
+            const configuredBggUser = (window.Auth && window.Auth.getBggUsername ? window.Auth.getBggUsername() : (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "")).trim();
+
+            if (configuredBggUser) {
+                if (linkedContainer) linkedContainer.style.display = "flex";
+                if (hostDisplay) hostDisplay.textContent = configuredBggUser;
+                if (missingContainer) missingContainer.style.display = "none";
+            } else {
+                if (linkedContainer) linkedContainer.style.display = "none";
+                if (missingContainer) missingContainer.style.display = "block";
+                if (inlineInput) inlineInput.value = "";
             }
 
             if (hasExplicitRecs) {
@@ -1731,10 +1769,63 @@ description: "Combine collections, plan board game sessions, and get group conse
             if (modal) modal.style.display = "none";
         };
 
+        window.clearInlineBggError = function() {
+            const inlineError = document.getElementById("modal-inline-bgg-error");
+            if (inlineError) {
+                inlineError.textContent = "";
+                inlineError.style.display = "none";
+            }
+        };
+
         window.createVotingSession = async function() {
             if (modalSelectedCandidateIds.size === 0) {
                 alert("Please select at least one candidate game for the voting poll!");
                 return;
+            }
+
+            // Resolve host username: from settings/Auth or from inline input prompt
+            let creatorName = (window.Auth && window.Auth.getBggUsername ? window.Auth.getBggUsername() : (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "")).trim();
+
+            if (!creatorName) {
+                const inlineInput = document.getElementById("modal-inline-bgg-username");
+                const inlineError = document.getElementById("modal-inline-bgg-error");
+                const enteredVal = inlineInput ? inlineInput.value.trim() : "";
+                if (!enteredVal) {
+                    if (inlineError) {
+                        inlineError.textContent = "⚠️ Please enter your BoardGameGeek username before launching the poll.";
+                        inlineError.style.display = "block";
+                    }
+                    if (inlineInput) inlineInput.focus();
+                    return;
+                }
+                creatorName = enteredVal;
+
+                // Save to Auth & localStorage so settings are updated for future polls
+                if (window.Auth && window.Auth.setBggUsername) {
+                    window.Auth.setBggUsername(creatorName);
+                } else {
+                    localStorage.setItem("bgg_username", creatorName);
+                    localStorage.setItem("bgg_last_username", creatorName);
+                }
+
+                // Sync to backend preferences if user is logged in
+                if (typeof Auth !== 'undefined' && Auth.isLoggedIn && Auth.isLoggedIn()) {
+                    try {
+                        let currentPrefs = {};
+                        const getRes = await fetchApi('/preferences');
+                        if (getRes.ok) currentPrefs = await getRes.json();
+                        await fetchApi('/preferences', {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                ...currentPrefs,
+                                bgg_username: creatorName
+                            })
+                        });
+                    } catch (prefErr) {
+                        console.warn("Could not sync bgg_username to preferences:", prefErr);
+                    }
+                }
             }
 
             const chosenCandidates = modalCandidatePool.filter(r => modalSelectedCandidateIds.has(String(r.id)));
@@ -1745,22 +1836,6 @@ description: "Combine collections, plan board game sessions, and get group conse
             const submitBtn = document.getElementById("create-poll-submit-btn");
             submitBtn.disabled = true;
             submitBtn.textContent = "Creating...";
-
-            const hostInput = document.getElementById("modal-poll-creator");
-            let creatorName = (hostInput ? hostInput.value.trim() : "") ||
-                              (window.Auth && window.Auth.getBggUsername ? window.Auth.getBggUsername() : "") ||
-                              (localStorage.getItem("bgg_username") || localStorage.getItem("bgg_last_username") || "") ||
-                              (activeGroup && activeGroup.members && activeGroup.members.length ? activeGroup.members[0] : "") ||
-                              (typeof Auth !== 'undefined' && Auth.isLoggedIn() ? (Auth.getEmail() || "").split('@')[0] : "") ||
-                              "Host";
-
-            if (creatorName && creatorName !== "Host") {
-                if (window.Auth && window.Auth.setBggUsername) window.Auth.setBggUsername(creatorName);
-                else {
-                    localStorage.setItem("bgg_username", creatorName);
-                    localStorage.setItem("bgg_last_username", creatorName);
-                }
-            }
 
             try {
                 const resp = await window.fetchApi("/session", {
