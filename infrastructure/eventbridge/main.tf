@@ -174,7 +174,7 @@ resource "aws_cloudwatch_event_target" "run_bgg_recent_games_task" {
           },
           {
             name  = "REFRESH_WINDOW"
-            value = "2500"
+            value = "50000"
           }
         ]
       }
