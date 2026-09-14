@@ -181,19 +181,19 @@ h1, h2, h3, h4, h5, h6 {
     top: 0;
     left: 0;
     z-index: 999;
-    width: 260px;
+    width: 280px;
     transition: transform 0.3s ease-in-out;
 }
 
 body.sidebar-collapsed #sidebar-wrapper {
-    transform: translateX(-260px);
+    transform: translateX(-280px);
 }
 
 #main-wrapper {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    margin-left: 260px;
+    margin-left: 280px;
     transition: margin-left 0.3s ease-in-out;
     height: 100vh;
     overflow-y: auto;
@@ -241,7 +241,7 @@ body.sidebar-collapsed #main-wrapper {
 
 @media (max-width: 768px) {
     #sidebar-wrapper {
-        transform: translateX(-260px);
+        transform: translateX(-280px);
         box-shadow: 5px 0 15px rgba(0, 0, 0, 0.25);
     }
     
