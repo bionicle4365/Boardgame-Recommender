@@ -95,6 +95,18 @@ def extract_usernames_from_body(body_str):
         return [u]
     return []
 
+def calculate_damped_affinity(weights_sum, counts, alpha=0.3):
+    """
+    Applies logarithmic damping to prevent high game counts from linearly inflating affinity scores:
+    Score = (sum(weight) / count) * (1.0 + alpha * ln(count))
+    """
+    damped = {}
+    for item, tot_w in weights_sum.items():
+        n = counts.get(item, 1)
+        avg_w = tot_w / n
+        damped[item] = round(avg_w * (1.0 + alpha * math.log(n)), 2)
+    return damped
+
 def process_taste_profile(username):
     """Calculates and uploads the taste profile JSON for a single user."""
     logger.info(f"Generating taste profile for user: {username}")
@@ -141,6 +153,15 @@ def process_taste_profile(username):
         # Default complexity fallback if none of the games have complexity data
         complexity_weights["Medium-Light"] = 1.0
 
+        mech_weights_raw = {}
+        mech_counts = {}
+        cat_weights_raw = {}
+        cat_counts = {}
+        designer_weights_raw = {}
+        designer_counts = {}
+        publisher_weights_raw = {}
+        publisher_counts = {}
+
         # Derive rating-weighted affinities
         has_publishers = 'publishers' in liked_joined.columns
         has_complexity = 'complexity' in liked_joined.columns
@@ -163,21 +184,25 @@ def process_taste_profile(username):
             mechs = list(mechs) if isinstance(mechs, (list, np.ndarray)) else []
             
             for c in set(cats):
-                cat_weights[c] = cat_weights.get(c, 0.0) + weight
+                cat_weights_raw[c] = cat_weights_raw.get(c, 0.0) + weight
+                cat_counts[c] = cat_counts.get(c, 0) + 1
             for m in set(mechs):
-                mech_weights[m] = mech_weights.get(m, 0.0) + weight
+                mech_weights_raw[m] = mech_weights_raw.get(m, 0.0) + weight
+                mech_counts[m] = mech_counts.get(m, 0) + 1
 
             des = row.get('designers')
             des = list(des) if isinstance(des, (list, np.ndarray)) else []
             for d in des:
-                designer_weights[d] = designer_weights.get(d, 0.0) + weight
+                designer_weights_raw[d] = designer_weights_raw.get(d, 0.0) + weight
+                designer_counts[d] = designer_counts.get(d, 0) + 1
 
             if has_publishers:
                 pubs = row.get('publishers')
                 pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
                 if pubs:
                     primary_pub = pubs[0]
-                    publisher_weights[primary_pub] = publisher_weights.get(primary_pub, 0.0) + weight
+                    publisher_weights_raw[primary_pub] = publisher_weights_raw.get(primary_pub, 0.0) + weight
+                    publisher_counts[primary_pub] = publisher_counts.get(primary_pub, 0) + 1
 
             if has_complexity:
                 comp = row.get('complexity')
@@ -208,6 +233,12 @@ def process_taste_profile(username):
                         comp_bucket = "Heavy"
                     complexity_weights[comp_bucket] += weight
                     complexity_counts[comp_bucket] += 1
+
+        # Apply logarithmic damping to all rating-weighted affinity vectors
+        mech_weights = calculate_damped_affinity(mech_weights_raw, mech_counts)
+        cat_weights = calculate_damped_affinity(cat_weights_raw, cat_counts)
+        designer_weights = calculate_damped_affinity(designer_weights_raw, designer_counts)
+        publisher_weights = calculate_damped_affinity(publisher_weights_raw, publisher_counts)
 
         # Compute averages for complexity weights if we had valid complexity data
         if complexity_count > 0:

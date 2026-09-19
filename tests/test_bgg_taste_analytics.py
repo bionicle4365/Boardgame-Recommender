@@ -121,9 +121,10 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
     assert "publisher_weights" in profile_json
     assert "generated_at" in profile_json
 
-    # Since user liked game ID 100 (rating 9.0 -> weight 4.0) and ID 300 (rating 7.0 -> weight 2.0),
-    # categories/mechanics/designers/publishers accumulate:
-    assert profile_json["cat_weights"]["cat1"] == 6.0
+    # Since user liked game ID 100 (rating 9.0 -> weight 4.0) and ID 300 (rating 7.0 -> weight 2.0):
+    # - cat1 occurs twice (n=2, tot_w=6.0, avg_w=3.0): 3.0 * (1 + 0.3 * ln(2)) = 3.62
+    # - single count items (n=1) retain raw weight: weight * (1 + 0.3 * ln(1)) = weight
+    assert profile_json["cat_weights"]["cat1"] == 3.62
     assert profile_json["mech_weights"]["mech1"] == 4.0
     assert profile_json["mech_weights"]["mech3"] == 2.0
     assert profile_json["designer_weights"]["des1"] == 4.0
@@ -133,6 +134,16 @@ def test_process_taste_profile(mock_file, mock_read_parquet, mock_s3):
     assert "pub_local1" not in profile_json["publisher_weights"]
     # Complexity weights are averaged: (4.0 + 2.0) / 2 = 3.0
     assert profile_json["complexity_weights"] == {"Light": 0.0, "Medium-Light": 3.0, "Medium-Heavy": 0.0, "Heavy": 0.0}
+
+def test_calculate_damped_affinity():
+    # 1 count: returns exact weight
+    res1 = bgg_taste_analytics.calculate_damped_affinity({"ItemA": 4.0}, {"ItemA": 1})
+    assert res1["ItemA"] == 4.0
+
+    # Multiple counts: applies avg_w * (1 + 0.3 * ln(n))
+    # n=9, tot_w=18.0 -> avg_w=2.0 -> 2.0 * (1 + 0.3 * ln(9)) = 3.32
+    res9 = bgg_taste_analytics.calculate_damped_affinity({"ItemB": 18.0}, {"ItemB": 9})
+    assert res9["ItemB"] == 3.32
 
 @patch('bgg_taste_analytics.process_taste_profile')
 def test_lambda_handler_success(mock_process):

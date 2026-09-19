@@ -1655,6 +1655,33 @@ def test_multi_user_parallel_s3_recommender(mock_narrate, mock_hotness, mock_cat
     assert 'user3' in body['recommendations'][0]['member_affinities']
 
 
+def test_inline_taste_profile_damping():
+    import scoring
+
+    user_df = pd.DataFrame([
+        {"id": "1", "username": "user1", "rating": 9.0, "own": True},  # weight = 4.0
+        {"id": "2", "username": "user1", "rating": 7.0, "own": True},  # weight = 2.0
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "1", "categories": ["cat1"], "mechanics": ["mech1"], "designers": ["des1"], "publishers": ["pub1"], "rating": 8.0, "complexity": 2.0},
+        {"id": "2", "categories": ["cat1"], "mechanics": ["mech2"], "designers": ["des1"], "publishers": ["pub1"], "rating": 7.0, "complexity": 2.0},
+    ])
+
+    m_w, c_w, u_d, u_p, comp_w = scoring.compute_taste_profile_inline(
+        user_df, catalog_df, ["user1"], {}
+    )
+
+    # For cat1, des1, pub1: n=2, weights=(4.0+2.0)=6.0, avg=3.0 -> 3.0 * (1 + 0.3 * ln(2)) = 3.62
+    assert c_w["cat1"] == 3.62
+    assert u_d["des1"] == 3.62
+    assert u_p["pub1"] == 3.62
+
+    # Single-occurrence mechanics: n=1, exact raw weight
+    assert m_w["mech1"] == 4.0
+    assert m_w["mech2"] == 2.0
+
+
+
 
 
 

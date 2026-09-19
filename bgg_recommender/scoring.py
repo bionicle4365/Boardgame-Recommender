@@ -21,6 +21,19 @@ from cache_utils import (
 )
 
 
+def calculate_damped_affinity(weights_sum, counts, alpha=0.3):
+    """
+    Applies logarithmic damping to prevent high game counts from linearly inflating affinity scores:
+    Score = (sum(weight) / count) * (1.0 + alpha * ln(count))
+    """
+    damped = {}
+    for item, tot_w in weights_sum.items():
+        n = counts.get(item, 1)
+        avg_w = tot_w / n
+        damped[item] = round(avg_w * (1.0 + alpha * math.log(n)), 2)
+    return damped
+
+
 def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=None):
     """
     Computes taste profiles for each user, loading pre-computed S3 profiles concurrently when available
@@ -128,6 +141,14 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                 "Heavy": 0.0
             }
             has_user_complexity = False
+            u_mech_weights_raw = {}
+            u_mech_counts = {}
+            u_cat_weights_raw = {}
+            u_cat_counts = {}
+            u_des_weights_raw = {}
+            u_des_counts = {}
+            u_pub_weights_raw = {}
+            u_pub_counts = {}
 
             if not u_joined.empty:
                 has_publishers = 'publishers' in u_joined.columns
@@ -148,21 +169,25 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                     cats = list(cats) if isinstance(cats, (list, np.ndarray)) else []
                     mechs = list(mechs) if isinstance(mechs, (list, np.ndarray)) else []
                     for c in set(cats):
-                        u_cat_weights[c] = u_cat_weights.get(c, 0.0) + weight
+                        u_cat_weights_raw[c] = u_cat_weights_raw.get(c, 0.0) + weight
+                        u_cat_counts[c] = u_cat_counts.get(c, 0) + 1
                     for m in set(mechs):
-                        u_mech_weights[m] = u_mech_weights.get(m, 0.0) + weight
+                        u_mech_weights_raw[m] = u_mech_weights_raw.get(m, 0.0) + weight
+                        u_mech_counts[m] = u_mech_counts.get(m, 0) + 1
 
                     des = row.get('designers')
                     des = list(des) if isinstance(des, (list, np.ndarray)) else []
                     for d in des:
-                        u_user_designers[d] = u_user_designers.get(d, 0.0) + weight
+                        u_des_weights_raw[d] = u_des_weights_raw.get(d, 0.0) + weight
+                        u_des_counts[d] = u_des_counts.get(d, 0) + 1
 
                     if has_publishers:
                         pubs = row.get('publishers')
                         pubs = list(pubs) if isinstance(pubs, (list, np.ndarray)) else []
                         if pubs:
                             primary_pub = pubs[0]
-                            u_user_publishers[primary_pub] = u_user_publishers.get(primary_pub, 0.0) + weight
+                            u_pub_weights_raw[primary_pub] = u_pub_weights_raw.get(primary_pub, 0.0) + weight
+                            u_pub_counts[primary_pub] = u_pub_counts.get(primary_pub, 0) + 1
 
                     if has_complexity:
                         comp = row.get('complexity')
@@ -178,6 +203,11 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                             else:
                                 comp_bucket = "Heavy"
                             u_complexity_weights[comp_bucket] = round(u_complexity_weights.get(comp_bucket, 0.0) + weight, 2)
+
+                u_mech_weights = calculate_damped_affinity(u_mech_weights_raw, u_mech_counts)
+                u_cat_weights = calculate_damped_affinity(u_cat_weights_raw, u_cat_counts)
+                u_user_designers = calculate_damped_affinity(u_des_weights_raw, u_des_counts)
+                u_user_publishers = calculate_damped_affinity(u_pub_weights_raw, u_pub_counts)
 
             if not has_user_complexity:
                 u_complexity_weights["Medium-Light"] = 1.0
