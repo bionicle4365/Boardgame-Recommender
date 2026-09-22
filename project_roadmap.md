@@ -83,6 +83,56 @@ Redesign the Playgroup Organizer planner view (`site_ui/groups/index.html`) with
 
 ---
 
+## Milestone 61: Content-Based Scoring Normalization & Popularity De-biasing
+
+### Objective
+Fix candidate scoring homogenization across users by replacing unnormalized squared-tag accumulation with true cosine similarity, rebalancing default popularity weights, implementing continuous complexity distance matching, and upgrading the diversification pass to evaluate secondary mechanics.
+
+### Design Notes
+- **Candidate Vector Normalization:** Currently, `scoring.py` accumulates squared weights of matched mechanics without dividing by the candidate game's mechanic count $\sqrt{|\text{cand\_mechs}|}$. This causes multi-tag "kitchen-sink" Euros to systematically outscore tightly-designed niche games (e.g. roll-and-writes or trick-taking games) by nearly 2x for every user. True cosine similarity ($\frac{U \cdot G}{\|U\| \|G\|}$) eliminates this bias.
+- **Popularity De-biasing:** Global rating popularity (`w_pop = 0.5`) adds a static baseline of ~0.85–0.90 to all top-50 BGG games, flattening user-specific taste differences. Lowering `w_pop` to 0.15–0.20 and raising `w_mech` to 0.60 restores taste alignment as the primary ranking driver.
+- **Continuous Complexity Scoring:** The current four coarse complexity buckets produce almost identical normalized scores (~0.22 to 0.28) across both users. Replacing bucket ratios with a continuous Gaussian decay centered on the user's weighted average complexity creates genuine pacing differentiation.
+- **Multi-Tag Diversification:** `diversify_candidates()` currently checks only `cand_mechs[0]`. Tagging with decayed weights across secondary mechanics prevents games sharing the same underlying sub-mechanisms from dominating the top 25 list.
+
+### Architecture Decisions
+- **True Cosine Normalization in `scoring.py`:** Update `calculate_game_score()` to compute $\frac{\sum W_{\text{user}}(m)}{\sqrt{|\text{cand\_mechs}|} \sqrt{\sum W_{\text{user}}^2}}$ for mechanics and categories.
+- **Default Weight Adjustment in `cache_utils.py`:** Update `parse_weights()` defaults to `w_pop=0.20`, `w_mech=0.60`, `w_des=0.35`, `w_comp=0.35`, `w_cat=0.40`.
+- **Gaussian Complexity Distance:** Compute user mean complexity $\mu_{\text{comp}}$ in the profile and calculate $\exp(-0.5 \times ((comp - \mu) / \sigma)^2)$ with $\sigma=0.75$.
+- **Weighted Multi-Tag Diversity Tracker:** Update `diversify_candidates()` to accumulate fractional weights (1.0 for primary, 0.5 for secondary mechanics) with a composite cap.
+
+### Tasks
+- [ ] **True Cosine Similarity in `scoring.py`:** Refactor mechanic and category similarity calculations in `calculate_game_score()` to divide dot products by the candidate game's tag vector norm $\sqrt{|\text{cand\_tags}|}$.
+- [ ] **Weight Defaults Rebalancing:** Update `parse_weights()` in `cache_utils.py` to reduce default `w_pop` to 0.20 and adjust `w_mech`, `w_des`, and `w_cat` weights.
+- [ ] **Continuous Complexity Scoring:** Replace coarse bucket ratio in `calculate_game_score()` with Gaussian distance decay against user average complexity.
+- [ ] **Multi-Tag Diversity Filtering:** Upgrade `diversify_candidates()` in `scoring.py` to evaluate all candidate mechanics and categories using decayed frequency counters.
+- [ ] **Unit Tests:** Update and add unit tests in `test_bgg_recommender.py` to verify candidate norm scaling, balanced popularity influence, and diverse recommendation selection.
+
+---
+
+## Milestone 62: Taste Profile TF-IDF & Catalog Base-Rate Discounting
+
+### Objective
+Eliminate ubiquitous baseline noise from user taste profiles by applying Inverse Document Frequency (IDF) discounting based on BGG catalog mechanic and category frequencies, elevating users' distinctive preferences over ubiquitous tags.
+
+### Design Notes
+- **The Ubiquity Problem:** Ubiquitous mechanics ("Hand Management", "Solo / Solitaire Game", "Variable Player Powers") appear in 30–40% of all hobby board games. Because `calculate_damped_affinity()` applies logarithmic amplification $(1 + \alpha \ln(n))$, ubiquitous mechanics receive high multipliers while unique, distinctive mechanics (e.g., "Paper-and-Pencil", "Sealed Bid Auction", "Trick-taking") receive low multipliers. This causes raw taste profiles between different users to have ~90% cosine similarity.
+- **TF-IDF Representation:** By calculating catalog-wide document frequencies $P(m) = N_m / N_{\text{catalog}}$ and applying an IDF factor $\text{IDF}(m) = \ln(1 + N_{\text{catalog}} / N_m)$, common mechanics are appropriately dampened while distinctive tastes are amplified.
+- **Offline & Inline Parity:** Ensure identical TF-IDF logic is shared between the background analytics pipeline (`bgg_taste_analytics.py`) and the on-the-fly computation fallback (`compute_taste_profile_inline()` in `scoring.py`).
+
+### Architecture Decisions
+- **Catalog Frequencies Precomputation:** Precompute mechanic and category document frequencies from `catalog.parquet` and persist as an S3 asset (`data/catalog_feature_frequencies.json`) or bundle directly within the recommender layer.
+- **IDF Profile Generation:** In `bgg_taste_analytics.py` and `scoring.py`, multiply raw damped affinities by the feature's IDF weight before finalizing user taste profile vectors.
+- **Backward Compatibility:** Store both raw and IDF-weighted profiles or include IDF multipliers directly in taste profile JSON output so downstream consumers remain compatible.
+
+### Tasks
+- [ ] **Catalog Feature Frequencies Generator:** Create an automated task or helper to calculate category and mechanic frequencies across the BGG catalog parquet and save `catalog_feature_frequencies.json`.
+- [ ] **TF-IDF Damping in `bgg_taste_analytics.py`:** Update `process_taste_profile()` to load feature frequencies and apply IDF weighting to mechanic and category affinities.
+- [ ] **Inline Taste Profile Parity in `scoring.py`:** Update `compute_taste_profile_inline()` to apply the same catalog frequency discounting.
+- [ ] **Taste Profile Schema Update:** Update taste profile JSON structure and document new metadata fields (`user_mean_complexity`, `idf_applied: true`).
+- [ ] **Unit Tests:** Add unit tests in `test_bgg_taste_analytics.py` and `test_bgg_recommender.py` validating that distinctive mechanics rank above ubiquitous mechanics for specialized collections and verifying profile parity.
+
+---
+
 ## Milestone 35: Gamefound Crowdfunding Recommendations
 
 ### Objective
