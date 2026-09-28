@@ -121,6 +121,8 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
             u_user_designers = prof_data.get('designer_weights', {})
             u_user_publishers = prof_data.get('publisher_weights', {})
             u_complexity_weights = prof_data.get('complexity_weights', {})
+            if 'user_mean_complexity' in prof_data:
+                u_complexity_weights['user_mean_complexity'] = prof_data['user_mean_complexity']
             profile_loaded = True
 
         if not profile_loaded:
@@ -141,6 +143,8 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                 "Heavy": 0.0
             }
             has_user_complexity = False
+            u_weighted_comp_sum = 0.0
+            u_comp_weight_total = 0.0
             u_mech_weights_raw = {}
             u_mech_counts = {}
             u_cat_weights_raw = {}
@@ -194,6 +198,8 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                         if comp is not None and not math.isnan(float(comp)):
                             comp = float(comp)
                             has_user_complexity = True
+                            u_weighted_comp_sum += comp * weight
+                            u_comp_weight_total += weight
                             if comp < 2.0:
                                 comp_bucket = "Light"
                             elif comp <= 2.8:
@@ -209,8 +215,11 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                 u_user_designers = calculate_damped_affinity(u_des_weights_raw, u_des_counts)
                 u_user_publishers = calculate_damped_affinity(u_pub_weights_raw, u_pub_counts)
 
-            if not has_user_complexity:
+            if has_user_complexity and u_comp_weight_total > 0:
+                u_complexity_weights["user_mean_complexity"] = round(u_weighted_comp_sum / u_comp_weight_total, 2)
+            else:
                 u_complexity_weights["Medium-Light"] = 1.0
+                u_complexity_weights["user_mean_complexity"] = 2.4
 
         # Save individual profile if requested
         if individual_profiles is not None:
@@ -232,7 +241,30 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
         for p, w in u_user_publishers.items():
             user_publishers[p] = user_publishers.get(p, 0.0) + w
         for comp_bucket, w in u_complexity_weights.items():
+            if comp_bucket == 'user_mean_complexity':
+                continue
             complexity_weights[comp_bucket] = complexity_weights.get(comp_bucket, 0.0) + w
+
+    # Calculate blended user_mean_complexity
+    user_means = []
+    for u in usernames:
+        if individual_profiles and u in individual_profiles:
+            u_mean = individual_profiles[u][4].get('user_mean_complexity')
+            if u_mean is not None:
+                user_means.append(u_mean)
+        elif u in fetched_profiles and 'user_mean_complexity' in fetched_profiles[u]:
+            user_means.append(fetched_profiles[u]['user_mean_complexity'])
+    if not user_means:
+        bucket_centers = {"Light": 1.5, "Medium-Light": 2.4, "Medium-Heavy": 3.15, "Heavy": 4.0}
+        tot_b = sum(complexity_weights.get(b, 0.0) for b in bucket_centers)
+        if tot_b > 0:
+            complexity_weights['user_mean_complexity'] = round(
+                sum(complexity_weights.get(b, 0.0) * c for b, c in bucket_centers.items()) / tot_b, 2
+            )
+        else:
+            complexity_weights['user_mean_complexity'] = 2.4
+    else:
+        complexity_weights['user_mean_complexity'] = round(sum(user_means) / len(user_means), 2)
 
     return mech_weights, cat_weights, user_designers, user_publishers, complexity_weights
 
@@ -244,12 +276,12 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
     """
     Computes the composite score for a single game record against a taste profile.
     """
-    w_mech = weights.get('w_mech', 0.5)
-    w_cat = weights.get('w_cat', 0.5)
-    w_pop = weights.get('w_pop', 0.5)
+    w_mech = weights.get('w_mech', 0.60)
+    w_cat = weights.get('w_cat', 0.40)
+    w_pop = weights.get('w_pop', 0.20)
     w_hot = weights.get('w_hot', 0.0)
-    w_comp = weights.get('w_comp', 0.4)
-    w_des = weights.get('w_des', 0.3)
+    w_comp = weights.get('w_comp', 0.35)
+    w_des = weights.get('w_des', 0.35)
     w_pub = weights.get('w_pub', 0.1)
 
     player_count = query_params.get('player_count')
@@ -257,18 +289,30 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
     complexity_pref = query_params.get('complexity_pref', 'any').lower()
 
     g_id = str(row['id'])
-    cand_cats = safe_list(row.get('categories'))
-    cand_mechs = safe_list(row.get('mechanics'))
+    cand_cats = list(dict.fromkeys(safe_list(row.get('categories'))))
+    cand_mechs = list(dict.fromkeys(safe_list(row.get('mechanics'))))
 
-    # Compute cosine similarity for categories (projected into same weighted space)
-    cat_dot_sq = sum(cat_weights.get(c, 0.0)**2 for c in cand_cats)
-    cat_user_norm_sq = sum(v * v for v in cat_weights.values())
-    cat_sim = math.sqrt(cat_dot_sq / cat_user_norm_sq) if cat_user_norm_sq > 0 else 0.0
+    # Compute true cosine similarity for categories
+    cat_sim = 0.0
+    cand_cat_count = len(cand_cats)
+    if cand_cat_count > 0 and cat_weights:
+        cat_dot = sum(cat_weights.get(c, 0.0) for c in cand_cats)
+        cat_user_norm = math.sqrt(sum(v * v for v in cat_weights.values()))
+        cat_cand_norm = math.sqrt(cand_cat_count)
+        if (cat_cand_norm * cat_user_norm) > 0:
+            cat_sim = cat_dot / (cat_cand_norm * cat_user_norm)
+            cat_sim = max(0.0, min(1.0, cat_sim))
 
-    # Compute cosine similarity for mechanics (projected into same weighted space)
-    mech_dot_sq = sum(mech_weights.get(m, 0.0)**2 for m in cand_mechs)
-    mech_user_norm_sq = sum(v * v for v in mech_weights.values())
-    mech_sim = math.sqrt(mech_dot_sq / mech_user_norm_sq) if mech_user_norm_sq > 0 else 0.0
+    # Compute true cosine similarity for mechanics
+    mech_sim = 0.0
+    cand_mech_count = len(cand_mechs)
+    if cand_mech_count > 0 and mech_weights:
+        mech_dot = sum(mech_weights.get(m, 0.0) for m in cand_mechs)
+        mech_user_norm = math.sqrt(sum(v * v for v in mech_weights.values()))
+        mech_cand_norm = math.sqrt(cand_mech_count)
+        if (mech_cand_norm * mech_user_norm) > 0:
+            mech_sim = mech_dot / (mech_cand_norm * mech_user_norm)
+            mech_sim = max(0.0, min(1.0, mech_sim))
 
     rating = row.get('rating')
     if rating is None or not isinstance(rating, (int, float)) or math.isnan(rating):
@@ -294,17 +338,28 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
                     comp_sim = max(0.0, 1.0 - ((2.0 - cand_complexity) / 2.0))
                 else:
                     comp_sim = max(0.0, 1.0 - ((cand_complexity - 3.5) / 1.5))
-        elif has_complexity and total_complexity_weight > 0:
-            if cand_complexity < 2.0:
-                comp_bucket = "Light"
-            elif cand_complexity <= 2.8:
-                comp_bucket = "Medium-Light"
-            elif cand_complexity <= 3.5:
-                comp_bucket = "Medium-Heavy"
+        elif has_complexity:
+            # Continuous Gaussian distance decay centered on user mean complexity (sigma = 0.75)
+            mu = None
+            if isinstance(complexity_weights, (int, float)):
+                mu = float(complexity_weights)
+            elif isinstance(complexity_weights, dict):
+                if 'user_mean_complexity' in complexity_weights:
+                    mu = float(complexity_weights['user_mean_complexity'])
+                elif 'mean' in complexity_weights:
+                    mu = float(complexity_weights['mean'])
+                else:
+                    bucket_centers = {"Light": 1.5, "Medium-Light": 2.4, "Medium-Heavy": 3.15, "Heavy": 4.0}
+                    tot_w = sum(complexity_weights.get(b, 0.0) for b in bucket_centers)
+                    if tot_w > 0:
+                        mu = sum(complexity_weights.get(b, 0.0) * center for b, center in bucket_centers.items()) / tot_w
+
+            if mu is not None:
+                diff = (cand_complexity - mu) / 0.75
+                comp_sim = math.exp(-0.5 * (diff ** 2))
+                comp_sim = max(0.0, min(1.0, comp_sim))
             else:
-                comp_bucket = "Heavy"
-            bucket_weight = complexity_weights.get(comp_bucket, 0.0)
-            comp_sim = bucket_weight / total_complexity_weight
+                comp_sim = 0.0
 
     # Compute cosine similarity for designers (projected into same weighted space)
     des_sim = 0.0
@@ -385,7 +440,7 @@ def score_candidates(candidates, mech_weights, cat_weights, user_designers, user
         from cache_utils import parse_weights
         weights = parse_weights(query_params)
 
-    total_complexity_weight = sum(complexity_weights.values()) or 1.0
+    total_complexity_weight = sum(v for k, v in complexity_weights.items() if k != 'user_mean_complexity') or 1.0
     total_cat_weight = sum(cat_weights.values()) or 1.0
     total_mech_weight = sum(mech_weights.values()) or 1.0
     total_des_weight = sum(user_designers.values()) or 1.0
@@ -421,7 +476,8 @@ def score_candidates(candidates, mech_weights, cat_weights, user_designers, user
 def diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category=5, target_count=25):
     """
     Applies a deterministic diversification pass on scored candidates.
-    Ensures that we do not cluster too many games with the same primary mechanic or category.
+    Ensures that we do not cluster too many games with the same mechanics or categories.
+    Accumulates fractional weights (1.0 for primary, 0.5 for secondary tags) with caps.
     The highest-scored candidate is always retained.
     
     If fewer than 25 diverse candidates can be selected, falls back to returning the original list.
@@ -436,8 +492,8 @@ def diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category
         return scored_candidates
 
     selected = []
-    mechanic_counts = defaultdict(int)
-    category_counts = defaultdict(int)
+    mechanic_counts = defaultdict(float)
+    category_counts = defaultdict(float)
 
     skipped_count = 0
     skipped_by_mechanic = 0
@@ -451,36 +507,46 @@ def diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category
         if len(selected) >= target_count:
             break
 
-        cand_mechs = row.get('mechanics')
-        cand_cats = row.get('categories')
+        cand_mechs_raw = row.get('mechanics')
+        cand_cats_raw = row.get('categories')
 
-        # Convert to list if not already
-        cand_mechs = list(cand_mechs) if cand_mechs is not None else []
-        cand_cats = list(cand_cats) if cand_cats is not None else []
+        # Convert to list and deduplicate preserving order
+        cand_mechs = list(dict.fromkeys(list(cand_mechs_raw))) if cand_mechs_raw is not None else []
+        cand_cats = list(dict.fromkeys(list(cand_cats_raw))) if cand_cats_raw is not None else []
 
         primary_mech = cand_mechs[0] if cand_mechs else None
+        secondary_mechs = cand_mechs[1:] if len(cand_mechs) > 1 else []
+
         primary_cat = cand_cats[0] if cand_cats else None
+        secondary_cats = cand_cats[1:] if len(cand_cats) > 1 else []
 
         # Always retain the highest-scored candidate
         if idx == 0:
             selected.append(row)
             if primary_mech:
-                mechanic_counts[primary_mech] += 1
+                mechanic_counts[primary_mech] += 1.0
+            for m in secondary_mechs:
+                mechanic_counts[m] += 0.5
             if primary_cat:
-                category_counts[primary_cat] += 1
+                category_counts[primary_cat] += 1.0
+            for c in secondary_cats:
+                category_counts[c] += 0.5
             continue
 
-        # Check caps
+        # Check caps across all mechanics and categories
         mech_capped = False
+        for m in cand_mechs:
+            if mechanic_counts[m] >= max_per_mechanic:
+                mech_capped = True
+                caps_hit_mechanics.add(m)
+                break
+
         cat_capped = False
-
-        if primary_mech and mechanic_counts[primary_mech] >= max_per_mechanic:
-            mech_capped = True
-            caps_hit_mechanics.add(primary_mech)
-
-        if primary_cat and category_counts[primary_cat] >= max_per_category:
-            cat_capped = True
-            caps_hit_categories.add(primary_cat)
+        for c in cand_cats:
+            if category_counts[c] >= max_per_category:
+                cat_capped = True
+                caps_hit_categories.add(c)
+                break
 
         if mech_capped or cat_capped:
             skipped_count += 1
@@ -494,9 +560,13 @@ def diversify_candidates(scored_candidates, max_per_mechanic=4, max_per_category
 
         selected.append(row)
         if primary_mech:
-            mechanic_counts[primary_mech] += 1
+            mechanic_counts[primary_mech] += 1.0
+        for m in secondary_mechs:
+            mechanic_counts[m] += 0.5
         if primary_cat:
-            category_counts[primary_cat] += 1
+            category_counts[primary_cat] += 1.0
+        for c in secondary_cats:
+            category_counts[c] += 0.5
 
     # Fallback check
     if len(selected) < 25:

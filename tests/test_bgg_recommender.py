@@ -1551,8 +1551,8 @@ def test_milestone_54_scoring_corrections():
         complexity_weights, hotness_scores, query_params, weights,
         5.0, 11.0, 1.0, 0.0, 0.0, True, True
     )
-    # expected: similarity = sqrt(101/101) = 1.0
-    assert abs(score_c - 1.0) < 0.001
+    # expected: dot = 10 + 1 = 11, user_norm = sqrt(101), cand_norm = sqrt(2) -> 11 / (sqrt(2) * sqrt(101)) = 11 / sqrt(202) = 0.7740
+    assert abs(score_c - 0.7740) < 0.001
 
     # 2. Test summed complexity weights in compute_taste_profile_inline
     user_df = pd.DataFrame([
@@ -1679,6 +1679,151 @@ def test_inline_taste_profile_damping():
     # Single-occurrence mechanics: n=1, exact raw weight
     assert m_w["mech1"] == 4.0
     assert m_w["mech2"] == 2.0
+
+
+def test_milestone_61_candidate_norm_scaling():
+    import scoring
+    # User likes Trick-taking (weight 5.0). User norm = 5.0.
+    mech_weights = {"Trick-taking": 5.0}
+    cat_weights = {}
+    weights = {'w_mech': 1.0, 'w_cat': 0.0, 'w_pop': 0.0, 'w_hot': 0.0, 'w_comp': 0.0, 'w_des': 0.0, 'w_pub': 0.0}
+    query_params = {}
+
+    # Candidate A: Focused niche game (1 mechanic: Trick-taking)
+    # Norm = sqrt(1) = 1.0 -> mech_sim = 5.0 / (1.0 * 5.0) = 1.0
+    cand_a = {"id": "1", "mechanics": ["Trick-taking"], "categories": [], "rating": 7.0, "complexity": 2.0}
+    score_a = scoring.calculate_game_score(
+        cand_a, mech_weights, cat_weights, {}, {}, {}, {}, query_params, weights,
+        5.0, 0.0, 0.0, 0.0, 0.0, False, False
+    )
+
+    # Candidate B: Multi-tag kitchen-sink Euro (4 mechanics: Trick-taking, Worker Placement, Deck Building, Dice Rolling)
+    # Norm = sqrt(4) = 2.0 -> mech_sim = 5.0 / (2.0 * 5.0) = 0.5
+    cand_b = {
+        "id": "2",
+        "mechanics": ["Trick-taking", "Worker Placement", "Deck Building", "Dice Rolling"],
+        "categories": [],
+        "rating": 7.0,
+        "complexity": 2.0
+    }
+    score_b = scoring.calculate_game_score(
+        cand_b, mech_weights, cat_weights, {}, {}, {}, {}, query_params, weights,
+        5.0, 0.0, 0.0, 0.0, 0.0, False, False
+    )
+
+    assert abs(score_a - 1.0) < 0.001
+    assert abs(score_b - 0.5) < 0.001
+    # Focused niche game must score 2x higher than multi-tag game for the matched tag
+    assert abs(score_a / score_b - 2.0) < 0.001
+
+
+def test_milestone_61_continuous_gaussian_complexity():
+    import scoring
+    # User with average complexity mu = 3.2
+    complexity_weights = {"user_mean_complexity": 3.2}
+    weights = {'w_mech': 0.0, 'w_cat': 0.0, 'w_pop': 0.0, 'w_hot': 0.0, 'w_comp': 1.0, 'w_des': 0.0, 'w_pub': 0.0}
+    query_params = {}
+
+    # Game with exact matching complexity: diff = 0 -> exp(0) = 1.0
+    game_exact = {"id": "1", "complexity": 3.2}
+    score_exact = scoring.calculate_game_score(
+        game_exact, {}, {}, {}, {}, complexity_weights, {}, query_params, weights,
+        0.0, 0.0, 1.0, 0.0, 0.0, True, False
+    )
+    assert abs(score_exact - 1.0) < 0.001
+
+    # Game 1 sigma away (3.2 + 0.75 = 3.95): diff = 1.0 -> exp(-0.5) = 0.6065
+    game_1sigma = {"id": "2", "complexity": 3.95}
+    score_1sigma = scoring.calculate_game_score(
+        game_1sigma, {}, {}, {}, {}, complexity_weights, {}, query_params, weights,
+        0.0, 0.0, 1.0, 0.0, 0.0, True, False
+    )
+    assert abs(score_1sigma - 0.6065) < 0.001
+
+    # Game 2 sigmas away (3.2 - 1.50 = 1.70): diff = -2.0 -> exp(-2.0) = 0.1353
+    game_2sigma = {"id": "3", "complexity": 1.70}
+    score_2sigma = scoring.calculate_game_score(
+        game_2sigma, {}, {}, {}, {}, complexity_weights, {}, query_params, weights,
+        0.0, 0.0, 1.0, 0.0, 0.0, True, False
+    )
+    assert abs(score_2sigma - 0.1353) < 0.001
+
+
+def test_milestone_61_popularity_debiasing_and_defaults():
+    import cache_utils
+    import scoring
+    # Verify default weights
+    defaults = cache_utils.parse_weights({})
+    assert defaults['w_pop'] == 0.20
+    assert defaults['w_mech'] == 0.60
+    assert defaults['w_cat'] == 0.40
+    assert defaults['w_comp'] == 0.35
+    assert defaults['w_des'] == 0.35
+
+    # With defaults, taste alignment (w_mech=0.60) beats raw popularity (w_pop=0.20)
+    mech_weights = {"Hand Management": 5.0}
+    # Game A: perfect mechanic match (1.0), average rating 7.0 (pop_score = (7-5)/4 = 0.5)
+    game_taste_match = {"id": "1", "mechanics": ["Hand Management"], "categories": [], "rating": 7.0}
+    # Game B: zero mechanic match (0.0), top-50 BGG rating 8.6 (pop_score = (8.6-5)/4 = 0.90)
+    game_popular_only = {"id": "2", "mechanics": ["Drafting"], "categories": [], "rating": 8.6}
+
+    score_taste = scoring.calculate_game_score(
+        game_taste_match, mech_weights, {}, {}, {}, {}, {}, {}, defaults,
+        5.0, 0.0, 0.0, 0.0, 0.0, False, False
+    )
+    score_popular = scoring.calculate_game_score(
+        game_popular_only, mech_weights, {}, {}, {}, {}, {}, {}, defaults,
+        5.0, 0.0, 0.0, 0.0, 0.0, False, False
+    )
+
+    # score_taste: (0.60 * 1.0 + 0.20 * 0.5) / denom = 0.70 / denom
+    # score_popular: (0.60 * 0.0 + 0.20 * 0.9) / denom = 0.18 / denom
+    assert score_taste > score_popular
+
+
+def test_milestone_61_multi_tag_diversification():
+    import scoring
+    # Create 35 candidates:
+    # First 4 candidates have "Hand Management" as a secondary mechanic (weight 0.5 each).
+    # With max_per_mechanic=2, 4 * 0.5 = 2.0, hitting the cap.
+    candidates = []
+    # Candidate 0: primary "Deck Building", secondary "Hand Management" (always retained, HM += 0.5)
+    candidates.append({
+        "id": 0, "name": "Game 0", "mechanics": ["Deck Building", "Hand Management"], "categories": ["Cat 0"]
+    })
+    # Candidate 1: primary "Drafting", secondary "Hand Management" (HM += 0.5 -> 1.0)
+    candidates.append({
+        "id": 1, "name": "Game 1", "mechanics": ["Drafting", "Hand Management"], "categories": ["Cat 1"]
+    })
+    # Candidate 2: primary "Worker Placement", secondary "Hand Management" (HM += 0.5 -> 1.5)
+    candidates.append({
+        "id": 2, "name": "Game 2", "mechanics": ["Worker Placement", "Hand Management"], "categories": ["Cat 2"]
+    })
+    # Candidate 3: primary "Auction", secondary "Hand Management" (HM += 0.5 -> 2.0)
+    candidates.append({
+        "id": 3, "name": "Game 3", "mechanics": ["Auction", "Hand Management"], "categories": ["Cat 3"]
+    })
+    # Candidate 4: primary "Set Collection", secondary "Hand Management".
+    # At this point, HM has reached cap 2.0. Game 4 should be SKIPPED!
+    candidates.append({
+        "id": 4, "name": "Game 4", "mechanics": ["Set Collection", "Hand Management"], "categories": ["Cat 4"]
+    })
+    # The remaining 30 candidates have unique mechanics
+    for i in range(5, 35):
+        candidates.append({
+            "id": i, "name": f"Game {i}", "mechanics": [f"Unique Mech {i}"], "categories": [f"Cat {i}"]
+        })
+
+    result = scoring.diversify_candidates(candidates, max_per_mechanic=2, max_per_category=5, target_count=25)
+    assert len(result) == 25
+    # Game 4 must be skipped because secondary mechanic "Hand Management" reached cap 2.0
+    result_ids = [g["id"] for g in result]
+    assert 0 in result_ids
+    assert 1 in result_ids
+    assert 2 in result_ids
+    assert 3 in result_ids
+    assert 4 not in result_ids
+
 
 
 

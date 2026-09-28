@@ -167,6 +167,8 @@ def process_taste_profile(username):
         has_complexity = 'complexity' in liked_joined.columns
         
         complexity_count = 0
+        weighted_comp_sum = 0.0
+        total_comp_weight = 0.0
         for _, row in liked_joined.iterrows():
             u_rating = row.get('rating_user')
             try:
@@ -223,6 +225,8 @@ def process_taste_profile(username):
                             "Heavy": 0
                         }
                     complexity_count += 1
+                    weighted_comp_sum += comp * weight
+                    total_comp_weight += weight
                     if comp < 2.0:
                         comp_bucket = "Light"
                     elif comp <= 2.8:
@@ -248,11 +252,14 @@ def process_taste_profile(username):
                 else:
                     complexity_weights[b] = 0.0
 
+        user_mean_complexity = round(weighted_comp_sum / total_comp_weight, 2) if total_comp_weight > 0 else 2.4
+
     # Write profile JSON
     profile = {
         "mech_weights": mech_weights,
         "cat_weights": cat_weights,
         "complexity_weights": complexity_weights,
+        "user_mean_complexity": user_mean_complexity,
         "designer_weights": designer_weights,
         "publisher_weights": publisher_weights,
         "generated_at": datetime.now(timezone.utc).isoformat()

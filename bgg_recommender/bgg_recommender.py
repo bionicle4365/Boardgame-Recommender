@@ -766,7 +766,7 @@ def _handle_recommendations(query_params):
                     # Pre-calculate totals for u
                     u_total_mech = sum(u_mech.values()) or 1.0
                     u_total_cat = sum(u_cat.values()) or 1.0
-                    u_total_comp = sum(u_comp.values()) or 1.0
+                    u_total_comp = sum(v for k, v in u_comp.items() if k != 'user_mean_complexity') or 1.0
                     u_total_des = sum(u_des.values()) or 1.0
                     u_total_pub = sum(u_pub.values()) or 1.0
                     

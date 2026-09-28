@@ -81,31 +81,6 @@ Redesign the Playgroup Organizer planner view (`site_ui/groups/index.html`) with
 - [ ] **Filter Controls & CTA Restyling:** Align Pacing and Complexity selects in a balanced grid and restyle the primary recommendation generator button.
 - [ ] **Responsive & Theme Verification:** Verify layout across dark and light modes, and ensure smooth wrapping on mobile viewports (320px–768px).
 
----
-
-## Milestone 61: Content-Based Scoring Normalization & Popularity De-biasing
-
-### Objective
-Fix candidate scoring homogenization across users by replacing unnormalized squared-tag accumulation with true cosine similarity, rebalancing default popularity weights, implementing continuous complexity distance matching, and upgrading the diversification pass to evaluate secondary mechanics.
-
-### Design Notes
-- **Candidate Vector Normalization:** Currently, `scoring.py` accumulates squared weights of matched mechanics without dividing by the candidate game's mechanic count $\sqrt{|\text{cand\_mechs}|}$. This causes multi-tag "kitchen-sink" Euros to systematically outscore tightly-designed niche games (e.g. roll-and-writes or trick-taking games) by nearly 2x for every user. True cosine similarity ($\frac{U \cdot G}{\|U\| \|G\|}$) eliminates this bias.
-- **Popularity De-biasing:** Global rating popularity (`w_pop = 0.5`) adds a static baseline of ~0.85–0.90 to all top-50 BGG games, flattening user-specific taste differences. Lowering `w_pop` to 0.15–0.20 and raising `w_mech` to 0.60 restores taste alignment as the primary ranking driver.
-- **Continuous Complexity Scoring:** The current four coarse complexity buckets produce almost identical normalized scores (~0.22 to 0.28) across both users. Replacing bucket ratios with a continuous Gaussian decay centered on the user's weighted average complexity creates genuine pacing differentiation.
-- **Multi-Tag Diversification:** `diversify_candidates()` currently checks only `cand_mechs[0]`. Tagging with decayed weights across secondary mechanics prevents games sharing the same underlying sub-mechanisms from dominating the top 25 list.
-
-### Architecture Decisions
-- **True Cosine Normalization in `scoring.py`:** Update `calculate_game_score()` to compute $\frac{\sum W_{\text{user}}(m)}{\sqrt{|\text{cand\_mechs}|} \sqrt{\sum W_{\text{user}}^2}}$ for mechanics and categories.
-- **Default Weight Adjustment in `cache_utils.py`:** Update `parse_weights()` defaults to `w_pop=0.20`, `w_mech=0.60`, `w_des=0.35`, `w_comp=0.35`, `w_cat=0.40`.
-- **Gaussian Complexity Distance:** Compute user mean complexity $\mu_{\text{comp}}$ in the profile and calculate $\exp(-0.5 \times ((comp - \mu) / \sigma)^2)$ with $\sigma=0.75$.
-- **Weighted Multi-Tag Diversity Tracker:** Update `diversify_candidates()` to accumulate fractional weights (1.0 for primary, 0.5 for secondary mechanics) with a composite cap.
-
-### Tasks
-- [ ] **True Cosine Similarity in `scoring.py`:** Refactor mechanic and category similarity calculations in `calculate_game_score()` to divide dot products by the candidate game's tag vector norm $\sqrt{|\text{cand\_tags}|}$.
-- [ ] **Weight Defaults Rebalancing:** Update `parse_weights()` in `cache_utils.py` to reduce default `w_pop` to 0.20 and adjust `w_mech`, `w_des`, and `w_cat` weights.
-- [ ] **Continuous Complexity Scoring:** Replace coarse bucket ratio in `calculate_game_score()` with Gaussian distance decay against user average complexity.
-- [ ] **Multi-Tag Diversity Filtering:** Upgrade `diversify_candidates()` in `scoring.py` to evaluate all candidate mechanics and categories using decayed frequency counters.
-- [ ] **Unit Tests:** Update and add unit tests in `test_bgg_recommender.py` to verify candidate norm scaling, balanced popularity influence, and diverse recommendation selection.
 
 ---
 
@@ -214,6 +189,7 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 59: User Profile Skeleton Animation & Viewport Alignment Fix** (Fixed @keyframes shimmer in design-system.css and profile/index.html to animate background-position instead of transform: translateX, eliminating offscreen lateral drift during profile dashboard load)
 * **Milestone 50: Local Development Environment** (Gitignored _config.local.yml and .env.local overrides, gen_local_config.py generator script, comprehensive LOCAL_DEVELOPMENT.md guide, and enhanced offline mock API handlers for /profile, /groups, and /preferences)
 * **Milestone 57: Async Game Night Voting & Veto Session** (Defined bgg-game-night-sessions DynamoDB table with GSI and TTL, built sessions.py consensus engine with +2/+1/-99 veto scoring and tie-breaking, created standalone vote/index.html voting page with live countdown timer, and added host poll modal & Past Polls history tab on groups/index.html)
+* **Milestone 61: Content-Based Scoring Normalization & Popularity De-biasing** (Implemented true cosine similarity dividing tag dot products by candidate vector norms $\sqrt{|\text{cand\_tags}|}$, rebalanced default weights to w_pop=0.20, w_mech=0.60, w_cat=0.40, w_des=0.35, w_comp=0.35 in cache_utils.py and UI presets, replaced coarse complexity buckets with continuous Gaussian distance decay centered on user mean complexity with $\sigma=0.75$, upgraded diversify_candidates() to track decayed secondary tags, and verified with comprehensive unit test suite)
 
 
 

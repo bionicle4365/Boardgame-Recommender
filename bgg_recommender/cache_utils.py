@@ -369,12 +369,12 @@ def parse_weights(query_params):
     Applies default values and clamps each weight to the [0.0, 1.0] range.
     """
     defaults = {
-        'w_mech': 0.5,
-        'w_cat': 0.5,
-        'w_pop': 0.5,
+        'w_mech': 0.60,
+        'w_cat': 0.40,
+        'w_pop': 0.20,
         'w_hot': 0.0,
-        'w_comp': 0.4,
-        'w_des': 0.3,
+        'w_comp': 0.35,
+        'w_des': 0.35,
         'w_pub': 0.1
     }
     weights = {}

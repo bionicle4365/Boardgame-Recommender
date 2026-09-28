@@ -347,5 +347,8 @@ def test_parse_weights():
     # Defaults and malformed inputs
     qp_malformed = {'w_mech': 'abc', 'w_cat': None}
     w_malformed = cache_utils.parse_weights(qp_malformed)
-    assert w_malformed['w_mech'] == 0.5
-    assert w_malformed['w_cat'] == 0.5
+    assert w_malformed['w_mech'] == 0.60
+    assert w_malformed['w_cat'] == 0.40
+    assert w_malformed['w_pop'] == 0.20
+    assert w_malformed['w_des'] == 0.35
+    assert w_malformed['w_comp'] == 0.35

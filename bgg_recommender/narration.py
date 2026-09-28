@@ -301,12 +301,12 @@ def build_weight_context(query_params, weights):
     """
     Builds the weight context string for the Bedrock prompt from query parameters and parsed weights.
     """
-    w_mech = weights.get('w_mech', 0.5)
-    w_cat = weights.get('w_cat', 0.5)
-    w_pop = weights.get('w_pop', 0.5)
+    w_mech = weights.get('w_mech', 0.60)
+    w_cat = weights.get('w_cat', 0.40)
+    w_pop = weights.get('w_pop', 0.20)
     w_hot = weights.get('w_hot', 0.0)
-    w_comp = weights.get('w_comp', 0.4)
-    w_des = weights.get('w_des', 0.3)
+    w_comp = weights.get('w_comp', 0.35)
+    w_des = weights.get('w_des', 0.35)
     w_pub = weights.get('w_pub', 0.1)
     player_count = query_params.get('player_count')
     duration_pref = query_params.get('duration_pref', 'any').lower()

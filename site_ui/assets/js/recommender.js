@@ -20,8 +20,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Preset Configurations
     const PRESETS = {
         balanced: {
-            desc: "A balanced blend of mechanics similarity, theme/categories, and community popularity (each weighted at 50/100).",
-            weights: { mech: 50, cat: 50, pop: 50, hot: 0 }
+            desc: "A balanced blend prioritizing taste alignment (mechanics 60%, categories 40%) with de-biased popularity (20%).",
+            weights: { mech: 60, cat: 40, pop: 20, hot: 0 }
         },
         thematic: {
             desc: "Prioritizes games sharing similar themes, settings, and genres (categories weighted at 90/100, mechanics at 30/100).",
