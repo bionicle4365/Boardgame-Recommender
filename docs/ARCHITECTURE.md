@@ -78,8 +78,9 @@ graph TD
 
 | Directory | Type | Runtime / Service | Responsibility |
 |---|---|---|---|
-| [**`site_ui/`**](file:///d:/Git/Boardgame-Recommender/site_ui) | Web UI | Jekyll, Vanilla CSS, JS | Mobile-first glassmorphic web dashboard, collection browser, recommendation interface, and table voting portal. |
-| [**`bgg_recommender/`**](file:///d:/Git/Boardgame-Recommender/bgg_recommender) | Serving API | AWS Lambda (Container) | Core recommendation engine, candidate filtering, TF-IDF inline scoring, Bedrock Nova Micro grounding, and table sessions. |
+| [**`site_ui/`**](file:///d:/Git/Boardgame-Recommender/site_ui) | Web UI | Jekyll, Vanilla CSS, JS | Mobile-first glassmorphic web dashboard, modular page scripts (`groups.js`, `collection.js`, `recommender.js`), stylesheets, and table voting portal. |
+| [**`bgg_recommender/`**](file:///d:/Git/Boardgame-Recommender/bgg_recommender) | Serving API | AWS Lambda (Container) | Core recommendation engine, candidate filtering, TF-IDF inline scoring, Bedrock Nova Micro grounding, and table session handlers (`session_handlers.py`). |
+
 | [**`bgg_game_scraper/`**](file:///d:/Git/Boardgame-Recommender/bgg_game_scraper) | Scraper | AWS ECS Fargate | Continuous crawler that discovers game IDs across BGG and enqueues batches to SQS. |
 | [**`bgg_game_data_scraper/`**](file:///d:/Git/Boardgame-Recommender/bgg_game_data_scraper) | Scraper Worker | AWS Lambda (Container) | SQS-triggered worker that fetches XML details for up to 20 game IDs per batch and saves raw Parquet files to S3. |
 | [**`bgg_compactor/`**](file:///d:/Git/Boardgame-Recommender/bgg_compactor) | Data Pipeline | AWS Lambda (Container) | Merges thousands of single-game Parquet files into a unified `catalog.parquet` table, bypassing costly Glue crawlers. |
@@ -233,7 +234,11 @@ sequenceDiagram
 - **Secured Endpoints (Amazon Cognito JWT):**
   - `GET /preferences` & `POST /preferences`: Protected by API Gateway HTTP API Cognito Authorizer.
   - Claims Extraction: Handlers extract `sub` directly from verified claims, guaranteeing users cannot read or modify another user's preferences.
+- **Account Recovery & Identity Management:**
+  - Client-side Cognito self-service password recovery via `ForgotPassword` and `ConfirmForgotPassword` APIs in [utils.js](file:///d:/Git/Boardgame-Recommender/site_ui/assets/js/utils.js).
+  - Multi-step modal views with verification code delivery via SES custom HTML templates and real-time password complexity validation.
 - **Rate Limiting & Throttling:**
+
   - API Gateway stages enforce default throttling rate limits (`5 req/sec`, burst `10`) to prevent runaway costs from scraping attacks or recursive loops.
 
 ---

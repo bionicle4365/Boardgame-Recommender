@@ -108,6 +108,75 @@ def calculate_damped_affinity(weights_sum, counts, alpha=0.3):
         damped[item] = round(avg_w * (1.0 + alpha * math.log(n)), 2)
     return damped
 
+def generate_catalog_feature_frequencies(catalog_df, output_path=None):
+    """
+    Computes catalog document frequencies and IDF factors for mechanics and categories.
+    Co-located in bgg_taste_analytics for container runtime safety.
+    """
+    if hasattr(catalog_df, 'select') and hasattr(catalog_df, 'to_pandas'):
+        cols = [c for c in ['mechanics', 'categories'] if c in catalog_df.column_names]
+        df = catalog_df.select(cols).to_pandas()
+        total_games = catalog_df.num_rows
+    else:
+        df = catalog_df
+        total_games = len(df)
+
+    mechanic_counts = {}
+    category_counts = {}
+
+    if 'mechanics' in df.columns:
+        for val in df['mechanics'].dropna():
+            if isinstance(val, (list, np.ndarray, tuple, set)):
+                unique_mechs = set(val)
+            elif isinstance(val, str):
+                unique_mechs = {m.strip() for m in val.split(',') if m.strip()}
+            else:
+                continue
+            for m in unique_mechs:
+                mechanic_counts[m] = mechanic_counts.get(m, 0) + 1
+
+    if 'categories' in df.columns:
+        for val in df['categories'].dropna():
+            if isinstance(val, (list, np.ndarray, tuple, set)):
+                unique_cats = set(val)
+            elif isinstance(val, str):
+                unique_cats = {c.strip() for c in val.split(',') if c.strip()}
+            else:
+                continue
+            for c in unique_cats:
+                category_counts[c] = category_counts.get(c, 0) + 1
+
+    mechanic_idf = {
+        mech: round(math.log(1.0 + float(total_games) / max(1, count)), 4)
+        for mech, count in mechanic_counts.items()
+    }
+    category_idf = {
+        cat: round(math.log(1.0 + float(total_games) / max(1, count)), 4)
+        for cat, count in category_counts.items()
+    }
+
+    result = {
+        "metadata": {
+            "total_games": total_games,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "unique_mechanics": len(mechanic_counts),
+            "unique_categories": len(category_counts),
+            "formula": "ln(1.0 + N_catalog / N_feature)"
+        },
+        "mechanic_frequencies": mechanic_counts,
+        "category_frequencies": category_counts,
+        "mechanic_idf": mechanic_idf,
+        "category_idf": category_idf
+    }
+
+    if output_path:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, indent=2)
+
+    return result
+
+
 def get_feature_frequencies(catalog_df=None):
     """Downloads catalog_feature_frequencies.json from S3 or loads local bundle, with in-memory caching."""
     global FEATURE_FREQUENCIES_CACHE
@@ -147,11 +216,10 @@ def get_feature_frequencies(catalog_df=None):
     # 3. Fallback: on-the-fly generation if catalog_df is available and non-empty
     if catalog_df is not None and len(catalog_df) > 0:
         try:
-            from scripts.generate_feature_frequencies import generate_catalog_feature_frequencies
             FEATURE_FREQUENCIES_CACHE = generate_catalog_feature_frequencies(catalog_df)
             return FEATURE_FREQUENCIES_CACHE
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed on-the-fly feature frequencies generation: {e}")
 
     return {}
 

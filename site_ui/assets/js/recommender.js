@@ -149,15 +149,6 @@ document.addEventListener("DOMContentLoaded", function () {
     async function syncPreferencesToBackend() {
         if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
 
-        // Fetch current preferences first so we don't clobber fields like bgg_username
-        let currentPrefs = {};
-        try {
-            const getRes = await fetchApi('/preferences');
-            if (getRes.ok) currentPrefs = await getRes.json();
-        } catch (e) {
-            console.error("Failed fetching current preferences:", e);
-        }
-
         const weights = {
             mech: wMechInput.value,
             cat: wCatInput.value,
@@ -166,18 +157,14 @@ document.addEventListener("DOMContentLoaded", function () {
         };
 
         try {
-            // Note: playgroups is defined globally on the window in playgroup integrations
-            const playgroups = window.playgroups || [];
+            // Perform atomic partial update of saved_weights only, never overwriting playgroups or other fields
             await fetchApi('/preferences', {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    ...currentPrefs,
-                    playgroups: playgroups,
-                    saved_weights: weights,
-                    user_preferences: {}
+                    saved_weights: weights
                 })
             });
         } catch (e) {
@@ -195,7 +182,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (data.bgg_username) {
                     document.getElementById("username").value = data.bgg_username;
                 }
-                if (data.playgroups && Array.isArray(data.playgroups)) {
+                if (data.playgroups && Array.isArray(data.playgroups) && data.playgroups.length > 0) {
                     localStorage.setItem("bgg_playgroups", JSON.stringify(data.playgroups));
                 }
                 if (data.saved_weights) {
@@ -1673,7 +1660,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        syncManualPreferencesToBackend(tasteRatings, null);
         getRecommendations(true, tasteRatings, null);
     });
 
@@ -1794,8 +1780,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        const profileToSend = inlineProfile.length > 0 ? inlineProfile : null;
-        syncManualPreferencesToBackend(profileToSend, inlineWeights);
+        if (inlineWeights) {
+            syncManualPreferencesToBackend(inlineWeights);
+        }
         getRecommendations(true, profileToSend, inlineWeights);
     });
 
@@ -1914,8 +1901,8 @@ document.addEventListener("DOMContentLoaded", function () {
         return weightsObj;
     }
 
-    async function syncManualPreferencesToBackend(onboardingRatings = null, onboardingWeights = null) {
-        if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+    async function syncManualPreferencesToBackend(onboardingWeights = null) {
+        if (typeof Auth === 'undefined' || !Auth.isLoggedIn() || !onboardingWeights) return;
 
         let currentPrefs = {};
         try {
@@ -1925,30 +1912,25 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Failed fetching current preferences:", e);
         }
 
-        const updatedPrefs = {
-            ...currentPrefs,
-            playgroups: window.playgroups || [],
-            user_preferences: currentPrefs.user_preferences || {}
+        const payload = {
+            user_preferences: {
+                ...(currentPrefs.user_preferences || {}),
+                personality_weights: onboardingWeights
+            }
         };
 
-        if (onboardingRatings) {
-            updatedPrefs.onboarding_ratings = onboardingRatings;
-        }
-        if (onboardingWeights) {
-            updatedPrefs.user_preferences.personality_weights = onboardingWeights;
-        }
-
         try {
+            // Perform atomic partial update without touching playgroups
             await fetchApi('/preferences', {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(updatedPrefs)
+                body: JSON.stringify(payload)
             });
-            console.log("Successfully synced manual onboarding preferences to DynamoDB.");
+            console.log("Successfully synced personality weights to DynamoDB.");
         } catch (e) {
-            console.error("Error syncing manual onboarding preferences:", e);
+            console.error("Error syncing personality weights:", e);
         }
     }
 

@@ -59,104 +59,21 @@ Add a lightweight, unobtrusive "Score My Game" tool to the recommender page that
 
 ---
 
-## Milestone 60: Playgroup Organizer Clean Modern Redesign
+## Archived / Deferred Milestones
 
-### Objective
-Redesign the Playgroup Organizer planner view (`site_ui/groups/index.html`) with a clean, uncluttered modern layout featuring interactive attendee avatar chips, an integrated attendance counter, streamlined group header controls, and balanced two-column filter inputs.
+The following milestones have been evaluated and archived/deferred based on architectural complexity, high operational maintenance, or being superseded by simpler, more cost-effective solutions:
 
-### Design Notes
-- **Interactive Member Avatar Chips:** Replace the oversized rectangular checkbox boxes with sleek, tactile avatar chips (`[● B player1 ✓]`, `[● J player2 ✓]`, `[● T player3 ✓]`). Toggling attendance updates the chip styling with emerald accents and active checkmarks.
-- **Integrated Attendance Header:** Eliminate the empty standalone "Attendance Count" bar by embedding the live player counter directly into the section subheader (`Who is playing tonight? (3 attending)`), with clean `Select All` / `Clear` text action buttons.
-- **Streamlined Group Header:** Display the active playgroup name with a compact total member badge and clean Edit/Delete action links.
-- **Balanced Filter Controls:** Organize Pacing and Complexity dropdowns into a clean two-column grid with standardized glassmorphic input styling and a prominent, elegant `🎲 Generate Recommendations` action button.
+### Archived Milestone 35: Gamefound Crowdfunding Recommendations
+* **Status:** Archived / Deprioritized.
+* **Rationale:** Crowdfunding campaigns are temporary and time-bound. The Gamefound public API does not provide BGG IDs, requiring brittle fuzzy string title resolution with high false-positive and false-negative rates. Convention preview tracking (Milestone 19) already fulfills user interest in upcoming titles with significantly higher data reliability.
 
-### Architecture Decisions
-- **Frontend Design System Updates:** Enhance `.member-chip`, `.groups-header-actions`, and `.planner-section` styling in `site_ui/assets/css/design-system.css` and `site_ui/groups/index.html`.
-- **Vanilla JS Toggle Handlers:** Update `selectGroup`, `toggleMemberChecked`, `selectAll`, and `selectNone` in `groups/index.html` to manipulate chip classes and update the inline counter.
+### Archived Milestone 42: WebSocket Recommendation Streaming
+* **Status:** Archived / Deferred.
+* **Rationale:** Building and operating a stateful API Gateway WebSocket API with DynamoDB connection tracking (`bgg-ws-connections`) introduces substantial operational complexity. Following Milestone 44's latency optimizations (parallel S3 downloads, reduced Bedrock token limits), cold recommendation response times were reduced to 2–4 seconds and repeat queries serve from cache in <300ms. If streaming is ever pursued, HTTP Lambda Response Streaming or Server-Sent Events (SSE) avoids stateful connection management entirely.
 
-### Tasks
-- [ ] **Attendee Avatar Chip Component:** Design and style `.member-chip` with circular initials avatar, member username, checkmark indicator, and active/inactive state transitions.
-- [ ] **Inline Attendance Counter & Actions:** Redesign the attendance section header to include the inline attending badge and reposition Select All / Clear action links.
-- [ ] **Group Header Alignment:** Refactor the active group header to display group title, member count pill, and Edit/Delete action buttons in a clean row.
-- [ ] **Filter Controls & CTA Restyling:** Align Pacing and Complexity selects in a balanced grid and restyle the primary recommendation generator button.
-- [ ] **Responsive & Theme Verification:** Verify layout across dark and light modes, and ensure smooth wrapping on mobile viewports (320px–768px).
-
-
----
-
-
-## Milestone 35: Gamefound Crowdfunding Recommendations
-
-### Objective
-Integrate Gamefound's public API to discover actively crowdfunding board games and allow users to receive personalized recommendations for campaigns currently funding, bypassing BoardGameGeek's data lags and paid-widget limitations.
-
-### Design Notes
-- **Source Selection**: While Kickstarter lacks a developer API, Gamefound provides a structured, public JSON endpoint (`getActiveCrowdfundingProjects`). 
-- **Entity Resolution**: Gamefound projects do not contain BGG IDs. We will map projects to the BGG catalog by querying BGG's search API (`xmlapi2/search?query=NAME&exact=1`) using the project name.
-- **Filtering Lag**: To prevent outdated campaigns, we will store campaign start and end dates and cross-reference them against the current system time to guarantee only *active* campaigns are recommended.
-
-### Architecture Decisions
-- **Data Sync**: Implement a daily scheduled EventBridge rule triggering a Lambda function (`bgg_gamefound_sync`) that fetches active Gamefound projects, queries BGG's search API to resolve IDs, and writes the mapped JSON list to S3 (`data/gamefound_campaigns.json`).
-- **Recommender Integration**: Extend the recommender Lambda (`bgg_recommender.py`) to load the JSON list from S3, enabling users to filter or boost recommendation scoring for games that are actively crowdfunding.
-- **Frontend UI**: Add a "Crowdfunding Only" filter to the recommender parameters on the site, and display a "Crowdfunding" badge on recommendation cards with a direct link to the Gamefound campaign page.
-
-### Tasks
-- [ ] **Gamefound Sync Lambda**: Implement `bgg_gamefound_sync.py` to query the Gamefound API, resolve project titles to BGG IDs via the BGG XML API2 search endpoint, and write the active campaigns map to S3.
-- [ ] **Terraform Infrastructure**: Add Terraform resource definitions for the new Lambda function, IAM policies, and a daily CloudWatch EventBridge Trigger.
-- [ ] **Recommender Scoring Update**: Update `bgg_recommender/scoring.py` and `bgg_recommender.py` to load active campaign IDs from S3 and support an `actively_crowdfunding` filter.
-- [ ] **Frontend Checkbox & Card Badge**: Add a "Crowdfunding Only" toggle checkbox to `site_ui/recommender/index.html` and render a stylized visual badge linking to the Gamefound project on matching game cards.
-- [ ] **Verification**: Add unit tests for Gamefound endpoint parsing, BGG name matching logic (handling title normalization and expansions), and recommender integration.
-
----
-
-## Milestone 43: Collaborative Filtering Hybrid Model
-
-### Objective
-Train a collaborative filtering (CF) model on the full BGG ratings matrix and blend CF-based scores with the existing content-based Jaccard scores, dramatically improving recommendation diversity and surfacing games that content similarity alone cannot discover.
-
-### Design Notes
-- **Content-Based Ceiling:** The current scoring pipeline uses Jaccard similarity on mechanics, categories, designers, and publishers — all content features. This works well for finding mechanically similar games, but it cannot discover "users who liked X also liked Y" patterns where X and Y share no visible content features. CF captures these latent preference dimensions.
-- **Existing `ml_engine/` Foundation:** The repository already contains experimental LightFM scripts. This milestone productionizes that work into a recurring training pipeline with proper model serving.
-- **Hybrid Blend:** The composite score becomes `α * content_score + (1-α) * cf_score`, where α is a configurable weight (default 0.6 content, 0.4 CF). For cold-start users with <5 rated games, α defaults to 1.0 (pure content) since CF has insufficient signal.
-
-### Architecture Decisions
-- **Training Pipeline:** Weekly SageMaker Processing Job (or a high-memory Lambda) that reads the full user ratings data from S3, trains a LightFM or Implicit ALS model, serializes the model artifact to S3 (`data/models/cf_model.pkl`), and generates a precomputed score matrix for the top 5000 games.
-- **Serving:** The recommender Lambda loads the precomputed CF score lookup from S3 (a JSON/Parquet file mapping `{user_id: {game_id: cf_score}}`). For known users, blend CF scores with content scores. For unknown users, skip CF.
-- **EventBridge Trigger:** Add a weekly EventBridge rule to trigger the training job, similar to the existing compactor schedule.
-
-### Tasks
-- [ ] **Training Script:** Productionize the LightFM training script from `ml_engine/` into a clean, tested module. Accept S3 paths for input ratings data and output model artifact. Include hyperparameter tuning for embedding dimensions and regularization.
-- [ ] **Score Matrix Generation:** After training, generate a precomputed CF score lookup (top 500 candidate scores per user) and save to S3 as a compressed Parquet file.
-- [ ] **SageMaker / Lambda Training Job:** Configure either a SageMaker Processing Job or a high-memory (10GB, 15-min timeout) Lambda to run the training script weekly.
-- [ ] **EventBridge Schedule:** Add a weekly EventBridge trigger in the Terraform `eventbridge` module to invoke the training job.
-- [ ] **Recommender Integration:** Update `scoring.py` to load CF scores from S3, blend with content scores using configurable weight α, and fall back to pure content scoring when CF scores are unavailable for a user.
-- [ ] **Frontend Weight Slider:** Add a "Collaborative vs. Content" slider to the custom weights panel, controlling the α blend factor.
-- [ ] **Unit Tests:** Test hybrid blending, cold-start fallback, model loading failure graceful degradation, and score normalization.
-
----
-
-## Milestone 42: WebSocket Recommendation Streaming
-
-### Objective
-Replace the polling-based recommendation flow with API Gateway WebSocket connections that stream scored recommendation cards individually as they are generated, transforming perceived latency from "wait 10-30s for everything" to "first card in <2s."
-
-### Design Notes
-- **Current UX Problem:** Users submit a recommendation request and wait 10-30 seconds seeing only a spinner. The backend spends ~2-3s on scoring and ~8-15s on Bedrock narration. Users have no feedback during this time, leading to uncertainty, repeated submissions, and perceived slowness.
-- **Streaming Model:** Since the LLM is responsible for selecting the final 10 games from the top 40 candidates and deduplicating game variants/editions, we cannot stream candidates to the client before the LLM makes its selections. Instead, we use Bedrock's Converse Stream API (`converse_stream`). The Lambda function parses the LLM's JSON output stream on the fly. As soon as a complete game object (containing the selected game name and narrated reason) is parsed, the Lambda resolves it to its catalog metadata and streams the final recommended card immediately to the client. This guarantees the user only sees the final 10 selected recommendations, appearing one-by-one as they are generated by the LLM.
-- **Fallback:** If WebSocket connection fails (corporate firewalls, older browsers), fall back to the existing polling-based HTTP flow automatically.
-
-### Architecture Decisions
-- **API Gateway WebSocket API:** Create a separate WebSocket API in API Gateway (`wss://` endpoint) with `$connect`, `$disconnect`, and `$default` routes. The `$connect` route validates optional JWT auth. The `$default` route accepts recommendation request payloads.
-- **Connection Management:** Store active WebSocket connection IDs in a lightweight DynamoDB table (`bgg-ws-connections`) with a 1-hour TTL. The recommendation Lambda posts messages to connection IDs via the API Gateway Management API.
-- **Message Protocol:** Define a simple JSON message protocol: `{type: "recommendation", index: N, data: {...}}` for individual recommended cards, and `{type: "complete"}` for end-of-stream.
-
-### Tasks
-- [ ] **WebSocket API Gateway:** Create a new WebSocket API (`bgg-ws-api`) in the Terraform API Gateway module with `$connect`, `$disconnect`, and `$default` routes.
-- [ ] **Connection DynamoDB Table:** Add a `bgg-ws-connections` table with `connectionId` partition key and TTL attribute.
-- [ ] **WebSocket Lambda Handler:** Implement connection management (`$connect` stores connectionId, `$disconnect` removes it) and request routing (`$default` triggers recommendation flow with streaming output).
-- [ ] **Streaming Recommendation Pipeline:** Modify `_handle_recommendations` to accept an optional WebSocket connection ID. When present, invoke the Bedrock Converse Stream API, parse the JSON stream chunk-by-chunk on the fly, resolve each selected game to its metadata, and stream the final 10 recommendations individually via WebSockets to the client as they are generated.
-- [ ] **Frontend WebSocket Client:** Update `recommender/index.html` (or the extracted `recommender.js`) to establish a WebSocket connection, render cards as they stream in, and fall back to HTTP polling if WebSocket connection fails.
-- [ ] **Unit Tests:** Test connection lifecycle, message serialization, and HTTP fallback behavior.
+### Archived Milestone 43: Collaborative Filtering Hybrid Model
+* **Status:** Archived / Superseded.
+* **Rationale:** The experimental `ml_engine/` was officially retired and moved to `deprecated/` in Milestone 38. Training and maintaining a full collaborative filtering model across 139,000 games and sparse user ratings introduces high infrastructure complexity and cost (SageMaker jobs, large serialized artifacts, model staleness). Candidate scoring homogenization was solved serverlessly in Milestone 61 (true cosine similarity and continuous Gaussian complexity decay) and Milestone 62 (TF-IDF catalog base-rate discounting), rendering CF unnecessary for the platform's core goals.
 
 ---
 
@@ -210,6 +127,7 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 57: Async Game Night Voting & Veto Session** (Defined bgg-game-night-sessions DynamoDB table with GSI and TTL, built sessions.py consensus engine with +2/+1/-99 veto scoring and tie-breaking, created standalone vote/index.html voting page with live countdown timer, and added host poll modal & Past Polls history tab on groups/index.html)
 * **Milestone 58: Collection Browser Loading State & Skeleton Redesign** (Maintained visible persistent filter sidebar in loading state to eliminate layout jumping, rendered 8-card shimmering card grid skeleton matching default Card View)
 * **Milestone 59: User Profile Skeleton Animation & Viewport Alignment Fix** (Fixed @keyframes shimmer in design-system.css and profile/index.html to animate background-position instead of transform: translateX, eliminating offscreen lateral drift during profile dashboard load)
+* **Milestone 60: Playgroup Organizer Clean Modern Redesign** (Redesigned planner view with interactive tactile avatar chips, initials badges, emerald active indicators, inline attendance header counter with Select All / Clear actions, streamlined group header with member count pill and Edit/Delete action links, balanced two-column glassmorphic filter controls, and prominent primary recommendation button)
 * **Milestone 61: Content-Based Scoring Normalization & Popularity De-biasing** (Implemented true cosine similarity dividing tag dot products by candidate vector norms $\sqrt{|\text{cand\_tags}|}$, rebalanced default weights to w_pop=0.20, w_mech=0.60, w_cat=0.40, w_des=0.35, w_comp=0.35 in cache_utils.py and UI presets, replaced coarse complexity buckets with continuous Gaussian distance decay centered on user mean complexity with $\sigma=0.75$, upgraded diversify_candidates() to track decayed secondary tags, and verified with comprehensive unit test suite)
 * **Milestone 62: Taste Profile TF-IDF & Catalog Base-Rate Discounting** (Calculated catalog document frequencies across 139k BGG games to derive smoothed IDF factors $\ln(1 + N_{\text{catalog}} / N_f)$ in catalog_feature_frequencies.json, implemented TF-IDF discounting in bgg_taste_analytics.py and scoring.py for offline/inline parity, elevated distinctive tags over ubiquitous baseline tags, updated taste profile schema with idf_applied: true and user_mean_complexity, and added unit tests validating distinctive tag elevation, backward compatibility, and profile parity)
 * **Milestone 63: User Password Reset & Recovery Flow** (Enabled self-service client-side Cognito password recovery via ForgotPassword and ConfirmForgotPassword in utils.js, designed multi-step glassmorphic recovery views in default.html and header.html, enforced password complexity policies with real-time hints and mapped Cognito error codes to friendly messages, and added comprehensive Vitest test coverage)

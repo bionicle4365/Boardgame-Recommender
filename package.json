@@ -1,0 +1,11 @@
+{
+  "name": "boardgame-recommender-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Boardgame Recommender Workspace Root",
+  "scripts": {
+    "test": "npm --prefix site_ui test",
+    "test:ui": "npm --prefix site_ui test",
+    "test:backend": "pytest"
+  }
+}
