@@ -285,3 +285,124 @@ describe('fetchApi', () => {
     });
   });
 });
+
+describe('Password Complexity Validator (validatePassword)', () => {
+  test('rejects empty, null, or short passwords', () => {
+    expect(window.validatePassword('')).toContain('at least 8 characters');
+    expect(window.validatePassword(null)).toContain('at least 8 characters');
+    expect(window.validatePassword(undefined)).toContain('at least 8 characters');
+    expect(window.validatePassword('Ab1!')).toContain('at least 8 characters');
+  });
+
+  test('rejects passwords missing an uppercase letter', () => {
+    expect(window.validatePassword('lowercase123!')).toContain('uppercase letter');
+  });
+
+  test('rejects passwords missing a lowercase letter', () => {
+    expect(window.validatePassword('UPPERCASE123!')).toContain('lowercase letter');
+  });
+
+  test('rejects passwords missing a number', () => {
+    expect(window.validatePassword('NoNumbersHere!')).toContain('number');
+  });
+
+  test('rejects passwords missing a symbol', () => {
+    expect(window.validatePassword('NoSymbols1234')).toContain('symbol or special character');
+  });
+
+  test('accepts compliant passwords', () => {
+    expect(window.validatePassword('ValidPass123!')).toBeNull();
+    expect(window.validatePassword('Secure#2026_Boardgame')).toBeNull();
+  });
+});
+
+describe('Password Reset & Recovery Auth Flow', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('Auth.forgotPassword sends correct Cognito payload', async () => {
+    const cognitoSpy = vi.spyOn(window.Auth, 'cognitoRequest').mockResolvedValue({
+      CodeDeliveryDetails: { Destination: 'u***@example.com' }
+    });
+
+    const result = await window.Auth.forgotPassword('user@example.com');
+    expect(cognitoSpy).toHaveBeenCalledWith('AWSCognitoIdentityProviderService.ForgotPassword', {
+      ClientId: 'mock-client-id',
+      Username: 'user@example.com'
+    });
+    expect(result.CodeDeliveryDetails.Destination).toBe('u***@example.com');
+  });
+
+  test('Auth.confirmForgotPassword sends correct confirmation payload', async () => {
+    const cognitoSpy = vi.spyOn(window.Auth, 'cognitoRequest').mockResolvedValue({});
+
+    await window.Auth.confirmForgotPassword('user@example.com', '123456', 'NewPass123!');
+    expect(cognitoSpy).toHaveBeenCalledWith('AWSCognitoIdentityProviderService.ConfirmForgotPassword', {
+      ClientId: 'mock-client-id',
+      Username: 'user@example.com',
+      ConfirmationCode: '123456',
+      Password: 'NewPass123!'
+    });
+  });
+
+  test('cognitoRequest parses error code from namespaced __type', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        __type: 'com.amazonaws.cognito.identity.idp.model#CodeMismatchException',
+        message: 'Invalid code provided'
+      })
+    });
+
+    await expect(window.Auth.forgotPassword('test@example.com')).rejects.toMatchObject({
+      code: 'CodeMismatchException',
+      message: 'Invalid code provided'
+    });
+  });
+
+  test('cognitoRequest parses error code from simple __type', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        __type: 'UserNotFoundException',
+        message: 'User does not exist'
+      })
+    });
+
+    await expect(window.Auth.forgotPassword('nonexistent@example.com')).rejects.toMatchObject({
+      code: 'UserNotFoundException',
+      message: 'User does not exist'
+    });
+  });
+});
+
+describe('friendlyResetError mapping', () => {
+  test('maps known Cognito error codes correctly', () => {
+    expect(window.friendlyResetError({ code: 'UserNotFoundException' })).toBe(
+      'No account found with that email address.'
+    );
+    expect(window.friendlyResetError({ code: 'CodeMismatchException' })).toBe(
+      'The verification code is incorrect. Please check and try again.'
+    );
+    expect(window.friendlyResetError({ code: 'ExpiredCodeException' })).toBe(
+      'This verification code has expired. Please request a new one.'
+    );
+    expect(window.friendlyResetError({ code: 'LimitExceededException' })).toBe(
+      'Too many attempts. Please wait a few minutes before trying again.'
+    );
+    expect(window.friendlyResetError({ code: 'InvalidPasswordException' })).toBe(
+      'Password does not meet the requirements (min 8 chars, uppercase, lowercase, number, symbol).'
+    );
+    expect(window.friendlyResetError({ code: 'InvalidParameterException' })).toBe(
+      'Please check your input and try again.'
+    );
+  });
+
+  test('falls back to error message or default text', () => {
+    expect(window.friendlyResetError({ message: 'Custom network failure' })).toBe('Custom network failure');
+    expect(window.friendlyResetError({})).toBe('Something went wrong. Please try again.');
+    expect(window.friendlyResetError(null)).toBe('Something went wrong. Please try again.');
+  });
+});
+

@@ -85,6 +85,7 @@
                     <div class="auth-input-group">
                         <label>Password</label>
                         <input type="password" id="signup-password" placeholder="Min 8 characters" required>
+                        <div class="auth-password-hint">Min 8 chars with uppercase, lowercase, number, &amp; symbol</div>
                     </div>
                     <div class="auth-input-group">
                         <label>Confirm Password</label>
@@ -134,7 +135,7 @@
             </div>
 
             <!-- View 5: Confirm Reset Password -->
-            <div id="auth-view-reset" class="auth-view" style="display: none;">
+            <div id="auth-view-reset" class="auth-view auth-reset-container" style="display: none;">
                 <h2 class="auth-title">Set New Password</h2>
                 <p class="auth-subtitle" id="reset-instruction">Enter the recovery code sent to your email.</p>
                 <form id="auth-reset-form">
@@ -146,6 +147,7 @@
                     <div class="auth-input-group">
                         <label>New Password</label>
                         <input type="password" id="reset-password" placeholder="Min 8 chars (upper, lower, num, symbol)" required>
+                        <div class="auth-password-hint">Min 8 chars with uppercase, lowercase, number, &amp; symbol</div>
                     </div>
                     <div class="auth-input-group">
                         <label>Confirm New Password</label>

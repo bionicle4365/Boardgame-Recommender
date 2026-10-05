@@ -121,6 +121,28 @@ window.validatePassword = function(password) {
     return null; // Valid
 };
 
+// Cognito Error Code to Friendly Message Mapper
+window.friendlyResetError = function(err) {
+    if (!err) return "Something went wrong. Please try again.";
+    const code = err.code || "";
+    switch (code) {
+        case "UserNotFoundException":
+            return "No account found with that email address.";
+        case "CodeMismatchException":
+            return "The verification code is incorrect. Please check and try again.";
+        case "ExpiredCodeException":
+            return "This verification code has expired. Please request a new one.";
+        case "LimitExceededException":
+            return "Too many attempts. Please wait a few minutes before trying again.";
+        case "InvalidPasswordException":
+            return "Password does not meet the requirements (min 8 chars, uppercase, lowercase, number, symbol).";
+        case "InvalidParameterException":
+            return "Please check your input and try again.";
+        default:
+            return err.message || "Something went wrong. Please try again.";
+    }
+};
+
 // API Fetch Wrapper
 window.fetchApi = async function(endpoint, options = {}) {
     const apiUrl = "{{ site.api_url }}";

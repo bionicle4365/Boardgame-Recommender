@@ -386,6 +386,40 @@
         text-align: left;
     }
 
+    .auth-label-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .auth-forgot-link {
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .auth-success-msg {
+        background-color: var(--success-bg);
+        color: var(--success);
+        border: 1px solid var(--success-border);
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        font-weight: 500;
+        text-align: left;
+    }
+
+    .auth-password-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+        line-height: 1.3;
+    }
+
+    .auth-reset-container {
+        animation: fadeIn 0.25s ease-out;
+    }
+
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -525,17 +559,29 @@
         const viewLogin = document.getElementById("auth-view-login");
         const viewSignUp = document.getElementById("auth-view-signup");
         const viewConfirm = document.getElementById("auth-view-confirm");
+        const viewForgot = document.getElementById("auth-view-forgot");
+        const viewReset = document.getElementById("auth-view-reset");
         
         const loginForm = document.getElementById("auth-login-form");
         const signUpForm = document.getElementById("auth-signup-form");
         const confirmForm = document.getElementById("auth-confirm-form");
+        const forgotForm = document.getElementById("auth-forgot-form");
+        const resetForm = document.getElementById("auth-reset-form");
         
         const loginError = document.getElementById("login-error-msg");
         const signUpError = document.getElementById("signup-error-msg");
         const confirmError = document.getElementById("confirm-error-msg");
+        const forgotError = document.getElementById("forgot-error-msg");
+        const resetError = document.getElementById("reset-error-msg");
+        const resetSuccess = document.getElementById("reset-success-msg");
+        const resetInstruction = document.getElementById("reset-instruction");
         
         const goToSignUp = document.getElementById("go-to-signup");
         const goToLogin = document.getElementById("go-to-login");
+        const goToForgot = document.getElementById("go-to-forgot");
+        const forgotBackToLogin = document.getElementById("forgot-back-to-login");
+        const resetBackToLogin = document.getElementById("reset-back-to-login");
+        const resetResendCodeBtn = document.getElementById("reset-resend-code-btn");
         const confirmInstruction = document.getElementById("confirm-instruction");
         const resendCodeBtn = document.getElementById("resend-code-btn");
 
@@ -605,35 +651,87 @@
             loginError.style.display = "none";
             signUpError.style.display = "none";
             confirmError.style.display = "none";
+            if (forgotError) forgotError.style.display = "none";
+            if (resetError) resetError.style.display = "none";
+            if (resetSuccess) resetSuccess.style.display = "none";
+        }
+
+        function hideAllViews() {
+            viewLogin.style.display = "none";
+            viewSignUp.style.display = "none";
+            viewConfirm.style.display = "none";
+            if (viewForgot) viewForgot.style.display = "none";
+            if (viewReset) viewReset.style.display = "none";
         }
 
         function showLoginView() {
+            hideAllViews();
             viewLogin.style.display = "block";
-            viewSignUp.style.display = "none";
-            viewConfirm.style.display = "none";
             clearErrors();
         }
 
         function showSignUpView() {
-            viewLogin.style.display = "none";
+            hideAllViews();
             viewSignUp.style.display = "block";
-            viewConfirm.style.display = "none";
             clearErrors();
         }
 
         function showConfirmView(email) {
             activeEmail = email;
             confirmInstruction.innerHTML = `We sent a verification code to <strong>${email}</strong>.`;
-            viewLogin.style.display = "none";
-            viewSignUp.style.display = "none";
+            hideAllViews();
             viewConfirm.style.display = "block";
             clearErrors();
+        }
+
+        function showForgotView(email) {
+            activeEmail = email || "";
+            if (email) document.getElementById("forgot-email").value = email;
+            hideAllViews();
+            viewForgot.style.display = "block";
+            clearErrors();
+        }
+
+        function showResetView(email) {
+            activeEmail = email;
+            resetInstruction.innerHTML = `Enter the recovery code sent to <strong>${email}</strong>.`;
+            hideAllViews();
+            viewReset.style.display = "block";
+            clearErrors();
+        }
+
+        // Map Cognito error codes to user-friendly messages
+        function friendlyResetError(err) {
+            if (window.friendlyResetError) return window.friendlyResetError(err);
+            const code = err.code || "";
+            switch (code) {
+                case "UserNotFoundException":
+                    return "No account found with that email address.";
+                case "CodeMismatchException":
+                    return "The verification code is incorrect. Please check and try again.";
+                case "ExpiredCodeException":
+                    return "This verification code has expired. Please request a new one.";
+                case "LimitExceededException":
+                    return "Too many attempts. Please wait a few minutes before trying again.";
+                case "InvalidPasswordException":
+                    return "Password does not meet the requirements (min 8 chars, uppercase, lowercase, number, symbol).";
+                case "InvalidParameterException":
+                    return "Please check your input and try again.";
+                default:
+                    return err.message || "Something went wrong. Please try again.";
+            }
         }
 
         if (loginBtn) loginBtn.addEventListener("click", openModal);
         if (authModalClose) authModalClose.addEventListener("click", closeModal);
         if (goToSignUp) goToSignUp.addEventListener("click", showSignUpView);
         if (goToLogin) goToLogin.addEventListener("click", showLoginView);
+        if (goToForgot) goToForgot.addEventListener("click", function() {
+            const email = document.getElementById("login-email").value.trim();
+            showForgotView(email);
+        });
+        if (forgotBackToLogin) forgotBackToLogin.addEventListener("click", showLoginView);
+        if (resetBackToLogin) resetBackToLogin.addEventListener("click", showLoginView);
         
         // Handle login modal dismissal on background click
         authModal.addEventListener("click", function(e) {
@@ -695,6 +793,13 @@
                 return;
             }
 
+            const pwError = window.validatePassword ? window.validatePassword(password) : null;
+            if (pwError) {
+                signUpError.textContent = pwError;
+                signUpError.style.display = "block";
+                return;
+            }
+
             try {
                 await Auth.cognitoRequest("AWSCognitoIdentityProviderService.SignUp", {
                     ClientId: COGNITO_CLIENT_ID,
@@ -747,6 +852,100 @@
                     console.error("Resend code failed:", err);
                     confirmError.textContent = err.message || "Failed to resend code.";
                     confirmError.style.display = "block";
+                }
+            });
+        }
+
+        // 5. Submit Forgot Password Form (send recovery code)
+        if (forgotForm) {
+            forgotForm.addEventListener("submit", async function(e) {
+                e.preventDefault();
+                forgotError.style.display = "none";
+                const email = document.getElementById("forgot-email").value.trim();
+                const submitBtn = document.getElementById("forgot-submit-btn");
+
+                try {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = "Sending...";
+                    await Auth.forgotPassword(email);
+                    activeEmail = email;
+                    showResetView(email);
+                } catch (err) {
+                    console.error("Forgot password failed:", err);
+                    forgotError.textContent = friendlyResetError(err);
+                    forgotError.style.display = "block";
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Send Recovery Code";
+                }
+            });
+        }
+
+        // 6. Submit Reset Password Form (confirm new password)
+        if (resetForm) {
+            resetForm.addEventListener("submit", async function(e) {
+                e.preventDefault();
+                resetError.style.display = "none";
+                resetSuccess.style.display = "none";
+                const code = document.getElementById("reset-code").value.trim();
+                const newPassword = document.getElementById("reset-password").value;
+                const confirmPassword = document.getElementById("reset-confirm-password").value;
+                const submitBtn = document.getElementById("reset-submit-btn");
+
+                // Client-side validation
+                if (newPassword !== confirmPassword) {
+                    resetError.textContent = "Passwords do not match.";
+                    resetError.style.display = "block";
+                    return;
+                }
+
+                const pwError = window.validatePassword(newPassword);
+                if (pwError) {
+                    resetError.textContent = pwError;
+                    resetError.style.display = "block";
+                    return;
+                }
+
+                try {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = "Resetting...";
+                    await Auth.confirmForgotPassword(activeEmail, code, newPassword);
+                    resetSuccess.textContent = "Password reset successfully! Redirecting to log in...";
+                    resetSuccess.style.display = "block";
+                    resetError.style.display = "none";
+                    submitBtn.style.display = "none";
+                    document.getElementById("reset-code").value = "";
+                    document.getElementById("reset-password").value = "";
+                    document.getElementById("reset-confirm-password").value = "";
+                    // Pre-fill login email and transition after a short delay
+                    setTimeout(function() {
+                        document.getElementById("login-email").value = activeEmail;
+                        showLoginView();
+                        submitBtn.style.display = "";
+                    }, 2000);
+                } catch (err) {
+                    console.error("Reset password failed:", err);
+                    resetError.textContent = friendlyResetError(err);
+                    resetError.style.display = "block";
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Reset Password";
+                }
+            });
+        }
+
+        // 7. Resend Recovery Code from Reset View
+        if (resetResendCodeBtn) {
+            resetResendCodeBtn.addEventListener("click", async function() {
+                resetError.style.display = "none";
+                try {
+                    await Auth.forgotPassword(activeEmail);
+                    resetSuccess.textContent = "A new recovery code has been sent to your email.";
+                    resetSuccess.style.display = "block";
+                } catch (err) {
+                    console.error("Resend recovery code failed:", err);
+                    resetError.textContent = friendlyResetError(err);
+                    resetError.style.display = "block";
                 }
             });
         }
