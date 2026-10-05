@@ -17,4 +17,6 @@ node_modules/
 **/.env*.local
 **/_config.local.yml
 **/*_config.local.yml
-*.local.yml
+*.local.yml
+**/catalog_feature_frequencies.json
+

@@ -176,8 +176,8 @@ window.fetchApi = async function(endpoint, options = {}) {
         let data;
         if (endpoint.startsWith('/conventions')) {
             data = [
-                { "convention_id": "gencon-2026", "name": "Gen Con 2026" },
-                { "convention_id": "essen-2026", "name": "Essen Spiel 2026" }
+                { "convention_id": "spielessen2026", "name": "SPIEL Essen 2026", "date": "2026-10-25", "game_count": 1166 },
+                { "convention_id": "paxunplugged2026", "name": "PAX Unplugged 2026 Preview", "date": "2026-12-06", "game_count": 135 }
             ];
         } else if (endpoint.startsWith('/recommendations')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1]);

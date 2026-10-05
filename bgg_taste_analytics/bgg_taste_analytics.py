@@ -131,7 +131,7 @@ def get_feature_frequencies(catalog_df=None):
     # 2. Try bundled/local file
     bundled_paths = [
         os.path.join(os.path.dirname(__file__), "catalog_feature_frequencies.json"),
-        os.path.join(os.path.dirname(__file__), "..", "data", "catalog_feature_frequencies.json"),
+        os.path.join(os.path.dirname(__file__), "..", "scratch", "catalog_feature_frequencies.json"),
         local_path
     ]
     for bp in bundled_paths:

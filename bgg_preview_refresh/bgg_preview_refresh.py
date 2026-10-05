@@ -17,12 +17,14 @@ def lambda_handler(event, context):
     local_games_path = "/tmp/active_previews_games.json"
     
     conventions = []
+    config_exists = True
     try:
         print(f"Downloading {config_key} from S3 bucket {bucket}...")
         s3.download_file(bucket, config_key, local_config_path)
         with open(local_config_path, 'r', encoding='utf-8') as f:
             conventions = json.load(f)
     except Exception as e:
+        config_exists = False
         print(f"No existing config found in S3 or error downloading it: {e}. Starting fresh discovery.")
         
     # Download existing games map or initialize empty
@@ -125,9 +127,22 @@ def lambda_handler(event, context):
             print(f"  Error checking ID {next_id}: {e}. Stopping search.")
             break
             
-    # Add newly discovered conventions to active list
+    # Classify newly discovered conventions into active or passed
     if discovered_convs:
-        active_convs.extend(discovered_convs)
+        for conv in discovered_convs:
+            date_str = conv.get("date")
+            is_past = False
+            try:
+                conv_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                if conv_date < current_date:
+                    is_past = True
+            except Exception as date_err:
+                print(f"Warning: Failed to parse date '{date_str}' for discovered {conv.get('convention_id')}: {date_err}")
+
+            if is_past:
+                passed_convs.append(conv)
+            else:
+                active_convs.append(conv)
         
     # Construct final conventions list to save
     conventions_to_save = []
@@ -145,7 +160,7 @@ def lambda_handler(event, context):
     original_ids = sorted(conv.get("previewid") for conv in conventions)
     to_save_ids = sorted(conv.get("previewid") for conv in conventions_to_save)
     
-    config_updated = (original_ids != to_save_ids)
+    config_updated = (original_ids != to_save_ids) or (not config_exists and bool(conventions_to_save))
     
     # We will fetch items ONLY for conventions in conventions_to_save that are NOT passed (stale)
     passed_ids = {c.get("convention_id") for c in passed_convs}

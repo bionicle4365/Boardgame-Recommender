@@ -93,7 +93,10 @@ def generate_catalog_feature_frequencies(catalog_df, output_path=None):
 def main():
     parser = argparse.ArgumentParser(description="Generate catalog feature frequencies and IDF weights.")
     parser.add_argument("--catalog", default="scratch/catalog.parquet", help="Path to catalog parquet file")
-    parser.add_argument("--output", default="data/catalog_feature_frequencies.json", help="Path to write JSON output")
+    parser.add_argument("--output", default="scratch/catalog_feature_frequencies.json", help="Path to write local JSON output")
+    parser.add_argument("--upload-s3", action="store_true", default=False, help="Upload output directly to S3")
+    parser.add_argument("--s3-bucket", default=os.environ.get("S3_OUTPUT_BUCKET_NAME", "boardgame-app"), help="S3 bucket for upload")
+    parser.add_argument("--s3-key", default="data/catalog_feature_frequencies.json", help="S3 key destination")
     parser.add_argument("--bundle", action="store_true", default=False, help="Also copy to bgg_recommender and bgg_taste_analytics")
     args = parser.parse_args()
 
@@ -111,7 +114,14 @@ def main():
     print("Calculating mechanic and category document frequencies...")
     result = generate_catalog_feature_frequencies(df, output_path=output_path)
     print(f"Generated frequencies for {len(result['mechanics'])} mechanics and {len(result['categories'])} categories.")
-    print(f"Saved primary asset to: {output_path}")
+    print(f"Saved local artifact to: {output_path}")
+
+    if args.upload_s3:
+        import boto3
+        s3 = boto3.client("s3")
+        print(f"Uploading feature frequencies to s3://{args.s3_bucket}/{args.s3_key}...")
+        s3.upload_file(output_path, args.s3_bucket, args.s3_key)
+        print("S3 upload complete.")
 
     if args.bundle:
         bundle_targets = [
