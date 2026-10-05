@@ -34,6 +34,8 @@ def reset_globals():
     bgg_recommender.PREVIEWS_CACHE_TIME = None
     bgg_recommender.PREVIEWS_GAMES_CACHE = None
     bgg_recommender.PREVIEWS_GAMES_CACHE_TIME = None
+    bgg_recommender.FEATURE_FREQUENCIES_CACHE = None
+    bgg_recommender.FEATURE_FREQUENCIES_CACHE_TIME = None
     yield
 
 def test_safe_list():
@@ -352,3 +354,48 @@ def test_parse_weights():
     assert w_malformed['w_pop'] == 0.20
     assert w_malformed['w_des'] == 0.35
     assert w_malformed['w_comp'] == 0.35
+
+
+@patch('cache_utils._s3')
+def test_get_feature_frequencies_s3(mock_s3):
+    mock_data = {
+        "total_games": 500,
+        "mechanics": {"Dice Rolling": 200},
+        "categories": {"Card Game": 150},
+        "mechanic_idf": {"Dice Rolling": 1.25},
+        "category_idf": {"Card Game": 1.45}
+    }
+
+    def mock_download(bucket, key, local_path):
+        import json
+        with open(local_path, 'w', encoding='utf-8') as f:
+            json.dump(mock_data, f)
+
+    mock_s3().download_file.side_effect = mock_download
+
+    res = cache_utils.get_feature_frequencies()
+    assert res["total_games"] == 500
+    assert res["mechanic_idf"]["Dice Rolling"] == 1.25
+    mock_s3().download_file.assert_called_once()
+
+    # Verify in-memory cache hit
+    mock_s3().download_file.reset_mock()
+    res2 = cache_utils.get_feature_frequencies()
+    assert res2 == res
+    mock_s3().download_file.assert_not_called()
+
+
+def test_apply_feature_idf_cache_utils():
+    freqs = {
+        "total_games": 1000,
+        "mechanic_idf": {"Hand Management": 2.0},
+        "category_idf": {"Card Game": 1.5}
+    }
+    raw_m = {"Hand Management": 3.0}
+    raw_c = {"Card Game": 2.0}
+
+    weighted_m = cache_utils.apply_feature_idf(raw_m, "mechanics", freqs)
+    weighted_c = cache_utils.apply_feature_idf(raw_c, "categories", freqs)
+
+    assert weighted_m["Hand Management"] == 6.0
+    assert weighted_c["Card Game"] == 3.0

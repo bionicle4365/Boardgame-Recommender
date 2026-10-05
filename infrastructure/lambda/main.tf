@@ -111,7 +111,7 @@ resource "aws_lambda_function" "bgg_compactor" {
   package_type  = "Image"
   image_uri     = "${var.bgg_compactor_ecr_url}:latest"
   timeout       = 900
-  memory_size   = 3008
+  memory_size   = 6144
 
   environment {
     variables = {

@@ -20,10 +20,13 @@ PREVIEWS_CACHE = None
 PREVIEWS_CACHE_TIME = None
 PREVIEWS_GAMES_CACHE = None
 PREVIEWS_GAMES_CACHE_TIME = None
+FEATURE_FREQUENCIES_CACHE = None
+FEATURE_FREQUENCIES_CACHE_TIME = None
 
 from cache_utils import (
     logger, bucket,
     safe_list, get_catalog, get_active_previews, get_active_previews_games,
+    get_feature_frequencies,
     get_bgg_hotness, get_user_profile_status, trigger_background_scrape,
     get_cached_recommendations, save_recommendations_to_cache,
     build_game_metadata, validate_username, parse_weights,

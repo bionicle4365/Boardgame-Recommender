@@ -86,6 +86,8 @@ PREVIEWS_CACHE = None
 PREVIEWS_CACHE_TIME = None
 PREVIEWS_GAMES_CACHE = None
 PREVIEWS_GAMES_CACHE_TIME = None
+FEATURE_FREQUENCIES_CACHE = None
+FEATURE_FREQUENCIES_CACHE_TIME = None
 
 
 def safe_list(val):
@@ -195,6 +197,98 @@ def get_catalog():
     except Exception as e:
         logger.error(f"Error loading catalog database: {e}")
         return None
+
+
+def get_feature_frequencies(catalog_df=None, ttl_seconds=86400):
+    """
+    Downloads catalog_feature_frequencies.json from S3 or loads local bundle.
+    Caches the frequencies in memory for warm starts.
+    """
+    import bgg_recommender
+    now = time.time()
+    cached = getattr(bgg_recommender, 'FEATURE_FREQUENCIES_CACHE', None)
+    cached_time = getattr(bgg_recommender, 'FEATURE_FREQUENCIES_CACHE_TIME', None)
+    if cached is not None and cached_time is not None and (now - cached_time) < ttl_seconds:
+        return cached
+
+    key = "data/catalog_feature_frequencies.json"
+    local_path = "/tmp/catalog_feature_frequencies.json"
+
+    # 1. Try S3 download
+    try:
+        _s3().download_file(bucket, key, local_path)
+        with open(local_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        bgg_recommender.FEATURE_FREQUENCIES_CACHE = data
+        bgg_recommender.FEATURE_FREQUENCIES_CACHE_TIME = now
+        logger.info(f"Successfully loaded and cached catalog feature frequencies from S3 ({data.get('total_games', 0)} games).")
+        return data
+    except Exception as e:
+        logger.info(f"Could not load feature frequencies from S3: {e}")
+
+    # 2. Try bundled/local file
+    bundled_paths = [
+        os.path.join(os.path.dirname(__file__), "catalog_feature_frequencies.json"),
+        os.path.join(os.path.dirname(__file__), "..", "data", "catalog_feature_frequencies.json"),
+        local_path
+    ]
+    for bp in bundled_paths:
+        if os.path.exists(bp):
+            try:
+                with open(bp, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                bgg_recommender.FEATURE_FREQUENCIES_CACHE = data
+                bgg_recommender.FEATURE_FREQUENCIES_CACHE_TIME = now
+                logger.info(f"Successfully loaded catalog feature frequencies from bundle: {bp}")
+                return data
+            except Exception as e:
+                logger.warning(f"Failed to read bundled feature frequencies at {bp}: {e}")
+
+    # 3. Fallback: on-the-fly generation if catalog_df is available and non-empty
+    if catalog_df is not None and len(catalog_df) > 0:
+        try:
+            from scripts.generate_feature_frequencies import generate_catalog_feature_frequencies
+            data = generate_catalog_feature_frequencies(catalog_df)
+            bgg_recommender.FEATURE_FREQUENCIES_CACHE = data
+            bgg_recommender.FEATURE_FREQUENCIES_CACHE_TIME = now
+            return data
+        except Exception:
+            pass
+
+    return getattr(bgg_recommender, 'FEATURE_FREQUENCIES_CACHE', None) or {}
+
+
+def apply_feature_idf(damped_weights, feature_type, feature_frequencies):
+    """
+    Applies Inverse Document Frequency (IDF) weighting to damped affinities:
+        Score = damped_score * IDF(feature)
+    where IDF(feature) = ln(1.0 + N_catalog / max(1, N_feature)).
+    """
+    if not feature_frequencies or not damped_weights:
+        return damped_weights
+
+    if feature_type in ("categories", "category"):
+        idf_key = "category_idf"
+    elif feature_type in ("mechanics", "mechanic"):
+        idf_key = "mechanic_idf"
+    else:
+        idf_key = f"{feature_type}_idf"
+    precomputed_idfs = feature_frequencies.get(idf_key, {})
+
+    total_games = feature_frequencies.get("total_games", 0)
+    counts = feature_frequencies.get(feature_type, {})
+
+    weighted = {}
+    for item, w in damped_weights.items():
+        if item in precomputed_idfs:
+            idf = float(precomputed_idfs[item])
+        elif total_games > 0:
+            count = counts.get(item, 0)
+            idf = math.log(1.0 + total_games / max(1, count))
+        else:
+            idf = 1.0
+        weighted[item] = round(w * idf, 2)
+    return weighted
 
 
 def get_user_profile_status(username, ttl_hours=24):

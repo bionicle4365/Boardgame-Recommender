@@ -84,30 +84,6 @@ Redesign the Playgroup Organizer planner view (`site_ui/groups/index.html`) with
 
 ---
 
-## Milestone 62: Taste Profile TF-IDF & Catalog Base-Rate Discounting
-
-### Objective
-Eliminate ubiquitous baseline noise from user taste profiles by applying Inverse Document Frequency (IDF) discounting based on BGG catalog mechanic and category frequencies, elevating users' distinctive preferences over ubiquitous tags.
-
-### Design Notes
-- **The Ubiquity Problem:** Ubiquitous mechanics ("Hand Management", "Solo / Solitaire Game", "Variable Player Powers") appear in 30–40% of all hobby board games. Because `calculate_damped_affinity()` applies logarithmic amplification $(1 + \alpha \ln(n))$, ubiquitous mechanics receive high multipliers while unique, distinctive mechanics (e.g., "Paper-and-Pencil", "Sealed Bid Auction", "Trick-taking") receive low multipliers. This causes raw taste profiles between different users to have ~90% cosine similarity.
-- **TF-IDF Representation:** By calculating catalog-wide document frequencies $P(m) = N_m / N_{\text{catalog}}$ and applying an IDF factor $\text{IDF}(m) = \ln(1 + N_{\text{catalog}} / N_m)$, common mechanics are appropriately dampened while distinctive tastes are amplified.
-- **Offline & Inline Parity:** Ensure identical TF-IDF logic is shared between the background analytics pipeline (`bgg_taste_analytics.py`) and the on-the-fly computation fallback (`compute_taste_profile_inline()` in `scoring.py`).
-
-### Architecture Decisions
-- **Catalog Frequencies Precomputation:** Precompute mechanic and category document frequencies from `catalog.parquet` and persist as an S3 asset (`data/catalog_feature_frequencies.json`) or bundle directly within the recommender layer.
-- **IDF Profile Generation:** In `bgg_taste_analytics.py` and `scoring.py`, multiply raw damped affinities by the feature's IDF weight before finalizing user taste profile vectors.
-- **Backward Compatibility:** Store both raw and IDF-weighted profiles or include IDF multipliers directly in taste profile JSON output so downstream consumers remain compatible.
-
-### Tasks
-- [ ] **Catalog Feature Frequencies Generator:** Create an automated task or helper to calculate category and mechanic frequencies across the BGG catalog parquet and save `catalog_feature_frequencies.json`.
-- [ ] **TF-IDF Damping in `bgg_taste_analytics.py`:** Update `process_taste_profile()` to load feature frequencies and apply IDF weighting to mechanic and category affinities.
-- [ ] **Inline Taste Profile Parity in `scoring.py`:** Update `compute_taste_profile_inline()` to apply the same catalog frequency discounting.
-- [ ] **Taste Profile Schema Update:** Update taste profile JSON structure and document new metadata fields (`user_mean_complexity`, `idf_applied: true`).
-- [ ] **Unit Tests:** Add unit tests in `test_bgg_taste_analytics.py` and `test_bgg_recommender.py` validating that distinctive mechanics rank above ubiquitous mechanics for specialized collections and verifying profile parity.
-
----
-
 ## Milestone 35: Gamefound Crowdfunding Recommendations
 
 ### Objective
@@ -190,6 +166,5 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 50: Local Development Environment** (Gitignored _config.local.yml and .env.local overrides, gen_local_config.py generator script, comprehensive LOCAL_DEVELOPMENT.md guide, and enhanced offline mock API handlers for /profile, /groups, and /preferences)
 * **Milestone 57: Async Game Night Voting & Veto Session** (Defined bgg-game-night-sessions DynamoDB table with GSI and TTL, built sessions.py consensus engine with +2/+1/-99 veto scoring and tie-breaking, created standalone vote/index.html voting page with live countdown timer, and added host poll modal & Past Polls history tab on groups/index.html)
 * **Milestone 61: Content-Based Scoring Normalization & Popularity De-biasing** (Implemented true cosine similarity dividing tag dot products by candidate vector norms $\sqrt{|\text{cand\_tags}|}$, rebalanced default weights to w_pop=0.20, w_mech=0.60, w_cat=0.40, w_des=0.35, w_comp=0.35 in cache_utils.py and UI presets, replaced coarse complexity buckets with continuous Gaussian distance decay centered on user mean complexity with $\sigma=0.75$, upgraded diversify_candidates() to track decayed secondary tags, and verified with comprehensive unit test suite)
-
-
+* **Milestone 62: Taste Profile TF-IDF & Catalog Base-Rate Discounting** (Calculated catalog document frequencies across 139k BGG games to derive smoothed IDF factors $\ln(1 + N_{\text{catalog}} / N_f)$ in catalog_feature_frequencies.json, implemented TF-IDF discounting in bgg_taste_analytics.py and scoring.py for offline/inline parity, elevated distinctive tags over ubiquitous baseline tags, updated taste profile schema with idf_applied: true and user_mean_complexity, and added unit tests validating distinctive tag elevation, backward compatibility, and profile parity)
 

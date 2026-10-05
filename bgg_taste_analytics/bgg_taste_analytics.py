@@ -43,8 +43,9 @@ except ImportError:
 s3 = boto3.client('s3')
 bucket = os.environ.get('S3_OUTPUT_BUCKET_NAME', 'boardgame-app')
 
-# In-memory cache for catalog
+# In-memory cache for catalog and feature frequencies
 CATALOG_CACHE = None
+FEATURE_FREQUENCIES_CACHE = None
 
 def get_catalog():
     """Downloads catalog.parquet from S3 and caches it in memory."""
@@ -107,8 +108,91 @@ def calculate_damped_affinity(weights_sum, counts, alpha=0.3):
         damped[item] = round(avg_w * (1.0 + alpha * math.log(n)), 2)
     return damped
 
+def get_feature_frequencies(catalog_df=None):
+    """Downloads catalog_feature_frequencies.json from S3 or loads local bundle, with in-memory caching."""
+    global FEATURE_FREQUENCIES_CACHE
+    if FEATURE_FREQUENCIES_CACHE is not None:
+        return FEATURE_FREQUENCIES_CACHE
+
+    key = "data/catalog_feature_frequencies.json"
+    local_path = "/tmp/catalog_feature_frequencies.json"
+
+    # 1. Try S3 download
+    try:
+        logger.info(f"Fetching catalog feature frequencies from S3: {key}")
+        s3.download_file(bucket, key, local_path)
+        with open(local_path, 'r', encoding='utf-8') as f:
+            FEATURE_FREQUENCIES_CACHE = json.load(f)
+            logger.info(f"Loaded feature frequencies from S3 ({FEATURE_FREQUENCIES_CACHE.get('total_games', 0)} catalog games).")
+            return FEATURE_FREQUENCIES_CACHE
+    except Exception as e:
+        logger.info(f"Could not load feature frequencies from S3: {e}")
+
+    # 2. Try bundled/local file
+    bundled_paths = [
+        os.path.join(os.path.dirname(__file__), "catalog_feature_frequencies.json"),
+        os.path.join(os.path.dirname(__file__), "..", "data", "catalog_feature_frequencies.json"),
+        local_path
+    ]
+    for bp in bundled_paths:
+        if os.path.exists(bp):
+            try:
+                with open(bp, 'r', encoding='utf-8') as f:
+                    FEATURE_FREQUENCIES_CACHE = json.load(f)
+                    logger.info(f"Loaded feature frequencies from bundled file: {bp}")
+                    return FEATURE_FREQUENCIES_CACHE
+            except Exception as e:
+                logger.warning(f"Failed to read bundled feature frequencies at {bp}: {e}")
+
+    # 3. Fallback: on-the-fly generation if catalog_df is available and non-empty
+    if catalog_df is not None and len(catalog_df) > 0:
+        try:
+            from scripts.generate_feature_frequencies import generate_catalog_feature_frequencies
+            FEATURE_FREQUENCIES_CACHE = generate_catalog_feature_frequencies(catalog_df)
+            return FEATURE_FREQUENCIES_CACHE
+        except Exception:
+            pass
+
+    return {}
+
+def apply_feature_idf(damped_weights, feature_type, feature_frequencies):
+    """
+    Applies Inverse Document Frequency (IDF) weighting to damped affinities:
+        Score = damped_score * IDF(feature)
+    where IDF(feature) = ln(1.0 + N_catalog / max(1, N_feature)).
+    """
+    if not feature_frequencies or not damped_weights:
+        return damped_weights
+
+    if feature_type in ("categories", "category"):
+        idf_key = "category_idf"
+    elif feature_type in ("mechanics", "mechanic"):
+        idf_key = "mechanic_idf"
+    else:
+        idf_key = f"{feature_type}_idf"
+    precomputed_idfs = feature_frequencies.get(idf_key, {})
+
+    total_games = feature_frequencies.get("total_games", 0)
+    counts = feature_frequencies.get(feature_type, {})
+
+    weighted = {}
+    for item, w in damped_weights.items():
+        if item in precomputed_idfs:
+            idf = float(precomputed_idfs[item])
+        elif total_games > 0:
+            count = counts.get(item, 0)
+            idf = math.log(1.0 + total_games / max(1, count))
+        else:
+            idf = 1.0
+        weighted[item] = round(w * idf, 2)
+    return weighted
+
 def process_taste_profile(username):
-    """Calculates and uploads the taste profile JSON for a single user."""
+    """
+    Calculates and uploads the taste profile JSON for a single user.
+    Applies logarithmic damping followed by catalog TF-IDF discounting to elevate
+    distinctive mechanics and categories over ubiquitous baseline tags.
+    """
     logger.info(f"Generating taste profile for user: {username}")
 
     user_key = f"data/users/{username}.parquet"
@@ -134,6 +218,8 @@ def process_taste_profile(username):
 
     mech_weights = {}
     cat_weights = {}
+    raw_mech_weights = {}
+    raw_cat_weights = {}
     designer_weights = {}
     publisher_weights = {}
     complexity_weights = {
@@ -148,6 +234,7 @@ def process_taste_profile(username):
         "Medium-Heavy": 0,
         "Heavy": 0
     }
+    user_mean_complexity = 2.4
 
     if not liked_joined.empty:
         # Default complexity fallback if none of the games have complexity data
@@ -239,10 +326,15 @@ def process_taste_profile(username):
                     complexity_counts[comp_bucket] += 1
 
         # Apply logarithmic damping to all rating-weighted affinity vectors
-        mech_weights = calculate_damped_affinity(mech_weights_raw, mech_counts)
-        cat_weights = calculate_damped_affinity(cat_weights_raw, cat_counts)
+        raw_mech_weights = calculate_damped_affinity(mech_weights_raw, mech_counts)
+        raw_cat_weights = calculate_damped_affinity(cat_weights_raw, cat_counts)
         designer_weights = calculate_damped_affinity(designer_weights_raw, designer_counts)
         publisher_weights = calculate_damped_affinity(publisher_weights_raw, publisher_counts)
+
+        # Apply catalog feature frequency IDF discounting
+        feature_frequencies = get_feature_frequencies(catalog_df=catalog_df)
+        mech_weights = apply_feature_idf(raw_mech_weights, "mechanics", feature_frequencies)
+        cat_weights = apply_feature_idf(raw_cat_weights, "categories", feature_frequencies)
 
         # Compute averages for complexity weights if we had valid complexity data
         if complexity_count > 0:
@@ -258,10 +350,13 @@ def process_taste_profile(username):
     profile = {
         "mech_weights": mech_weights,
         "cat_weights": cat_weights,
+        "raw_mech_weights": raw_mech_weights,
+        "raw_cat_weights": raw_cat_weights,
         "complexity_weights": complexity_weights,
         "user_mean_complexity": user_mean_complexity,
         "designer_weights": designer_weights,
         "publisher_weights": publisher_weights,
+        "idf_applied": True,
         "generated_at": datetime.now(timezone.utc).isoformat()
     }
 

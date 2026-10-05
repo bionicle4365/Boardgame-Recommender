@@ -37,6 +37,8 @@ import bgg_recommender
 def reset_globals():
     # Reset in-memory cache before each test
     bgg_recommender.CATALOG_CACHE = None
+    bgg_recommender.FEATURE_FREQUENCIES_CACHE = None
+    bgg_recommender.FEATURE_FREQUENCIES_CACHE_TIME = None
     yield
 
 def test_safe_list():
@@ -1668,7 +1670,7 @@ def test_inline_taste_profile_damping():
     ])
 
     m_w, c_w, u_d, u_p, comp_w = scoring.compute_taste_profile_inline(
-        user_df, catalog_df, ["user1"], {}
+        user_df, catalog_df, ["user1"], {}, apply_idf=False
     )
 
     # For cat1, des1, pub1: n=2, weights=(4.0+2.0)=6.0, avg=3.0 -> 3.0 * (1 + 0.3 * ln(2)) = 3.62
@@ -1823,6 +1825,218 @@ def test_milestone_61_multi_tag_diversification():
     assert 2 in result_ids
     assert 3 in result_ids
     assert 4 not in result_ids
+
+
+def test_milestone_62_inline_distinctive_tag_elevation():
+    import scoring
+
+    # Build collection with 10 ubiquitous games (Hand Management) and 3 distinctive games (Trick-taking)
+    user_records = []
+    catalog_records = []
+
+    for i in range(1, 11):
+        g_id = f"hm_{i}"
+        user_records.append({"id": g_id, "username": "player1", "rating": 8.0, "own": True})
+        catalog_records.append({
+            "id": g_id, "name": f"HM Game {i}", "categories": ["Card Game"],
+            "mechanics": ["Hand Management"], "rating": 7.5, "complexity": 2.5,
+            "designers": ["Des A"], "publishers": ["Pub A"]
+        })
+
+    for i in range(1, 4):
+        g_id = f"tt_{i}"
+        user_records.append({"id": g_id, "username": "player1", "rating": 8.0, "own": True})
+        catalog_records.append({
+            "id": g_id, "name": f"TT Game {i}", "categories": ["Trick-taking Category"],
+            "mechanics": ["Trick-taking"], "rating": 8.0, "complexity": 2.5,
+            "designers": ["Des B"], "publishers": ["Pub B"]
+        })
+
+    user_df = pd.DataFrame(user_records)
+    catalog_df = pd.DataFrame(catalog_records)
+
+    custom_freqs = {
+        "total_games": 139123,
+        "mechanic_idf": {
+            "Hand Management": 2.1851,
+            "Trick-taking": 3.8620
+        },
+        "category_idf": {
+            "Card Game": 1.4901,
+            "Trick-taking Category": 4.5000
+        }
+    }
+
+    # 1. Raw damping test (apply_idf=False): Hand Management ranks ABOVE Trick-taking
+    m_raw, c_raw, _, _, _ = scoring.compute_taste_profile_inline(
+        user_df, catalog_df, ["player1"], {}, feature_frequencies=custom_freqs, apply_idf=False
+    )
+    assert m_raw["Hand Management"] == 5.07
+    assert m_raw["Trick-taking"] == 3.99
+    assert m_raw["Hand Management"] > m_raw["Trick-taking"]
+
+    # 2. IDF-weighted test (apply_idf=True): Trick-taking is elevated ABOVE Hand Management
+    m_idf, c_idf, _, _, _ = scoring.compute_taste_profile_inline(
+        user_df, catalog_df, ["player1"], {}, feature_frequencies=custom_freqs, apply_idf=True
+    )
+    assert m_idf["Hand Management"] == 11.08
+    assert m_idf["Trick-taking"] == 15.41
+    assert m_idf["Trick-taking"] > m_idf["Hand Management"]
+    assert c_idf["Trick-taking Category"] > c_idf["Card Game"]
+
+
+def test_milestone_62_offline_inline_profile_parity():
+    import scoring
+    import bgg_taste_analytics
+
+    user_records = [
+        {"id": "1", "username": "user_p", "rating": 9.0, "own": True},
+        {"id": "2", "username": "user_p", "rating": 8.0, "own": True},
+        {"id": "3", "username": "user_p", "rating": 7.0, "own": True},
+    ]
+    catalog_records = [
+        {"id": "1", "name": "G1", "categories": ["Card Game"], "mechanics": ["Hand Management", "Trick-taking"], "rating": 8.0, "complexity": 2.0, "designers": ["Des 1"], "publishers": ["Pub 1"]},
+        {"id": "2", "name": "G2", "categories": ["Card Game", "Economic"], "mechanics": ["Hand Management"], "rating": 7.5, "complexity": 3.0, "designers": ["Des 1"], "publishers": ["Pub 1"]},
+        {"id": "3", "name": "G3", "categories": ["Economic"], "mechanics": ["Auction"], "rating": 7.0, "complexity": 3.5, "designers": ["Des 2"], "publishers": ["Pub 2"]},
+    ]
+
+    user_df = pd.DataFrame(user_records)
+    catalog_df = pd.DataFrame(catalog_records)
+
+    freqs = {
+        "total_games": 10000,
+        "mechanic_idf": {
+            "Hand Management": 2.0,
+            "Trick-taking": 4.5,
+            "Auction": 3.5
+        },
+        "category_idf": {
+            "Card Game": 1.5,
+            "Economic": 3.0
+        }
+    }
+
+    # Compute inline
+    inline_m, inline_c, inline_des, inline_pub, inline_comp = scoring.compute_taste_profile_inline(
+        user_df, catalog_df, ["user_p"], {}, feature_frequencies=freqs, apply_idf=True
+    )
+
+    # Compute offline logic via bgg_taste_analytics
+    bgg_taste_analytics.FEATURE_FREQUENCIES_CACHE = freqs
+    bgg_taste_analytics.CATALOG_CACHE = catalog_df
+
+    # Simulate offline extraction for user_p
+    liked_games = user_df[user_df['rating'] >= 7.0]
+    liked_joined = liked_games.merge(catalog_df, on='id', how='inner', suffixes=('_user', '_catalog'))
+
+    mech_weights_raw = {}
+    mech_counts = {}
+    cat_weights_raw = {}
+    cat_counts = {}
+    designer_weights_raw = {}
+    designer_counts = {}
+    publisher_weights_raw = {}
+    publisher_counts = {}
+
+    for _, row in liked_joined.iterrows():
+        u_rating = float(row['rating_user'])
+        weight = max(1.0, u_rating - 5.0)
+        for c in set(row['categories']):
+            cat_weights_raw[c] = cat_weights_raw.get(c, 0.0) + weight
+            cat_counts[c] = cat_counts.get(c, 0) + 1
+        for m in set(row['mechanics']):
+            mech_weights_raw[m] = mech_weights_raw.get(m, 0.0) + weight
+            mech_counts[m] = mech_counts.get(m, 0) + 1
+        for d in row['designers']:
+            designer_weights_raw[d] = designer_weights_raw.get(d, 0.0) + weight
+            designer_counts[d] = designer_counts.get(d, 0) + 1
+        if row['publishers']:
+            pub = row['publishers'][0]
+            publisher_weights_raw[pub] = publisher_weights_raw.get(pub, 0.0) + weight
+            publisher_counts[pub] = publisher_counts.get(pub, 0) + 1
+
+    offline_raw_m = bgg_taste_analytics.calculate_damped_affinity(mech_weights_raw, mech_counts)
+    offline_raw_c = bgg_taste_analytics.calculate_damped_affinity(cat_weights_raw, cat_counts)
+    offline_des = bgg_taste_analytics.calculate_damped_affinity(designer_weights_raw, designer_counts)
+    offline_pub = bgg_taste_analytics.calculate_damped_affinity(publisher_weights_raw, publisher_counts)
+
+    offline_m = bgg_taste_analytics.apply_feature_idf(offline_raw_m, "mechanics", freqs)
+    offline_c = bgg_taste_analytics.apply_feature_idf(offline_raw_c, "categories", freqs)
+
+    # Assert 100% mathematical parity
+    assert inline_m == offline_m
+    assert inline_c == offline_c
+    assert inline_des == offline_des
+    assert inline_pub == offline_pub
+
+
+@patch('bgg_recommender.s3')
+def test_milestone_62_cached_profile_backward_compatibility(mock_s3):
+    import scoring
+    now = datetime.now(timezone.utc)
+    mock_s3.head_object.return_value = {'LastModified': now}
+
+    # 1. Legacy cached profile lacking idf_applied: True
+    legacy_profile = {
+        "generated_at": now.isoformat(),
+        "mech_weights": {"Hand Management": 5.0, "Trick-taking": 3.0},
+        "cat_weights": {"Card Game": 4.0},
+        "complexity_weights": {"Medium-Light": 2.0},
+        "designer_weights": {},
+        "publisher_weights": {}
+        # idf_applied is NOT present
+    }
+
+    custom_freqs = {
+        "total_games": 1000,
+        "mechanic_idf": {"Hand Management": 1.5, "Trick-taking": 3.0},
+        "category_idf": {"Card Game": 1.2}
+    }
+
+    def mock_download(bucket, key, local_path):
+        with open(local_path, 'w', encoding='utf-8') as f:
+            json.dump(legacy_profile, f)
+
+    mock_s3.download_file.side_effect = mock_download
+
+    # When loading legacy profile, compute_taste_profile_inline applies IDF on the fly
+    m_w, c_w, _, _, _ = scoring.compute_taste_profile_inline(
+        pd.DataFrame(), pd.DataFrame(), ["legacy_user"],
+        {"legacy_user": now - timedelta(hours=1)},
+        feature_frequencies=custom_freqs,
+        apply_idf=True
+    )
+    # Hand Management: 5.0 * 1.5 = 7.5, Trick-taking: 3.0 * 3.0 = 9.0
+    assert m_w["Hand Management"] == 7.5
+    assert m_w["Trick-taking"] == 9.0
+    assert c_w["Card Game"] == 4.8
+
+    # 2. Modern cached profile with idf_applied: True
+    modern_profile = {
+        "generated_at": now.isoformat(),
+        "mech_weights": {"Hand Management": 7.5, "Trick-taking": 9.0},
+        "cat_weights": {"Card Game": 4.8},
+        "complexity_weights": {"Medium-Light": 2.0},
+        "designer_weights": {},
+        "publisher_weights": {},
+        "idf_applied": True
+    }
+
+    def mock_download_modern(bucket, key, local_path):
+        with open(local_path, 'w', encoding='utf-8') as f:
+            json.dump(modern_profile, f)
+
+    mock_s3.download_file.side_effect = mock_download_modern
+
+    m_w_mod, c_w_mod, _, _, _ = scoring.compute_taste_profile_inline(
+        pd.DataFrame(), pd.DataFrame(), ["modern_user"],
+        {"modern_user": now - timedelta(hours=1)},
+        feature_frequencies=custom_freqs,
+        apply_idf=True
+    )
+    # Should NOT be doubled (7.5 * 1.5), but kept as 7.5
+    assert m_w_mod["Hand Management"] == 7.5
+    assert m_w_mod["Trick-taking"] == 9.0
 
 
 

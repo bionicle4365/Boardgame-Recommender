@@ -1,5 +1,8 @@
 import os
 import io
+import json
+import math
+from datetime import datetime, timezone
 import pyarrow as pa
 import pyarrow.parquet as pq
 import boto3
@@ -102,6 +105,114 @@ def normalize_string_types(table):
         new_columns.append(col)
         new_fields.append(field)
     return pa.Table.from_arrays(new_columns, schema=pa.schema(new_fields))
+
+def generate_catalog_feature_frequencies(table, output_path=None):
+    """
+    Computes catalog document frequencies and smoothed IDF factors for mechanics and categories
+    using pure PyArrow and Python (no pandas dependency).
+    
+    Formula: IDF(feature) = ln(1.0 + N_catalog / N_feature)
+    
+    Args:
+        table: pyarrow.Table containing 'mechanics' and 'categories' columns.
+        output_path: Optional local path to write catalog_feature_frequencies.json.
+        
+    Returns:
+        dict: The frequencies and IDF factors dictionary.
+    """
+    total_games = getattr(table, 'num_rows', 0) if not callable(getattr(table, 'num_rows', None)) else 0
+    if not isinstance(total_games, int):
+        try:
+            total_games = int(total_games)
+        except Exception:
+            total_games = 0
+
+    mechanic_counts = {}
+    category_counts = {}
+
+    col_names = getattr(table, 'column_names', [])
+    if isinstance(col_names, (list, tuple, set)):
+        if 'mechanics' in col_names:
+            try:
+                mechs_col = table.column('mechanics')
+                mechs_list = None
+                if hasattr(mechs_col, 'to_pylist'):
+                    val = mechs_col.to_pylist()
+                    if isinstance(val, list):
+                        mechs_list = val
+                elif isinstance(mechs_col, list):
+                    mechs_list = mechs_col
+                
+                if mechs_list is not None:
+                    for item in mechs_list:
+                        if not item:
+                            continue
+                        if isinstance(item, (list, tuple, set)):
+                            unique_mechs = {m.strip() for m in item if isinstance(m, str) and m.strip()}
+                        elif isinstance(item, str):
+                            unique_mechs = {m.strip() for m in item.split(',') if m.strip()}
+                        else:
+                            continue
+                        for m in unique_mechs:
+                            mechanic_counts[m] = mechanic_counts.get(m, 0) + 1
+            except Exception as e:
+                logger.warning(f"Error processing mechanics column for frequencies: {e}")
+
+        if 'categories' in col_names:
+            try:
+                cats_col = table.column('categories')
+                cats_list = None
+                if hasattr(cats_col, 'to_pylist'):
+                    val = cats_col.to_pylist()
+                    if isinstance(val, list):
+                        cats_list = val
+                elif isinstance(cats_col, list):
+                    cats_list = cats_col
+                
+                if cats_list is not None:
+                    for item in cats_list:
+                        if not item:
+                            continue
+                        if isinstance(item, (list, tuple, set)):
+                            unique_cats = {c.strip() for c in item if isinstance(c, str) and c.strip()}
+                        elif isinstance(item, str):
+                            unique_cats = {c.strip() for c in item.split(',') if c.strip()}
+                        else:
+                            continue
+                        for c in unique_cats:
+                            category_counts[c] = category_counts.get(c, 0) + 1
+            except Exception as e:
+                logger.warning(f"Error processing categories column for frequencies: {e}")
+
+    # Sort descending by count
+    sorted_mechs = dict(sorted(mechanic_counts.items(), key=lambda x: x[1], reverse=True))
+    sorted_cats = dict(sorted(category_counts.items(), key=lambda x: x[1], reverse=True))
+
+    mechanic_idf = {
+        m: round(math.log(1.0 + total_games / count), 4)
+        for m, count in sorted_mechs.items()
+    } if total_games > 0 else {}
+
+    category_idf = {
+        c: round(math.log(1.0 + total_games / count), 4)
+        for c, count in sorted_cats.items()
+    } if total_games > 0 else {}
+
+    result = {
+        "total_games": int(total_games),
+        "mechanics": sorted_mechs,
+        "categories": sorted_cats,
+        "mechanic_idf": mechanic_idf,
+        "category_idf": category_idf,
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    if output_path:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+
+    return result
 
 def download_and_parse(s3_client, bucket_name, key):
     try:
@@ -241,6 +352,25 @@ def lambda_handler(event, context):
         # Clean up local file
         if os.path.exists(output_file_path):
             os.remove(output_file_path)
+
+        # For catalog compaction, generate and upload catalog_feature_frequencies.json
+        if output_filename == 'catalog.parquet':
+            try:
+                freq_file_path = "/tmp/catalog_feature_frequencies.json"
+                freq_key = event.get('frequencies_key') or "data/catalog_feature_frequencies.json"
+                logger.info("Generating catalog feature frequencies from compacted catalog...")
+                generate_catalog_feature_frequencies(final_table, output_path=freq_file_path)
+                logger.info(f"Uploading catalog feature frequencies to s3://{bucket_name}/{freq_key}")
+                s3_client.upload_file(
+                    Filename=freq_file_path,
+                    Bucket=bucket_name,
+                    Key=freq_key
+                )
+                if os.path.exists(freq_file_path):
+                    os.remove(freq_file_path)
+                logger.info("Catalog feature frequencies uploaded successfully.")
+            except Exception as e:
+                logger.error(f"Failed to generate or upload catalog feature frequencies: {e}")
             
         logger.info("S3 Parquet compaction completed successfully")
         

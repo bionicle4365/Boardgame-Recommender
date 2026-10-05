@@ -16,6 +16,7 @@ import cache_utils
 from cache_utils import (
     logger, bucket,
     safe_list, get_catalog, get_active_previews, get_active_previews_games,
+    get_feature_frequencies, apply_feature_idf,
     get_bgg_hotness, get_user_profile_status, trigger_background_scrape,
     build_game_metadata,
 )
@@ -34,10 +35,11 @@ def calculate_damped_affinity(weights_sum, counts, alpha=0.3):
     return damped
 
 
-def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=None):
+def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=None, feature_frequencies=None, apply_idf=True):
     """
     Computes taste profiles for each user, loading pre-computed S3 profiles concurrently when available
     and falling back to inline computation when stale or missing.
+    Applies catalog frequency IDF discounting for offline & inline parity.
 
     Returns (mech_weights, cat_weights, user_designers, user_publishers, complexity_weights).
     """
@@ -123,6 +125,13 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
             u_complexity_weights = prof_data.get('complexity_weights', {})
             if 'user_mean_complexity' in prof_data:
                 u_complexity_weights['user_mean_complexity'] = prof_data['user_mean_complexity']
+
+            # If the precomputed profile was created before Milestone 62 and lacks idf_applied, apply IDF on the fly
+            if apply_idf and not prof_data.get('idf_applied'):
+                freqs = feature_frequencies if feature_frequencies is not None else get_feature_frequencies(catalog_df=catalog_df)
+                u_mech_weights = apply_feature_idf(u_mech_weights, "mechanics", freqs)
+                u_cat_weights = apply_feature_idf(u_cat_weights, "categories", freqs)
+
             profile_loaded = True
 
         if not profile_loaded:
@@ -214,6 +223,12 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
                 u_cat_weights = calculate_damped_affinity(u_cat_weights_raw, u_cat_counts)
                 u_user_designers = calculate_damped_affinity(u_des_weights_raw, u_des_counts)
                 u_user_publishers = calculate_damped_affinity(u_pub_weights_raw, u_pub_counts)
+
+                # Apply catalog frequency IDF discounting for parity with bgg_taste_analytics.py
+                if apply_idf:
+                    freqs = feature_frequencies if feature_frequencies is not None else get_feature_frequencies(catalog_df=catalog_df)
+                    u_mech_weights = apply_feature_idf(u_mech_weights, "mechanics", freqs)
+                    u_cat_weights = apply_feature_idf(u_cat_weights, "categories", freqs)
 
             if has_user_complexity and u_comp_weight_total > 0:
                 u_complexity_weights["user_mean_complexity"] = round(u_weighted_comp_sum / u_comp_weight_total, 2)
