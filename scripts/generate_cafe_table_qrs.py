@@ -79,8 +79,8 @@ def generate_table_tent_svg(cafe_id, cafe_name, table_num, target_url, wifi_ssid
   <!-- Background Canvas -->
   <rect width="800" height="1100" fill="#f8fafc"/>
 
-  <!-- Top Panel (Front Face) -->
-  <g transform="translate(100, 80)">
+  <!-- Top Panel (Front Face - Inverted 180° so it is upright when folded into a tent) -->
+  <g transform="translate(100, 80) rotate(180, 300, 210)">
     <!-- Card Frame -->
     <rect width="600" height="420" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="2" filter="url(#shadow)"/>
     <rect width="600" height="8" rx="4" fill="url(#headerGrad)"/>

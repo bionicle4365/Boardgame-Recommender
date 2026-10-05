@@ -4,7 +4,16 @@ This document outlines the next steps and active architecture enhancements for t
 
 ---
 
+## Active Initiatives: Board Game Cafe & Bar Edition
 
+For comprehensive milestones, user journeys, and technical architecture specifications for the **Board Game Cafe & Bar Edition**, see [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md) and [docs/cafe_edition_design.md](file:///d:/Git/Boardgame-Recommender/docs/cafe_edition_design.md).
+
+- **Milestone C1: Self-Service Cafe Onboarding & Dynamic Venue Registry** (Completed)
+- **Milestone C2: Cafe Inventory Ingestion & On-Demand Sync** (Completed)
+- **Milestone C3: Self-Service Cafe Management Portal & Venue Dashboard** (Completed)
+- **Next Up: Milestone C4: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L106-L131))
+
+---
 
 ## Milestone 31: Similar Games API Endpoint
 
@@ -131,5 +140,8 @@ The following milestones have been evaluated and archived/deferred based on arch
 * **Milestone 61: Content-Based Scoring Normalization & Popularity De-biasing** (Implemented true cosine similarity dividing tag dot products by candidate vector norms $\sqrt{|\text{cand\_tags}|}$, rebalanced default weights to w_pop=0.20, w_mech=0.60, w_cat=0.40, w_des=0.35, w_comp=0.35 in cache_utils.py and UI presets, replaced coarse complexity buckets with continuous Gaussian distance decay centered on user mean complexity with $\sigma=0.75$, upgraded diversify_candidates() to track decayed secondary tags, and verified with comprehensive unit test suite)
 * **Milestone 62: Taste Profile TF-IDF & Catalog Base-Rate Discounting** (Calculated catalog document frequencies across 139k BGG games to derive smoothed IDF factors $\ln(1 + N_{\text{catalog}} / N_f)$ in catalog_feature_frequencies.json, implemented TF-IDF discounting in bgg_taste_analytics.py and scoring.py for offline/inline parity, elevated distinctive tags over ubiquitous baseline tags, updated taste profile schema with idf_applied: true and user_mean_complexity, and added unit tests validating distinctive tag elevation, backward compatibility, and profile parity)
 * **Milestone 63: User Password Reset & Recovery Flow** (Enabled self-service client-side Cognito password recovery via ForgotPassword and ConfirmForgotPassword in utils.js, designed multi-step glassmorphic recovery views in default.html and header.html, enforced password complexity policies with real-time hints and mapped Cognito error codes to friendly messages, and added comprehensive Vitest test coverage)
+* **Milestone C1: Self-Service Cafe Onboarding & Dynamic Venue Registry** (DynamoDB `bgg-cafes` table, BGG collection validation endpoint, multi-step onboarding wizard at `site_ui/cafe/onboard.html`, and automated printable QR table tent generation)
+* **Milestone C2: Cafe Inventory Ingestion & On-Demand Sync** (Scraper cafe mode handler for `own=1`, on-demand `POST /cafe/sync` SQS dispatch with recommendation cache invalidation, EventBridge weekly automated sync rule, and unit test coverage)
+* **Milestone C3: Self-Service Cafe Management Portal & Venue Dashboard** (Dedicated venue management portal at `site_ui/cafe/manage.html`, `GET /cafe/my-cafes` GSI query handler, `POST /cafe/update` venue editor with DynamoDB and S3 synchronization, API Gateway Cognito authorizer routes, printable double-sided folded table tent batch generator, and profile/header navigation integration)
 
 

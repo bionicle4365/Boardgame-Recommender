@@ -614,10 +614,7 @@ description: "Register your board game cafe, bar, or lounge. Connect your BGG li
 
         <div class="form-group">
             <label for="table-count-input">Number of Tables in Venue</label>
-            <div class="slider-row">
-                <input type="range" id="table-count-slider" min="1" max="100" value="20">
-                <input type="number" id="table-count-input" class="form-input table-count-number" min="1" max="100" value="20">
-            </div>
+            <input type="number" id="table-count-input" class="form-input" min="1" max="250" value="20" placeholder="e.g. 20">
             <div class="field-hint">We will generate individual printable table tents for Table 1 through Table <span id="hint-table-count">20</span>.</div>
         </div>
 
@@ -635,13 +632,6 @@ description: "Register your board game cafe, bar, or lounge. Connect your BGG li
         <div class="form-group">
             <label for="tagline-input">Welcome Tagline / House Specialty</label>
             <input type="text" id="tagline-input" class="form-input" placeholder="e.g. 24 craft beers on tap & 600+ tabletop games. Ask staff for recommendations!">
-        </div>
-
-        <div class="form-group" style="margin-top: 10px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                <input type="checkbox" id="drink-pairings-toggle" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
-                <span>Enable Beverage Pairings (Display house drink pairings alongside recommendations)</span>
-            </label>
         </div>
 
         <div class="wizard-footer">
@@ -769,13 +759,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const resShelfDetected    = document.getElementById("res-shelf-detected");
     const sampleTagsList      = document.getElementById("sample-tags-list");
 
-    const tableSlider   = document.getElementById("table-count-slider");
     const tableInput    = document.getElementById("table-count-input");
     const tableHint     = document.getElementById("hint-table-count");
     const wifiSsidInput = document.getElementById("wifi-ssid-input");
     const wifiPassInput = document.getElementById("wifi-password-input");
     const taglineInput  = document.getElementById("tagline-input");
-    const drinkToggle   = document.getElementById("drink-pairings-toggle");
 
     const sumVenueName  = document.getElementById("sum-venue-name");
     const sumBggUser    = document.getElementById("sum-bgg-user");
@@ -882,17 +870,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }, 350);
     }
 
-    // ── Table Stepper Sync ──────────────────────────────────────────────────
-    tableSlider.addEventListener("input", function () {
-        tableInput.value = this.value;
-        tableHint.textContent = this.value;
-    });
-
+    // ── Table Count Input Sync ─────────────────────────────────────────────
     tableInput.addEventListener("input", function () {
         let val = parseInt(this.value, 10);
         if (isNaN(val) || val < 1) val = 1;
-        if (val > 100) val = 100;
-        tableSlider.value = val;
         tableHint.textContent = val;
     });
 
@@ -1048,8 +1029,7 @@ document.addEventListener("DOMContentLoaded", function () {
             wifi_ssid: wifiSsidInput.value.trim(),
             wifi_password: wifiPassInput.value.trim(),
             tagline: taglineInput.value.trim(),
-            shelf_regex: shelfRegexInput.value.trim(),
-            drink_pairings_enabled: drinkToggle.checked
+            shelf_regex: shelfRegexInput.value.trim()
         };
 
         try {
@@ -1124,8 +1104,8 @@ document.addEventListener("DOMContentLoaded", function () {
             cardsHtml += `
             <div class="print-page">
                 <div class="tent-card">
-                    <!-- Top Panel -->
-                    <div class="tent-panel">
+                    <!-- Top Panel (Inverted 180° for tent folding) -->
+                    <div class="tent-panel tent-panel-top">
                         <div class="tent-bar"></div>
                         <div class="tent-cafe-title">${venue.name}</div>
                         <div class="tent-badge">TABLE ${t}</div>
@@ -1205,6 +1185,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 .tent-panel {
                     text-align: center;
                     padding: 20px 0;
+                }
+                .tent-panel-top {
+                    transform: rotate(180deg);
                 }
                 .tent-bar {
                     height: 6px;

@@ -47,7 +47,7 @@ Build the automated data ingestion pipeline that syncs a cafe's owned collection
 - **Dedicated S3 Cafe Partition:** Generates `s3://boardgame-app/data/cafes/{cafe_id}/collection.parquet`, containing standard catalog attributes (`id`, `name`, `year_published`, `min_players`, `max_players`, `playing_time`, `min_age`, `weight`, etc.) isolated from individual user profiles.
 - **On-Demand "Sync from BGG":** When cafe staff finish logging newly acquired games on BGG, they can invoke an on-demand sync (`POST /cafe/sync`), immediately enqueuing a scrape job via SQS without waiting for weekly batch runs.
 - **Cache Invalidation:** Triggering a sync automatically clears recommendation cache keys for the venue so newly synced games can be recommended immediately upon completion.
-- **Deferred Customizations:** Shelf coordinate parsing from BGG comments and manual catalog overrides (`overrides.json`, manual additions without BGG) are deferred to later in the roadmap (Milestone C7) to maintain a lean, focused ingestion core.
+- **Deferred Customizations:** Shelf coordinate parsing from BGG comments and manual catalog overrides (`overrides.json`, manual additions without BGG) are deferred to later in the roadmap (Milestone C8) to maintain a lean, focused ingestion core.
 
 ### Architecture Decisions
 - **Storage Location:** Save cafe libraries to `s3://boardgame-app/data/cafes/{cafe_id}/collection.parquet`.
@@ -66,7 +66,44 @@ Build the automated data ingestion pipeline that syncs a cafe's owned collection
 
 ---
 
-## Milestone C3: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine
+## Milestone C3: Self-Service Cafe Management Portal & Venue Dashboard
+
+### Objective
+Create a dedicated, authenticated management dashboard at `site_ui/cafe/manage.html` where cafe owners and operators can view their registered venues, update venue configurations (table count, guest Wi-Fi credentials, tagline, shelf parsing regex), trigger on-demand BGG library re-syncs, and view or reprint table tent QR batches.
+
+### Design Notes
+- **Direct Venue Administration:** After onboarding, owners need a permanent home to manage their venues without having to re-run the onboarding wizard or contact system administrators.
+- **Account-Bound Multi-Venue Support:** An owner account in Cognito can own one or multiple cafes. The management portal lists all cafes associated with the logged-in user with quick status badges (collection sync status, table count, active vanity URL).
+- **Venue Settings Editor:**
+  - *Details & Branding:* Update venue name, vanity slug, tagline, and welcome messaging.
+  - *Tables & Amenities:* Adjust venue table count (using number input with dynamic table tent preview) and update guest Wi-Fi network SSID/password.
+  - *BGG Collection & Shelf Parsing:* Update BGG username and customize shelf location regex patterns.
+- **1-Click Actions:**
+  - *Trigger BGG Sync:* One-click `POST /cafe/sync` button with a live sync indicator showing last-synced timestamp.
+  - *Reprint Table Tents:* Instant button to view, customize, and print/download the full double-sided folding table tent sheet (with inverted top half for upright display when folded).
+  - *Live Table URLs:* Quick-copy links for all tables (`/cafe/{slug}?table={N}`) to test patron vibe recommendations.
+  - *Link to Staff Floor Portal:* Direct shortcut to the staff availability and shelf location editor (`site_ui/cafe/staff.html`).
+- **Profile & Navigation Integration:**
+  - In `site_ui/profile/index.html`, display a "My Venues" section for authenticated users showing their registered cafes with a "Manage Venue" button, and an "Onboard a New Cafe" action.
+  - If a user owns a cafe, display a convenient "Manage Cafe" link in the account dropdown menu.
+
+### Architecture Decisions
+- **List Owned Venues Endpoint:** Add `GET /cafe/my-cafes` protected by Cognito authorizer. Queries DynamoDB `bgg-cafes` table using the existing `owner_cognito_id-index` Global Secondary Index (GSI) using the caller's Cognito identity `sub`.
+- **Venue Update Endpoint:** Add `POST /cafe/update` (Cognito authorizer). Validates that the caller's Cognito `sub` matches `owner_cognito_id` on the target `cafe_id`, updates venue attributes in DynamoDB `bgg-cafes`, updates the S3 cache at `data/cafes/{cafe_id}/meta.json`, and refreshes `data/cafes_registry.json`.
+- **API Gateway Routes:** Define `GET /cafe/my-cafes` and `POST /cafe/update` under the API Gateway HTTP REST API in `infrastructure/apigateway/main.tf` with the Cognito authorizer.
+- **Management UI:** Create `site_ui/cafe/manage.html` leveraging existing design tokens in `design-system.css`, with tabbed or card-based venue settings, responsive table tent generator integration, and toast alerts.
+
+### Tasks
+- [x] **My Cafes Query Handler:** Implement `_handle_get_my_cafes()` in `bgg_preferences_handler.py` querying the `owner_cognito_id-index` GSI in DynamoDB.
+- [x] **Venue Update Handler:** Implement `_handle_cafe_update()` in `bgg_preferences_handler.py` validating ownership, updating DynamoDB `bgg-cafes`, and syncing S3 metadata mirror.
+- [x] **API Gateway Routes:** Add `GET /cafe/my-cafes` and `POST /cafe/update` with Cognito authorizers to `infrastructure/apigateway/main.tf`.
+- [x] **Owner Management Portal UI:** Build `site_ui/cafe/manage.html` with venue selection, settings form (tables, Wi-Fi, branding, shelf regex), live BGG sync trigger with status, and table tent re-printing modal.
+- [x] **User Profile Integration:** Add "My Cafes" card to `site_ui/profile/index.html` and header navigation linking to `/cafe/manage.html`.
+- [x] **Unit & Frontend Tests:** Add Python unit tests for `_handle_get_my_cafes` and `_handle_cafe_update` (authorization checks, GSI query, validation), and Vitest frontend tests for management portal interactions.
+
+---
+
+## Milestone C4: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine
 
 ### Objective
 Extend the recommendation engine in [`bgg_recommender.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py) to accept a `cafe_id`, strictly restrict candidates to that cafe's in-stock collection, and provide an instant "Table Vibe Check" scoring algorithm for patrons without BGG accounts.
@@ -93,7 +130,7 @@ Extend the recommendation engine in [`bgg_recommender.py`](file:///d:/Git/Boardg
 
 ---
 
-## Milestone C4: Mobile-First Cafe Patron Portal & Vibe Check UI
+## Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI
 
 ### Objective
 Design and implement a mobile-first, glassmorphic patron web interface at `site_ui/cafe/` that provides a seamless 3-tap recommendation experience when scanning a table QR code.
@@ -123,7 +160,7 @@ Design and implement a mobile-first, glassmorphic patron web interface at `site_
 
 ---
 
-## Milestone C5: "Watch It Played" Rules Video & Media Integration
+## Milestone C6: "Watch It Played" Rules Video & Media Integration
 
 ### Objective
 Integrate concise video rules tutorials directly into recommendation cards so patrons can immediately learn how to play without waiting for busy floor staff or reading paper rulebooks.
@@ -146,7 +183,7 @@ Integrate concise video rules tutorials directly into recommendation cards so pa
 
 ---
 
-## Milestone C6: Table QR Code Generator & Real-Time Table Voting
+## Milestone C7: Table QR Code Generator & Real-Time Table Voting
 
 ### Objective
 Provide cafe managers with a print-ready table tent QR generator and connect the existing game night voting system ([`sessions.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/sessions.py)) so patrons sitting at the same table can vote on the top candidate games from their phones.
@@ -170,7 +207,7 @@ Provide cafe managers with a print-ready table tent QR generator and connect the
 
 ---
 
-## Milestone C7: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides
+## Milestone C8: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides
 
 ### Objective
 Create a mobile-optimized staff portal for cafe floor staff and game masters to mark real-time game availability, extract and edit physical shelf location coordinates (via BGG comments and inline overrides), and support manual game additions independent of BGG with durable `overrides.json` persistence.
@@ -208,7 +245,7 @@ Create a mobile-optimized staff portal for cafe floor staff and game masters to 
 
 ---
 
-## Milestone C8: Cafe Library Analytics & Table Insights Dashboard
+## Milestone C9: Cafe Library Analytics & Table Insights Dashboard
 
 ### Objective
 Provide cafe owners with an automated analytics dashboard detailing patron search trends, most requested mechanics, busiest table party sizes, and shelf utilization.

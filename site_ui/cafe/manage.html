@@ -1,0 +1,1165 @@
+---
+layout: default
+title: Cafe Venue Management
+description: "Manage your registered board game cafes, tables, Wi-Fi credentials, and BGG library sync."
+---
+
+<style>
+    :root {
+        --manage-card-bg: var(--glass-bg, rgba(255, 255, 255, 0.75));
+        --manage-border: var(--border, rgba(226, 232, 240, 0.8));
+    }
+
+    [data-theme="dark"] {
+        --manage-card-bg: rgba(30, 41, 59, 0.7);
+        --manage-border: rgba(51, 65, 85, 0.7);
+    }
+
+    .manage-container {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 24px 20px 80px 20px;
+        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-main);
+    }
+
+    /* ── Auth Gate Card ── */
+    .manage-gate-card {
+        background: var(--manage-card-bg);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid var(--manage-border);
+        border-radius: var(--radius-lg, 16px);
+        padding: 56px 24px;
+        text-align: center;
+        max-width: 560px;
+        margin: 40px auto;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    .gate-icon {
+        font-size: 3.5rem;
+        margin-bottom: 16px;
+        display: inline-block;
+    }
+
+    .gate-title {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .gate-desc {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 24px;
+        line-height: 1.5;
+    }
+
+    /* ── Skeleton Loading ── */
+    .manage-skeleton {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 1160px;
+        margin: 20px auto;
+    }
+
+    .skeleton-box {
+        background: var(--skeleton-bg, #e2e8f0);
+        background-image: var(--skeleton-shimmer, linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent));
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s infinite linear;
+        border-radius: 14px;
+    }
+
+    @keyframes skeleton-shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    /* ── Multi-Venue Selector Bar ── */
+    .venue-selector-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+        background: var(--manage-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--manage-border);
+        border-radius: 14px;
+        padding: 12px 18px;
+    }
+
+    .venue-pills-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .venue-pill-btn {
+        background: transparent;
+        border: 1px solid var(--manage-border);
+        color: var(--text-muted);
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: inherit;
+    }
+
+    .venue-pill-btn.active {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+
+    .venue-pill-btn:hover:not(.active) {
+        background: var(--badge-bg);
+        color: var(--text-main);
+    }
+
+    .btn-new-venue {
+        text-decoration: none;
+        background: transparent;
+        border: 1px dashed var(--primary);
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 0.88rem;
+        padding: 6px 14px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-new-venue:hover {
+        background: rgba(79, 70, 229, 0.08);
+    }
+
+    /* ── Venue Overview Header Card ── */
+    .venue-hero-card {
+        background: var(--manage-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--manage-border);
+        border-radius: 18px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .venue-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .venue-title-wrap h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 0 0 6px 0;
+        letter-spacing: -0.02em;
+    }
+
+    .venue-slug-tag {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .slug-code {
+        font-family: monospace;
+        background: var(--badge-bg);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .venue-actions-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .hero-meta-badges {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding-top: 14px;
+        border-top: 1px solid var(--manage-border);
+    }
+
+    .meta-badge {
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 20px;
+        background: var(--badge-bg);
+        color: var(--text-main);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .meta-badge.sync-ready {
+        background: var(--success-bg, #ecfdf5);
+        color: var(--success, #10b981);
+        border: 1px solid var(--success-border, #a7f3d0);
+    }
+
+    /* ── 2-Column Grid Layout ── */
+    .manage-grid {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 24px;
+        align-items: start;
+    }
+
+    @media (max-width: 900px) {
+        .manage-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .section-card {
+        background: var(--manage-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--manage-border);
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
+        margin-bottom: 24px;
+    }
+
+    .section-card-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 0 0 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* ── Form Styles ── */
+    .form-group {
+        margin-bottom: 18px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.88rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: var(--text-main);
+    }
+
+    .form-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--manage-border);
+        background: var(--card-bg, #ffffff);
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 0.92rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    .field-hint {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+        line-height: 1.4;
+    }
+
+    .form-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    @media (max-width: 500px) {
+        .form-row-2 {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ── Buttons ── */
+    .btn {
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 0.92rem;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: var(--btn-secondary-bg, #f1f5f9);
+        color: var(--text-main);
+        border: 1px solid var(--manage-border);
+    }
+
+    .btn-secondary:hover {
+        background: var(--btn-secondary-hover-bg, #e2e8f0);
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    /* ── Alerts ── */
+    .manage-alert {
+        padding: 12px 16px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        margin-bottom: 18px;
+        display: none;
+    }
+
+    .manage-alert.visible { display: block; animation: fadeIn 0.3s ease; }
+    .manage-alert.success { background: var(--success-bg, #ecfdf5); color: var(--success, #10b981); border: 1px solid var(--success-border, #a7f3d0); }
+    .manage-alert.error { background: var(--danger-bg, #fef2f2); color: var(--danger, #ef4444); border: 1px solid var(--danger-border, #fecaca); }
+
+    /* ── Mini Tent Preview Card ── */
+    .tent-preview-box {
+        border: 2px dashed var(--manage-border);
+        border-radius: 14px;
+        padding: 16px;
+        text-align: center;
+        background: var(--card-bg, #ffffff);
+        margin-bottom: 16px;
+    }
+
+    .tent-preview-header {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+
+    .tent-preview-badge {
+        display: inline-block;
+        background: var(--primary);
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 2px 10px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+
+    .tent-preview-qr {
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 8px auto;
+        display: block;
+        background: #f1f5f9;
+        border-radius: 8px;
+        padding: 4px;
+    }
+
+    .tent-preview-wifi {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    /* ── Quick Table Links List ── */
+    .table-links-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 220px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+
+    .table-link-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--badge-bg);
+        border-radius: 8px;
+        font-size: 0.85rem;
+    }
+
+    .table-link-title {
+        font-weight: 600;
+    }
+
+    .table-link-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .table-btn-small {
+        font-size: 0.78rem;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--manage-border);
+        background: var(--card-bg, #fff);
+        color: var(--text-main);
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .table-btn-small:hover {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+    }
+</style>
+
+<div class="manage-container">
+
+    <!-- ── 1. Unauthenticated Gate ── -->
+    <div id="manage-auth-gate" class="manage-gate-card" style="display: none;">
+        <span class="gate-icon">🔐</span>
+        <h2 class="gate-title">Cafe Owner Authentication Required</h2>
+        <p class="gate-desc">Log in with your Meeple Manifesto account to manage your registered board game cafe venues, update Wi-Fi credentials, trigger library syncs, and reprint table tent batches.</p>
+        <button id="gate-login-btn" class="btn btn-primary" style="margin: 0 auto;">Log In to Manage Venue</button>
+    </div>
+
+    <!-- ── 2. Loading Skeleton ── -->
+    <div id="manage-skeleton" class="manage-skeleton">
+        <div class="skeleton-box" style="height: 52px; width: 100%;"></div>
+        <div class="skeleton-box" style="height: 140px; width: 100%;"></div>
+        <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px;">
+            <div class="skeleton-box" style="height: 480px;"></div>
+            <div class="skeleton-box" style="height: 480px;"></div>
+        </div>
+    </div>
+
+    <!-- ── 3. Empty State (No Registered Cafes) ── -->
+    <div id="manage-empty-state" class="manage-gate-card" style="display: none;">
+        <span class="gate-icon">☕</span>
+        <h2 class="gate-title">No Cafes Registered Yet</h2>
+        <p class="gate-desc">You don't have any board game cafes linked to your account yet. Complete our 3-minute self-service onboarding to register your venue, connect your BGG collection, and generate table QR codes.</p>
+        <a href="{{ '/cafe/onboard.html' | relative_url }}" class="btn btn-primary" style="margin: 0 auto;">Onboard Your Cafe →</a>
+    </div>
+
+    <!-- ── 4. Main Venue Dashboard ── -->
+    <div id="manage-dashboard-view" style="display: none;">
+
+        <!-- Multi-Venue Selector Bar -->
+        <div class="venue-selector-bar" id="venue-selector-bar">
+            <div class="venue-pills-row" id="venue-pills-container">
+                <!-- Dynamically populated if >1 cafe -->
+            </div>
+            <a href="{{ '/cafe/onboard.html' | relative_url }}" class="btn-new-venue">
+                ➕ Onboard Another Venue
+            </a>
+        </div>
+
+        <!-- Venue Hero Overview Card -->
+        <div class="venue-hero-card">
+            <div class="venue-hero-top">
+                <div class="venue-title-wrap">
+                    <h1 id="hero-venue-name">Loading Cafe...</h1>
+                    <div class="venue-slug-tag">
+                        <span>Patron Portal URL:</span>
+                        <a id="hero-portal-link" href="#" target="_blank" class="slug-code" style="text-decoration: none;">https://meeplemanifesto.com/cafe/...</a>
+                        <button type="button" class="table-btn-small" id="hero-copy-url-btn">📋 Copy</button>
+                    </div>
+                </div>
+
+                <div class="venue-actions-row">
+                    <button type="button" class="btn btn-secondary" id="sync-bgg-btn">
+                        <span id="sync-btn-icon">🔄</span>
+                        <span id="sync-btn-text">Sync from BGG</span>
+                    </button>
+                    <a id="hero-open-portal-btn" href="#" target="_blank" class="btn btn-primary">
+                        🔗 Open Patron Portal
+                    </a>
+                </div>
+            </div>
+
+            <div class="hero-meta-badges">
+                <span class="meta-badge" id="badge-table-count">🪑 20 Tables</span>
+                <span class="meta-badge" id="badge-bgg-user">🎲 BGG: maltandmeeple</span>
+                <span class="meta-badge sync-ready" id="badge-last-sync">✅ Synced Recently</span>
+            </div>
+        </div>
+
+        <!-- Global Toast Alert -->
+        <div id="manage-alert" class="manage-alert"></div>
+
+        <!-- 2-Column Grid -->
+        <div class="manage-grid">
+
+            <!-- LEFT: Venue Settings Form -->
+            <div class="section-card">
+                <h2 class="section-card-title">⚙️ Venue Configuration</h2>
+
+                <form id="venue-settings-form">
+                    <div class="form-group">
+                        <label for="manage-name-input">Venue Name</label>
+                        <input type="text" id="manage-name-input" class="form-input" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="manage-tagline-input">Welcome Tagline / Specialty</label>
+                        <input type="text" id="manage-tagline-input" class="form-input" placeholder="e.g. 24 craft beers on tap & 600+ tabletop games.">
+                        <div class="field-hint">Displayed prominently on patron phones and printable table tents.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="manage-bgg-input">BGG Account Username</label>
+                        <input type="text" id="manage-bgg-input" class="form-input" required>
+                        <div class="field-hint">The BoardGameGeek account where your venue's owned games are cataloged.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="manage-table-count-input">Number of Tables</label>
+                        <input type="number" id="manage-table-count-input" class="form-input" min="1" max="500" required>
+                        <div class="field-hint">Determines the number of individual table QR tent cards generated for your venue floor.</div>
+                    </div>
+
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="manage-wifi-ssid-input">Guest Wi-Fi Network (SSID)</label>
+                            <input type="text" id="manage-wifi-ssid-input" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="manage-wifi-pass-input">Guest Wi-Fi Password</label>
+                            <input type="text" id="manage-wifi-pass-input" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="manage-shelf-regex-input">Shelf Location Extraction Regex</label>
+                        <input type="text" id="manage-shelf-regex-input" class="form-input" value="(?:Shelf|Location|Bin):?\s*([A-Za-z0-9\-]+)">
+                        <div class="field-hint">Regular expression pattern used to extract shelf locations from your BGG game comments.</div>
+                    </div>
+
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                        <input type="checkbox" id="manage-drink-pairings" style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="manage-drink-pairings" style="margin-bottom: 0; cursor: pointer;">Enable drink pairings in patron recommendations</label>
+                    </div>
+
+                    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--manage-border); display: flex; justify-content: flex-end;">
+                        <button type="submit" class="btn btn-primary" id="save-venue-btn">
+                            <span id="save-btn-icon">💾</span>
+                            <span id="save-btn-text">Save Changes</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- RIGHT: Floor & Printing Tools -->
+            <div>
+
+                <!-- Card 1: Table Tent Printing Kit -->
+                <div class="section-card">
+                    <h2 class="section-card-title">🪑 Table Tent QR Kit</h2>
+                    <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
+                        Print foldable double-sided table tents for your tables. The top half is formatted inverted (180°) so standing tents read upright from both sides.
+                    </p>
+
+                    <!-- Mini Tent Preview -->
+                    <div class="tent-preview-box">
+                        <div class="tent-preview-header" id="preview-venue-name">The Malt & Meeple</div>
+                        <div class="tent-preview-badge">TABLE 1 PREVIEW</div>
+                        <img id="preview-qr-img" class="tent-preview-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://meeplemanifesto.com/cafe/demo?table=1" alt="Table QR">
+                        <div class="tent-preview-wifi" id="preview-wifi-label">📶 Wi-Fi: MaltMeeple-Guest</div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" id="open-print-tent-btn" style="width: 100%;">
+                        🖨️ View & Print Full Table Batch
+                    </button>
+                </div>
+
+                <!-- Card 2: Quick Table Links -->
+                <div class="section-card">
+                    <h2 class="section-card-title">🔗 Quick Table Access Links</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                        Direct links to each table's vibe quiz for quick patron testing or QR troubleshooting:
+                    </p>
+
+                    <div class="table-links-list" id="table-links-container">
+                        <!-- Populated dynamically based on table count -->
+                    </div>
+                </div>
+
+                <!-- Card 3: Staff Floor Portal -->
+                <div class="section-card" style="margin-bottom: 0;">
+                    <h2 class="section-card-title">🧑‍🍳 Floor Staff Portal</h2>
+                    <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
+                        Floor staff and game gurus can mark games as currently in-use at specific tables, view shelf locations, and search the collection from their mobile devices.
+                    </p>
+                    <a id="open-staff-portal-btn" href="#" class="btn btn-secondary" style="width: 100%;">
+                        📱 Open Floor Staff Portal
+                    </a>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const authGate      = document.getElementById("manage-auth-gate");
+    const skeleton      = document.getElementById("manage-skeleton");
+    const emptyState    = document.getElementById("manage-empty-state");
+    const dashboardView = document.getElementById("manage-dashboard-view");
+    const gateLoginBtn  = document.getElementById("gate-login-btn");
+
+    const venuePillsContainer = document.getElementById("venue-pills-container");
+    const heroVenueName       = document.getElementById("hero-venue-name");
+    const heroPortalLink      = document.getElementById("hero-portal-link");
+    const heroCopyUrlBtn      = document.getElementById("hero-copy-url-btn");
+    const heroOpenPortalBtn   = document.getElementById("hero-open-portal-btn");
+    const badgeTableCount     = document.getElementById("badge-table-count");
+    const badgeBggUser        = document.getElementById("badge-bgg-user");
+    const badgeLastSync       = document.getElementById("badge-last-sync");
+    const syncBggBtn          = document.getElementById("sync-bgg-btn");
+    const syncBtnIcon         = document.getElementById("sync-btn-icon");
+    const syncBtnText         = document.getElementById("sync-btn-text");
+
+    const formNameInput       = document.getElementById("manage-name-input");
+    const formTaglineInput    = document.getElementById("manage-tagline-input");
+    const formBggInput        = document.getElementById("manage-bgg-input");
+    const formTableCountInput = document.getElementById("manage-table-count-input");
+    const formWifiSsidInput   = document.getElementById("manage-wifi-ssid-input");
+    const formWifiPassInput   = document.getElementById("manage-wifi-pass-input");
+    const formShelfRegexInput = document.getElementById("manage-shelf-regex-input");
+    const formDrinkPairings   = document.getElementById("manage-drink-pairings");
+    const saveVenueBtn        = document.getElementById("save-venue-btn");
+    const saveBtnIcon         = document.getElementById("save-btn-icon");
+    const saveBtnText         = document.getElementById("save-btn-text");
+    const alertBox            = document.getElementById("manage-alert");
+
+    const previewVenueName    = document.getElementById("preview-venue-name");
+    const previewQrImg        = document.getElementById("preview-qr-img");
+    const previewWifiLabel    = document.getElementById("preview-wifi-label");
+    const openPrintTentBtn    = document.getElementById("open-print-tent-btn");
+    const tableLinksContainer = document.getElementById("table-links-container");
+    const openStaffPortalBtn  = document.getElementById("open-staff-portal-btn");
+
+    let allCafes = [];
+    let currentCafe = null;
+
+    // ── Toast Alert Helper ──
+    function showAlert(msg, type = "error") {
+        alertBox.textContent = msg;
+        alertBox.className = `manage-alert visible ${type}`;
+        setTimeout(() => {
+            alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 50);
+    }
+
+    function hideAlert() {
+        alertBox.className = "manage-alert";
+        alertBox.textContent = "";
+    }
+
+    // ── Auth Handling ──
+    if (gateLoginBtn) {
+        gateLoginBtn.addEventListener("click", function () {
+            const loginBtn = document.getElementById("auth-login-btn");
+            if (loginBtn) loginBtn.click();
+        });
+    }
+
+    document.addEventListener("bgg_login_success", function () {
+        loadOwnerVenues();
+    });
+
+    async function loadOwnerVenues() {
+        if (window.location.hash.includes("id_token=")) {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const idTok = hashParams.get("id_token");
+            if (idTok) {
+                localStorage.setItem("bgg_auth_id_token", idTok);
+                localStorage.setItem("bgg_auth_email", hashParams.get("email") || "owner@maltmeeple.com");
+                localStorage.setItem("bgg_auth_token_expiry", (Date.now() + 3600000).toString());
+                if (window.history && window.history.replaceState) {
+                    history.replaceState(null, "", window.location.pathname + window.location.search);
+                }
+            }
+        }
+
+        const isLoggedIn = (typeof Auth !== 'undefined' && Auth.isLoggedIn && Auth.isLoggedIn());
+        if (!isLoggedIn) {
+            skeleton.style.display = "none";
+            dashboardView.style.display = "none";
+            emptyState.style.display = "none";
+            authGate.style.display = "block";
+            return;
+        }
+
+        authGate.style.display = "none";
+        skeleton.style.display = "flex";
+        dashboardView.style.display = "none";
+        emptyState.style.display = "none";
+
+        try {
+            const resp = await window.fetchApi("/cafe/my-cafes");
+            const data = await resp.json();
+
+            skeleton.style.display = "none";
+
+            if (!resp.ok) {
+                showAlert(data.error || "Failed to load cafes.");
+                return;
+            }
+
+            allCafes = data.cafes || [];
+            if (allCafes.length === 0) {
+                emptyState.style.display = "block";
+                return;
+            }
+
+            // Pick first cafe or URL-specified cafe
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetId = urlParams.get("cafe") || urlParams.get("id");
+            if (targetId) {
+                currentCafe = allCafes.find(c => c.cafe_id === targetId || c.slug === targetId) || allCafes[0];
+            } else {
+                currentCafe = allCafes[0];
+            }
+
+            renderVenueDashboard();
+        } catch (err) {
+            skeleton.style.display = "none";
+            showAlert("Network error retrieving your cafes. Please refresh.");
+        }
+    }
+
+    function renderVenueDashboard() {
+        if (!currentCafe) return;
+        dashboardView.style.display = "block";
+        emptyState.style.display = "none";
+
+        // Render Selector Pills
+        venuePillsContainer.innerHTML = "";
+        allCafes.forEach(c => {
+            const btn = document.createElement("button");
+            btn.className = `venue-pill-btn ${c.cafe_id === currentCafe.cafe_id ? 'active' : ''}`;
+            btn.textContent = `☕ ${c.name}`;
+            btn.addEventListener("click", () => {
+                currentCafe = c;
+                renderVenueDashboard();
+            });
+            venuePillsContainer.appendChild(btn);
+        });
+
+        // Populate Hero Card
+        heroVenueName.textContent = currentCafe.name;
+        const slug = currentCafe.slug || currentCafe.cafe_id;
+        const portalUrl = `https://meeplemanifesto.com/cafe/${slug}`;
+        heroPortalLink.textContent = portalUrl;
+        heroPortalLink.href = portalUrl;
+        heroOpenPortalBtn.href = portalUrl;
+
+        badgeTableCount.textContent = `🪑 ${currentCafe.table_count || 20} Tables`;
+        badgeBggUser.textContent = `🎲 BGG: ${currentCafe.bgg_username || 'None'}`;
+
+        if (currentCafe.last_sync_timestamp) {
+            const d = new Date(currentCafe.last_sync_timestamp);
+            badgeLastSync.textContent = `✅ Synced ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            badgeLastSync.className = "meta-badge sync-ready";
+        } else {
+            badgeLastSync.textContent = "⚠️ Never Synced";
+            badgeLastSync.className = "meta-badge";
+        }
+
+        // Populate Form Fields
+        formNameInput.value       = currentCafe.name || "";
+        formTaglineInput.value    = currentCafe.tagline || "";
+        formBggInput.value        = currentCafe.bgg_username || "";
+        formTableCountInput.value = currentCafe.table_count || 20;
+        formWifiSsidInput.value   = currentCafe.wifi_ssid || "";
+        formWifiPassInput.value   = currentCafe.wifi_password || "";
+        formShelfRegexInput.value = currentCafe.shelf_regex || "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)";
+        formDrinkPairings.checked = (currentCafe.drink_pairings_enabled !== false);
+
+        // Populate Floor Tools
+        updateFloorTools();
+    }
+
+    function updateFloorTools() {
+        if (!currentCafe) return;
+        const slug = currentCafe.slug || currentCafe.cafe_id;
+        const tables = parseInt(formTableCountInput.value, 10) || currentCafe.table_count || 20;
+        const ssid = formWifiSsidInput.value || currentCafe.wifi_ssid;
+        const pass = formWifiPassInput.value || currentCafe.wifi_password;
+
+        previewVenueName.textContent = formNameInput.value || currentCafe.name;
+        previewWifiLabel.textContent = ssid ? `📶 Wi-Fi: ${ssid}${pass ? ' (' + pass + ')' : ''}` : "📶 Wi-Fi: None";
+        
+        const previewUrl = `https://meeplemanifesto.com/cafe/${slug}?table=1`;
+        previewQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(previewUrl)}`;
+
+        // Populate Table Links
+        tableLinksContainer.innerHTML = "";
+        const maxDisplay = Math.min(tables, 100);
+        for (let t = 1; t <= maxDisplay; t++) {
+            const row = document.createElement("div");
+            row.className = "table-link-row";
+            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}?table=${t}`;
+            row.innerHTML = `
+                <span class="table-link-title">Table ${t}</span>
+                <div class="table-link-actions">
+                    <button type="button" class="table-btn-small copy-btn" data-url="${tableUrl}">📋 Copy URL</button>
+                    <a href="${tableUrl}" target="_blank" class="table-btn-small">↗ Test</a>
+                </div>
+            `;
+            tableLinksContainer.appendChild(row);
+        }
+
+        // Bind copy buttons
+        tableLinksContainer.querySelectorAll(".copy-btn").forEach(btn => {
+            btn.addEventListener("click", function () {
+                const url = this.getAttribute("data-url");
+                navigator.clipboard.writeText(url).then(() => {
+                    const orig = this.textContent;
+                    this.textContent = "✅ Copied";
+                    setTimeout(() => { this.textContent = orig; }, 1800);
+                });
+            });
+        });
+
+        // Floor Staff Portal Link
+        openStaffPortalBtn.href = `{{ '/cafe/staff.html' | relative_url }}?cafe=${slug}`;
+    }
+
+    // ── Form Input Change Event ──
+    [formNameInput, formTableCountInput, formWifiSsidInput, formWifiPassInput].forEach(inp => {
+        inp.addEventListener("input", updateFloorTools);
+    });
+
+    // ── Copy Main Portal URL ──
+    heroCopyUrlBtn.addEventListener("click", function () {
+        const url = heroPortalLink.textContent;
+        navigator.clipboard.writeText(url).then(() => {
+            heroCopyUrlBtn.textContent = "✅ Copied";
+            setTimeout(() => { heroCopyUrlBtn.textContent = "📋 Copy"; }, 1800);
+        });
+    });
+
+    // ── Form Submission (Save Changes) ──
+    document.getElementById("venue-settings-form").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        if (!currentCafe) return;
+
+        hideAlert();
+        saveVenueBtn.disabled = true;
+        saveBtnIcon.textContent = "⏳";
+        saveBtnText.textContent = "Saving...";
+
+        const payload = {
+            cafe_id: currentCafe.cafe_id,
+            name: formNameInput.value.trim(),
+            tagline: formTaglineInput.value.trim(),
+            bgg_username: formBggInput.value.trim(),
+            table_count: parseInt(formTableCountInput.value, 10),
+            wifi_ssid: formWifiSsidInput.value.trim(),
+            wifi_password: formWifiPassInput.value.trim(),
+            shelf_regex: formShelfRegexInput.value.trim(),
+            drink_pairings_enabled: formDrinkPairings.checked
+        };
+
+        try {
+            const resp = await window.fetchApi("/cafe/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+
+            if (!resp.ok) {
+                showAlert(data.error || "Failed to save cafe changes.", "error");
+                return;
+            }
+
+            showAlert("✅ Venue settings updated successfully!", "success");
+            // Update local memory object
+            currentCafe = { ...currentCafe, ...data.cafe };
+            const idx = allCafes.findIndex(c => c.cafe_id === currentCafe.cafe_id);
+            if (idx >= 0) allCafes[idx] = currentCafe;
+
+            renderVenueDashboard();
+        } catch (err) {
+            showAlert("Network error saving changes. Please try again.", "error");
+        } finally {
+            saveVenueBtn.disabled = false;
+            saveBtnIcon.textContent = "💾";
+            saveBtnText.textContent = "Save Changes";
+        }
+    });
+
+    // ── On-Demand BGG Sync ──
+    syncBggBtn.addEventListener("click", async function () {
+        if (!currentCafe) return;
+
+        hideAlert();
+        syncBggBtn.disabled = true;
+        syncBtnIcon.textContent = "⏳";
+        syncBtnText.textContent = "Queuing Sync...";
+
+        try {
+            const resp = await window.fetchApi(`/cafe/sync?cafe_id=${encodeURIComponent(currentCafe.cafe_id)}`, {
+                method: "POST"
+            });
+            const data = await resp.json();
+
+            if (!resp.ok) {
+                showAlert(data.error || "Failed to trigger BGG sync.", "error");
+                return;
+            }
+
+            showAlert(`✅ On-demand sync enqueued for "${currentCafe.name}". Your active catalog will refresh shortly.`, "success");
+            currentCafe.last_sync_timestamp = data.last_sync_timestamp || new Date().toISOString();
+            badgeLastSync.textContent = "✅ Synced Just Now";
+            badgeLastSync.className = "meta-badge sync-ready";
+        } catch (err) {
+            showAlert("Network error triggering BGG sync.", "error");
+        } finally {
+            syncBggBtn.disabled = false;
+            syncBtnIcon.textContent = "🔄";
+            syncBtnText.textContent = "Sync from BGG";
+        }
+    });
+
+    // ── Printable Table Tent Batch Generator ──
+    openPrintTentBtn.addEventListener("click", function () {
+        if (!currentCafe) return;
+        printTableTents(currentCafe);
+    });
+
+    function printTableTents(venue) {
+        const slug = venue.slug || venue.cafe_id;
+        const tableCount = parseInt(formTableCountInput.value, 10) || venue.table_count || 20;
+        const ssid = formWifiSsidInput.value || venue.wifi_ssid;
+        const pass = formWifiPassInput.value || venue.wifi_password;
+        const wifiInfo = ssid ? `Guest Wi-Fi: <strong>${ssid}</strong> (Pass: <code>${pass || 'None'}</code>)` : 'Free Guest Wi-Fi Available';
+
+        let cardsHtml = '';
+        for (let t = 1; t <= tableCount; t++) {
+            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}?table=${t}`;
+            const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(tableUrl)}`;
+            
+            cardsHtml += `
+            <div class="print-page">
+                <div class="tent-card">
+                    <!-- Top Panel (Inverted 180° for folded tent) -->
+                    <div class="tent-panel tent-panel-top">
+                        <div class="tent-bar"></div>
+                        <div class="tent-cafe-title">${venue.name}</div>
+                        <div class="tent-badge">TABLE ${t}</div>
+                        <img class="tent-qr" src="${qrSrc}" alt="Table ${t} QR">
+                        <div class="tent-cta-heading">🎲 Find What to Play</div>
+                        <div class="tent-cta-sub">${venue.tagline || 'Scan to find your table\'s perfect game in 30 seconds'}</div>
+                        <div class="tent-wifi-box">📶 ${wifiInfo}</div>
+                    </div>
+                    <!-- Fold Indicator -->
+                    <div class="tent-fold">✂️ FOLD HERE FOR STANDING TENT CARD</div>
+                    <!-- Bottom Panel -->
+                    <div class="tent-panel">
+                        <div class="tent-bar"></div>
+                        <div class="tent-cafe-title">${venue.name}</div>
+                        <div class="tent-badge">TABLE ${t}</div>
+                        <img class="tent-qr" src="${qrSrc}" alt="Table ${t} QR">
+                        <div class="tent-cta-heading">🎲 Find What to Play</div>
+                        <div class="tent-cta-sub">${venue.tagline || 'Scan to find your table\'s perfect game in 30 seconds'}</div>
+                        <div class="tent-wifi-box">📶 ${wifiInfo}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${venue.name} - Printable Table Tents</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+                body {
+                    margin: 0;
+                    padding: 20px;
+                    background: #f8fafc;
+                    font-family: 'Outfit', sans-serif;
+                    color: #0f172a;
+                }
+                .toolbar {
+                    background: #fff;
+                    padding: 16px 24px;
+                    border-radius: 12px;
+                    max-width: 720px;
+                    margin: 0 auto 30px auto;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+                }
+                .btn {
+                    background: #4f46e5;
+                    color: #fff;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    font-size: 1rem;
+                    cursor: pointer;
+                }
+                .print-page {
+                    max-width: 720px;
+                    margin: 0 auto 30px auto;
+                    background: #fff;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+                    page-break-after: always;
+                    break-after: page;
+                    padding: 30px;
+                    box-sizing: border-box;
+                }
+                .tent-card {
+                    border: 2px dashed #cbd5e1;
+                    border-radius: 16px;
+                    padding: 20px;
+                }
+                .tent-panel {
+                    text-align: center;
+                    padding: 20px 0;
+                }
+                .tent-panel-top {
+                    transform: rotate(180deg);
+                }
+                .tent-bar {
+                    height: 6px;
+                    background: linear-gradient(135deg, #4f46e5, #818cf8);
+                    border-radius: 3px;
+                    margin-bottom: 14px;
+                }
+                .tent-cafe-title {
+                    font-size: 24px;
+                    font-weight: 800;
+                    color: #1e1b4b;
+                    margin-bottom: 8px;
+                }
+                .tent-badge {
+                    display: inline-block;
+                    background: #4f46e5;
+                    color: #fff;
+                    font-size: 16px;
+                    font-weight: 700;
+                    padding: 4px 16px;
+                    border-radius: 8px;
+                    margin-bottom: 14px;
+                }
+                .tent-qr {
+                    width: 170px;
+                    height: 170px;
+                    display: block;
+                    margin: 0 auto 12px auto;
+                }
+                .tent-cta-heading {
+                    font-size: 18px;
+                    font-weight: 700;
+                    margin-bottom: 4px;
+                }
+                .tent-cta-sub {
+                    font-size: 13px;
+                    color: #64748b;
+                    margin-bottom: 14px;
+                }
+                .tent-wifi-box {
+                    display: inline-block;
+                    background: #f1f5f9;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    color: #334155;
+                }
+                .tent-fold {
+                    border-top: 2px dashed #94a3b8;
+                    margin: 24px 0;
+                    text-align: center;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 0.08em;
+                    color: #94a3b8;
+                    padding-top: 6px;
+                }
+                @media print {
+                    body { background: #fff; padding: 0; }
+                    .toolbar { display: none; }
+                    .print-page { box-shadow: none; margin: 0; padding: 20px; page-break-after: always; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="toolbar">
+                <div>
+                    <h2 style="margin:0; font-size:1.2rem;">${venue.name} - Table Tents</h2>
+                    <p style="margin:4px 0 0 0; font-size:0.85rem; color:#64748b;">${tableCount} Foldable Double-Sided Tents (Top panel is inverted for upright display when folded)</p>
+                </div>
+                <button class="btn" onclick="window.print()">🖨️ Print Batch</button>
+            </div>
+            ${cardsHtml}
+        </body>
+        </html>
+        `);
+        printWindow.document.close();
+    }
+
+    // Initial load
+    loadOwnerVenues();
+});
+</script>

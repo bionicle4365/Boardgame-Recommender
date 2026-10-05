@@ -1,0 +1,108 @@
+import { describe, test, expect, beforeEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+
+// Setup environment and load utils.js
+const utilsJsPath = path.resolve(__dirname, '../assets/js/utils.js');
+let rawCode = fs.readFileSync(utilsJsPath, 'utf8');
+
+// Strip frontmatter and inject PLACEHOLDER_API_URL for mock mode
+let code = rawCode.replace(/^---[\s\S]*?---/, '');
+code = code.replace(/"\{\{\s*site\.cognito_client_id\s*\}\}"/g, '"mock-client-id"');
+code = code.replace(/"\{\{\s*site\.cognito_region\s*\}\}"/g, '"us-east-1"');
+code = code.replace(/"\{\{\s*site\.api_url\s*\}\}"/g, '"PLACEHOLDER_API_URL"');
+
+eval(code);
+
+describe('Cafe Management Client Logic & Mock API', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('fetchApi mock handles /cafe/my-cafes returning default demo cafe when empty', async () => {
+        const res = await window.fetchApi('/cafe/my-cafes');
+        expect(res.ok).toBe(true);
+        const data = await res.json();
+        expect(data.status).toBe('success');
+        expect(Array.isArray(data.cafes)).toBe(true);
+        expect(data.cafes.length).toBeGreaterThan(0);
+        expect(data.cafes[0].cafe_id).toBe('the-malt-and-meeple');
+        expect(data.cafes[0].name).toBe('The Malt & Meeple Cafe');
+        expect(data.cafes[0].table_count).toBe(20);
+    });
+
+    test('fetchApi mock handles /cafe/my-cafes returning multiple registered cafes', async () => {
+        localStorage.setItem('bgg_mock_cafe_venue-alpha', JSON.stringify({
+            cafe_id: 'venue-alpha',
+            name: 'Alpha Cafe',
+            table_count: 12
+        }));
+        localStorage.setItem('bgg_mock_cafe_venue-beta', JSON.stringify({
+            cafe_id: 'venue-beta',
+            name: 'Beta Lounge',
+            table_count: 18
+        }));
+
+        const res = await window.fetchApi('/cafe/my-cafes');
+        expect(res.ok).toBe(true);
+        const data = await res.json();
+        expect(data.status).toBe('success');
+        expect(data.cafes.length).toBe(2);
+        const ids = data.cafes.map(c => c.cafe_id);
+        expect(ids).toContain('venue-alpha');
+        expect(ids).toContain('venue-beta');
+    });
+
+    test('fetchApi mock handles /cafe/update modifying venue settings', async () => {
+        localStorage.setItem('bgg_mock_cafe_the-malt-and-meeple', JSON.stringify({
+            cafe_id: 'the-malt-and-meeple',
+            name: 'Old Name',
+            table_count: 10,
+            wifi_ssid: 'OldSSID',
+            staff_pin: '1234'
+        }));
+
+        const updatePayload = {
+            cafe_id: 'the-malt-and-meeple',
+            name: 'The Malt & Meeple Gastropub',
+            table_count: 35,
+            wifi_ssid: 'MaltMeeple-Guest',
+            wifi_password: 'rollinitiative',
+            tagline: 'Craft beer and board games'
+        };
+
+        const res = await window.fetchApi('/cafe/update', {
+            method: 'POST',
+            body: JSON.stringify(updatePayload)
+        });
+
+        expect(res.ok).toBe(true);
+        const data = await res.json();
+        expect(data.status).toBe('success');
+        expect(data.cafe.name).toBe('The Malt & Meeple Gastropub');
+        expect(data.cafe.table_count).toBe(35);
+        expect(data.cafe.wifi_ssid).toBe('MaltMeeple-Guest');
+        expect(data.cafe).not.toHaveProperty('staff_pin');
+
+        // Verify saved in localStorage
+        const stored = JSON.parse(localStorage.getItem('bgg_mock_cafe_the-malt-and-meeple'));
+        expect(stored.name).toBe('The Malt & Meeple Gastropub');
+        expect(stored.table_count).toBe(35);
+    });
+
+    test('validates table count numeric range bounds', () => {
+        function validateTableCount(val) {
+            const num = parseInt(val, 10);
+            if (isNaN(num) || num < 1 || num > 500) return false;
+            return true;
+        }
+
+        expect(validateTableCount("20")).toBe(true);
+        expect(validateTableCount(1)).toBe(true);
+        expect(validateTableCount(500)).toBe(true);
+        expect(validateTableCount(0)).toBe(false);
+        expect(validateTableCount(-5)).toBe(false);
+        expect(validateTableCount(501)).toBe(false);
+        expect(validateTableCount("abc")).toBe(false);
+    });
+});

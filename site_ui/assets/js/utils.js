@@ -69,6 +69,17 @@ window.Auth = {
         // Developer helper: Mock Cognito responses locally if Client ID is a placeholder
         if (COGNITO_CLIENT_ID === "PLACEHOLDER_COGNITO_CLIENT_ID") {
             console.log(`[Mock Cognito] Intercepted request for ${target}`, payload);
+            if (target === "AWSCognitoIdentityProviderService.InitiateAuth") {
+                return {
+                    AuthenticationResult: {
+                        IdToken: "mock_id_token_" + Date.now(),
+                        RefreshToken: "mock_refresh_token_" + Date.now()
+                    }
+                };
+            }
+            if (target === "AWSCognitoIdentityProviderService.SignUp") {
+                return { UserConfirmed: true };
+            }
             if (target === "AWSCognitoIdentityProviderService.ForgotPassword") {
                 return { CodeDeliveryDetails: { Destination: payload.Username } };
             }
@@ -500,6 +511,55 @@ window.fetchApi = async function(endpoint, options = {}) {
                 cafe_id: cafeId,
                 bgg_username: saved.bgg_username || "maltandmeeple",
                 last_sync_timestamp: nowIso
+            };
+        } else if (endpoint.startsWith('/cafe/my-cafes')) {
+            const cafes = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k.startsWith('bgg_mock_cafe_')) {
+                    try {
+                        const item = JSON.parse(localStorage.getItem(k));
+                        if (item && item.cafe_id) cafes.push(item);
+                    } catch (e) {}
+                }
+            }
+            if (cafes.length === 0) {
+                const defaultCafe = {
+                    cafe_id: "the-malt-and-meeple",
+                    name: "The Malt & Meeple Cafe",
+                    slug: "the-malt-and-meeple",
+                    bgg_username: "maltandmeeple",
+                    table_count: 20,
+                    wifi_ssid: "MaltMeeple-Guest",
+                    wifi_password: "rollinitiative",
+                    tagline: "24 craft beers on tap & 600+ tabletop games. Ask staff for recommendations!",
+                    shelf_regex: "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)",
+                    drink_pairings_enabled: true,
+                    last_sync_timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('bgg_mock_cafe_the-malt-and-meeple', JSON.stringify(defaultCafe));
+                cafes.push(defaultCafe);
+            }
+            data = {
+                status: "success",
+                cafes: cafes
+            };
+        } else if (endpoint.startsWith('/cafe/update') && options.method === 'POST') {
+            const payload = JSON.parse(options.body || '{}');
+            const cafeId = (payload.cafe_id || 'the-malt-and-meeple').toLowerCase();
+            const existing = JSON.parse(localStorage.getItem('bgg_mock_cafe_' + cafeId) || '{}');
+            const updated = {
+                ...existing,
+                ...payload,
+                cafe_id: cafeId,
+                updated_at: new Date().toISOString()
+            };
+            delete updated.staff_pin;
+            localStorage.setItem('bgg_mock_cafe_' + cafeId, JSON.stringify(updated));
+            data = {
+                status: "success",
+                message: "Cafe settings updated successfully",
+                cafe: updated
             };
         } else if (endpoint.startsWith('/collection')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');

@@ -8,6 +8,7 @@ import urllib.error
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 import boto3
+from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 
 # Helper to handle Decimal types in DynamoDB JSON serialization
@@ -668,6 +669,203 @@ def _handle_sync_all_cafes():
         }
 
 
+
+def _handle_get_my_cafes(event, claims):
+    """
+    Retrieves all cafes owned by the authenticated caller (GET /cafe/my-cafes).
+    Queries bgg-cafes DynamoDB using the owner_cognito_id-index GSI.
+    """
+    user_id = claims.get('sub')
+    if not user_id:
+        return {
+            'statusCode': 401,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Unauthorized: Missing user authentication'})
+        }
+
+    try:
+        response = cafes_table.query(
+            IndexName='owner_cognito_id-index',
+            KeyConditionExpression=Key('owner_cognito_id').eq(user_id)
+        )
+        items = response.get('Items', [])
+        sanitized = []
+        for item in items:
+            c = {k: v for k, v in item.items() if k != 'staff_pin'}
+            sanitized.append(c)
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'status': 'success', 'cafes': sanitized}, cls=DecimalEncoder)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Failed to retrieve owned cafes: {str(e)}'})
+        }
+
+
+def _handle_cafe_update(event, claims):
+    """
+    Updates configuration for an existing cafe (POST /cafe/update).
+    Requires Cognito authentication. Verifies caller is owner_cognito_id.
+    Persists updates to DynamoDB bgg-cafes, mirrors metadata to S3,
+    and updates cafes_registry.json.
+    """
+    user_id = claims.get('sub')
+    if not user_id:
+        return {
+            'statusCode': 401,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Unauthorized: Missing user authentication'})
+        }
+
+    body_str = event.get('body', '{}')
+    if event.get('isBase64Encoded', False):
+        body_str = base64.b64decode(body_str).decode('utf-8')
+
+    try:
+        body = json.loads(body_str) if isinstance(body_str, str) else body_str
+        if not isinstance(body, dict):
+            body = {}
+    except Exception:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Invalid JSON in request body'})
+        }
+
+    cafe_id = str(body.get('cafe_id', '')).strip().lower()
+    if not cafe_id:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'cafe_id is required'})
+        }
+
+    try:
+        res = cafes_table.get_item(Key={'cafe_id': cafe_id})
+        existing = res.get('Item')
+        if not existing:
+            return {
+                'statusCode': 404,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': f'Cafe "{cafe_id}" not found'})
+            }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Failed to query cafe: {str(e)}'})
+        }
+
+    if existing.get('owner_cognito_id') != user_id:
+        return {
+            'statusCode': 403,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Forbidden: You do not have permission to update this cafe'})
+        }
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    update_item = dict(existing)
+
+    if 'name' in body and body['name']:
+        name_val = str(body['name']).strip()
+        if len(name_val) <= 100:
+            update_item['name'] = name_val
+
+    if 'tagline' in body:
+        update_item['tagline'] = str(body['tagline']).strip()
+
+    if 'table_count' in body:
+        try:
+            tc = int(body['table_count'])
+            if 1 <= tc <= 500:
+                update_item['table_count'] = tc
+        except (ValueError, TypeError):
+            pass
+
+    if 'wifi_ssid' in body:
+        update_item['wifi_ssid'] = str(body['wifi_ssid']).strip()
+
+    if 'wifi_password' in body:
+        update_item['wifi_password'] = str(body['wifi_password']).strip()
+
+    if 'shelf_regex' in body:
+        update_item['shelf_regex'] = str(body['shelf_regex']).strip()
+
+    if 'drink_pairings_enabled' in body:
+        update_item['drink_pairings_enabled'] = bool(body['drink_pairings_enabled'])
+
+    if 'logo_url' in body:
+        update_item['logo_url'] = str(body['logo_url']).strip()
+
+    if 'bgg_username' in body and body['bgg_username']:
+        bgg_user = str(body['bgg_username']).strip()
+        if re.match(r'^[a-zA-Z0-9_]{1,25}$', bgg_user):
+            update_item['bgg_username'] = bgg_user
+
+    update_item['updated_at'] = now_iso
+
+    # 1. Update in DynamoDB
+    try:
+        cafes_table.put_item(Item=update_item)
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Failed to update venue in DynamoDB: {str(e)}'})
+        }
+
+    # 2. Mirror metadata to S3
+    try:
+        meta_key = f"data/cafes/{cafe_id}/meta.json"
+        s3.put_object(
+            Bucket=s3_bucket,
+            Key=meta_key,
+            Body=json.dumps(update_item, cls=DecimalEncoder, indent=2),
+            ContentType='application/json'
+        )
+
+        reg_key = "data/cafes_registry.json"
+        try:
+            reg_resp = s3.get_object(Bucket=s3_bucket, Key=reg_key)
+            registry = json.loads(reg_resp['Body'].read().decode('utf-8'))
+        except Exception:
+            registry = {}
+
+        registry[cafe_id] = {
+            'cafe_id': cafe_id,
+            'name': update_item.get('name'),
+            'slug': update_item.get('slug', cafe_id),
+            'bgg_username': update_item.get('bgg_username'),
+            'table_count': update_item.get('table_count'),
+            'tagline': update_item.get('tagline'),
+            'logo_url': update_item.get('logo_url'),
+            'updated_at': now_iso
+        }
+        s3.put_object(
+            Bucket=s3_bucket,
+            Key=reg_key,
+            Body=json.dumps(registry, cls=DecimalEncoder, indent=2),
+            ContentType='application/json'
+        )
+    except Exception as s3_err:
+        print(f"Warning: Failed to mirror updated cafe to S3: {s3_err}")
+
+    sanitized = {k: v for k, v in update_item.items() if k != 'staff_pin'}
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps({
+            'status': 'success',
+            'message': 'Cafe settings updated successfully',
+            'cafe': sanitized
+        }, cls=DecimalEncoder)
+    }
+
+
 def _lambda_handler_impl(event, context):
     # Scheduled EventBridge or direct action for weekly cafe sync
     if event.get('action') == 'sync_all_cafes' or (event.get('source') == 'aws.events' and any('cafe' in r for r in event.get('resources', []))):
@@ -703,6 +901,10 @@ def _lambda_handler_impl(event, context):
         return _handle_cafe_onboard(event, claims)
     if '/cafe/sync' in path:
         return _handle_cafe_sync(event, claims)
+    if '/cafe/my-cafes' in path:
+        return _handle_get_my_cafes(event, claims)
+    if '/cafe/update' in path:
+        return _handle_cafe_update(event, claims)
 
     # Extract user ID from JWT Claims for /preferences
     user_id = claims.get('sub')

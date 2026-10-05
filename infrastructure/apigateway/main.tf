@@ -199,6 +199,23 @@ resource "aws_apigatewayv2_route" "bgg_cafe_sync_route" {
   target             = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_cafe_my_cafes_route" {
+  api_id             = aws_apigatewayv2_api.bgg_api.id
+  route_key          = "GET /cafe/my-cafes"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_authorizer.id
+  target             = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_cafe_update_route" {
+  api_id             = aws_apigatewayv2_api.bgg_api.id
+  route_key          = "POST /cafe/update"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_authorizer.id
+  target             = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
+}
+
+
 
 resource "aws_lambda_permission" "apigw_preferences" {
   statement_id  = "AllowPreferencesExecutionFromAPIGateway"
