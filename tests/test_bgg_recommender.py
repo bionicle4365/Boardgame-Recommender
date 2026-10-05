@@ -31,6 +31,7 @@ boto3.client = mock_boto3_client
 
 # Add the lambda dir to python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_recommender'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bgg_taste_analytics'))
 import bgg_recommender
 
 @pytest.fixture(autouse=True)

@@ -16,18 +16,14 @@ def lambda_handler(event, context):
     local_config_path = "/tmp/active_previews.json"
     local_games_path = "/tmp/active_previews_games.json"
     
-    print(f"Downloading {config_key} from S3 bucket {bucket}...")
+    conventions = []
     try:
+        print(f"Downloading {config_key} from S3 bucket {bucket}...")
         s3.download_file(bucket, config_key, local_config_path)
+        with open(local_config_path, 'r', encoding='utf-8') as f:
+            conventions = json.load(f)
     except Exception as e:
-        print(f"Error downloading config: {e}. active_previews.json metadata configuration must exist in S3.")
-        return {
-            'statusCode': 500,
-            'body': json.dumps(f"Failed to download config: {str(e)}")
-        }
-        
-    with open(local_config_path, 'r', encoding='utf-8') as f:
-        conventions = json.load(f)
+        print(f"No existing config found in S3 or error downloading it: {e}. Starting fresh discovery.")
         
     # Download existing games map or initialize empty
     games_map = {}
@@ -61,7 +57,7 @@ def lambda_handler(event, context):
             active_convs.append(conv)
             
     # Find max preview ID across all loaded conventions
-    max_preview_id = 0
+    max_preview_id = 90  # Default baseline preview ID if no prior config exists in S3
     if conventions:
         max_preview_id = max(conv.get("previewid", 0) for conv in conventions)
         

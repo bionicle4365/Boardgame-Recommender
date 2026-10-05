@@ -202,3 +202,35 @@ def test_passed_conventions_cleanup_with_seed(mock_s3_fixture):
                 
         assert config_uploaded
         assert games_uploaded
+
+
+def test_cold_start_without_s3_config(mock_s3_fixture):
+    # Simulate missing active_previews.json and active_previews_games.json in S3
+    mock_s3_fixture.download_file.side_effect = Exception("NoSuchKey: The specified key does not exist.")
+    
+    fixed_now = datetime(2026, 10, 5, tzinfo=timezone.utc)
+    
+    def urlopen_mock(req, timeout=10):
+        url = req.full_url
+        mock_res = MagicMock()
+        mock_res.getcode.return_value = 200
+        mock_res.status = 200
+        mock_res.__enter__.return_value = mock_res
+        
+        # ID 91 is 404 on fresh start
+        if "api/geekpreview/91" in url:
+            raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+        raise ValueError(f"Unexpected url: {url}")
+        
+    with patch('urllib.request.urlopen', side_effect=urlopen_mock), \
+         patch('bgg_preview_refresh.datetime') as mock_datetime:
+         
+        mock_datetime.now.return_value = fixed_now
+        mock_datetime.strptime = datetime.strptime
+        
+        event = {}
+        context = None
+        res = bgg_preview_refresh.lambda_handler(event, context)
+        
+        # Should gracefully finish with 200 instead of crashing with 500
+        assert res['statusCode'] == 200

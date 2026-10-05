@@ -84,38 +84,6 @@ Redesign the Playgroup Organizer planner view (`site_ui/groups/index.html`) with
 
 ---
 
-## Milestone 63: User Password Reset & Recovery Flow
-
-### Objective
-Enable self-service password recovery for authenticated users by integrating AWS Cognito's `ForgotPassword` and `ConfirmForgotPassword` client-side API flows into the authentication modal, allowing users to request a password reset verification code sent to their verified email and securely set a new password.
-
-### Design Notes
-- **Current Limitation:** The existing authentication modal (`_layouts/default.html` and `_includes/header.html`) supports Log In, Sign Up, and Confirm Sign Up. If a user forgets their password, there is currently no recovery option in the UI, locking them out of cloud-synced preferences, saved playgroups, and taste profile settings.
-- **Cognito Native Recovery:** AWS Cognito User Pools natively support email-based password recovery via unauthenticated client API calls (`AWSCognitoIdentityProviderService.ForgotPassword` and `AWSCognitoIdentityProviderService.ConfirmForgotPassword`). No backend Lambda or custom API Gateway endpoint is required.
-- **Glassmorphic Multi-Step Modal UI:**
-  - Add a subtle "Forgot password?" link adjacent to the Password field in the login view (`#auth-view-login`).
-  - Add View 4 (`#auth-view-forgot`): prompts the user for their registered email address with a "Send Reset Code" button and a "Back to Log In" navigation link.
-  - Add View 5 (`#auth-view-reset`): displays the target email, prompts for the 6-digit verification code, new password (with confirmation), a "Reset Password" submit button, and a "Resend Code" option.
-  - On successful reset, display a clear success confirmation and transition back to the login view with the email prefilled.
-- **Validation & Error Handling:** Enforce Cognito password policy client-side (min 8 characters, uppercase, lowercase, numbers, symbols) and map Cognito error codes (`UserNotFoundException`, `CodeMismatchException`, `ExpiredCodeException`, `LimitExceededException`, `InvalidPasswordException`) to clear, user-friendly in-modal error messages.
-
-### Architecture Decisions
-- **Direct Cognito Client-Side Integration:** Leverage `Auth.cognitoRequest` in `site_ui/assets/js/utils.js` targeting:
-  - `AWSCognitoIdentityProviderService.ForgotPassword` (`ClientId`, `Username: email`)
-  - `AWSCognitoIdentityProviderService.ConfirmForgotPassword` (`ClientId`, `Username: email`, `ConfirmationCode: code`, `Password: newPassword`)
-- **SES & User Pool Verification:** Utilize existing SES email identity and `verification_message_template` / auto-verified email settings in `infrastructure/cognito/main.tf`.
-- **View Transition State Management:** Extend modal state switching in `_includes/header.html` with `showForgotView(email)` and `showResetView(email)`.
-- **Unit Testing:** Add frontend tests in `site_ui/tests/test_utils.test.js` or modal test suites mocking `ForgotPassword` and `ConfirmForgotPassword` Cognito responses and verifying error state handling.
-
-### Tasks
-- [ ] **Modal HTML Markup:** Update `site_ui/_layouts/default.html` to add a "Forgot password?" link in `#auth-view-login`, add `#auth-view-forgot` (email input & send code button), and add `#auth-view-reset` (code input, new password, confirm new password, and submit button).
-- [ ] **Modal Styling:** Update `site_ui/_includes/header.html` CSS for `.auth-forgot-link`, `.auth-reset-container`, and password requirement indicators matching the glassmorphic card design.
-- [ ] **Forgot Password API Flow:** Implement event listeners in `site_ui/_includes/header.html` calling `AWSCognitoIdentityProviderService.ForgotPassword` when the user submits their email.
-- [ ] **Confirm Password Reset API Flow:** Implement event listeners calling `AWSCognitoIdentityProviderService.ConfirmForgotPassword` with the confirmation code and validated new password.
-- [ ] **Modal View Transitions & Error Handling:** Wire up view transitions (`showForgotView`, `showResetView`, `showLoginView`), pre-fill the email address, and map Cognito error codes to in-modal alert banners.
-- [ ] **Frontend Unit Tests:** Add unit tests in `site_ui/tests/test_utils.test.js` verifying `ForgotPassword` and `ConfirmForgotPassword` invocations, successful state transitions, and error handling.
-
----
 
 ## Milestone 35: Gamefound Crowdfunding Recommendations
 
@@ -200,4 +168,5 @@ Replace the polling-based recommendation flow with API Gateway WebSocket connect
 * **Milestone 57: Async Game Night Voting & Veto Session** (Defined bgg-game-night-sessions DynamoDB table with GSI and TTL, built sessions.py consensus engine with +2/+1/-99 veto scoring and tie-breaking, created standalone vote/index.html voting page with live countdown timer, and added host poll modal & Past Polls history tab on groups/index.html)
 * **Milestone 61: Content-Based Scoring Normalization & Popularity De-biasing** (Implemented true cosine similarity dividing tag dot products by candidate vector norms $\sqrt{|\text{cand\_tags}|}$, rebalanced default weights to w_pop=0.20, w_mech=0.60, w_cat=0.40, w_des=0.35, w_comp=0.35 in cache_utils.py and UI presets, replaced coarse complexity buckets with continuous Gaussian distance decay centered on user mean complexity with $\sigma=0.75$, upgraded diversify_candidates() to track decayed secondary tags, and verified with comprehensive unit test suite)
 * **Milestone 62: Taste Profile TF-IDF & Catalog Base-Rate Discounting** (Calculated catalog document frequencies across 139k BGG games to derive smoothed IDF factors $\ln(1 + N_{\text{catalog}} / N_f)$ in catalog_feature_frequencies.json, implemented TF-IDF discounting in bgg_taste_analytics.py and scoring.py for offline/inline parity, elevated distinctive tags over ubiquitous baseline tags, updated taste profile schema with idf_applied: true and user_mean_complexity, and added unit tests validating distinctive tag elevation, backward compatibility, and profile parity)
+* **Milestone 63: User Password Reset & Recovery Flow** (Enabled self-service client-side Cognito password recovery via ForgotPassword and ConfirmForgotPassword in utils.js, designed multi-step glassmorphic recovery views in default.html and header.html, enforced password complexity policies with real-time hints and mapped Cognito error codes to friendly messages, and added comprehensive Vitest test coverage)
 

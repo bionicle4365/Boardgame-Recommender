@@ -138,6 +138,8 @@ def _handle_conventions():
     for conv in active_previews:
         conv_id = conv.get("convention_id")
         games_list = active_games.get(conv_id, [])
+        if not games_list:
+            continue
         conventions_meta.append({
             "convention_id": conv_id,
             "name": conv.get("name"),
