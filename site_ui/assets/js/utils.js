@@ -66,6 +66,22 @@ window.Auth = {
         window.location.reload();
     },
     async cognitoRequest(target, payload) {
+        // Developer helper: Mock Cognito responses locally if Client ID is a placeholder
+        if (COGNITO_CLIENT_ID === "PLACEHOLDER_COGNITO_CLIENT_ID") {
+            console.log(`[Mock Cognito] Intercepted request for ${target}`, payload);
+            if (target === "AWSCognitoIdentityProviderService.ForgotPassword") {
+                return { CodeDeliveryDetails: { Destination: payload.Username } };
+            }
+            if (target === "AWSCognitoIdentityProviderService.ConfirmForgotPassword") {
+                if (payload.ConfirmationCode !== "123456") {
+                    const err = new Error("Invalid verification code provided, please try again.");
+                    err.code = "CodeMismatchException";
+                    throw err;
+                }
+                return {};
+            }
+        }
+
         const url = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/`;
         const response = await fetch(url, {
             method: "POST",
