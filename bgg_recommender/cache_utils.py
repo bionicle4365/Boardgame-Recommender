@@ -88,6 +88,7 @@ PREVIEWS_GAMES_CACHE = None
 PREVIEWS_GAMES_CACHE_TIME = None
 FEATURE_FREQUENCIES_CACHE = None
 FEATURE_FREQUENCIES_CACHE_TIME = None
+CAFE_INVENTORY_CACHE = {}
 
 
 def safe_list(val):
@@ -387,6 +388,101 @@ def trigger_background_scrape(username):
             logger.error(f"Error sending message to SQS: {sqs_err}")
     else:
         logger.error("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
+
+
+def get_cafe_status(cafe_id, ttl_hours=24):
+    """
+    Checks if the cafe's collection parquet file exists on S3, and if it is stale.
+    Checks data/cafes/{cafe_id}/collection.parquet, with fallback to data/users/{cafe_id}.parquet.
+    Returns (exists, is_stale, last_modified)
+    """
+    key = f"data/cafes/{cafe_id}/collection.parquet"
+    try:
+        response = _s3().head_object(Bucket=bucket, Key=key)
+        last_modified = response['LastModified']
+        age_hours = (datetime.now(timezone.utc) - last_modified).total_seconds() / 3600.0
+        return True, age_hours >= ttl_hours, last_modified
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            user_key = f"data/users/{cafe_id}.parquet"
+            try:
+                resp2 = _s3().head_object(Bucket=bucket, Key=user_key)
+                last_modified2 = resp2['LastModified']
+                age_hours2 = (datetime.now(timezone.utc) - last_modified2).total_seconds() / 3600.0
+                return True, age_hours2 >= ttl_hours, last_modified2
+            except ClientError as e2:
+                if e2.response['Error']['Code'] == '404':
+                    return False, False, None
+                raise e2
+        raise e
+
+
+def trigger_background_cafe_scrape(cafe_id, username=None):
+    """Sends cafe scrape payload to SQS queue to trigger a cafe collection scrape/update."""
+    if user_sqs_queue_url:
+        try:
+            payload = json.dumps({
+                "username": username or cafe_id,
+                "cafe_id": cafe_id,
+                "is_cafe": True
+            })
+            _sqs().send_message(QueueUrl=user_sqs_queue_url, MessageBody=payload)
+            logger.info(f"Successfully sent cafe collection scrape request for {cafe_id} to queue: {user_sqs_queue_url}")
+        except Exception as sqs_err:
+            logger.error(f"Error sending cafe scrape message to SQS: {sqs_err}")
+    else:
+        logger.error("Error: USER_SQS_QUEUE_URL environment variable is not defined.")
+
+
+def get_cafe_inventory(cafe_id, ttl_seconds=3600):
+    """
+    Loads a cafe's owned library parquet file from S3: data/cafes/{cafe_id}/collection.parquet
+    (with fallback to data/users/{cafe_id}.parquet where own=True).
+    Caches the inventory DataFrame in memory for warm starts.
+    Returns pd.DataFrame (with string 'id' column) or None if not found.
+    """
+    import bgg_recommender
+    now = time.time()
+    cafe_cache = getattr(bgg_recommender, 'CAFE_INVENTORY_CACHE', CAFE_INVENTORY_CACHE)
+    if cafe_id in cafe_cache:
+        cached_time, cached_df = cafe_cache[cafe_id]
+        if (now - cached_time) < ttl_seconds and cached_df is not None:
+            logger.info(f"Loading cafe inventory for '{cafe_id}' from in-memory cache.")
+            return cached_df
+
+    logger.info(f"Fetching cafe inventory for '{cafe_id}' from S3...")
+    cafe_key = f"data/cafes/{cafe_id}/collection.parquet"
+    local_path = f"/tmp/cafe_{cafe_id}_collection.parquet"
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    try:
+        _s3().download_file(bucket, cafe_key, local_path)
+        df = pd.read_parquet(local_path)
+        if 'id' in df.columns:
+            df['id'] = df['id'].astype(str)
+        cafe_cache[cafe_id] = (now, df)
+        if hasattr(bgg_recommender, 'CAFE_INVENTORY_CACHE'):
+            bgg_recommender.CAFE_INVENTORY_CACHE[cafe_id] = (now, df)
+        logger.info(f"Successfully loaded cafe inventory for '{cafe_id}' with {len(df)} games.")
+        return df
+    except Exception as e:
+        logger.warning(f"Cafe collection not found at {cafe_key} ({e}). Checking data/users/{cafe_id}.parquet fallback...")
+        user_key = f"data/users/{cafe_id}.parquet"
+        local_user_path = f"/tmp/user_{cafe_id}_fallback.parquet"
+        try:
+            _s3().download_file(bucket, user_key, local_user_path)
+            u_df = pd.read_parquet(local_user_path)
+            if 'own' in u_df.columns:
+                u_df = u_df[u_df['own'] == True]
+            if 'id' in u_df.columns:
+                u_df['id'] = u_df['id'].astype(str)
+            cafe_cache[cafe_id] = (now, u_df)
+            if hasattr(bgg_recommender, 'CAFE_INVENTORY_CACHE'):
+                bgg_recommender.CAFE_INVENTORY_CACHE[cafe_id] = (now, u_df)
+            logger.info(f"Successfully loaded fallback user collection for '{cafe_id}' with {len(u_df)} owned games.")
+            return u_df
+        except Exception as e2:
+            logger.error(f"Failed to load cafe inventory for '{cafe_id}' from S3: {e2}")
+            return None
 
 
 def get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168):

@@ -425,3 +425,103 @@ def test_sommelier_system_prompt_exemplars():
     assert bedrock_model_id == 'amazon.nova-lite-v1:0'
 
 
+def test_estimate_teach_time():
+    assert narration.estimate_teach_time({'complexity': 1.5}) == "3-5 mins"
+    assert narration.estimate_teach_time({'complexity': 2.1}) == "5-10 mins"
+    assert narration.estimate_teach_time({'complexity': 3.0}) == "10-15 mins"
+    assert narration.estimate_teach_time({'complexity': 3.7}) == "15-25 mins"
+    assert narration.estimate_teach_time({'complexity': 4.5}) == "25-40 mins"
+    assert narration.estimate_teach_time({'teach_time': '2 mins'}) == "2 mins"
+    assert narration.estimate_teach_time({}) == "5-10 mins"
+
+
+def test_build_cafe_sommelier_prompt():
+    candidates = [
+        {
+            'id': '1',
+            'name': 'Codenames',
+            'complexity': 1.3,
+            'playing_time': 15,
+            'min_players': 2,
+            'max_players': 8,
+            'shelf_location': 'Party-A1',
+            'categories': ['Party Game'],
+            'mechanics': ['Deduction', 'Push Your Luck']
+        }
+    ]
+    qp = {'player_count': '4', 'duration_pref': 'short', 'table': '7'}
+    prompt = narration.build_cafe_sommelier_prompt(
+        candidates, vibe='party', query_params=qp, cafe_name='The Meeples Den'
+    )
+    assert "The Meeples Den" in prompt
+    assert "Table 7" in prompt
+    assert "Party & Social" in prompt
+    assert "Codenames" in prompt
+    assert "Teach: 3-5 mins" in prompt
+    assert "Shelf: Party-A1" in prompt
+    assert "Player Count: 4" in prompt
+    assert "Players: 2-8" in prompt
+
+
+@patch('narration._bedrock')
+def test_narrate_recommendations_cafe_mode(mock_bedrock_func):
+    mock_bedrock = MagicMock()
+    mock_bedrock_func.return_value = mock_bedrock
+
+    mock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': json.dumps({
+                            'recommendations': [
+                                {'name': 'Codenames', 'reason': 'Breezy team deduction that gets everyone laughing over drinks.'}
+                            ]
+                        })
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_response
+
+    candidates = [
+        {
+            'id': '101',
+            'name': 'Codenames',
+            'rating': 7.6,
+            'complexity': 1.3,
+            'min_players': 2,
+            'max_players': 8,
+            'shelf_location': 'Shelf A-1'
+        }
+    ]
+
+    recs = narration.narrate_recommendations(
+        candidates, "", "", {'table': '4'},
+        cafe_id='maltandmeeple', vibe='party', table='4', cafe_name='Malt & Meeple'
+    )
+    assert recs is not None
+    assert len(recs) == 1
+    assert recs[0]['name'] == 'Codenames'
+    assert recs[0]['teach_time'] == '3-5 mins'
+    assert recs[0]['shelf_location'] == 'Shelf A-1'
+    assert 'drinks' in recs[0]['reason']
+
+    # Verify cafe system prompt was sent
+    call_kwargs = mock_bedrock.converse.call_args[1]
+    system_text = call_kwargs['system'][0]['text']
+    assert "board game cafe" in system_text
+
+
+def test_build_fallback_recommendations_cafe():
+    candidates = [
+        {'id': '1', 'name': 'Catan', 'rating': 7.2, 'complexity': 2.3, 'mechanics': ['Trading'], 'shelf_location': 'B-3'},
+    ]
+    recs = narration.build_fallback_recommendations(candidates, is_cafe=True)
+    assert len(recs) == 1
+    assert "popular cafe mechanics" in recs[0]['reason']
+    assert recs[0]['teach_time'] == '5-10 mins'
+    assert recs[0]['shelf_location'] == 'B-3'
+
+

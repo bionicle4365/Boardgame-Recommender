@@ -22,6 +22,7 @@ PREVIEWS_GAMES_CACHE = None
 PREVIEWS_GAMES_CACHE_TIME = None
 FEATURE_FREQUENCIES_CACHE = None
 FEATURE_FREQUENCIES_CACHE_TIME = None
+CAFE_INVENTORY_CACHE = {}
 
 from cache_utils import (
     logger, bucket,
@@ -30,11 +31,13 @@ from cache_utils import (
     get_bgg_hotness, get_user_profile_status, trigger_background_scrape,
     get_cached_recommendations, save_recommendations_to_cache,
     build_game_metadata, validate_username, parse_weights,
+    get_cafe_inventory, get_cafe_status, trigger_background_cafe_scrape,
 )
 from scoring import (
     compute_taste_profile_inline, score_candidates, diversify_candidates,
     calculate_game_score, filter_dislike_exclusions,
-    deduplicate_candidate_variants, attach_candidate_linkages
+    deduplicate_candidate_variants, attach_candidate_linkages,
+    get_vibe_weights,
 )
 from narration import narrate_recommendations, build_fallback_recommendations, build_weight_context
 
@@ -190,11 +193,20 @@ def _handle_recommendations(query_params):
         except Exception:
             pass
 
+    cafe_id_raw = query_params.get('cafe_id') or query_params.get('cafe_username')
+    cafe_id = str(cafe_id_raw).strip() if cafe_id_raw else None
+    vibe = query_params.get('vibe')
+    table = query_params.get('table')
+
     is_inline = (inline_profile is not None) or (inline_weights is not None)
+    is_cafe_patron = False
 
     if not username:
         if is_inline:
             username = "manual_profile"
+        elif cafe_id:
+            username = "cafe_guest"
+            is_cafe_patron = True
         else:
             return {
                 'statusCode': 400,
@@ -205,14 +217,18 @@ def _handle_recommendations(query_params):
     # Split and validate usernames
     usernames = [u.strip() for u in username.split(',') if u.strip()]
     if not usernames:
-        return {
-            'statusCode': 400,
-            'headers': _cors_headers(),
-            'body': json.dumps({'error': 'username query parameter is required'})
-        }
+        if cafe_id:
+            usernames = ["cafe_guest"]
+            is_cafe_patron = True
+        else:
+            return {
+                'statusCode': 400,
+                'headers': _cors_headers(),
+                'body': json.dumps({'error': 'username query parameter is required'})
+            }
 
     for u in usernames:
-        if not validate_username(u):
+        if not is_cafe_patron and not validate_username(u):
             return {
                 'statusCode': 400,
                 'headers': _cors_headers(),
@@ -250,12 +266,32 @@ def _handle_recommendations(query_params):
     complexity_pref = query_params.get('complexity_pref', 'any').lower()
     convention_id_cache = query_params.get('convention_id', 'any')
 
-    # 1. Check if user profiles are scraped and if any are stale
+    # 1. Check if user or cafe profiles are scraped and if any are stale
     scraping_users = []
     profile_last_modified = None
     user_parquet_modified = {}
 
-    if not is_inline:
+    if cafe_id and not is_inline:
+        exists, is_stale, c_modified = bgg_rec.get_cafe_status(cafe_id, ttl_hours=0 if refresh else 24)
+        if not exists:
+            logger.info(f"Cafe collection for '{cafe_id}' not found. Queueing scrape job.")
+            bgg_rec.trigger_background_cafe_scrape(cafe_id)
+            return {
+                'statusCode': 200,
+                'headers': _cors_headers(),
+                'body': json.dumps({
+                    'status': 'scraping',
+                    'scraping_cafes': [cafe_id],
+                    'message': f"Retrieving library collection for cafe '{cafe_id}'."
+                })
+            }
+        elif is_stale:
+            logger.info(f"Cafe collection for '{cafe_id}' is stale. Queueing background update scrape job.")
+            bgg_rec.trigger_background_cafe_scrape(cafe_id)
+        if c_modified:
+            profile_last_modified = c_modified
+
+    if not is_inline and not is_cafe_patron:
         def _check_user_status(u):
             try:
                 exists, is_stale, u_modified = bgg_rec.get_user_profile_status(u, ttl_hours=0 if refresh else 24)
@@ -302,7 +338,10 @@ def _handle_recommendations(query_params):
             }
 
     # 2. Check S3 recommendation cache (TTL = 7 days / 168 hours)
-    cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{convention_id_cache}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
+    if cafe_id:
+        cache_key = f"data/recommendation_cache/cafe_{cafe_id}_{vibe or 'any'}_{player_count or 'any'}_{duration_pref}.json"
+    else:
+        cache_key = f"data/recommendation_cache/{username_key}_{own_status}_{year_start or 'any'}_{year_end or 'any'}_{player_count or 'any'}_{duration_pref}_{complexity_pref}_{convention_id_cache}_{w_mech:.2f}_{w_cat:.2f}_{w_pop:.2f}_{w_hot:.2f}_{w_comp:.2f}_{w_des:.2f}_{w_pub:.2f}.json"
 
     if not refresh and not is_inline:
         cached_recs = bgg_rec.get_cached_recommendations(cache_key, profile_last_modified, ttl_hours=168)
@@ -344,6 +383,8 @@ def _handle_recommendations(query_params):
             owned_ids = set(user_df[user_df['own']]['id'].tolist())
         else:
             owned_ids = set()
+    elif is_cafe_patron:
+        user_df = pd.DataFrame(columns=['id', 'username', 'rating', 'own'])
     else:
         def _fetch_user_parquet(u):
             user_key = f"data/users/{u}.parquet"
@@ -382,7 +423,7 @@ def _handle_recommendations(query_params):
         # Check for empty or sparse BGG user profile (under 5 ratings/owned games triggers wizard)
         total_items = len(user_df)
         is_testing = os.environ.get('BGG_TESTING') == 'true'
-        if total_items < 5 and not (is_testing and query_params.get('test_cold_start') != 'true'):
+        if not cafe_id and total_items < 5 and not (is_testing and query_params.get('test_cold_start') != 'true'):
             reason = "no_profile" if total_items == 0 else "insufficient_data"
             return {
                 'statusCode': 200,
@@ -443,6 +484,29 @@ def _handle_recommendations(query_params):
     # 5. Filter candidates
     candidates = catalog_df
 
+    # Cafe inventory filter (Hard Candidate Boundary)
+    if cafe_id:
+        cafe_df = bgg_rec.get_cafe_inventory(cafe_id)
+        if cafe_df is None or cafe_df.empty:
+            logger.warning(f"Cafe inventory for '{cafe_id}' is empty or unavailable.")
+            return {
+                'statusCode': 200,
+                'headers': _cors_headers(),
+                'body': json.dumps({
+                    'status': 'ready',
+                    'recommendations': [],
+                    'warning': f"No games found in {cafe_id}'s library."
+                })
+            }
+        cafe_owned_ids = set(cafe_df['id'].astype(str).tolist())
+        candidates = candidates[candidates['id'].isin(cafe_owned_ids)].copy()
+        logger.info(f"Restricted candidate pool to {len(candidates)} games from cafe '{cafe_id}'.")
+        for shelf_col in ['shelf_location', 'shelf']:
+            if shelf_col in cafe_df.columns:
+                shelf_map = dict(zip(cafe_df['id'].astype(str), cafe_df[shelf_col]))
+                candidates['shelf_location'] = candidates['id'].map(shelf_map)
+                break
+
     # Convention filter
     convention_id = query_params.get('convention_id')
     if convention_id:
@@ -456,16 +520,17 @@ def _handle_recommendations(query_params):
         else:
             logger.warning(f"Convention '{convention_id}' not found in active previews config. Fetching full catalog instead.")
 
-    # Ownership filter
-    if own_status == 'owned':
-        candidates = candidates[candidates['id'].isin(owned_ids)]
-    elif own_status == 'unowned':
-        candidates = candidates[~candidates['id'].isin(owned_ids)]
+    # Ownership filter (inverted in cafe mode: patrons play from cafe shelves)
+    if not cafe_id:
+        if own_status == 'owned':
+            candidates = candidates[candidates['id'].isin(owned_ids)]
+        elif own_status == 'unowned':
+            candidates = candidates[~candidates['id'].isin(owned_ids)]
 
-    # Filter out already rated games
-    if own_status != 'owned':
-        rated_ids = set(user_df['id'].tolist())
-        candidates = candidates[~candidates['id'].isin(rated_ids)]
+        # Filter out already rated games
+        if own_status != 'owned':
+            rated_ids = set(user_df['id'].tolist())
+            candidates = candidates[~candidates['id'].isin(rated_ids)]
 
     # Year range filter
     if year_start:
@@ -492,7 +557,7 @@ def _handle_recommendations(query_params):
             pass
 
     # Pre-filter by rating for unowned recommendations
-    if own_status != 'owned' and len(candidates) > 100:
+    if not cafe_id and own_status != 'owned' and len(candidates) > 100:
         candidates = candidates[candidates['rating'] >= 5.0]
         logger.info(f"Pre-filtered candidates by rating >= 5.0. Candidates left: {len(candidates)}")
 
@@ -507,6 +572,23 @@ def _handle_recommendations(query_params):
         })
         user_designers = inline_weights.get('designer_weights', {})
         user_publishers = inline_weights.get('publisher_weights', {})
+    elif vibe and (is_cafe_patron or not user_dfs):
+        vibe_profile = get_vibe_weights(vibe)
+        mech_weights = vibe_profile['mech_weights']
+        cat_weights = vibe_profile['cat_weights']
+        complexity_weights = vibe_profile['complexity_weights']
+        user_designers = vibe_profile['user_designers']
+        user_publishers = vibe_profile['user_publishers']
+    elif vibe and user_dfs:
+        u_mech, u_cat, user_designers, user_publishers, u_comp = compute_taste_profile_inline(
+            user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=individual_profiles
+        )
+        vibe_profile = get_vibe_weights(vibe)
+        v_mech = vibe_profile['mech_weights']
+        v_cat = vibe_profile['cat_weights']
+        mech_weights = {m: u_mech.get(m, 0.0) * 0.5 + v_mech.get(m, 0.0) * 0.5 for m in set(u_mech) | set(v_mech)}
+        cat_weights = {c: u_cat.get(c, 0.0) * 0.5 + v_cat.get(c, 0.0) * 0.5 for c in set(u_cat) | set(v_cat)}
+        complexity_weights = vibe_profile['complexity_weights']
     else:
         mech_weights, cat_weights, user_designers, user_publishers, complexity_weights = compute_taste_profile_inline(
             user_df, catalog_df, usernames, user_parquet_modified, individual_profiles=individual_profiles
@@ -539,17 +621,18 @@ def _handle_recommendations(query_params):
     weight_context = build_weight_context(query_params, weights)
     narrated_recs = narrate_recommendations(
         top_candidates, liked_games_str, weight_context, query_params,
-        is_inline=is_inline, inline_weights=inline_weights, inline_profile=inline_profile
+        is_inline=is_inline, inline_weights=inline_weights, inline_profile=inline_profile,
+        cafe_id=cafe_id, vibe=vibe, table=table
     )
 
     if narrated_recs is not None:
         recs_list = narrated_recs
     else:
         # Bedrock failed, return fallback
-        recs_list = build_fallback_recommendations(top_candidates)
+        recs_list = build_fallback_recommendations(top_candidates, is_cafe=bool(cafe_id))
 
     # 10. Compute individual playgroup member affinities if a group request
-    if len(usernames) > 1 and recs_list and not inline_weights:
+    if len(usernames) > 1 and recs_list and not inline_weights and not is_cafe_patron:
         logger.info(f"Computing individual playgroup member affinities for {len(usernames)} attendees.")
         has_complexity = 'complexity' in catalog_df.columns
         has_publishers = 'publishers' in catalog_df.columns

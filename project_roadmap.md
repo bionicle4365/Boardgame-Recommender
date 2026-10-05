@@ -11,7 +11,8 @@ For comprehensive milestones, user journeys, and technical architecture specific
 - **Milestone C1: Self-Service Cafe Onboarding & Dynamic Venue Registry** (Completed)
 - **Milestone C2: Cafe Inventory Ingestion & On-Demand Sync** (Completed)
 - **Milestone C3: Self-Service Cafe Management Portal & Venue Dashboard** (Completed)
-- **Next Up: Milestone C4: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L106-L131))
+- **Milestone C4: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine** (Completed)
+- **Next Up: Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L134-L162))
 
 ---
 

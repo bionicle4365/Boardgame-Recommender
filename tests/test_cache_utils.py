@@ -36,6 +36,8 @@ def reset_globals():
     bgg_recommender.PREVIEWS_GAMES_CACHE_TIME = None
     bgg_recommender.FEATURE_FREQUENCIES_CACHE = None
     bgg_recommender.FEATURE_FREQUENCIES_CACHE_TIME = None
+    bgg_recommender.CAFE_INVENTORY_CACHE = {}
+    cache_utils.CAFE_INVENTORY_CACHE = {}
     yield
 
 def test_safe_list():
@@ -399,3 +401,84 @@ def test_apply_feature_idf_cache_utils():
 
     assert weighted_m["Hand Management"] == 6.0
     assert weighted_c["Card Game"] == 3.0
+
+
+@patch('cache_utils._s3')
+def test_get_cafe_inventory_primary(mock_s3):
+    df_sample = pd.DataFrame([
+        {'id': '101', 'name': 'Catan', 'own': True},
+        {'id': '102', 'name': 'Wingspan', 'own': True}
+    ])
+    def mock_download(bucket, key, local_path):
+        assert key == 'data/cafes/maltandmeeple/collection.parquet'
+        df_sample.to_parquet(local_path)
+
+    mock_s3().download_file.side_effect = mock_download
+    res = cache_utils.get_cafe_inventory('maltandmeeple')
+    assert res is not None
+    assert len(res) == 2
+    assert list(res['id']) == ['101', '102']
+    mock_s3().download_file.assert_called_once()
+
+    # In-memory cache hit
+    mock_s3().download_file.reset_mock()
+    res2 = cache_utils.get_cafe_inventory('maltandmeeple')
+    assert len(res2) == 2
+    mock_s3().download_file.assert_not_called()
+
+
+@patch('cache_utils._s3')
+def test_get_cafe_inventory_fallback(mock_s3):
+    df_sample = pd.DataFrame([
+        {'id': '201', 'name': 'Azul', 'own': True},
+        {'id': '202', 'name': 'Monopoly', 'own': False}
+    ])
+    def mock_download(bucket, key, local_path):
+        if 'data/cafes/' in key:
+            raise ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'GetObject')
+        elif 'data/users/' in key:
+            df_sample.to_parquet(local_path)
+
+    mock_s3().download_file.side_effect = mock_download
+    res = cache_utils.get_cafe_inventory('fallback_cafe')
+    assert res is not None
+    assert len(res) == 1  # only own=True
+    assert list(res['id']) == ['201']
+
+
+@patch('cache_utils._s3')
+def test_get_cafe_inventory_not_found(mock_s3):
+    mock_s3().download_file.side_effect = ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'GetObject')
+    res = cache_utils.get_cafe_inventory('missing_cafe')
+    assert res is None
+
+
+@patch('cache_utils._s3')
+def test_get_cafe_status(mock_s3):
+    now = datetime.now(timezone.utc)
+    mock_s3().head_object.return_value = {'LastModified': now - timedelta(hours=2)}
+    exists, is_stale, mod = cache_utils.get_cafe_status('test_cafe')
+    assert exists is True
+    assert is_stale is False
+
+    # Stale
+    mock_s3().head_object.return_value = {'LastModified': now - timedelta(hours=30)}
+    exists, is_stale, mod = cache_utils.get_cafe_status('test_cafe')
+    assert exists is True
+    assert is_stale is True
+
+    # 404
+    mock_s3().head_object.side_effect = ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'HeadObject')
+    exists, is_stale, mod = cache_utils.get_cafe_status('missing_cafe')
+    assert exists is False
+
+
+@patch('cache_utils._sqs')
+def test_trigger_background_cafe_scrape(mock_sqs, monkeypatch):
+    monkeypatch.setattr(cache_utils, 'user_sqs_queue_url', 'https://sqs.mock/queue')
+    cache_utils.trigger_background_cafe_scrape('mycafe', 'mycafe_user')
+    mock_sqs().send_message.assert_called_once()
+    body = json.loads(mock_sqs().send_message.call_args[1]['MessageBody'])
+    assert body['cafe_id'] == 'mycafe'
+    assert body['username'] == 'mycafe_user'
+    assert body['is_cafe'] is True

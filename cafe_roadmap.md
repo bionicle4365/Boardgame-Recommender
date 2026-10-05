@@ -110,23 +110,24 @@ Extend the recommendation engine in [`bgg_recommender.py`](file:///d:/Git/Boardg
 
 ### Design Notes
 - **Hard Candidate Boundary:** When `cafe_id` is supplied, candidate games *must* strictly be a subset of the cafe's active inventory. A game cannot be recommended if the cafe does not own it.
+- **BGG Username as `cafe_id`:** When passed to `/recommendations`, `cafe_id` is simply the cafe's BoardGameGeek account username (e.g. `?cafe_id=maltandmeeple` or `?cafe_username=maltandmeeple`). This directly links the recommender to that venue's scraped collection without requiring separate internal IDs or slug resolution.
 - **Frictionless Non-BGG Patrons:** 80%+ of cafe patrons do not have BGG accounts. The recommender must instantly compute high-quality recommendations based on 3 inputs: player count, time window, and mood vibe.
 - **Ownership Inversion:** Unlike the standard recommender (which excludes games the user already owns), cafe mode recommends games *from* the cafe's collection, even if a visiting hobbyist already owns it at home.
 - **Sommelier Persona in Bedrock:** Customize the Nova Micro narration prompt so Bedrock acts as the cafe's lead game guru, emphasizing teach ease, group dynamics, and why it fits a table with drinks.
 
 ### Architecture Decisions
-- **New Query Parameters:** Add `cafe_id`, `vibe` (`party`, `casual_strategy`, `deep_strategy`, `cooperative`, `direct_conflict`), and `table` to `GET /recommendations` in [`bgg_recommender.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py).
+- **New Query Parameters:** Add `cafe_id` (the cafe's BGG username, e.g. `?cafe_id=maltandmeeple`), `vibe` (`party`, `casual_strategy`, `deep_strategy`, `cooperative`, `direct_conflict`), and `table` to `GET /recommendations` in [`bgg_recommender.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py).
 - **Vibe Weight Matrix:** Map vibe presets directly to target complexity Gaussian curves ($\mu, \sigma$) and normalized mechanic/category weight vectors in [`scoring.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/scoring.py) without requiring offline taste profile generation.
 - **Bedrock Narration:** Update [`narration.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/narration.py) with a dedicated cafe prompt template that includes estimated rules teach time and shelf location (when configured).
 - **S3 Response Caching:** Cache cafe recommendations with a composite key: `data/recommendation_cache/cafe_{cafe_id}_{vibe}_{player_count}_{duration_pref}.json` with a 7-day TTL.
 
 ### Tasks
-- [ ] **Cafe Inventory Loader:** Add `get_cafe_inventory(cafe_id)` in [`cache_utils.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/cache_utils.py) with in-memory caching and S3 fallback.
-- [ ] **Candidate Masking:** Integrate cafe inventory filtering into `_handle_recommendations` in [`bgg_recommender.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py).
-- [ ] **Vibe Profile Generator:** Implement `get_vibe_weights(vibe_key)` in [`scoring.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/scoring.py) generating continuous complexity penalties and affinity vectors.
-- [ ] **Bedrock Sommelier Prompt:** Implement `build_cafe_sommelier_prompt()` in [`narration.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/narration.py).
-- [ ] **API Gateway Route Updates:** Ensure `/recommendations` accepts and validates `cafe_id` parameter.
-- [ ] **Unit Tests:** Test candidate pool restriction (asserting zero non-cafe games are returned), vibe profile weighting, and cache hit/miss behavior.
+- [x] **Cafe Inventory Loader:** Add `get_cafe_inventory(bgg_username)` in [`cache_utils.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/cache_utils.py) to load the cafe's owned library by BGG username with in-memory caching and S3 fallback.
+- [x] **Candidate Masking:** Integrate cafe inventory filtering into `_handle_recommendations` in [`bgg_recommender.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/bgg_recommender.py) when `cafe_id` is supplied.
+- [x] **Vibe Profile Generator:** Implement `get_vibe_weights(vibe_key)` in [`scoring.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/scoring.py) generating continuous complexity penalties and affinity vectors.
+- [x] **Bedrock Sommelier Prompt:** Implement `build_cafe_sommelier_prompt()` in [`narration.py`](file:///d:/Git/Boardgame-Recommender/bgg_recommender/narration.py).
+- [x] **API Gateway Route Updates:** Ensure `/recommendations` accepts and validates `cafe_id` parameter.
+- [x] **Unit Tests:** Test candidate pool restriction (asserting zero non-cafe games are returned), vibe profile weighting, and cache hit/miss behavior.
 
 ---
 

@@ -95,8 +95,100 @@ def format_personality_context(personality_answers):
     return "\n".join(lines) if lines else "- Playstyle preferences: Balanced modern board games."
 
 
+def estimate_teach_time(row):
+    """
+    Estimates rules teach time in minutes based on complexity and game metadata.
+    """
+    if row.get('teach_time'):
+        return str(row['teach_time'])
+    
+    comp = row.get('complexity')
+    if comp is None or (isinstance(comp, float) and pd.isna(comp)):
+        return "5-10 mins"
+    try:
+        c = float(comp)
+        if c < 1.8:
+            return "3-5 mins"
+        elif c < 2.5:
+            return "5-10 mins"
+        elif c < 3.3:
+            return "10-15 mins"
+        elif c < 4.0:
+            return "15-25 mins"
+        else:
+            return "25-40 mins"
+    except (ValueError, TypeError):
+        return "5-10 mins"
+
+
+def build_cafe_sommelier_prompt(top_candidates, vibe=None, query_params=None, cafe_name=None):
+    """
+    Constructs a dedicated Bedrock prompt for cafe tables acting as a knowledgeable board game sommelier / guru.
+    Emphasizes rules teach ease, group dynamics, table atmosphere over drinks, shelf location, and vibe match.
+    """
+    query_params = query_params or {}
+    player_count = query_params.get('player_count')
+    duration_pref = query_params.get('duration_pref', 'any')
+    table = query_params.get('table')
+    venue = cafe_name or "our board game cafe"
+
+    vibe_descriptions = {
+        'party': 'Party & Social / Icebreaker (high energy, laughing, minimal rules)',
+        'casual_strategy': 'Casual Strategy & Chill (satisfying decisions without high stress)',
+        'deep_strategy': 'Deep Strategy & Brain-Burner (rewarding engine building and complex tactics)',
+        'cooperative': 'Cooperative & Teamwork (players working together against the board)',
+        'direct_conflict': 'Competitive & Take-That (high interaction, battles, and rivalry)'
+    }
+    vibe_desc = vibe_descriptions.get(str(vibe or '').lower(), 'Engaging modern board games tailored for the table')
+
+    cand_lines = []
+    for row in top_candidates:
+        name = row.get('name', 'Unknown')
+        comp = f"{float(row['complexity']):.1f}/5" if pd.notna(row.get('complexity')) else "N/A"
+        playtime = f"{row.get('playing_time')}m" if pd.notna(row.get('playing_time')) else "N/A"
+        p_min = row.get('min_players', '')
+        p_max = row.get('max_players', '')
+        players_str = f"{p_min}-{p_max}" if p_min and p_max else f"Max {p_max or 'N/A'}"
+        teach = estimate_teach_time(row)
+        shelf = row.get('shelf_location') or row.get('shelf') or ''
+        shelf_str = f", Shelf: {shelf}" if shelf else ""
+        cats = ", ".join(safe_list(row.get('categories'))[:3])
+        mechs = ", ".join(safe_list(row.get('mechanics'))[:3])
+
+        cand_lines.append(
+            f"- {name} (Complexity: {comp}, Players: {players_str}, Playtime: {playtime}, Teach: {teach}{shelf_str}, Categories: {cats}, Mechanics: {mechs})"
+        )
+    candidates_str = "\n".join(cand_lines)
+
+    table_info = f"at Table {table} " if table else ""
+    user_prompt = f"""You are the head board game sommelier and table guru at {venue}.
+A group of patrons {table_info}is looking for the perfect game for their session right now.
+
+Session Parameters:
+- Player Count: {player_count if player_count else 'Flexible'}
+- Target Vibe: {vibe_desc}
+- Session Length Preference: {duration_pref.capitalize() if duration_pref != 'any' else 'Flexible'}
+
+Here is the list of games currently available in our cafe library matching their table size:
+{candidates_str}
+
+Please select the best 10 games from the candidates list above for their table. Do NOT recommend games that are not in this list.
+
+For each recommended game:
+1. Provide the exact name of the game.
+2. Write an enthusiastic, knowledgeable 1–2 sentence recommendation in a friendly sommelier guru voice (aim for 20–28 words, maximum 32 words).
+   Explain why this game is a blast for their table tonight: emphasize how easy it is to teach over drinks, how the gameplay mechanics spark fun interaction or satisfying strategy, and why it fits their chosen vibe.
+   Vary your opening phrases across recommendations. Do NOT start multiple recommendations with the same word.
+
+Format your response as a JSON object with a single key "recommendations", which is a list of objects containing "name" and "reason".
+Do not include any introductory or concluding text (e.g. do not say "Here are your recommendations:" or use markdown code blocks). Output only raw, valid JSON.
+"""
+    return user_prompt
+
+
 def narrate_recommendations(top_candidates, liked_games_str, weight_context, query_params,
-                            is_inline=False, inline_weights=None, inline_profile=None):
+                            is_inline=False, inline_weights=None, inline_profile=None,
+                            cafe_id=None, vibe=None, table=None, cafe_name=None):
     """
     Calls Bedrock to generate personalized 1-sentence reasons for each recommendation.
 
@@ -108,6 +200,10 @@ def narrate_recommendations(top_candidates, liked_games_str, weight_context, que
         is_inline: Whether request is an inline/wizard request.
         inline_weights: Dict of inline weights including optional personality_answers.
         inline_profile: Optional list of inline ratings dicts.
+        cafe_id: Optional cafe BGG username / ID when in cafe mode.
+        vibe: Optional table vibe preset (party, casual_strategy, etc.).
+        table: Optional table number string.
+        cafe_name: Optional display name of the cafe.
 
     Returns:
         List of recommendation dicts with 'name', 'reason', 'id', and rich metadata.
@@ -147,8 +243,12 @@ def narrate_recommendations(top_candidates, liked_games_str, weight_context, que
             )
         candidates_str = "\n".join(cand_list)
 
+    if cafe_id:
+        user_prompt = build_cafe_sommelier_prompt(
+            top_candidates, vibe=vibe, query_params=query_params, cafe_name=cafe_name or cafe_id
+        )
     # Determine prompt mode: Personality Test, Quick Taste Test, or Collection Profile
-    if is_inline and inline_weights and not liked_games_str:
+    elif is_inline and inline_weights and not liked_games_str:
         # Casual Personality Test user (no rated games, purely quiz answers)
         personality_answers = inline_weights.get('personality_answers') if isinstance(inline_weights, dict) else None
         personality_desc = format_personality_context(personality_answers)
@@ -189,19 +289,20 @@ Please recommend 10 board games for the user.
 1. Provide the exact name of the game.
 2. Provide an engaging 1–2 sentence recommendation in a knowledgeable sommelier voice (aim for 20–28 words, maximum 32 words). Directly connect the recommended game to 1 or 2 specific board games they already like or own from their list above (using the provided similarity linkages), referencing shared mechanics, strategic dynamics, or thematic elements. Use active verbs and avoid filler phrases. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences."""
 
-    if candidates_str:
-        user_prompt += f"""
+    if not cafe_id:
+        if candidates_str:
+            user_prompt += f"""
 Here is a list of candidate board games from our catalog that match the user's preferences:
 {candidates_str}
 
 Please select the best 10 games from the candidates list above. Do NOT select games that are not in the candidates list.
 """
-    else:
-        user_prompt += """
+        else:
+            user_prompt += """
 Please recommend 10 great board games from your general knowledge.
 """
 
-    user_prompt += f"""
+        user_prompt += f"""
 {explanation_instructions}
 
 Format your response as a JSON object with a single key "recommendations", which is a list of objects containing "name" and "reason".
@@ -216,9 +317,27 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
             }
         ]
 
-        system_prompts = [
-            {
-                "text": """You are an expert board game sommelier and board game recommendation expert. Your job is to select the best games and write engaging, natural, and persuasive 1–2 sentence recommendations (aim for 20–28 words per reason, maximum 32 words) explaining why the player will love each game.
+        if cafe_id:
+            system_prompts = [
+                {
+                    "text": """You are the lead board game guru and expert sommelier at a lively board game cafe. Your job is to select the 10 best games from the cafe's library and write engaging, welcoming, and persuasive 1–2 sentence recommendations (aim for 20–28 words per reason, maximum 32 words) explaining why each game will be a hit at their table tonight over drinks.
+
+Voice & Style Guidelines:
+- Warm, enthusiastic, and approachable table sommelier voice using active verbs.
+- Focus on why this game is a blast for their group: ease of learning, satisfying tactile decisions, lively table talk, or dramatic twists.
+- Exemplars of excellent recommendations:
+  * "Channels quick drafting and vibrant tile-laying with breezy 5-minute rules, making it an instant crowd-pleaser for 4 players over drinks." (21 words)
+  * "Offers snappy push-your-luck card play with infectious table banter, delivering big laughs and fast turns without heavy rules overhead." (20 words)
+  * "Delivers deep engine-building satisfaction with a crystal-clear rules teach, offering rewarding tactical combos in a brisk 60-minute race." (20 words)
+- Keep openings varied across recommendations. Do not repeat the same opening word or pattern.
+- Do NOT hallucinate themes, mechanics, or player counts not supported by the provided candidate list.
+- Ensure you output raw, valid JSON matching the requested schema."""
+                }
+            ]
+        else:
+            system_prompts = [
+                {
+                    "text": """You are an expert board game sommelier and board game recommendation expert. Your job is to select the best games and write engaging, natural, and persuasive 1–2 sentence recommendations (aim for 20–28 words per reason, maximum 32 words) explaining why the player will love each game.
 
 Voice & Style Guidelines:
 - Warm, enthusiastic, and knowledgeable sommelier voice using active verbs.
@@ -230,8 +349,8 @@ Voice & Style Guidelines:
 - Keep openings varied across recommendations. Do not repeat the same opening word or pattern.
 - Do NOT hallucinate themes, mechanics, or player counts not supported by the provided context.
 - Ensure you output raw, valid JSON matching the requested schema."""
-            }
-        ]
+                }
+            ]
 
         logger.info(f"Calling Bedrock Converse API with model {bedrock_model_id}...")
         response = _bedrock().converse(
@@ -279,6 +398,9 @@ Voice & Style Guidelines:
                 metadata = build_game_metadata(game_meta)
                 metadata['reason'] = rec.get('reason', '')
                 metadata['name'] = game_meta['name']  # Normalize to catalog name
+                metadata['teach_time'] = estimate_teach_time(game_meta)
+                if game_meta.get('shelf_location') or game_meta.get('shelf'):
+                    metadata['shelf_location'] = game_meta.get('shelf_location') or game_meta.get('shelf')
                 final_recs.append(metadata)
             else:
                 logger.warning(f"Excluding recommended game '{rec_name}' as it was not in top candidates list (or was duplicated).")
@@ -293,7 +415,13 @@ Voice & Style Guidelines:
                     recommended_ids.add(cand_id)
                     reason_mechs = ", ".join(safe_list(row.get('mechanics'))[:3])
                     metadata = build_game_metadata(row)
-                    metadata['reason'] = f"Highly ranked catalog match sharing key mechanics: {reason_mechs}."
+                    if cafe_id:
+                        metadata['reason'] = f"Great table pick for your group sharing popular cafe mechanics: {reason_mechs}."
+                    else:
+                        metadata['reason'] = f"Highly ranked catalog match sharing key mechanics: {reason_mechs}."
+                    metadata['teach_time'] = estimate_teach_time(row)
+                    if row.get('shelf_location') or row.get('shelf'):
+                        metadata['shelf_location'] = row.get('shelf_location') or row.get('shelf')
                     final_recs.append(metadata)
 
         return final_recs
@@ -303,7 +431,7 @@ Voice & Style Guidelines:
         return None
 
 
-def build_fallback_recommendations(top_candidates):
+def build_fallback_recommendations(top_candidates, is_cafe=False):
     """
     Returns scored candidates with generic reason strings as a fallback
     when Bedrock narration is unavailable or not requested.
@@ -312,7 +440,13 @@ def build_fallback_recommendations(top_candidates):
     for row in top_candidates[:10]:
         reason_mechs = ", ".join(safe_list(row.get('mechanics'))[:3])
         metadata = build_game_metadata(row)
-        metadata['reason'] = f"Highly recommended match sharing mechanics: {reason_mechs}."
+        if is_cafe:
+            metadata['reason'] = f"Great table pick for your group sharing popular cafe mechanics: {reason_mechs}."
+        else:
+            metadata['reason'] = f"Highly recommended match sharing mechanics: {reason_mechs}."
+        metadata['teach_time'] = estimate_teach_time(row)
+        if row.get('shelf_location') or row.get('shelf'):
+            metadata['shelf_location'] = row.get('shelf_location') or row.get('shelf')
         recs.append(metadata)
     return recs
 

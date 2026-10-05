@@ -284,6 +284,127 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
     return mech_weights, cat_weights, user_designers, user_publishers, complexity_weights
 
 
+def get_vibe_weights(vibe_key):
+    """
+    Returns pre-computed affinity vectors and target complexity Gaussian parameters (mu, sigma)
+    for a given cafe vibe preset ('party', 'casual_strategy', 'deep_strategy', 'cooperative', 'direct_conflict').
+    Maps mood vibe presets directly into normalized mechanic/category weight vectors and continuous
+    complexity penalty parameters without requiring offline taste profile generation.
+    """
+    key = str(vibe_key or '').lower().strip().replace(' ', '_').replace('-', '_')
+
+    # Preset configurations
+    vibe_presets = {
+        'party': {
+            'mu': 1.4,
+            'sigma': 0.55,
+            'mechs': {
+                'Party Game': 3.0, 'Humor': 2.5, 'Acting': 2.5, 'Singing': 2.0,
+                'Storytelling': 2.0, 'Voting': 2.0, 'Trivia / Word Game': 2.0,
+                'Push Your Luck': 2.2, 'Deduction': 1.8, 'Real-Time': 2.0,
+                'Simultaneous Action Selection': 1.8, 'Communication Limits': 2.0
+            },
+            'cats': {
+                'Party Game': 3.0, 'Humor': 2.5, 'Trivia': 2.2, 'Word Game': 2.2,
+                'Card Game': 1.5, 'Bluffing': 2.0, 'Deduction': 1.8
+            }
+        },
+        'casual_strategy': {
+            'mu': 2.1,
+            'sigma': 0.60,
+            'mechs': {
+                'Set Collection': 2.8, 'Drafting': 2.5, 'Open Drafting': 2.5,
+                'Tile Placement': 2.8, 'Route/Network Building': 2.2,
+                'Hand Management': 2.2, 'Grid Movement': 1.8, 'Contract / Goal Fulfillment': 2.0
+            },
+            'cats': {
+                'City Building': 2.5, 'Animals': 2.2, 'Farming': 2.0, 'Trains': 2.0,
+                'Economic': 1.8, 'Abstract Strategy': 2.0, 'Puzzle': 2.2, 'Card Game': 1.5
+            }
+        },
+        'deep_strategy': {
+            'mu': 3.6,
+            'sigma': 0.60,
+            'mechs': {
+                'Worker Placement': 3.0, 'Engine Building': 2.8, 'Area Majority / Influence': 2.5,
+                'Market': 2.2, 'Income': 2.2, 'Variable Player Powers': 2.0,
+                'Action Retrieval': 2.0, 'Tech Trees / Tech Tracks': 2.5, 'Resource Management': 2.5
+            },
+            'cats': {
+                'Economic': 3.0, 'Civilization': 2.8, 'Industry / Manufacturing': 2.5,
+                'Sci-Fi': 2.0, 'Territory Building': 2.2, 'Renaissance': 2.0, 'Strategy': 2.5
+            }
+        },
+        'cooperative': {
+            'mu': 2.2,
+            'sigma': 0.60,
+            'mechs': {
+                'Cooperative Game': 3.5, 'Communication Limits': 2.5,
+                'Scenario / Mission / Campaign Game': 2.5, 'Solo / Solitaire Game': 1.5,
+                'Role Playing': 2.0, 'Deduction': 2.0, 'Traitor Game': 2.2,
+                'Variable Player Powers': 2.0
+            },
+            'cats': {
+                'Cooperative': 3.5, 'Adventure': 2.5, 'Horror': 2.2, 'Mystery': 2.5,
+                'Sci-Fi': 2.0, 'Fantasy': 2.0, 'Medical': 2.0
+            }
+        },
+        'direct_conflict': {
+            'mu': 2.7,
+            'sigma': 0.65,
+            'mechs': {
+                'Take That': 3.0, 'Area Majority / Influence': 2.8, 'Area Movement': 2.5,
+                'Dice Rolling': 2.2, 'Direct Conflict': 3.0, 'Player Elimination': 2.2,
+                'Betting and Bluffing': 2.5, 'Hand Management': 1.8, 'Auction/Bidding': 2.0
+            },
+            'cats': {
+                'Wargame': 3.0, 'Bluffing': 2.5, 'Fighting': 2.8, 'Miniatures': 2.2,
+                'Territory Building': 2.5, 'Science Fiction': 2.0, 'Fantasy': 2.0, 'Pirates': 2.2
+            }
+        }
+    }
+
+    # Alias mapping
+    alias_map = {
+        'party': 'party', 'social': 'party', 'casual': 'party', 'icebreaker': 'party',
+        'casual_strategy': 'casual_strategy', 'light_strategy': 'casual_strategy',
+        'gateway': 'casual_strategy', 'chill': 'casual_strategy',
+        'deep_strategy': 'deep_strategy', 'heavy': 'deep_strategy',
+        'heavy_strategy': 'deep_strategy', 'brain_burner': 'deep_strategy',
+        'cooperative': 'cooperative', 'coop': 'cooperative', 'team': 'cooperative',
+        'direct_conflict': 'direct_conflict', 'conflict': 'direct_conflict',
+        'pvp': 'direct_conflict', 'take_that': 'direct_conflict'
+    }
+
+    matched_vibe = alias_map.get(key, 'casual_strategy')
+    preset = vibe_presets[matched_vibe]
+
+    mu = preset['mu']
+    sigma = preset['sigma']
+
+    bucket_centers = {"Light": 1.5, "Medium-Light": 2.4, "Medium-Heavy": 3.15, "Heavy": 4.0}
+    comp_buckets = {}
+    for b_name, b_val in bucket_centers.items():
+        dist = abs(b_val - mu)
+        comp_buckets[b_name] = round(max(0.1, 1.0 - (dist / 1.5)), 2)
+    comp_buckets['user_mean_complexity'] = mu
+    comp_buckets['mean'] = mu
+    comp_buckets['sigma'] = sigma
+
+    return {
+        'vibe': matched_vibe,
+        'mech_weights': preset['mechs'],
+        'cat_weights': preset['cats'],
+        'user_designers': {},
+        'user_publishers': {},
+        'complexity_weights': comp_buckets,
+        'mu': mu,
+        'sigma': sigma,
+        'target_complexity': mu,
+        'target_sigma': sigma
+    }
+
+
 def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_publishers,
                          complexity_weights, hotness_scores, query_params, weights,
                          total_mech_weight, total_cat_weight, total_complexity_weight,
@@ -354,7 +475,7 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
                 else:
                     comp_sim = max(0.0, 1.0 - ((cand_complexity - 3.5) / 1.5))
         elif has_complexity:
-            # Continuous Gaussian distance decay centered on user mean complexity (sigma = 0.75)
+            # Continuous Gaussian distance decay centered on user mean complexity
             mu = None
             if isinstance(complexity_weights, (int, float)):
                 mu = float(complexity_weights)
@@ -370,7 +491,13 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
                         mu = sum(complexity_weights.get(b, 0.0) * center for b, center in bucket_centers.items()) / tot_w
 
             if mu is not None:
-                diff = (cand_complexity - mu) / 0.75
+                sigma = 0.75
+                if isinstance(complexity_weights, dict) and 'sigma' in complexity_weights:
+                    try:
+                        sigma = float(complexity_weights['sigma'])
+                    except (ValueError, TypeError):
+                        sigma = 0.75
+                diff = (cand_complexity - mu) / sigma
                 comp_sim = math.exp(-0.5 * (diff ** 2))
                 comp_sim = max(0.0, min(1.0, comp_sim))
             else:
@@ -468,7 +595,8 @@ def score_candidates(candidates, mech_weights, cat_weights, user_designers, user
         'id', 'name', 'categories', 'mechanics', 'rating', 'year_published',
         'min_players', 'max_players', 'playing_time', 'min_playtime', 'max_playtime',
         'complexity', 'min_age', 'thumbnail', 'image', 'designers', 'publishers',
-        'suggested_players_best', 'suggested_players_recommended'
+        'suggested_players_best', 'suggested_players_recommended',
+        'shelf_location'
     ]
     columns_to_keep = [col for col in possible_columns if col in candidates.columns]
     candidate_records = candidates[columns_to_keep].to_dict('records')

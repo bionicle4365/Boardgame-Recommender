@@ -36,10 +36,10 @@ import bgg_recommender
 
 @pytest.fixture(autouse=True)
 def reset_globals():
-    # Reset in-memory cache before each test
     bgg_recommender.CATALOG_CACHE = None
     bgg_recommender.FEATURE_FREQUENCIES_CACHE = None
     bgg_recommender.FEATURE_FREQUENCIES_CACHE_TIME = None
+    bgg_recommender.CAFE_INVENTORY_CACHE = {}
     yield
 
 def test_safe_list():
@@ -2117,6 +2117,207 @@ def test_attach_candidate_linkages():
     assert 'Tile Placement' in cascadia['key_shared_mechanics']
     assert 'Pattern Building' in cascadia['key_shared_mechanics']
     assert 'Animals' in cascadia['key_shared_categories']
+
+
+def test_get_vibe_weights():
+    from scoring import get_vibe_weights
+
+    # Party
+    party = get_vibe_weights('party')
+    assert party['vibe'] == 'party'
+    assert party['mu'] == 1.4
+    assert party['sigma'] == 0.55
+    assert 'Party Game' in party['mech_weights']
+    assert 'Party Game' in party['cat_weights']
+
+    # Casual strategy
+    casual = get_vibe_weights('casual_strategy')
+    assert casual['vibe'] == 'casual_strategy'
+    assert casual['mu'] == 2.1
+    assert 'Tile Placement' in casual['mech_weights']
+
+    # Deep strategy
+    deep = get_vibe_weights('deep_strategy')
+    assert deep['vibe'] == 'deep_strategy'
+    assert deep['mu'] == 3.6
+    assert 'Worker Placement' in deep['mech_weights']
+
+    # Cooperative
+    coop = get_vibe_weights('cooperative')
+    assert coop['vibe'] == 'cooperative'
+    assert coop['mu'] == 2.2
+    assert 'Cooperative Game' in coop['mech_weights']
+
+    # Direct conflict
+    conflict = get_vibe_weights('direct_conflict')
+    assert conflict['vibe'] == 'direct_conflict'
+    assert conflict['mu'] == 2.7
+    assert 'Take That' in conflict['mech_weights']
+
+    # Aliases
+    assert get_vibe_weights('social')['vibe'] == 'party'
+    assert get_vibe_weights('coop')['vibe'] == 'cooperative'
+    assert get_vibe_weights('brain_burner')['vibe'] == 'deep_strategy'
+    assert get_vibe_weights('pvp')['vibe'] == 'direct_conflict'
+    assert get_vibe_weights('unknown_vibe')['vibe'] == 'casual_strategy'
+
+
+@patch('bgg_recommender.get_cafe_status')
+@patch('bgg_recommender.get_cafe_inventory')
+@patch('bgg_recommender.get_catalog')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.bedrock')
+def test_cafe_hard_candidate_boundary_and_masking(mock_bedrock, mock_cache, mock_catalog, mock_cafe_inv, mock_cafe_status):
+    mock_cafe_status.return_value = (True, False, datetime.now(timezone.utc))
+    mock_cache.return_value = None
+
+    # Catalog contains 5 games
+    catalog_df = pd.DataFrame([
+        {'id': '101', 'name': 'Catan', 'categories': ['Economic'], 'mechanics': ['Trading'], 'rating': 7.2, 'year_published': 1995, 'min_players': 3, 'max_players': 4, 'playing_time': 60, 'complexity': 2.3},
+        {'id': '102', 'name': 'Codenames', 'categories': ['Party Game'], 'mechanics': ['Deduction'], 'rating': 7.6, 'year_published': 2015, 'min_players': 2, 'max_players': 8, 'playing_time': 15, 'complexity': 1.3},
+        {'id': '103', 'name': 'Wingspan', 'categories': ['Animals'], 'mechanics': ['Engine Building'], 'rating': 8.1, 'year_published': 2019, 'min_players': 1, 'max_players': 5, 'playing_time': 70, 'complexity': 2.4},
+        {'id': '104', 'name': 'Terraforming Mars', 'categories': ['Sci-Fi'], 'mechanics': ['Drafting'], 'rating': 8.4, 'year_published': 2016, 'min_players': 1, 'max_players': 5, 'playing_time': 120, 'complexity': 3.2},
+        {'id': '105', 'name': 'Just One', 'categories': ['Party Game'], 'mechanics': ['Party Game'], 'rating': 7.6, 'year_published': 2018, 'min_players': 3, 'max_players': 7, 'playing_time': 20, 'complexity': 1.1}
+    ])
+    mock_catalog.return_value = catalog_df
+
+    # Cafe only owns Codenames (102) and Just One (105)
+    cafe_inventory_df = pd.DataFrame([
+        {'id': '102', 'name': 'Codenames', 'own': True, 'shelf_location': 'Party-A1'},
+        {'id': '105', 'name': 'Just One', 'own': True, 'shelf_location': 'Party-A2'}
+    ])
+    mock_cafe_inv.return_value = cafe_inventory_df
+
+    # Mock Bedrock converse
+    mock_bedrock.converse.return_value = {
+        'output': {
+            'message': {
+                'content': [
+                    {'text': json.dumps({'recommendations': [{'name': 'Codenames', 'reason': 'Super fun party game over drinks.'}]})}
+                ]
+            }
+        }
+    }
+
+    event = {
+        'rawPath': '/recommendations',
+        'queryStringParameters': {
+            'cafe_id': 'maltandmeeple',
+            'vibe': 'party',
+            'player_count': '4'
+        }
+    }
+
+    res = bgg_recommender.lambda_handler(event, None)
+    assert res['statusCode'] == 200
+    body = json.loads(res['body'])
+    assert body['status'] == 'ready'
+
+    # Hard Candidate Boundary Assertion: all recommended games must strictly be in cafe inventory
+    for rec in body['recommendations']:
+        assert rec['id'] in {'102', '105'}
+        assert rec['id'] not in {'101', '103', '104'}
+
+    # Verify shelf location attached
+    codenames_rec = next(r for r in body['recommendations'] if r['id'] == '102')
+    assert codenames_rec['shelf_location'] == 'Party-A1'
+    assert codenames_rec['teach_time'] == '3-5 mins'
+
+
+@patch('bgg_recommender.get_cafe_status')
+@patch('bgg_recommender.trigger_background_cafe_scrape')
+def test_cafe_scraping_status_when_not_in_s3(mock_scrape, mock_status):
+    mock_status.return_value = (False, False, None)
+
+    event = {
+        'rawPath': '/recommendations',
+        'queryStringParameters': {
+            'cafe_id': 'brand_new_cafe'
+        }
+    }
+
+    res = bgg_recommender.lambda_handler(event, None)
+    assert res['statusCode'] == 200
+    body = json.loads(res['body'])
+    assert body['status'] == 'scraping'
+    assert body['scraping_cafes'] == ['brand_new_cafe']
+    mock_scrape.assert_called_once_with('brand_new_cafe')
+
+
+@patch('bgg_recommender.get_cafe_status')
+@patch('bgg_recommender.get_cached_recommendations')
+def test_cafe_composite_s3_cache_hit(mock_cache, mock_status):
+    mock_status.return_value = (True, False, datetime.now(timezone.utc))
+    cached_payload = [{'id': '102', 'name': 'Codenames', 'reason': 'Cached recommendation.'}]
+    mock_cache.return_value = cached_payload
+
+    event = {
+        'rawPath': '/recommendations',
+        'queryStringParameters': {
+            'cafe_id': 'maltandmeeple',
+            'vibe': 'party',
+            'player_count': '4',
+            'duration_pref': 'short'
+        }
+    }
+
+    res = bgg_recommender.lambda_handler(event, None)
+    assert res['statusCode'] == 200
+    body = json.loads(res['body'])
+    assert body['status'] == 'ready'
+    assert body['recommendations'] == cached_payload
+
+    # Verify composite cache key format
+    mock_cache.assert_called_once()
+    called_key = mock_cache.call_args[0][0]
+    assert called_key == "data/recommendation_cache/cafe_maltandmeeple_party_4_short.json"
+
+
+@patch('bgg_recommender.get_cafe_status')
+@patch('bgg_recommender.get_cafe_inventory')
+@patch('bgg_recommender.get_catalog')
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.s3')
+@patch('bgg_recommender.bedrock')
+def test_cafe_ownership_inversion_for_visiting_hobbyist(mock_bedrock, mock_s3, mock_user_status, mock_catalog, mock_cafe_inv, mock_cafe_status, tmp_path):
+    now = datetime.now(timezone.utc)
+    mock_cafe_status.return_value = (True, False, now)
+    mock_user_status.return_value = (True, False, now)
+
+    # Visiting user owns Catan (101) at home!
+    user_file = str(tmp_path / "hobbyist.parquet")
+    pd.DataFrame([{'id': '101', 'username': 'hobbyist', 'rating': 9.0, 'own': True}]).to_parquet(user_file)
+    mock_s3.download_file.side_effect = lambda bucket, key, local: pd.read_parquet(user_file).to_parquet(local)
+
+    # Cafe owns Catan (101)
+    mock_cafe_inv.return_value = pd.DataFrame([{'id': '101', 'name': 'Catan', 'own': True}])
+
+    # Catalog has Catan
+    mock_catalog.return_value = pd.DataFrame([
+        {'id': '101', 'name': 'Catan', 'categories': ['Economic'], 'mechanics': ['Trading'], 'rating': 7.2, 'year_published': 1995, 'min_players': 3, 'max_players': 4, 'playing_time': 60, 'complexity': 2.3}
+    ])
+
+    mock_bedrock.converse.return_value = {
+        'output': {'message': {'content': [{'text': json.dumps({'recommendations': [{'name': 'Catan', 'reason': 'Classic trading on the table.'}]})}]}}
+    }
+
+    # Request with own_status='unowned' (default): normally unowned filters out owned games!
+    # But in cafe mode, ownership is inverted: cafe collection is recommended even if hobbyist owns it at home.
+    event = {
+        'rawPath': '/recommendations',
+        'queryStringParameters': {
+            'username': 'hobbyist',
+            'cafe_id': 'maltandmeeple',
+            'vibe': 'casual_strategy',
+            'player_count': '3'
+        }
+    }
+
+    res = bgg_recommender.lambda_handler(event, None)
+    assert res['statusCode'] == 200
+    body = json.loads(res['body'])
+    assert len(body['recommendations']) == 1
+    assert body['recommendations'][0]['name'] == 'Catan'
 
 
 
