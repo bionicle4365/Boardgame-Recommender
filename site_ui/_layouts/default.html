@@ -59,7 +59,10 @@
                         <input type="email" id="login-email" placeholder="e.g. name@domain.com" required>
                     </div>
                     <div class="auth-input-group">
-                        <label>Password</label>
+                        <div class="auth-label-row">
+                            <label>Password</label>
+                            <span class="auth-toggle-link auth-forgot-link" id="go-to-forgot">Forgot password?</span>
+                        </div>
                         <input type="password" id="login-password" placeholder="••••••••" required>
                     </div>
                     <div id="login-error-msg" class="auth-error-msg" style="display: none;"></div>
@@ -110,6 +113,52 @@
                 </form>
                 <div class="auth-footer-text">
                     Need another code? <span class="auth-toggle-link" id="resend-code-btn">Resend Code</span>
+                </div>
+            </div>
+
+            <!-- View 4: Forgot Password Request -->
+            <div id="auth-view-forgot" class="auth-view" style="display: none;">
+                <h2 class="auth-title">Reset Password</h2>
+                <p class="auth-subtitle">Enter your email and we'll send you a recovery code</p>
+                <form id="auth-forgot-form">
+                    <div class="auth-input-group">
+                        <label>Email Address</label>
+                        <input type="email" id="forgot-email" placeholder="e.g. name@domain.com" required>
+                    </div>
+                    <div id="forgot-error-msg" class="auth-error-msg" style="display: none;"></div>
+                    <button type="submit" id="forgot-submit-btn" class="auth-submit-btn">Send Recovery Code</button>
+                </form>
+                <div class="auth-footer-text">
+                    Remember your password? <span class="auth-toggle-link" id="forgot-back-to-login">Log In</span>
+                </div>
+            </div>
+
+            <!-- View 5: Confirm Reset Password -->
+            <div id="auth-view-reset" class="auth-view" style="display: none;">
+                <h2 class="auth-title">Set New Password</h2>
+                <p class="auth-subtitle" id="reset-instruction">Enter the recovery code sent to your email.</p>
+                <form id="auth-reset-form">
+                    <div class="auth-input-group">
+                        <label>Recovery Code</label>
+                        <input type="text" id="reset-code" placeholder="Enter 6-digit code" required
+                            style="letter-spacing: 0.2em; text-align: center; font-size: 1.25rem;">
+                    </div>
+                    <div class="auth-input-group">
+                        <label>New Password</label>
+                        <input type="password" id="reset-password" placeholder="Min 8 chars (upper, lower, num, symbol)" required>
+                    </div>
+                    <div class="auth-input-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="reset-confirm-password" placeholder="••••••••" required>
+                    </div>
+                    <div id="reset-error-msg" class="auth-error-msg" style="display: none;"></div>
+                    <div id="reset-success-msg" class="auth-success-msg" style="display: none;"></div>
+                    <button type="submit" id="reset-submit-btn" class="auth-submit-btn">Reset Password</button>
+                </form>
+                <div class="auth-footer-text">
+                    Didn't receive a code? <span class="auth-toggle-link" id="reset-resend-code-btn">Resend Code</span>
+                    <br><br>
+                    <span class="auth-toggle-link" id="reset-back-to-login">← Back to Log In</span>
                 </div>
             </div>
         </div>

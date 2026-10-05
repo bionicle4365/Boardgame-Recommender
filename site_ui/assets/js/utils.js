@@ -77,10 +77,48 @@ window.Auth = {
         });
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.message || "Cognito request failed");
+            const err = new Error(data.message || "Cognito request failed");
+            if (data.__type) {
+                err.code = data.__type.split("#").pop();
+            }
+            throw err;
         }
         return data;
+    },
+    async forgotPassword(email) {
+        return this.cognitoRequest("AWSCognitoIdentityProviderService.ForgotPassword", {
+            ClientId: COGNITO_CLIENT_ID,
+            Username: email
+        });
+    },
+    async confirmForgotPassword(email, code, newPassword) {
+        return this.cognitoRequest("AWSCognitoIdentityProviderService.ConfirmForgotPassword", {
+            ClientId: COGNITO_CLIENT_ID,
+            Username: email,
+            ConfirmationCode: code,
+            Password: newPassword
+        });
     }
+};
+
+// Password Complexity Validator (Cognito Policy: min 8 chars, uppercase, lowercase, number, symbol)
+window.validatePassword = function(password) {
+    if (!password || password.length < 8) {
+        return "Password must be at least 8 characters long.";
+    }
+    if (!/[A-Z]/.test(password)) {
+        return "Password must contain at least one uppercase letter.";
+    }
+    if (!/[a-z]/.test(password)) {
+        return "Password must contain at least one lowercase letter.";
+    }
+    if (!/[0-9]/.test(password)) {
+        return "Password must contain at least one number.";
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+        return "Password must contain at least one symbol or special character.";
+    }
+    return null; // Valid
 };
 
 // API Fetch Wrapper
