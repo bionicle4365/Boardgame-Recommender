@@ -51,3 +51,30 @@ resource "aws_dynamodb_table" "bgg_game_night_sessions" {
     Project     = "Boardgame-Recommender"
   }
 }
+
+resource "aws_dynamodb_table" "bgg_cafes" {
+  name         = "bgg-cafes"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "cafe_id"
+
+  attribute {
+    name = "cafe_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "owner_cognito_id"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "owner_cognito_id-index"
+    hash_key        = "owner_cognito_id"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Environment = "production"
+    Project     = "Boardgame-Recommender"
+  }
+}

@@ -27,13 +27,13 @@ Create a frictionless, self-service onboarding flow that allows cafe owners and 
 - **Onboarding UI:** Dedicated web flow at `site_ui/cafe/onboard.html` styled with the existing glassmorphic design system.
 
 ### Tasks
-- [ ] **DynamoDB Terraform Module:** Define `bgg-cafes` DynamoDB table with `cafe_id` PK and `owner_cognito_id` GSI in `infrastructure/dynamodb/`.
-- [ ] **BGG Validation Endpoint:** Implement `_handle_validate_bgg()` in backend Lambda to query BGG XML API2, verify ownership count, and test regex extraction on comments.
-- [ ] **Onboarding API Handler:** Implement `_handle_cafe_onboard()` in backend Lambda to persist venue to DynamoDB, mirror to S3, and enqueue initial scrape to SQS.
-- [ ] **API Gateway Route:** Add `/cafe/validate-bgg` (public) and `/cafe/onboard` (Cognito authorizer) routes in API Gateway Terraform.
-- [ ] **Frontend Onboarding Wizard:** Build `site_ui/cafe/onboard.html` with real-time BGG collection verification, live shelf note preview, table count selector, and Wi-Fi configuration.
-- [ ] **Automated QR Generator Hook:** Trigger automated table tent bundle generation upon successful onboarding.
-- [ ] **Unit & Integration Tests:** Test BGG username validation, slug uniqueness checks, DynamoDB persistence, and SQS queue dispatch.
+- [x] **DynamoDB Terraform Module:** Define `bgg-cafes` DynamoDB table with `cafe_id` PK and `owner_cognito_id` GSI in `infrastructure/dynamodb/`.
+- [x] **BGG Validation Endpoint:** Implement `_handle_validate_bgg()` in backend Lambda to query BGG XML API2, verify ownership count, and test regex extraction on comments.
+- [x] **Onboarding API Handler:** Implement `_handle_cafe_onboard()` in backend Lambda to persist venue to DynamoDB, mirror to S3, and enqueue initial scrape to SQS.
+- [x] **API Gateway Route:** Add `/cafe/validate-bgg` (public) and `/cafe/onboard` (Cognito authorizer) routes in API Gateway Terraform.
+- [x] **Frontend Onboarding Wizard:** Build `site_ui/cafe/onboard.html` with real-time BGG collection verification, live shelf note preview, table count selector, and Wi-Fi configuration.
+- [x] **Automated QR Generator Hook:** Trigger automated table tent bundle generation upon successful onboarding.
+- [x] **Unit & Integration Tests:** Test BGG username validation, slug uniqueness checks, DynamoDB persistence, and SQS queue dispatch.
 
 ---
 

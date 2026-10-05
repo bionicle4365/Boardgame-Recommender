@@ -57,6 +57,12 @@ variable "dynamodb_table_name" {
   type        = string
 }
 
+variable "dynamodb_cafes_table_name" {
+  description = "The name of the DynamoDB table for cafes registry"
+  type        = string
+  default     = "bgg-cafes"
+}
+
 variable "taste_analytics_sqs_queue_arn" {
   description = "The ARN of the SQS queue for the BGG taste analytics"
   type        = string

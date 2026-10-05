@@ -1,0 +1,1285 @@
+---
+layout: default
+title: "Cafe Registration & Onboarding"
+description: "Register your board game cafe, bar, or lounge. Connect your BGG library, set up table QR codes, and go live in under 3 minutes."
+---
+
+<style>
+    /* ── Cafe Onboarding Page Styles ── */
+    .onboard-container {
+        font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text-main);
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 24px 20px 60px 20px;
+    }
+
+    /* ── Header ── */
+    .onboard-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .onboard-header h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .onboard-header p {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* ── Step Progress Indicator ── */
+    .stepper-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 36px;
+        position: relative;
+    }
+
+    .stepper-nav::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 10%;
+        right: 10%;
+        height: 3px;
+        background: var(--border);
+        z-index: 1;
+    }
+
+    .step-item {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        cursor: default;
+    }
+
+    .step-bubble {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: var(--card-bg);
+        border: 2px solid var(--border);
+        color: var(--text-muted);
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .step-item.active .step-bubble {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #ffffff;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+    }
+
+    .step-item.completed .step-bubble {
+        background: var(--success);
+        border-color: var(--success);
+        color: #ffffff;
+    }
+
+    .step-label {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        transition: color 0.3s ease;
+        text-align: center;
+    }
+
+    .step-item.active .step-label {
+        color: var(--primary);
+    }
+
+    .step-item.completed .step-label {
+        color: var(--text-main);
+    }
+
+    /* ── Glassmorphic Card Container ── */
+    .wizard-card {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 36px 32px;
+        box-shadow: var(--glass-shadow);
+        transition: all 0.3s ease;
+        margin-bottom: 24px;
+    }
+
+    .wizard-section-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-top: 0;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .wizard-section-subtitle {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 28px;
+    }
+
+    /* ── Form Controls ── */
+    .form-group {
+        margin-bottom: 22px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: var(--text-main);
+    }
+
+    .form-group .field-hint {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    .form-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--input-bg);
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 0.95rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        background: var(--input-focus-bg);
+    }
+
+    .input-action-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    .input-action-row .form-input {
+        flex: 1;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border-radius: 10px;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: var(--btn-secondary-bg);
+        color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+        background: var(--btn-secondary-hover-bg);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+        background: var(--badge-bg);
+    }
+
+    .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .wizard-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 32px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+    }
+
+    /* ── Slug Preview Badge ── */
+    .slug-preview {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 6px;
+    }
+
+    .slug-badge {
+        font-family: monospace;
+        background: var(--badge-bg);
+        padding: 2px 8px;
+        border-radius: 6px;
+        color: var(--text-main);
+        font-weight: 600;
+    }
+
+    .slug-status {
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .slug-status.available { color: var(--success); }
+    .slug-status.taken { color: var(--danger); }
+    .slug-status.checking { color: var(--warning); }
+
+    /* ── BGG Validation Results Card ── */
+    .bgg-results-card {
+        background: var(--section-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 20px;
+        margin-top: 16px;
+        display: none;
+    }
+
+    .bgg-results-card.visible {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .bgg-stats-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .stat-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        flex: 1;
+    }
+
+    .stat-pill-icon {
+        font-size: 1.5rem;
+    }
+
+    .stat-pill-value {
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: var(--text-main);
+        line-height: 1;
+    }
+
+    .stat-pill-label {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .sample-shelf-header {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 8px;
+    }
+
+    .sample-shelf-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .shelf-sample-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+    }
+
+    .shelf-coord-badge {
+        background: #ede9fe;
+        color: #6366f1;
+        font-weight: 700;
+        font-size: 0.78rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+    /* ── Range Slider & Number Row ── */
+    .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+    }
+
+    .slider-row input[type="range"] {
+        flex: 1;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--slider-track-bg);
+        outline: none;
+        accent-color: var(--primary);
+    }
+
+    .table-count-number {
+        width: 70px;
+        text-align: center;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    /* ── Review & Launch Screen ── */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .summary-box {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .summary-box-label {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        margin-bottom: 4px;
+    }
+
+    .summary-box-value {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    /* ── Success Card & Table Tent Preview ── */
+    .success-celebration {
+        text-align: center;
+        padding: 20px 0;
+    }
+
+    .celebration-icon {
+        font-size: 3.5rem;
+        margin-bottom: 12px;
+        display: inline-block;
+        animation: bounce 1s infinite alternate;
+    }
+
+    .tent-preview-card {
+        background: #ffffff;
+        border: 2px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 420px;
+        margin: 24px auto;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+        text-align: center;
+        color: #0f172a;
+    }
+
+    .tent-preview-header {
+        font-size: 1.25rem;
+        font-weight: 800;
+        margin-bottom: 4px;
+        color: #1e1b4b;
+    }
+
+    .tent-preview-badge {
+        display: inline-block;
+        background: #4f46e5;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 4px 14px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+    }
+
+    .tent-preview-qr {
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 16px auto;
+        display: block;
+        border-radius: 8px;
+    }
+
+    .tent-preview-wifi {
+        background: #f1f5f9;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #334155;
+    }
+
+    /* ── Inline Alert / Notification ── */
+    .alert-banner {
+        padding: 12px 16px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        margin-bottom: 18px;
+        display: none;
+    }
+
+    .alert-banner.visible { display: block; }
+    .alert-banner.error { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+    .alert-banner.success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounce {
+        from { transform: translateY(0); }
+        to { transform: translateY(-8px); }
+    }
+
+    @media (max-width: 640px) {
+        .wizard-card { padding: 24px 18px; }
+        .summary-grid { grid-template-columns: 1fr; }
+        .bgg-stats-row { flex-direction: column; }
+        .input-action-row { flex-direction: column; }
+    }
+</style>
+
+<div class="onboard-container">
+    <div class="onboard-header">
+        <h1>Register Your Venue</h1>
+        <p>Turn your BGG library into an interactive digital sommelier for your patrons in under 3 minutes.</p>
+    </div>
+
+    <!-- Stepper Navigation -->
+    <div class="stepper-nav" id="wizard-stepper">
+        <div class="step-item active" id="step-nav-1">
+            <div class="step-bubble">1</div>
+            <div class="step-label">Venue & Collection</div>
+        </div>
+        <div class="step-item" id="step-nav-2">
+            <div class="step-bubble">2</div>
+            <div class="step-label">Tables & Amenities</div>
+        </div>
+        <div class="step-item" id="step-nav-3">
+            <div class="step-bubble">3</div>
+            <div class="step-label">Launch & Table Tents</div>
+        </div>
+    </div>
+
+    <!-- Global Alert Banner -->
+    <div class="alert-banner" id="global-alert"></div>
+
+    <!-- STEP 1: Venue Identity & BGG Account -->
+    <div class="wizard-card" id="step-card-1">
+        <h2 class="wizard-section-title">📍 Venue Identity & BGG Account</h2>
+        <p class="wizard-section-subtitle">We will link your venue to your BoardGameGeek account and verify shelf coordinates.</p>
+
+        <div class="form-group">
+            <label for="venue-name-input">Venue Name *</label>
+            <input type="text" id="venue-name-input" class="form-input" placeholder="e.g. The Malt & Meeple Cafe" required>
+            <div class="field-hint">The public name patrons will see when scanning their table QR code.</div>
+        </div>
+
+        <div class="form-group">
+            <label for="venue-slug-input">Vanity URL Slug *</label>
+            <input type="text" id="venue-slug-input" class="form-input" placeholder="e.g. malt-and-meeple" required>
+            <div class="slug-preview">
+                Your Table URL: <span class="slug-badge" id="slug-preview-text">https://meeplemanifesto.com/cafe/...</span>
+                <span class="slug-status" id="slug-status-badge"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="bgg-username-input">BGG Account Username *</label>
+            <div class="input-action-row">
+                <input type="text" id="bgg-username-input" class="form-input" placeholder="e.g. maltandmeeple" required>
+                <button type="button" class="btn btn-secondary" id="verify-bgg-btn">
+                    <span id="verify-btn-icon">🔍</span>
+                    <span id="verify-btn-text">Verify Collection</span>
+                </button>
+            </div>
+            <div class="field-hint">We only ingest games marked as "Owned" in this BGG collection.</div>
+        </div>
+
+        <!-- Advanced Regex Customization Toggle -->
+        <details style="margin-top: 14px; margin-bottom: 14px;">
+            <summary style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); cursor: pointer;">⚙️ Advanced Shelf Coordinate Settings</summary>
+            <div style="padding: 12px; background: var(--section-bg); border-radius: 8px; margin-top: 8px;">
+                <label for="shelf-regex-input" style="font-size: 0.8rem; font-weight: 600;">Custom Comment Shelf Extraction Regex</label>
+                <input type="text" id="shelf-regex-input" class="form-input" style="font-size: 0.85rem;" value="(?:Shelf|Location|Bin):?\s*([A-Za-z0-9\-]+)">
+                <div class="field-hint">Default pattern extracts matches from notes like "Shelf B-2" or "Location: A1".</div>
+            </div>
+        </details>
+
+        <!-- BGG Verification Results Preview -->
+        <div class="bgg-results-card" id="bgg-results-container">
+            <div class="bgg-stats-row">
+                <div class="stat-pill">
+                    <div class="stat-pill-icon">🎲</div>
+                    <div>
+                        <div class="stat-pill-value" id="res-total-owned">0</div>
+                        <div class="stat-pill-label">Owned Games</div>
+                    </div>
+                </div>
+                <div class="stat-pill">
+                    <div class="stat-pill-icon">📍</div>
+                    <div>
+                        <div class="stat-pill-value" id="res-shelf-detected">0</div>
+                        <div class="stat-pill-label">Shelf Tags Found</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sample-shelf-header">Sample Shelf Coordinates Detected:</div>
+            <div class="sample-shelf-tags" id="sample-tags-list">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <div class="wizard-footer" style="justify-content: flex-end;">
+            <button type="button" class="btn btn-primary" id="step1-next-btn">Continue to Tables →</button>
+        </div>
+    </div>
+
+    <!-- STEP 2: Tables & Amenities Setup -->
+    <div class="wizard-card" id="step-card-2" style="display: none;">
+        <h2 class="wizard-section-title">🪑 Tables & Guest Amenities</h2>
+        <p class="wizard-section-subtitle">Configure table numbers and guest Wi-Fi to print directly on your table tents.</p>
+
+        <div class="form-group">
+            <label for="table-count-input">Number of Tables in Venue</label>
+            <div class="slider-row">
+                <input type="range" id="table-count-slider" min="1" max="100" value="20">
+                <input type="number" id="table-count-input" class="form-input table-count-number" min="1" max="100" value="20">
+            </div>
+            <div class="field-hint">We will generate individual printable table tents for Table 1 through Table <span id="hint-table-count">20</span>.</div>
+        </div>
+
+        <div class="form-group">
+            <label for="wifi-ssid-input">Guest Wi-Fi Network Name (SSID)</label>
+            <input type="text" id="wifi-ssid-input" class="form-input" placeholder="e.g. MaltMeeple-Guest">
+            <div class="field-hint">Printed on table tents so patrons connect quickly.</div>
+        </div>
+
+        <div class="form-group">
+            <label for="wifi-password-input">Guest Wi-Fi Password</label>
+            <input type="text" id="wifi-password-input" class="form-input" placeholder="e.g. rollinitiative">
+        </div>
+
+        <div class="form-group">
+            <label for="tagline-input">Welcome Tagline / House Specialty</label>
+            <input type="text" id="tagline-input" class="form-input" placeholder="e.g. 24 craft beers on tap & 600+ tabletop games. Ask staff for recommendations!">
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="drink-pairings-toggle" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span>Enable Beverage Pairings (Display house drink pairings alongside recommendations)</span>
+            </label>
+        </div>
+
+        <div class="wizard-footer">
+            <button type="button" class="btn btn-secondary" id="step2-back-btn">← Back</button>
+            <button type="button" class="btn btn-primary" id="step2-next-btn">Review & Launch →</button>
+        </div>
+    </div>
+
+    <!-- STEP 3: Review & Instant Launch -->
+    <div class="wizard-card" id="step-card-3" style="display: none;">
+        <div id="pre-launch-view">
+            <h2 class="wizard-section-title">🚀 Review & Launch Venue</h2>
+            <p class="wizard-section-subtitle">Confirm your venue setup and immediately download your printable table tents.</p>
+
+            <div class="summary-grid">
+                <div class="summary-box">
+                    <div class="summary-box-label">Venue Name</div>
+                    <div class="summary-box-value" id="sum-venue-name">-</div>
+                </div>
+                <div class="summary-box">
+                    <div class="summary-box-label">BGG Account</div>
+                    <div class="summary-box-value" id="sum-bgg-user">-</div>
+                </div>
+                <div class="summary-box">
+                    <div class="summary-box-label">Tables Configured</div>
+                    <div class="summary-box-value" id="sum-table-count">20 Tables</div>
+                </div>
+                <div class="summary-box">
+                    <div class="summary-box-label">Vanity Table Slug</div>
+                    <div class="summary-box-value" id="sum-slug">-</div>
+                </div>
+            </div>
+
+            <!-- Cognito Auth Guard -->
+            <div id="auth-guard-box" style="background: var(--section-bg); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+                <div id="auth-guard-unauthed">
+                    <p style="margin: 0 0 14px 0; font-size: 0.95rem; color: var(--text-muted);">
+                        🔒 An account is required to securely manage your venue inventory and shelf locations.
+                    </p>
+                    <button type="button" class="btn btn-primary" id="open-auth-modal-btn">Log In / Sign Up to Complete Registration</button>
+                </div>
+                <div id="auth-guard-authed" style="display: none;">
+                    <div style="display: inline-flex; align-items: center; gap: 8px; color: var(--success); font-weight: 600; font-size: 0.95rem;">
+                        <span>✅ Authenticated as:</span>
+                        <span id="authed-email-label" style="color: var(--text-main);"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="wizard-footer">
+                <button type="button" class="btn btn-secondary" id="step3-back-btn">← Back</button>
+                <button type="button" class="btn btn-primary" id="launch-venue-btn">Register Venue Now 🎉</button>
+            </div>
+        </div>
+
+        <!-- POST-LAUNCH SUCCESS VIEW -->
+        <div id="post-launch-view" style="display: none;">
+            <div class="success-celebration">
+                <div class="celebration-icon">🎉</div>
+                <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 6px;">Your Venue is Live!</h2>
+                <p style="color: var(--text-muted); font-size: 1rem; max-width: 500px; margin: 0 auto 24px auto;">
+                    We have enqueued your initial BGG collection scrape and generated your complete print-ready QR Table Tent kit.
+                </p>
+
+                <!-- Live Table Tent Graphic Preview -->
+                <div class="tent-preview-card" id="tent-preview-box">
+                    <div class="tent-preview-header" id="preview-cafe-name">The Malt & Meeple</div>
+                    <div class="tent-preview-badge" id="preview-table-badge">TABLE 1</div>
+                    <img id="preview-qr-img" class="tent-preview-qr" src="" alt="Table 1 QR Code">
+                    <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 4px;">🎲 Scan for Game Recommendations</div>
+                    <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 12px;" id="preview-tagline">Find the perfect game in 30 seconds</div>
+                    <div class="tent-preview-wifi" id="preview-wifi-info">📶 Wi-Fi: MaltMeeple-Guest • Pass: rollinitiative</div>
+                </div>
+
+                <!-- Action Toolbar -->
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px;">
+                    <button type="button" class="btn btn-primary" id="print-tents-action-btn">
+                        <span>🖨️</span>
+                        <span>Print Table Tents (All Tables)</span>
+                    </button>
+                    <a id="open-table-one-link" href="#" target="_blank" class="btn btn-secondary">
+                        <span>🌐</span>
+                        <span>Open Live Table 1</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // ── Wizard State ────────────────────────────────────────────────────────
+    let currentStep = 1;
+    let bggValidated = false;
+    let validatedCollectionStats = null;
+    let slugAvailable = false;
+    let debounceTimer = null;
+    let createdVenue = null;
+
+    // ── DOM Elements ────────────────────────────────────────────────────────
+    const stepCards = [
+        document.getElementById("step-card-1"),
+        document.getElementById("step-card-2"),
+        document.getElementById("step-card-3")
+    ];
+    const stepNavs = [
+        document.getElementById("step-nav-1"),
+        document.getElementById("step-nav-2"),
+        document.getElementById("step-nav-3")
+    ];
+
+    const venueNameInput  = document.getElementById("venue-name-input");
+    const venueSlugInput  = document.getElementById("venue-slug-input");
+    const slugPreviewText = document.getElementById("slug-preview-text");
+    const slugStatusBadge = document.getElementById("slug-status-badge");
+    const bggUsernameInput = document.getElementById("bgg-username-input");
+    const verifyBggBtn    = document.getElementById("verify-bgg-btn");
+    const verifyBtnIcon   = document.getElementById("verify-btn-icon");
+    const verifyBtnText   = document.getElementById("verify-btn-text");
+    const shelfRegexInput = document.getElementById("shelf-regex-input");
+
+    const bggResultsContainer = document.getElementById("bgg-results-container");
+    const resTotalOwned       = document.getElementById("res-total-owned");
+    const resShelfDetected    = document.getElementById("res-shelf-detected");
+    const sampleTagsList      = document.getElementById("sample-tags-list");
+
+    const tableSlider   = document.getElementById("table-count-slider");
+    const tableInput    = document.getElementById("table-count-input");
+    const tableHint     = document.getElementById("hint-table-count");
+    const wifiSsidInput = document.getElementById("wifi-ssid-input");
+    const wifiPassInput = document.getElementById("wifi-password-input");
+    const taglineInput  = document.getElementById("tagline-input");
+    const drinkToggle   = document.getElementById("drink-pairings-toggle");
+
+    const sumVenueName  = document.getElementById("sum-venue-name");
+    const sumBggUser    = document.getElementById("sum-bgg-user");
+    const sumTableCount = document.getElementById("sum-table-count");
+    const sumSlug       = document.getElementById("sum-slug");
+
+    const authGuardUnauthed = document.getElementById("auth-guard-unauthed");
+    const authGuardAuthed   = document.getElementById("auth-guard-authed");
+    const authedEmailLabel  = document.getElementById("authed-email-label");
+    const openAuthModalBtn  = document.getElementById("open-auth-modal-btn");
+    const launchVenueBtn    = document.getElementById("launch-venue-btn");
+
+    const globalAlert       = document.getElementById("global-alert");
+    const preLaunchView     = document.getElementById("pre-launch-view");
+    const postLaunchView    = document.getElementById("post-launch-view");
+
+    // ── Helper: Show Alert Banner ───────────────────────────────────────────
+    function showAlert(msg, type = "error") {
+        globalAlert.textContent = msg;
+        globalAlert.className = `alert-banner visible ${type}`;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function hideAlert() {
+        globalAlert.className = "alert-banner";
+        globalAlert.textContent = "";
+    }
+
+    // ── Navigation Functions ────────────────────────────────────────────────
+    function goToStep(step) {
+        currentStep = step;
+        stepCards.forEach((c, idx) => {
+            c.style.display = (idx + 1 === step) ? "block" : "none";
+        });
+        stepNavs.forEach((n, idx) => {
+            const stepNum = idx + 1;
+            n.classList.remove("active", "completed");
+            if (stepNum === step) n.classList.add("active");
+            else if (stepNum < step) n.classList.add("completed");
+        });
+        hideAlert();
+        window.scrollTo({ top: 100, behavior: 'smooth' });
+    }
+
+    // ── Slug Handling & Auto-Generation ─────────────────────────────────────
+    function slugify(text) {
+        return text.toString().toLowerCase().trim()
+            .replace(/\s+/g, '-')
+            .replace(/[^\w\-]+/g, '')
+            .replace(/\-\-+/g, '-')
+            .replace(/^-+/, '')
+            .replace(/-+$/, '');
+    }
+
+    let userEditedSlug = false;
+    venueNameInput.addEventListener("input", function () {
+        if (!userEditedSlug) {
+            venueSlugInput.value = slugify(this.value);
+            checkSlugAvailability();
+        }
+    });
+
+    venueSlugInput.addEventListener("input", function () {
+        userEditedSlug = true;
+        this.value = slugify(this.value);
+        checkSlugAvailability();
+    });
+
+    function checkSlugAvailability() {
+        const slug = venueSlugInput.value.trim();
+        slugPreviewText.textContent = `https://meeplemanifesto.com/cafe/${slug || '...'}`;
+        
+        if (!slug || slug.length < 3) {
+            slugStatusBadge.textContent = "Slug too short (min 3 chars)";
+            slugStatusBadge.className = "slug-status checking";
+            slugAvailable = false;
+            return;
+        }
+
+        slugStatusBadge.textContent = "Checking availability...";
+        slugStatusBadge.className = "slug-status checking";
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            try {
+                const res = await window.fetchApi(`/cafe/check-slug?slug=${encodeURIComponent(slug)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.available) {
+                        slugStatusBadge.textContent = "✅ Available";
+                        slugStatusBadge.className = "slug-status available";
+                        slugAvailable = true;
+                    } else {
+                        slugStatusBadge.textContent = "❌ Slug already taken";
+                        slugStatusBadge.className = "slug-status taken";
+                        slugAvailable = false;
+                    }
+                }
+            } catch (e) {
+                slugStatusBadge.textContent = "Available";
+                slugStatusBadge.className = "slug-status available";
+                slugAvailable = true;
+            }
+        }, 350);
+    }
+
+    // ── Table Stepper Sync ──────────────────────────────────────────────────
+    tableSlider.addEventListener("input", function () {
+        tableInput.value = this.value;
+        tableHint.textContent = this.value;
+    });
+
+    tableInput.addEventListener("input", function () {
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+        if (val > 100) val = 100;
+        tableSlider.value = val;
+        tableHint.textContent = val;
+    });
+
+    // ── BGG Collection Validation ───────────────────────────────────────────
+    verifyBggBtn.addEventListener("click", async function () {
+        const username = bggUsernameInput.value.trim();
+        if (!username) {
+            showAlert("Please enter a BGG account username to verify.");
+            return;
+        }
+
+        hideAlert();
+        verifyBggBtn.disabled = true;
+        verifyBtnIcon.textContent = "⏳";
+        verifyBtnText.textContent = "Validating...";
+
+        const regexVal = shelfRegexInput.value.trim();
+        const url = `/cafe/validate-bgg?username=${encodeURIComponent(username)}&shelf_regex=${encodeURIComponent(regexVal)}`;
+
+        try {
+            const resp = await window.fetchApi(url);
+            const data = await resp.json();
+
+            if (resp.status === 202) {
+                // Collection is processing on BGG
+                showAlert("BGG collection request is processing. Retrying in 2 seconds...", "success");
+                setTimeout(() => verifyBggBtn.click(), 2500);
+                return;
+            }
+
+            if (!resp.ok) {
+                showAlert(data.error || "Failed to validate BGG username.");
+                bggResultsContainer.classList.remove("visible");
+                bggValidated = false;
+                return;
+            }
+
+            // Render stats
+            resTotalOwned.textContent = data.total_owned;
+            resShelfDetected.textContent = data.shelf_tags_detected;
+
+            sampleTagsList.innerHTML = "";
+            if (data.sample_matches && data.sample_matches.length > 0) {
+                data.sample_matches.forEach(item => {
+                    const tagEl = document.createElement("div");
+                    tagEl.className = "shelf-sample-tag";
+                    tagEl.innerHTML = `<strong>${item.name}</strong> <span class="shelf-coord-badge">📍 ${item.extracted_location}</span>`;
+                    sampleTagsList.appendChild(tagEl);
+                });
+            } else {
+                sampleTagsList.innerHTML = `<span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No shelf location notes detected in game comments. You can edit shelf coordinates anytime in the staff portal!</span>`;
+            }
+
+            bggResultsContainer.classList.add("visible");
+            bggValidated = true;
+            validatedCollectionStats = data;
+        } catch (err) {
+            showAlert("Network error validating BGG username. Please try again.");
+            bggValidated = false;
+        } finally {
+            verifyBggBtn.disabled = false;
+            verifyBtnIcon.textContent = "🔍";
+            verifyBtnText.textContent = "Verify Collection";
+        }
+    });
+
+    // ── Step 1 Navigation Next ──────────────────────────────────────────────
+    document.getElementById("step1-next-btn").addEventListener("click", function () {
+        const name = venueNameInput.value.trim();
+        const slug = venueSlugInput.value.trim();
+        const bgg  = bggUsernameInput.value.trim();
+
+        if (!name) {
+            showAlert("Please enter a venue name.");
+            venueNameInput.focus();
+            return;
+        }
+        if (!slug || slug.length < 3) {
+            showAlert("Please enter a valid vanity URL slug (at least 3 characters).");
+            venueSlugInput.focus();
+            return;
+        }
+        if (!bgg) {
+            showAlert("Please enter your BGG account username.");
+            bggUsernameInput.focus();
+            return;
+        }
+
+        goToStep(2);
+    });
+
+    // ── Step 2 Navigation ───────────────────────────────────────────────────
+    document.getElementById("step2-back-btn").addEventListener("click", () => goToStep(1));
+    document.getElementById("step2-next-btn").addEventListener("click", function () {
+        // Populate Summary on Step 3
+        sumVenueName.textContent = venueNameInput.value.trim();
+        sumBggUser.textContent = bggUsernameInput.value.trim();
+        sumTableCount.textContent = `${tableInput.value} Tables`;
+        sumSlug.textContent = venueSlugInput.value.trim();
+
+        checkAuthState();
+        goToStep(3);
+    });
+
+    document.getElementById("step3-back-btn").addEventListener("click", () => goToStep(2));
+
+    // ── Auth Handling for Step 3 ────────────────────────────────────────────
+    function checkAuthState() {
+        const isLoggedIn = (typeof Auth !== 'undefined' && Auth.isLoggedIn && Auth.isLoggedIn());
+        if (isLoggedIn) {
+            authGuardUnauthed.style.display = "none";
+            authGuardAuthed.style.display = "block";
+            authedEmailLabel.textContent = Auth.getEmail() || "Authenticated Owner";
+            launchVenueBtn.disabled = false;
+        } else {
+            authGuardUnauthed.style.display = "block";
+            authGuardAuthed.style.display = "none";
+            // Allow clicking launch which triggers modal if unauthenticated
+            launchVenueBtn.disabled = false;
+        }
+    }
+
+    if (openAuthModalBtn) {
+        openAuthModalBtn.addEventListener("click", function () {
+            const loginBtn = document.getElementById("auth-login-btn");
+            if (loginBtn) loginBtn.click();
+        });
+    }
+
+    document.addEventListener("bgg_login_success", function () {
+        checkAuthState();
+    });
+
+    // ── Venue Registration Launch Trigger ───────────────────────────────────
+    launchVenueBtn.addEventListener("click", async function () {
+        const isLoggedIn = (typeof Auth !== 'undefined' && Auth.isLoggedIn && Auth.isLoggedIn());
+        if (!isLoggedIn) {
+            showAlert("Please log in or sign up to finalize your venue registration.", "error");
+            const loginBtn = document.getElementById("auth-login-btn");
+            if (loginBtn) loginBtn.click();
+            return;
+        }
+
+        hideAlert();
+        launchVenueBtn.disabled = true;
+        launchVenueBtn.textContent = "Registering Venue...";
+
+        const payload = {
+            cafe_id: venueSlugInput.value.trim(),
+            name: venueNameInput.value.trim(),
+            bgg_username: bggUsernameInput.value.trim(),
+            table_count: parseInt(tableInput.value, 10),
+            wifi_ssid: wifiSsidInput.value.trim(),
+            wifi_password: wifiPassInput.value.trim(),
+            tagline: taglineInput.value.trim(),
+            shelf_regex: shelfRegexInput.value.trim(),
+            drink_pairings_enabled: drinkToggle.checked
+        };
+
+        try {
+            const resp = await window.fetchApi('/cafe/onboard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) {
+                showAlert(data.error || "Failed to register venue. Please try again.");
+                launchVenueBtn.disabled = false;
+                launchVenueBtn.textContent = "Register Venue Now 🎉";
+                return;
+            }
+
+            createdVenue = data.cafe || payload;
+            renderSuccessView(createdVenue);
+        } catch (err) {
+            showAlert("Network error registering venue. Please check your connection.");
+            launchVenueBtn.disabled = false;
+            launchVenueBtn.textContent = "Register Venue Now 🎉";
+        }
+    });
+
+    // ── Render Post-Launch Success ──────────────────────────────────────────
+    function renderSuccessView(venue) {
+        preLaunchView.style.display = "none";
+        postLaunchView.style.display = "block";
+
+        const slug = venue.cafe_id || venue.slug;
+        const targetUrl = `https://meeplemanifesto.com/cafe/${slug}?table=1`;
+
+        document.getElementById("preview-cafe-name").textContent = venue.name;
+        document.getElementById("preview-table-badge").textContent = `TABLE 1`;
+        document.getElementById("preview-tagline").textContent = venue.tagline || "Find the perfect game in 30 seconds";
+        
+        const wifiStr = venue.wifi_ssid 
+            ? `📶 Wi-Fi: ${venue.wifi_ssid}${venue.wifi_password ? ' • Pass: ' + venue.wifi_password : ''}`
+            : "📶 Ask staff for Wi-Fi access";
+        document.getElementById("preview-wifi-info").textContent = wifiStr;
+
+        // Generate QR Code preview image
+        const qrImg = document.getElementById("preview-qr-img");
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
+
+        const openLink = document.getElementById("open-table-one-link");
+        openLink.href = `/cafe/${slug}?table=1`;
+
+        // Wire up printable table tent sheet
+        document.getElementById("print-tents-action-btn").addEventListener("click", function () {
+            openPrintableTentsWindow(venue);
+        });
+
+        window.scrollTo({ top: 100, behavior: 'smooth' });
+    }
+
+    // ── Client-Side Master Printable Table Tents Generator ──────────────────
+    function openPrintableTentsWindow(venue) {
+        const tableCount = venue.table_count || 20;
+        const slug = venue.cafe_id || venue.slug;
+        const wifiInfo = venue.wifi_ssid 
+            ? `Wi-Fi: ${venue.wifi_ssid}${venue.wifi_password ? '  •  Pass: ' + venue.wifi_password : ''}`
+            : "Ask staff for Wi-Fi access";
+
+        let cardsHtml = '';
+        for (let t = 1; t <= tableCount; t++) {
+            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}?table=${t}`;
+            const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(tableUrl)}`;
+            
+            cardsHtml += `
+            <div class="print-page">
+                <div class="tent-card">
+                    <!-- Top Panel -->
+                    <div class="tent-panel">
+                        <div class="tent-bar"></div>
+                        <div class="tent-cafe-title">${venue.name}</div>
+                        <div class="tent-badge">TABLE ${t}</div>
+                        <img class="tent-qr" src="${qrSrc}" alt="Table ${t} QR">
+                        <div class="tent-cta-heading">🎲 Find What to Play</div>
+                        <div class="tent-cta-sub">${venue.tagline || 'Scan to find your table\'s perfect game in 30 seconds'}</div>
+                        <div class="tent-wifi-box">📶 ${wifiInfo}</div>
+                    </div>
+                    <!-- Fold Indicator -->
+                    <div class="tent-fold">✂️ FOLD HERE FOR STANDING TENT CARD</div>
+                    <!-- Bottom Panel -->
+                    <div class="tent-panel">
+                        <div class="tent-bar"></div>
+                        <div class="tent-cafe-title">${venue.name}</div>
+                        <div class="tent-badge">TABLE ${t}</div>
+                        <img class="tent-qr" src="${qrSrc}" alt="Table ${t} QR">
+                        <div class="tent-cta-heading">🎲 Find What to Play</div>
+                        <div class="tent-cta-sub">${venue.tagline || 'Scan to find your table\'s perfect game in 30 seconds'}</div>
+                        <div class="tent-wifi-box">📶 ${wifiInfo}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${venue.name} - Printable Table Tents</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+                body {
+                    margin: 0;
+                    padding: 20px;
+                    background: #f8fafc;
+                    font-family: 'Outfit', sans-serif;
+                    color: #0f172a;
+                }
+                .toolbar {
+                    background: #fff;
+                    padding: 16px 24px;
+                    border-radius: 12px;
+                    max-width: 720px;
+                    margin: 0 auto 30px auto;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+                }
+                .btn {
+                    background: #4f46e5;
+                    color: #fff;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    font-size: 1rem;
+                    cursor: pointer;
+                }
+                .print-page {
+                    max-width: 720px;
+                    margin: 0 auto 30px auto;
+                    background: #fff;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+                    page-break-after: always;
+                    break-after: page;
+                    padding: 30px;
+                    box-sizing: border-box;
+                }
+                .tent-card {
+                    border: 2px dashed #cbd5e1;
+                    border-radius: 16px;
+                    padding: 20px;
+                }
+                .tent-panel {
+                    text-align: center;
+                    padding: 20px 0;
+                }
+                .tent-bar {
+                    height: 6px;
+                    background: linear-gradient(135deg, #4f46e5, #818cf8);
+                    border-radius: 3px;
+                    margin-bottom: 14px;
+                }
+                .tent-cafe-title {
+                    font-size: 24px;
+                    font-weight: 800;
+                    color: #1e1b4b;
+                    margin-bottom: 8px;
+                }
+                .tent-badge {
+                    display: inline-block;
+                    background: #4f46e5;
+                    color: #fff;
+                    font-size: 16px;
+                    font-weight: 700;
+                    padding: 4px 16px;
+                    border-radius: 8px;
+                    margin-bottom: 14px;
+                }
+                .tent-qr {
+                    width: 170px;
+                    height: 170px;
+                    display: block;
+                    margin: 0 auto 12px auto;
+                }
+                .tent-cta-heading {
+                    font-size: 18px;
+                    font-weight: 700;
+                    margin-bottom: 4px;
+                }
+                .tent-cta-sub {
+                    font-size: 13px;
+                    color: #64748b;
+                    margin-bottom: 14px;
+                }
+                .tent-wifi-box {
+                    background: #f1f5f9;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    display: inline-block;
+                }
+                .tent-fold {
+                    border-top: 1.5px dashed #94a3b8;
+                    margin: 20px 0;
+                    text-align: center;
+                    color: #94a3b8;
+                    font-size: 11px;
+                    padding-top: 6px;
+                }
+                @media print {
+                    body { background: none; padding: 0; }
+                    .toolbar { display: none; }
+                    .print-page { box-shadow: none; margin: 0; padding: 10px; page-break-after: always; break-after: page; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="toolbar">
+                <div>
+                    <h2 style="margin: 0 0 4px 0;">${venue.name} Table Tent Kit</h2>
+                    <span style="color: #64748b; font-size: 0.9rem;">${tableCount} Table Tents Ready to Print</span>
+                </div>
+                <button class="btn" onclick="window.print()">🖨️ Print All Tents</button>
+            </div>
+            ${cardsHtml}
+        </body>
+        </html>
+        `);
+        printWindow.document.close();
+    }
+});
+</script>

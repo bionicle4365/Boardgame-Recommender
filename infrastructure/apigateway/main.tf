@@ -165,6 +165,33 @@ resource "aws_apigatewayv2_route" "bgg_post_preferences_route" {
   target             = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_validate_bgg_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /cafe/validate-bgg"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_check_slug_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /cafe/check-slug"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_cafe_meta_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /cafe/meta"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "bgg_cafe_onboard_route" {
+  api_id             = aws_apigatewayv2_api.bgg_api.id
+  route_key          = "POST /cafe/onboard"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito_authorizer.id
+  target             = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
+}
+
+
 resource "aws_lambda_permission" "apigw_preferences" {
   statement_id  = "AllowPreferencesExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"

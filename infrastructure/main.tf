@@ -54,6 +54,7 @@ module "lambda" {
   data_lambda_concurrency_limit = var.data_lambda_concurrency_limit
   user_lambda_concurrency_limit = var.user_lambda_concurrency_limit
   dynamodb_table_name           = module.dynamodb.dynamodb_table_name
+  dynamodb_cafes_table_name     = module.dynamodb.dynamodb_cafes_table_name
   taste_analytics_sqs_queue_arn = module.sqs.taste_analytics_sqs_queue_arn
   bgg_game_data_scraper_ecr_url = module.ecr.bgg_game_data_scraper_ecr_url
   bgg_user_data_scraper_ecr_url = module.ecr.bgg_user_data_scraper_ecr_url

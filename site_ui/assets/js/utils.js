@@ -411,6 +411,75 @@ window.fetchApi = async function(endpoint, options = {}) {
             sessions.unshift(newSession);
             localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
             data = newSession;
+        } else if (endpoint.startsWith('/cafe/validate-bgg')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const username = (urlParams.get('username') || '').trim();
+            if (!username) {
+                return {
+                    ok: false,
+                    status: 400,
+                    json: async () => ({ error: "username query parameter is required" })
+                };
+            }
+            if (username.toLowerCase() === 'nonexistent') {
+                return {
+                    ok: false,
+                    status: 404,
+                    json: async () => ({ error: "User does not exist on BoardGameGeek" })
+                };
+            }
+            data = {
+                status: "success",
+                username: username,
+                total_owned: 580,
+                shelf_tags_detected: 412,
+                sample_matches: [
+                    { id: "13", name: "Catan", raw_comment: "Shelf A-1 (Gateway)", extracted_location: "A-1" },
+                    { id: "266192", name: "Wingspan", raw_comment: "Location: B-3", extracted_location: "B-3" },
+                    { id: "342942", name: "Ark Nova", raw_comment: "Shelf C-2 [Heavy]", extracted_location: "C-2" },
+                    { id: "366013", name: "Sky Team", raw_comment: "Bin 4 (2-Player)", extracted_location: "4" }
+                ],
+                shelf_regex: "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)"
+            };
+        } else if (endpoint.startsWith('/cafe/check-slug')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const slug = (urlParams.get('slug') || '').trim().toLowerCase();
+            const takenSlugs = ['taken-slug', 'the-dice-box-official'];
+            data = {
+                available: !takenSlugs.includes(slug),
+                slug: slug
+            };
+        } else if (endpoint.startsWith('/cafe/onboard') && options.method === 'POST') {
+            const payload = JSON.parse(options.body || '{}');
+            const cafeId = payload.cafe_id || payload.slug || 'my-cafe';
+            const savedItem = {
+                ...payload,
+                cafe_id: cafeId,
+                slug: cafeId,
+                created_at: new Date().toISOString()
+            };
+            delete savedItem.staff_pin;
+            localStorage.setItem('bgg_mock_cafe_' + cafeId, JSON.stringify(savedItem));
+            data = {
+                status: "success",
+                message: "Venue successfully registered",
+                cafe: savedItem
+            };
+        } else if (endpoint.startsWith('/cafe/meta')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const cafeId = urlParams.get('cafe_id') || urlParams.get('slug') || 'demo-cafe';
+            const saved = JSON.parse(localStorage.getItem('bgg_mock_cafe_' + cafeId) || 'null');
+            data = saved || {
+                cafe_id: cafeId,
+                name: "The Malt & Meeple Cafe",
+                slug: cafeId,
+                bgg_username: "maltandmeeple",
+                table_count: 20,
+                wifi_ssid: "Malt-Guest",
+                wifi_password: "rollinitiative",
+                tagline: "Craft beer & tabletop games in downtown.",
+                drink_pairings_enabled: true
+            };
         } else if (endpoint.startsWith('/collection')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
             const username = (urlParams.get('username') || '').toLowerCase();
