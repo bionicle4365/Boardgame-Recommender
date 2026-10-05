@@ -389,7 +389,11 @@ def _handle_cafe_onboard(event, claims):
             sqs = boto3.client('sqs', region_name='us-east-1')
             sqs.send_message(
                 QueueUrl=queue_url,
-                MessageBody=bgg_username
+                MessageBody=json.dumps({
+                    'username': bgg_username,
+                    'cafe_id': cafe_id,
+                    'is_cafe': True
+                })
             )
     except Exception as sqs_err:
         print(f"Warning: Failed to send initial scrape SQS message: {sqs_err}")
@@ -460,7 +464,215 @@ def _handle_cafe_meta(query_params):
         }
 
 
+def _handle_cafe_sync(event, claims):
+    """
+    On-demand sync endpoint for cafe inventory (POST /cafe/sync).
+    Requires Cognito authentication. Verifies caller ownership in bgg-cafes DynamoDB,
+    dispatches an immediate collection scrape job to SQS with cafe context,
+    clears any active cafe recommendation cache, and updates last_sync_timestamp.
+    """
+    user_id = claims.get('sub')
+    if not user_id:
+        return {
+            'statusCode': 401,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Unauthorized: Missing user authentication'})
+        }
+
+    # Extract cafe_id from query parameters or request body
+    query_params = event.get('queryStringParameters') or {}
+    cafe_id = query_params.get('cafe_id')
+
+    if not cafe_id:
+        body_str = event.get('body', '{}')
+        if event.get('isBase64Encoded', False):
+            body_str = base64.b64decode(body_str).decode('utf-8')
+        try:
+            body = json.loads(body_str) if isinstance(body_str, str) else body_str
+            if isinstance(body, dict):
+                cafe_id = body.get('cafe_id')
+        except Exception:
+            pass
+
+    if not cafe_id:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'cafe_id is required'})
+        }
+
+    cafe_id = str(cafe_id).strip().lower()
+
+    # Look up cafe in DynamoDB
+    try:
+        res = cafes_table.get_item(Key={'cafe_id': cafe_id})
+        cafe = res.get('Item')
+        if not cafe:
+            return {
+                'statusCode': 404,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': f'Cafe "{cafe_id}" not found'})
+            }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Failed to query cafe registry: {str(e)}'})
+        }
+
+    # Verify caller is the owner
+    if cafe.get('owner_cognito_id') != user_id:
+        return {
+            'statusCode': 403,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Forbidden: You do not have permission to sync this cafe'})
+        }
+
+    bgg_username = cafe.get('bgg_username')
+    if not bgg_username:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Cafe "{cafe_id}" does not have an associated BGG username'})
+        }
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # 1. Update last_sync_timestamp in DynamoDB
+    try:
+        cafes_table.update_item(
+            Key={'cafe_id': cafe_id},
+            UpdateExpression="SET #lst = :now, #ua = :now",
+            ExpressionAttributeNames={
+                '#lst': 'last_sync_timestamp',
+                '#ua': 'updated_at'
+            },
+            ExpressionAttributeValues={
+                ':now': now_iso
+            }
+        )
+    except Exception as e:
+        print(f"Warning: Failed to update last_sync_timestamp in DynamoDB: {e}")
+
+    # 2. Invalidate recommendation cache in S3
+    try:
+        cache_prefix = f"data/recommendation_cache/cafe_{cafe_id}_"
+        paginator = s3.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=s3_bucket, Prefix=cache_prefix)
+        objects_to_delete = []
+        for page in pages:
+            for obj in page.get('Contents', []):
+                objects_to_delete.append({'Key': obj['Key']})
+        if objects_to_delete:
+            s3.delete_objects(
+                Bucket=s3_bucket,
+                Delete={'Objects': objects_to_delete}
+            )
+            print(f"Cleared {len(objects_to_delete)} recommendation cache objects for cafe {cafe_id}")
+    except Exception as cache_err:
+        print(f"Warning: Failed to clear recommendation cache for cafe {cafe_id}: {cache_err}")
+
+    # 3. Enqueue scrape job to SQS with cafe context
+    try:
+        queue_url = os.environ.get('USER_SQS_QUEUE_URL')
+        if queue_url:
+            sqs = boto3.client('sqs', region_name='us-east-1')
+            sqs.send_message(
+                QueueUrl=queue_url,
+                MessageBody=json.dumps({
+                    'username': bgg_username,
+                    'cafe_id': cafe_id,
+                    'is_cafe': True
+                })
+            )
+        else:
+            return {
+                'statusCode': 500,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'USER_SQS_QUEUE_URL environment variable is not configured'})
+            }
+    except Exception as sqs_err:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Failed to enqueue scrape job: {str(sqs_err)}'})
+        }
+
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps({
+            'status': 'success',
+            'message': f'Sync job successfully enqueued for cafe "{cafe_id}".',
+            'cafe_id': cafe_id,
+            'bgg_username': bgg_username,
+            'last_sync_timestamp': now_iso
+        })
+    }
+
+
+def _handle_sync_all_cafes():
+    """
+    Scans bgg-cafes DynamoDB table and dispatches an SQS collection scrape message
+    for every registered cafe. Triggered by weekly EventBridge rule or scheduled task.
+    """
+    queue_url = os.environ.get('USER_SQS_QUEUE_URL')
+    if not queue_url:
+        print("Error: USER_SQS_QUEUE_URL not configured")
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'USER_SQS_QUEUE_URL not configured'})
+        }
+
+    try:
+        response = cafes_table.scan(
+            ProjectionExpression="cafe_id, bgg_username"
+        )
+        items = response.get('Items', [])
+        while 'LastEvaluatedKey' in response:
+            response = cafes_table.scan(
+                ProjectionExpression="cafe_id, bgg_username",
+                ExclusiveStartKey=response['LastEvaluatedKey']
+            )
+            items.extend(response.get('Items', []))
+
+        sqs = boto3.client('sqs', region_name='us-east-1')
+        queued = []
+        for item in items:
+            cafe_id = item.get('cafe_id')
+            bgg_username = item.get('bgg_username')
+            if cafe_id and bgg_username:
+                sqs.send_message(
+                    QueueUrl=queue_url,
+                    MessageBody=json.dumps({
+                        'username': bgg_username,
+                        'cafe_id': cafe_id,
+                        'is_cafe': True
+                    })
+                )
+                queued.append(cafe_id)
+
+        print(f"Weekly cafe sync queued {len(queued)} venues.")
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'status': 'success', 'queued_count': len(queued), 'cafes': queued})
+        }
+    except Exception as e:
+        print(f"Error during weekly cafe sync: {e}")
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Weekly cafe sync failed: {str(e)}'})
+        }
+
+
 def _lambda_handler_impl(event, context):
+    # Scheduled EventBridge or direct action for weekly cafe sync
+    if event.get('action') == 'sync_all_cafes' or (event.get('source') == 'aws.events' and any('cafe' in r for r in event.get('resources', []))):
+        return _handle_sync_all_cafes()
+
     method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
     path = event.get('rawPath', '') or event.get('requestContext', {}).get('http', {}).get('path', '')
     query_params = event.get('queryStringParameters') or {}
@@ -485,10 +697,12 @@ def _lambda_handler_impl(event, context):
     if '/cafe/meta' in path:
         return _handle_cafe_meta(query_params)
 
-    # Authenticated /cafe/onboard
+    # Authenticated endpoints
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
     if '/cafe/onboard' in path:
         return _handle_cafe_onboard(event, claims)
+    if '/cafe/sync' in path:
+        return _handle_cafe_sync(event, claims)
 
     # Extract user ID from JWT Claims for /preferences
     user_id = claims.get('sub')

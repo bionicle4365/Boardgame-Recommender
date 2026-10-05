@@ -1,28 +1,20 @@
-# Tasks - Milestone C1: Self-Service Cafe Onboarding & Dynamic Venue Registry
+# Tasks - Milestone C2: Cafe Inventory Ingestion & On-Demand Sync
 
-- [x] **Infrastructure & Terraform Updates**
-  - [x] Define `bgg-cafes` DynamoDB table & GSI in `infrastructure/dynamodb/main.tf` and outputs in `outputs.tf` <!-- id: 0 -->
-  - [x] Connect `dynamodb_cafes_table_name` through `infrastructure/main.tf` and `infrastructure/lambda/` <!-- id: 1 -->
-  - [x] Add `/cafe/validate-bgg`, `/cafe/check-slug`, `/cafe/meta`, and `/cafe/onboard` routes in `infrastructure/apigateway/main.tf` <!-- id: 2 -->
-  - [x] Run `terraform validate` to verify configuration syntax <!-- id: 3 -->
+- [x] **Data Pipeline & Scraper Updates**
+  - [x] Update [`bgg_user_data_scraper`](file:///d:/Git/Boardgame-Recommender/bgg_user_data_scraper) to process `is_cafe=true` in SQS messages <!-- id: 0 -->
+  - [x] Filter BGG collection strictly for `own=1` and write Parquet to `s3://boardgame-app/data/cafes/{cafe_id}/collection.parquet` <!-- id: 1 -->
 
-- [x] **Backend Handler Implementation**
-  - [x] Implement `_handle_validate_bgg()` with BGG XML API2 queries, HTTP 202 retry, and shelf regex extraction <!-- id: 4 -->
-  - [x] Implement `_handle_check_slug()` for slug uniqueness check <!-- id: 5 -->
-  - [x] Implement `_handle_cafe_onboard()` to persist to DynamoDB, mirror to S3, and enqueue scrape job to SQS <!-- id: 6 -->
-  - [x] Implement `_handle_cafe_meta()` for public cafe branding, Wi-Fi info, and table count <!-- id: 7 -->
-  - [x] Integrate routing logic into `bgg_preferences/bgg_preferences_handler.py` preserving existing `/preferences` <!-- id: 8 -->
+- [x] **On-Demand Sync Endpoint**
+  - [x] Implement `_handle_cafe_sync()` in [`bgg_preferences_handler.py`](file:///d:/Git/Boardgame-Recommender/bgg_preferences/bgg_preferences_handler.py) <!-- id: 2 -->
+  - [x] Validate caller ownership in `bgg-cafes` DynamoDB table <!-- id: 3 -->
+  - [x] Enqueue scrape job with `{ "username": bgg_username, "cafe_id": cafe_id, "is_cafe": true }` to `USER_SQS_QUEUE_URL` <!-- id: 4 -->
+  - [x] Clear cafe recommendation cache keys <!-- id: 5 -->
 
-- [x] **Automated QR Generator Utility**
-  - [x] Implement `scripts/generate_cafe_table_qrs.py` for print-ready table tents <!-- id: 9 -->
-
-- [x] **Frontend Onboarding Wizard**
-  - [x] Update `site_ui/assets/js/utils.js` with mock API handlers for cafe endpoints <!-- id: 10 -->
-  - [x] Build glassmorphic multi-step wizard at `site_ui/cafe/onboard.html` <!-- id: 11 -->
-  - [x] Embed client-side interactive table tent preview and printable card generator <!-- id: 12 -->
+- [x] **API Gateway & EventBridge Infrastructure**
+  - [x] Add `POST /cafe/sync` route with Cognito authorizer in [`infrastructure/apigateway/main.tf`](file:///d:/Git/Boardgame-Recommender/infrastructure/apigateway/main.tf) <!-- id: 6 -->
+  - [x] Define weekly EventBridge trigger for recurring cafe collection sync <!-- id: 7 -->
 
 - [x] **Verification & Testing**
-  - [x] Create unit tests in `tests/test_cafe_onboarding.py` covering all backend logic and edge cases <!-- id: 13 -->
-  - [x] Run `pytest` across all tests <!-- id: 14 -->
-  - [x] Test frontend locally with Jekyll and browser verification <!-- id: 15 -->
-  - [x] Update `cafe_roadmap.md` on completion <!-- id: 16 -->
+  - [x] Add unit tests in `tests/test_cafe_sync.py` or `tests/test_bgg_preferences_handler.py` covering sync handler and authorization <!-- id: 8 -->
+  - [x] Test scraper cafe parquet extraction logic with mock BGG XML payload <!-- id: 9 -->
+  - [x] Update `cafe_roadmap.md` on completion <!-- id: 10 -->

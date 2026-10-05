@@ -50,13 +50,21 @@ def _get_element_value(element, xpath, attribute='value', default=None):
         return found_element.get(attribute, default)
     return default
 
-def get_user_data(username):
+def safe_int(val):
+    try:
+        return int(val) if val is not None else None
+    except (ValueError, TypeError):
+        return None
+
+def get_user_data(username, is_cafe=False):
     """
-    Queries the BoardGameGeek API for a user's collection data.
-    Returns a dictionary with user collection information.
+    Queries the BoardGameGeek API for a user's or cafe's collection data.
+    If is_cafe is True, filters strictly for owned games (own=1) and extracts
+    rich catalog metadata.
+    Returns a list of dictionaries with collection information.
     """
     api_url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&subtype=boardgame&excludesubtype=boardgameexpansion&stats=1"
-    logger.info(f"Querying BGG API for user: {username} at {api_url}")
+    logger.info(f"Querying BGG API for user: {username} at {api_url} (is_cafe={is_cafe})")
 
     retries = 3
     for i in range(retries):
@@ -93,6 +101,51 @@ def get_user_data(username):
                 except (ValueError, TypeError):
                     return None
 
+            if is_cafe:
+                cafe_data = []
+                for item in items:
+                    own = _get_element_value(item, ".//status", attribute='own') == '1'
+                    if not own:
+                        continue
+                    name_elem = item.find('name')
+                    name = name_elem.text.strip() if (name_elem is not None and name_elem.text) else ''
+                    year_elem = item.find('yearpublished')
+                    year_published = safe_int(year_elem.text) if (year_elem is not None and year_elem.text) else None
+                    image_elem = item.find('image')
+                    image = image_elem.text.strip() if (image_elem is not None and image_elem.text) else ''
+                    thumb_elem = item.find('thumbnail')
+                    thumbnail = thumb_elem.text.strip() if (thumb_elem is not None and thumb_elem.text) else ''
+
+                    min_players = safe_int(_get_element_value(item, ".//stats", attribute='minplayers'))
+                    max_players = safe_int(_get_element_value(item, ".//stats", attribute='maxplayers'))
+                    playing_time = safe_int(_get_element_value(item, ".//stats", attribute='playingtime'))
+                    min_playtime = safe_int(_get_element_value(item, ".//stats", attribute='minplaytime'))
+                    max_playtime = safe_int(_get_element_value(item, ".//stats", attribute='maxplaytime'))
+
+                    rating = safe_float(_get_element_value(item, ".//stats/rating", attribute='value'))
+                    avg_rating = safe_float(_get_element_value(item, ".//stats/rating/average", attribute='value'))
+                    users_rated = safe_int(_get_element_value(item, ".//stats/rating/usersrated", attribute='value'))
+                    num_owned = safe_int(_get_element_value(item, ".//stats", attribute='numowned'))
+
+                    cafe_data.append({
+                        'id': str(item.get('objectid')),
+                        'name': name,
+                        'year_published': year_published,
+                        'min_players': min_players,
+                        'max_players': max_players,
+                        'playing_time': playing_time,
+                        'min_playtime': min_playtime,
+                        'max_playtime': max_playtime,
+                        'thumbnail': thumbnail,
+                        'image': image,
+                        'rating': rating,
+                        'average_rating': avg_rating,
+                        'users_rated': users_rated,
+                        'num_owned': num_owned,
+                        'own': True
+                    })
+                return cafe_data
+
             user_data = []
             for item in items:
                 rating = safe_float(_get_element_value(item, ".//stats/rating", attribute='value'))
@@ -123,8 +176,8 @@ def get_user_data(username):
 def lambda_handler(event, context):
     """
     AWS Lambda handler function.
-    Processes SQS events, extracts user IDs, queries BGG API,
-    and retrieves user collection information.
+    Processes SQS events, extracts user IDs or cafe sync payloads, queries BGG API,
+    and retrieves collection information into S3 Parquet.
     """
     logger.info("Received event", extra={"event": event})
 
@@ -141,33 +194,52 @@ def lambda_handler(event, context):
 
     for record in event['Records']:
         try:
-            # SQS message body is expected to be a string
-            user_id = record['body']
-            logger.info(f"Processing user ID from SQS: {user_id}")
+            body_raw = record['body']
+            is_cafe = False
+            cafe_id = None
+            try:
+                parsed = json.loads(body_raw)
+                if isinstance(parsed, dict):
+                    user_id = parsed.get('username') or parsed.get('user_id')
+                    is_cafe = bool(parsed.get('is_cafe', False))
+                    cafe_id = parsed.get('cafe_id') or user_id
+                else:
+                    user_id = str(parsed)
+            except (json.JSONDecodeError, TypeError):
+                user_id = body_raw
 
-            user_data = get_user_data(user_id)
+            logger.info(f"Processing ID from SQS: {user_id} (is_cafe={is_cafe}, cafe_id={cafe_id})")
 
-            if user_data is not None:
-                logger.info(f"Successfully retrieved data for user {user_id}. Collection size: {len(user_data)}")
+            collection_data = get_user_data(user_id, is_cafe=is_cafe)
 
-                # Convert user_data to pandas DataFrame
-                df = pd.DataFrame(user_data, columns=['id', 'username', 'rating', 'own'])
+            if collection_data is not None:
+                logger.info(f"Successfully retrieved data for {user_id} (is_cafe={is_cafe}). Collection size: {len(collection_data)}")
 
-                # Define S3 path for the Parquet file
-                s3_output_key = f"users/{user_id}.parquet"
+                if is_cafe:
+                    cols = [
+                        'id', 'name', 'year_published', 'min_players', 'max_players',
+                        'playing_time', 'min_playtime', 'max_playtime', 'thumbnail',
+                        'image', 'rating', 'average_rating', 'users_rated', 'num_owned', 'own'
+                    ]
+                    df = pd.DataFrame(collection_data, columns=cols)
+                    s3_output_key = f"cafes/{cafe_id}/collection.parquet"
+                else:
+                    cols = ['id', 'username', 'rating', 'own']
+                    df = pd.DataFrame(collection_data, columns=cols)
+                    s3_output_key = f"users/{user_id}.parquet"
+
                 s3_full_path = f"s3://{S3_OUTPUT_BUCKET_NAME}/data/{s3_output_key}"
 
                 try:
-                    # Save DataFrame to S3 in Parquet format
                     df.to_parquet(s3_full_path, index=False, engine='pyarrow')
-                    logger.info(f"Successfully saved data for user {user_id} to S3: {s3_full_path}")
+                    logger.info(f"Successfully saved data for {user_id} to S3: {s3_full_path}")
                     processed_ids.append(user_id)
                 except Exception as s3_e:
-                    logger.error(f"Error saving data for user {user_id} to S3 ({s3_full_path}): {s3_e}")
+                    logger.error(f"Error saving data for {user_id} to S3 ({s3_full_path}): {s3_e}")
                     failed_ids.append(user_id)
                     batch_item_failures.append({"itemIdentifier": record['messageId']})
             else:
-                logger.error(f"Failed to retrieve data for user {user_id} (retries exhausted).")
+                logger.error(f"Failed to retrieve data for {user_id} (retries exhausted).")
                 failed_ids.append(user_id)
                 batch_item_failures.append({"itemIdentifier": record['messageId']})
 

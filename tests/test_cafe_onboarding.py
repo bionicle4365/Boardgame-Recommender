@@ -293,7 +293,10 @@ def test_cafe_onboard_success(mock_boto_client, mock_s3, mock_cafes_table):
     mock_boto_client.assert_called_with('sqs', region_name='us-east-1')
     mock_sqs.send_message.assert_called_once()
     sqs_kwargs = mock_sqs.send_message.call_args[1]
-    assert sqs_kwargs['MessageBody'] == 'maltandmeeple'
+    sent_payload = json.loads(sqs_kwargs['MessageBody'])
+    assert sent_payload['username'] == 'maltandmeeple'
+    assert sent_payload['cafe_id'] == 'the-malt-and-meeple'
+    assert sent_payload['is_cafe'] is True
 
 
 # ── 4. Cafe Meta Tests ───────────────────────────────────────────────────────
@@ -393,4 +396,26 @@ def test_generate_table_tents_bundle(tmp_path):
     assert "TABLE 1" in sheet_content
     assert "TABLE 2" in sheet_content
     assert "TABLE 3" in sheet_content
+
+
+def test_generate_qr_svg_path_fallback(tmp_path, monkeypatch):
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+    import generate_cafe_table_qrs
+
+    # Ensure fallback works when qrcode is None
+    monkeypatch.setattr(generate_cafe_table_qrs, 'qrcode', None)
+    view_box, path_d = generate_cafe_table_qrs.generate_qr_svg_path("https://www.meeplemanifesto.com/cafe/test?table=1")
+    assert view_box == '0 0 350 350'
+    assert len(path_d) > 0
+
+    # Bundle generation succeeds even when qrcode library is not present
+    manifest = generate_cafe_table_qrs.generate_qr_bundle(
+        cafe_id='fallback-cafe',
+        name='Fallback Cafe',
+        table_count=1,
+        output_dir=str(tmp_path)
+    )
+    assert manifest['cafe_id'] == 'fallback-cafe'
+    assert (tmp_path / 'table_1.svg').exists()
+
 

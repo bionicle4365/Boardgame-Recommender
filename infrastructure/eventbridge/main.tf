@@ -182,3 +182,27 @@ resource "aws_cloudwatch_event_target" "run_bgg_recent_games_task" {
   })
 }
 
+# 8. EventBridge rule to trigger weekly cafe sync across all registered venues in bgg-cafes (Monday at 04:00 UTC)
+resource "aws_cloudwatch_event_rule" "weekly_bgg_cafe_sync_schedule" {
+  name                = "weekly-bgg-cafe-sync-schedule"
+  description         = "Triggers weekly background inventory sync for all registered board game cafes"
+  schedule_expression = "cron(0 4 ? * MON *)"
+}
+
+resource "aws_cloudwatch_event_target" "run_bgg_cafe_sync_lambda" {
+  rule      = aws_cloudwatch_event_rule.weekly_bgg_cafe_sync_schedule.name
+  target_id = "run-bgg-cafe-sync-lambda"
+  arn       = var.bgg_preferences_lambda_arn
+  input     = jsonencode({
+    action = "sync_all_cafes"
+  })
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_to_call_cafe_sync" {
+  statement_id  = "AllowExecutionFromEventBridgeCafeSync"
+  action        = "lambda:InvokeFunction"
+  function_name = var.bgg_preferences_lambda_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.weekly_bgg_cafe_sync_schedule.arn
+}
+

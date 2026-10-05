@@ -8,5 +8,7 @@ variable "compactor_lambda_arn" { type = string }
 variable "compactor_lambda_name" { type = string }
 variable "preview_refresh_lambda_arn" { type = string }
 variable "preview_refresh_lambda_name" { type = string }
+variable "bgg_preferences_lambda_arn" { type = string }
+variable "bgg_preferences_lambda_name" { type = string }
 
 

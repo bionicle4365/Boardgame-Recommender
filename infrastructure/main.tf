@@ -109,6 +109,8 @@ module "eventbridge" {
   compactor_lambda_name       = module.lambda.bgg_compactor_function_name
   preview_refresh_lambda_arn  = module.lambda.bgg_preview_refresh_arn
   preview_refresh_lambda_name = module.lambda.bgg_preview_refresh_function_name
+  bgg_preferences_lambda_arn  = module.lambda.bgg_preferences_arn
+  bgg_preferences_lambda_name = module.lambda.bgg_preferences_function_name
 }
 
 module "apigateway" {

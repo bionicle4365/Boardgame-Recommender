@@ -95,4 +95,16 @@ describe('Cafe Onboarding Client Logic & Mock API', () => {
         expect(data).toHaveProperty('name');
         expect(data).toHaveProperty('table_count');
     });
+
+    test('fetchApi mock handles /cafe/sync on-demand sync trigger', async () => {
+        const res = await window.fetchApi('/cafe/sync', {
+            method: 'POST',
+            body: JSON.stringify({ cafe_id: 'test-boardgame-lounge' })
+        });
+        expect(res.ok).toBe(true);
+        const data = await res.json();
+        expect(data.status).toBe('success');
+        expect(data.cafe_id).toBe('test-boardgame-lounge');
+        expect(data).toHaveProperty('last_sync_timestamp');
+    });
 });

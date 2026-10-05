@@ -480,6 +480,27 @@ window.fetchApi = async function(endpoint, options = {}) {
                 tagline: "Craft beer & tabletop games in downtown.",
                 drink_pairings_enabled: true
             };
+        } else if (endpoint.startsWith('/cafe/sync')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            let cafeId = urlParams.get('cafe_id');
+            if (!cafeId && options.body) {
+                try {
+                    const parsedBody = JSON.parse(options.body);
+                    cafeId = parsedBody.cafe_id;
+                } catch(e) {}
+            }
+            cafeId = cafeId || 'demo-cafe';
+            const saved = JSON.parse(localStorage.getItem('bgg_mock_cafe_' + cafeId) || '{}');
+            const nowIso = new Date().toISOString();
+            saved.last_sync_timestamp = nowIso;
+            localStorage.setItem('bgg_mock_cafe_' + cafeId, JSON.stringify(saved));
+            data = {
+                status: "success",
+                message: `Sync job successfully enqueued for cafe "${cafeId}".`,
+                cafe_id: cafeId,
+                bgg_username: saved.bgg_username || "maltandmeeple",
+                last_sync_timestamp: nowIso
+            };
         } else if (endpoint.startsWith('/collection')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
             const username = (urlParams.get('username') || '').toLowerCase();

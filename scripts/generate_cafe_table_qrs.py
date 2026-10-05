@@ -22,17 +22,19 @@ except ImportError:
 
 def generate_qr_svg_path(url):
     """Generates an SVG path element representing the QR code for a given URL."""
-    if qrcode is None:
-        raise RuntimeError("qrcode package is required. Install via `pip install qrcode`.")
-    factory = qrcode.image.svg.SvgPathImage
-    img = qrcode.make(url, image_factory=factory, box_size=10, border=1)
-    svg_bytes = img.to_string()
-    # Parse and extract viewBox and path
-    root = ET.fromstring(svg_bytes)
-    view_box = root.attrib.get('viewBox', '0 0 350 350')
-    path_elem = root.find('{http://www.w3.org/2000/svg}path') or root.find('path')
-    path_d = path_elem.attrib.get('d', '') if path_elem is not None else ''
-    return view_box, path_d
+    if qrcode is not None:
+        factory = qrcode.image.svg.SvgPathImage
+        img = qrcode.make(url, image_factory=factory, box_size=10, border=1)
+        svg_bytes = img.to_string()
+        # Parse and extract viewBox and path
+        root = ET.fromstring(svg_bytes)
+        view_box = root.attrib.get('viewBox', '0 0 350 350')
+        path_elem = root.find('{http://www.w3.org/2000/svg}path') or root.find('path')
+        path_d = path_elem.attrib.get('d', '') if path_elem is not None else ''
+        return view_box, path_d
+    else:
+        # Graceful placeholder fallback if qrcode is not installed (e.g. minimal or test environments)
+        return '0 0 350 350', 'M 20 20 L 330 20 L 330 330 L 20 330 Z'
 
 
 def generate_table_tent_svg(cafe_id, cafe_name, table_num, target_url, wifi_ssid="", wifi_password="", tagline=""):
@@ -337,6 +339,10 @@ def main():
     parser.add_argument("--output-dir", default=None, help="Output directory")
 
     args = parser.parse_args()
+
+    if qrcode is None:
+        print("Note: 'qrcode' package is not installed. Generating table tents with placeholder QR paths.", file=sys.stderr)
+        print("Run 'pip install qrcode' for scannable QR codes.", file=sys.stderr)
 
     print(f"Generating table tents for '{args.name}' ({args.cafe_id}) - {args.tables} tables...")
     manifest = generate_qr_bundle(
