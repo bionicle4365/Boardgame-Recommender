@@ -14,7 +14,7 @@ from cache_utils import logger, safe_list, build_game_metadata
 
 # Initialize Bedrock client
 _default_bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
-bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'amazon.nova-micro-v1:0')
+bedrock_model_id = os.environ.get('BEDROCK_MODEL_ID', 'amazon.nova-lite-v1:0')
 
 def _bedrock():
     try:
@@ -131,9 +131,19 @@ def narrate_recommendations(top_candidates, liked_games_str, weight_context, que
             designers_list = safe_list(row.get('designers'))
             designers_str = f", Designers: {', '.join(designers_list)}" if 'designers' in row and designers_list else ""
 
+            # Attached linkages from scoring.attach_candidate_linkages
+            linkage_parts = []
+            if row.get('matched_favorites'):
+                linkage_parts.append(f"Similar to favorite: {', '.join(row['matched_favorites'])}")
+            if row.get('key_shared_mechanics'):
+                linkage_parts.append(f"Shared mechanics: {', '.join(row['key_shared_mechanics'])}")
+            if row.get('best_players'):
+                linkage_parts.append(f"Best player count: {row['best_players']}")
+            linkage_str = f" | {'; '.join(linkage_parts)}" if linkage_parts else ""
+
             cand_list.append(
                 f"- {row['name']} (Year: {row.get('year_published', 'N/A')}, Rating: {row.get('rating', 'N/A')}, "
-                f"{players_str}{playtime_str}{complexity_str}{designers_str}, Categories: {cats}, Mechanics: {mechs})"
+                f"{players_str}{playtime_str}{complexity_str}{designers_str}, Categories: {cats}, Mechanics: {mechs}{linkage_str})"
             )
         candidates_str = "\n".join(cand_list)
 
@@ -151,7 +161,7 @@ Please recommend 10 board games for the user.
 """
         explanation_instructions = """For each recommended game:
 1. Provide the exact name of the game.
-2. Provide a punchy, direct 1-sentence explanation of why they will love playing it (aim for 12–15 words, maximum 18 words). Explain how the game delivers on their declared playstyle preferences (e.g. cooperative teamwork, engine-building satisfaction, strategic worker placement, or thematic immersion). Do NOT mention collection or ownership history. Use active verbs and highlight concrete mechanics or gameplay dynamics. Rotate through distinct framing angles across the 10 recommendations. No two recommendations may begin with the same word or phrase."""
+2. Provide an engaging 1–2 sentence recommendation in a knowledgeable sommelier voice (aim for 20–28 words, maximum 32 words). Explain how the game delivers on their declared playstyle preferences (e.g. cooperative teamwork, engine-building satisfaction, strategic worker placement, or thematic immersion). Do NOT mention collection or ownership history. Use active verbs and highlight concrete mechanics or gameplay dynamics. Vary your sentence structures across recommendations and do not repeat the same opening phrase."""
 
     elif is_inline and liked_games_str:
         # Quick Taste Test user (liked seed games and write-in favorites)
@@ -164,7 +174,7 @@ Please recommend 10 board games for the user.
 """
         explanation_instructions = """For each recommended game:
 1. Provide the exact name of the game.
-2. Provide a punchy, direct 1-sentence explanation of why they will love playing it (aim for 12–15 words, maximum 18 words). Directly connect the recommended game to 1 or 2 specific titles they liked above, highlighting shared mechanics (e.g. tile drafting, card combos, resource management), pacing, or tactical feel. Use active verbs and direct comparisons. Rotate through distinct framing angles across the 10 recommendations. No two recommendations may begin with the same word or phrase."""
+2. Provide an engaging 1–2 sentence recommendation in a knowledgeable sommelier voice (aim for 20–28 words, maximum 32 words). Directly connect the recommended game to 1 or 2 specific titles they liked above (using the provided similarity linkages), highlighting shared mechanics (e.g. tile drafting, card combos, resource management), pacing, or tactical feel. Use active verbs and direct comparisons. Vary your sentence structures across recommendations and do not repeat the same opening phrase."""
 
     else:
         # Standard BGG User Profile (collection games with ratings)
@@ -177,7 +187,7 @@ Please recommend 10 board games for the user.
 """
         explanation_instructions = """For each recommended game:
 1. Provide the exact name of the game.
-2. Provide a punchy, direct 1-sentence explanation of why they will love playing it (aim for 12–15 words, maximum 18 words). Directly connect the recommended game to 1 or 2 specific board games they already like or own from their list above, referencing shared mechanics, strategic dynamics, or thematic elements. Use active verbs and avoid filler phrases. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences."""
+2. Provide an engaging 1–2 sentence recommendation in a knowledgeable sommelier voice (aim for 20–28 words, maximum 32 words). Directly connect the recommended game to 1 or 2 specific board games they already like or own from their list above (using the provided similarity linkages), referencing shared mechanics, strategic dynamics, or thematic elements. Use active verbs and avoid filler phrases. Rotate through distinct framing angles across the 10 recommendations (e.g. mechanical alignment, thematic resonance, player count fit, pacing, complexity balance, or designer lineage). No two recommendations may begin with the same word or phrase. If specific play time or complexity preferences are provided, also mention how this game fits those preferences."""
 
     if candidates_str:
         user_prompt += f"""
@@ -185,7 +195,6 @@ Here is a list of candidate board games from our catalog that match the user's p
 {candidates_str}
 
 Please select the best 10 games from the candidates list above. Do NOT select games that are not in the candidates list.
-Review the candidate list for variants, new editions, or implementations of the same game family (e.g., base game vs 2nd edition vs reimplementation). Deduplicate these and only output the most relevant or highest-ranked edition in your final 10 recommendations.
 """
     else:
         user_prompt += """
@@ -209,7 +218,18 @@ Do not include any introductory or concluding text (e.g. do not say "Here are yo
 
         system_prompts = [
             {
-                "text": "You are a board game recommendation expert. Your job is to select the best games and write punchy, direct, and engaging 1-sentence explanations (aim for 12–15 words per reason, maximum 18 words). Use active verbs and highlight concrete mechanics, pacing, or thematic dynamics. Avoid generic filler (e.g., do NOT start sentences with 'If you enjoyed...', 'This game is perfect for...', or 'A great choice because...'). Do NOT hallucinate themes or mechanics that are not explicitly present in the provided context lists. Ensure you output raw, valid JSON matching the requested schema."
+                "text": """You are an expert board game sommelier and board game recommendation expert. Your job is to select the best games and write engaging, natural, and persuasive 1–2 sentence recommendations (aim for 20–28 words per reason, maximum 32 words) explaining why the player will love each game.
+
+Voice & Style Guidelines:
+- Warm, enthusiastic, and knowledgeable sommelier voice using active verbs.
+- Weave favorite game connections and concrete mechanics naturally into each recommendation without formulaic repetition.
+- Exemplars of excellent recommendations:
+  * "Fans of Wingspan will love the satisfying engine building and tableau crafting, offering rich tactical card combos in a brisk 45-minute race." (22 words)
+  * "Channels the tight worker placement of Agricola with a gentler learning curve and high player interaction, making it perfect for 4 players." (23 words)
+  * "Delivers on your love for medium-weight strategy, combining snappy card drafting with clever spatial maneuvering on the board." (19 words)
+- Keep openings varied across recommendations. Do not repeat the same opening word or pattern.
+- Do NOT hallucinate themes, mechanics, or player counts not supported by the provided context.
+- Ensure you output raw, valid JSON matching the requested schema."""
             }
         ]
 

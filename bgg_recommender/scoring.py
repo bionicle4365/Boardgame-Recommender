@@ -656,3 +656,134 @@ def filter_dislike_exclusions(candidates, user_df, catalog_df):
     logger.info(f"Dislike hard exclusion filtered {excluded_count} candidates. Remaining: {len(filtered)}")
     return filtered
 
+
+def deduplicate_candidate_variants(candidates, target_count=12):
+    """
+    Deduplicates candidates that represent different editions, printings, or minor variants
+    of the same game title, keeping the highest-ranked candidate for each base game.
+    """
+    if not candidates:
+        return candidates
+
+    seen_stems = set()
+    deduped = []
+
+    edition_markers = [
+        ' (2nd edition)', ' (second edition)', ' (3rd edition)', ' (third edition)',
+        ' (4th edition)', ' (fourth edition)', ' (deluxe edition)', ' (revised edition)',
+        ' (special edition)', ' (collector\'s edition)', ' (anniversary edition)',
+        ' (big box)', ' (big box edition)', ' 2nd edition', ' second edition',
+        ' deluxe edition', ' revised edition', ' 10th anniversary edition'
+    ]
+
+    for cand in candidates:
+        name = cand.get('name', '')
+        stem = name.lower().strip()
+        for marker in edition_markers:
+            stem = stem.replace(marker, '')
+        stem = stem.strip()
+
+        if stem in seen_stems:
+            logger.info(f"Deduplicating variant candidate '{name}' (matches stem '{stem}')")
+            continue
+
+        seen_stems.add(stem)
+        deduped.append(cand)
+        if target_count and len(deduped) >= target_count:
+            break
+
+    return deduped
+
+
+def attach_candidate_linkages(candidates, liked_games_df, max_favorites=2):
+    """
+    Computes and attaches explicit ground-truth linkages between each candidate game
+    and the user's liked games.
+
+    For each candidate, identifies:
+    - matched_favorites: List of 1-2 liked game titles with highest mechanic/category/designer overlap.
+    - key_shared_mechanics: Distinctive mechanics shared between candidate and matched favorites.
+    - key_shared_categories: Distinctive categories shared between candidate and matched favorites.
+    - best_players: Formatted community sweet-spot player count string from suggested_players_best.
+
+    Returns the candidates list with enriched dicts.
+    """
+    if not candidates:
+        return candidates
+
+    liked_items = []
+    if liked_games_df is not None and not liked_games_df.empty:
+        for _, l_row in liked_games_df.iterrows():
+            l_name = l_row.get('name', '')
+            if not l_name:
+                continue
+            l_mechs = set(safe_list(l_row.get('mechanics')))
+            l_cats = set(safe_list(l_row.get('categories')))
+            l_des = set(safe_list(l_row.get('designers')))
+            raw_rating = l_row.get('rating_user', l_row.get('rating', 8.0))
+            try:
+                l_rating = float(raw_rating) if pd.notna(raw_rating) else 8.0
+            except (ValueError, TypeError):
+                l_rating = 8.0
+
+            liked_items.append({
+                'name': l_name,
+                'rating': l_rating,
+                'mechanics': l_mechs,
+                'categories': l_cats,
+                'designers': l_des
+            })
+
+    for cand in candidates:
+        cand_name = cand.get('name', '')
+        cand_mechs = set(safe_list(cand.get('mechanics')))
+        cand_cats = set(safe_list(cand.get('categories')))
+        cand_des = set(safe_list(cand.get('designers')))
+
+        # Match against liked items
+        scored_matches = []
+        for l_item in liked_items:
+            if l_item['name'].lower() == cand_name.lower():
+                continue
+            shared_m = cand_mechs.intersection(l_item['mechanics'])
+            shared_c = cand_cats.intersection(l_item['categories'])
+            shared_d = cand_des.intersection(l_item['designers'])
+
+            if not shared_m and not shared_c and not shared_d:
+                continue
+
+            # Weight mechanics highest, then designers, then categories, with rating boost
+            overlap_score = (len(shared_m) * 2.0) + (len(shared_c) * 1.0) + (len(shared_d) * 2.5)
+            if l_item['rating'] >= 8.5:
+                overlap_score += 0.5
+
+            scored_matches.append((overlap_score, l_item['name'], shared_m, shared_c, shared_d))
+
+        scored_matches.sort(key=lambda x: x[0], reverse=True)
+        top_matches = scored_matches[:max_favorites]
+
+        matched_favs = [m[1] for m in top_matches]
+        shared_mechs = []
+        shared_cats = []
+        for m in top_matches:
+            for mech in m[2]:
+                if mech not in shared_mechs:
+                    shared_mechs.append(mech)
+            for cat in m[3]:
+                if cat not in shared_cats:
+                    shared_cats.append(cat)
+
+        cand['matched_favorites'] = matched_favs
+        cand['key_shared_mechanics'] = shared_mechs[:3]
+        cand['key_shared_categories'] = shared_cats[:2]
+
+        # Extract best player count from community poll if available
+        best_p_raw = cand.get('suggested_players_best')
+        if best_p_raw is not None:
+            best_p_list = safe_list(best_p_raw)
+            if best_p_list:
+                cand['best_players'] = ", ".join(str(p) for p in best_p_list)
+
+    return candidates
+
+

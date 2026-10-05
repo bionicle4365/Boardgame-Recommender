@@ -31,7 +31,11 @@ from cache_utils import (
     get_cached_recommendations, save_recommendations_to_cache,
     build_game_metadata, validate_username, parse_weights,
 )
-from scoring import compute_taste_profile_inline, score_candidates, diversify_candidates, calculate_game_score, filter_dislike_exclusions
+from scoring import (
+    compute_taste_profile_inline, score_candidates, diversify_candidates,
+    calculate_game_score, filter_dislike_exclusions,
+    deduplicate_candidate_variants, attach_candidate_linkages
+)
 from narration import narrate_recommendations, build_fallback_recommendations, build_weight_context
 
 from botocore.exceptions import ClientError
@@ -423,6 +427,10 @@ def _handle_recommendations(query_params):
         liked_games = user_df.sort_values(by='rating', ascending=False).head(10)
 
     liked_joined = liked_games.merge(catalog_df, on='id', how='inner', suffixes=('_user', '_catalog'))
+    if 'rating_user' in liked_joined.columns:
+        liked_joined = liked_joined.sort_values(by=['rating_user', 'rating_catalog'], ascending=[False, False])
+    elif 'rating' in liked_joined.columns:
+        liked_joined = liked_joined.sort_values(by='rating', ascending=False)
 
     # Build liked games string for potential Bedrock prompt
     liked_games_profile = []
@@ -523,10 +531,14 @@ def _handle_recommendations(query_params):
     # 8. Apply diversity guard to candidates
     top_candidates = diversify_candidates(top_candidates)
 
-    # 9. Call Bedrock for personalized narration
+    # 9. Deduplicate candidate variants and attach linkages
+    top_candidates = deduplicate_candidate_variants(top_candidates, target_count=12)
+    top_candidates = attach_candidate_linkages(top_candidates, liked_joined)
+
+    # 10. Call Bedrock for personalized narration
     weight_context = build_weight_context(query_params, weights)
     narrated_recs = narrate_recommendations(
-        top_candidates[:25], liked_games_str, weight_context, query_params,
+        top_candidates, liked_games_str, weight_context, query_params,
         is_inline=is_inline, inline_weights=inline_weights, inline_profile=inline_profile
     )
 

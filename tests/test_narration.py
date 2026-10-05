@@ -103,8 +103,8 @@ def test_narrate_recommendations_success(mock_bedrock_func):
     call_kwargs = mock_bedrock.converse.call_args[1]
     assert call_kwargs['inferenceConfig']['maxTokens'] == 1200
     assert call_kwargs['inferenceConfig']['temperature'] == 0.6
-    assert "aim for 12–15 words per reason" in call_kwargs['system'][0]['text']
-    assert "aim for 12–15 words" in call_kwargs['messages'][0]['content'][0]['text']
+    assert "aim for 20–28 words per reason" in call_kwargs['system'][0]['text']
+    assert "aim for 20–28 words" in call_kwargs['messages'][0]['content'][0]['text']
 
 @patch('narration._bedrock')
 def test_narrate_recommendations_markdown_json(mock_bedrock_func):
@@ -360,4 +360,68 @@ def test_narrate_recommendations_taste_test_user(mock_bedrock_func):
 
     assert "The user recently completed a Quick Taste Test" in prompt_text
     assert "Directly connect the recommended game to 1 or 2 specific titles they liked above" in prompt_text
+
+
+@patch('narration._bedrock')
+def test_narrate_recommendations_with_candidate_linkages(mock_bedrock_func):
+    mock_bedrock = MagicMock()
+    mock_bedrock_func.return_value = mock_bedrock
+
+    mock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': json.dumps({
+                            'recommendations': [
+                                {'name': 'Dune: Imperium', 'reason': 'Fans of Lost Ruins of Arnak will love the tense worker placement and snappy deck building combo.'}
+                            ]
+                        })
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_response
+
+    candidates = [
+        {
+            'id': '10',
+            'name': 'Dune: Imperium',
+            'year_published': 2020,
+            'rating': 8.4,
+            'complexity': 3.0,
+            'min_players': 1,
+            'max_players': 4,
+            'playing_time': 120,
+            'mechanics': ['Worker Placement', 'Deck Building'],
+            'categories': ['Science Fiction'],
+            'designers': ['Paul Dennen'],
+            'matched_favorites': ['Lost Ruins of Arnak'],
+            'key_shared_mechanics': ['Worker Placement', 'Deck Building'],
+            'best_players': '3-4'
+        }
+    ]
+
+    liked_str = "- Lost Ruins of Arnak (User Rating: 9.0, Categories: Adventure, Mechanics: Worker Placement, Deck Building)"
+
+    recs = narration.narrate_recommendations(candidates, liked_str, "Weight context", {})
+    assert recs is not None
+    assert len(recs) == 1
+    assert recs[0]['name'] == 'Dune: Imperium'
+
+    mock_bedrock.converse.assert_called_once()
+    call_kwargs = mock_bedrock.converse.call_args[1]
+    prompt_text = call_kwargs['messages'][0]['content'][0]['text']
+
+    # Verify candidate string includes pre-computed linkages
+    assert "Similar to favorite: Lost Ruins of Arnak" in prompt_text
+    assert "Shared mechanics: Worker Placement, Deck Building" in prompt_text
+    assert "Best player count: 3-4" in prompt_text
+
+
+def test_sommelier_system_prompt_exemplars():
+    from narration import bedrock_model_id
+    assert bedrock_model_id == 'amazon.nova-lite-v1:0'
+
 

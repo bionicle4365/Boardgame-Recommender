@@ -20,7 +20,7 @@ This directory contains the code and configuration for the serving AI recommenda
 The function uses the following variables (injected via Terraform):
 * `S3_OUTPUT_BUCKET_NAME`: The S3 data lake bucket name (default: `boardgame-app`).
 * `USER_SQS_QUEUE_URL`: SQS queue URL used to trigger the user profile scraper asynchronously.
-* `BEDROCK_MODEL_ID`: Bedrock LLM ID used for generating recommendations (default: `amazon.nova-micro-v1:0`).
+* `BEDROCK_MODEL_ID`: Bedrock LLM ID used for generating recommendations (default: `amazon.nova-lite-v1:0`).
 
 ## Taste Profile Schema (`data/users/{username}_taste_profile.json`)
 

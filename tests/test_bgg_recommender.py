@@ -2040,6 +2040,86 @@ def test_milestone_62_cached_profile_backward_compatibility(mock_s3):
     assert m_w_mod["Trick-taking"] == 9.0
 
 
+def test_deduplicate_candidate_variants():
+    from scoring import deduplicate_candidate_variants
+    candidates = [
+        {'id': '1', 'name': 'The Castles of Burgundy', 'rating': 8.1},
+        {'id': '2', 'name': 'The Castles of Burgundy (Special Edition)', 'rating': 8.6},
+        {'id': '3', 'name': 'Brass: Birmingham', 'rating': 8.7},
+        {'id': '4', 'name': 'Brass: Lancashire', 'rating': 8.3},
+        {'id': '5', 'name': "Robinson Crusoe: Adventures on the Cursed Island (Collector's Edition)", 'rating': 8.0},
+        {'id': '6', 'name': 'Robinson Crusoe: Adventures on the Cursed Island', 'rating': 7.8},
+    ]
+
+    deduped = deduplicate_candidate_variants(candidates, target_count=10)
+    names = [c['name'] for c in deduped]
+
+    # Castles of Burgundy (Special Edition) is duplicate of The Castles of Burgundy
+    assert 'The Castles of Burgundy' in names
+    assert 'The Castles of Burgundy (Special Edition)' not in names
+
+    # Brass: Birmingham and Brass: Lancashire are distinct games
+    assert 'Brass: Birmingham' in names
+    assert 'Brass: Lancashire' in names
+
+    # Robinson Crusoe: first one is kept, second is dropped
+    assert "Robinson Crusoe: Adventures on the Cursed Island (Collector's Edition)" in names
+    assert "Robinson Crusoe: Adventures on the Cursed Island" not in names
+
+
+def test_attach_candidate_linkages():
+    from scoring import attach_candidate_linkages
+    candidates = [
+        {
+            'id': '100',
+            'name': 'Dune: Imperium',
+            'mechanics': ['Worker Placement', 'Deck Building'],
+            'categories': ['Science Fiction'],
+            'designers': ['Paul Dennen'],
+            'suggested_players_best': ['3', '4']
+        },
+        {
+            'id': '200',
+            'name': 'Cascadia',
+            'mechanics': ['Tile Placement', 'Pattern Building'],
+            'categories': ['Animals'],
+            'designers': ['Randy Flynn']
+        }
+    ]
+
+    liked_df = pd.DataFrame([
+        {
+            'name': 'Lost Ruins of Arnak',
+            'rating_user': 9.5,
+            'mechanics': ['Worker Placement', 'Deck Building'],
+            'categories': ['Adventure'],
+            'designers': ['Min & Elwen']
+        },
+        {
+            'name': 'Calico',
+            'rating_user': 8.0,
+            'mechanics': ['Tile Placement', 'Pattern Building'],
+            'categories': ['Animals'],
+            'designers': ['Kevin Russ']
+        }
+    ])
+
+    enriched = attach_candidate_linkages(candidates, liked_df)
+    dune = next(c for c in enriched if c['name'] == 'Dune: Imperium')
+    cascadia = next(c for c in enriched if c['name'] == 'Cascadia')
+
+    assert dune['matched_favorites'] == ['Lost Ruins of Arnak']
+    assert 'Worker Placement' in dune['key_shared_mechanics']
+    assert 'Deck Building' in dune['key_shared_mechanics']
+    assert dune['best_players'] == '3, 4'
+
+    assert cascadia['matched_favorites'] == ['Calico']
+    assert 'Tile Placement' in cascadia['key_shared_mechanics']
+    assert 'Pattern Building' in cascadia['key_shared_mechanics']
+    assert 'Animals' in cascadia['key_shared_categories']
+
+
+
 
 
 
