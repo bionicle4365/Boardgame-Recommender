@@ -524,6 +524,14 @@ def _handle_cafe_collection(query_params):
             shelf = row.get('shelf_location') or row.get('shelf')
             if pd.notna(shelf) and str(shelf).strip():
                 rec['shelf_location'] = str(shelf).strip()
+            if pd.notna(row.get('rules_video_url')) and str(row.get('rules_video_url')).strip():
+                rec['rules_video_url'] = str(row['rules_video_url']).strip()
+            if pd.notna(row.get('rules_video_id')) and str(row.get('rules_video_id')).strip():
+                rec['rules_video_id'] = str(row['rules_video_id']).strip()
+            if pd.notna(row.get('rules_video_title')) and str(row.get('rules_video_title')).strip():
+                rec['rules_video_title'] = str(row['rules_video_title']).strip()
+            if pd.notna(row.get('teach_time')) and str(row.get('teach_time')).strip():
+                rec['teach_time'] = str(row['teach_time']).strip()
             records.append(rec)
 
         return {

@@ -65,6 +65,20 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
                 </div>
                 <button id="quiz-submit-btn"></button>
             </div>
+            <!-- Video Modal -->
+            <div class="cafe-video-modal-overlay" id="rules-video-modal" style="display: none;">
+                <h3 id="modal-game-title"></h3>
+                <button id="btn-close-video-modal">✕</button>
+                <div id="video-player-container">
+                    <iframe id="rules-video-iframe" src=""></iframe>
+                </div>
+                <div id="video-fallback-notice" style="display: none;">
+                    <a id="video-external-search-link" href="#"></a>
+                </div>
+                <span id="modal-teach-time"></span>
+                <span id="modal-complexity"></span>
+                <a id="modal-bgg-link" href="#"></a>
+            </div>
         `;
     });
 
@@ -237,9 +251,9 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(quotes[0].textContent).toContain('Cafe Guru Recommendation');
 
         // Check rules video button
-        const videoBtn = resultsContainer.querySelector('.btn-card-action.primary');
+        const videoBtn = resultsContainer.querySelector('.btn-watch-rules');
         expect(videoBtn).not.toBeNull();
-        expect(videoBtn.href).toContain('youtube.com');
+        expect(videoBtn.textContent).toContain('Watch Rules');
     });
 
     test('fetchCafeRecommendations supports hobbyist group blend', async () => {
@@ -278,5 +292,144 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(resultsContainer.textContent).not.toContain('📍');
         expect(resultsContainer.textContent).toContain('Game Without Shelf');
     });
+
+    test('loadCafeCollection falls back to /recommendations when /cafe/collection throws or fails', async () => {
+        delete window.location;
+        window.location = new URL('https://meeplemanifesto.com/cafe/?cafe=the-malt-and-meeple&table=4');
+
+        window.CafePortal.parseVenueContext();
+        await window.CafePortal.loadVenueMetadata();
+
+        const originalFetchApi = window.fetchApi;
+        window.fetchApi = vi.fn(async (endpoint, options) => {
+            if (endpoint.startsWith('/cafe/collection')) {
+                throw new TypeError('Failed to fetch due to CORS / network error');
+            }
+            return originalFetchApi(endpoint, options);
+        });
+
+        try {
+            await window.CafePortal.loadCafeCollection();
+            expect(window.CafePortal.state.collection.length).toBeGreaterThan(0);
+            const grid = document.getElementById('cafe-collection-grid');
+            expect(grid.children.length).toBeGreaterThan(0);
+        } finally {
+            window.fetchApi = originalFetchApi;
+        }
+    });
+
+    test('extractYouTubeId extracts valid 11-char video IDs from various URL formats', () => {
+        expect(window.CafePortal.extractYouTubeId('https://www.youtube.com/watch?v=zQVHkl8oQEU')).toBe('zQVHkl8oQEU');
+        expect(window.CafePortal.extractYouTubeId('https://youtu.be/lgDgcLI2B0U')).toBe('lgDgcLI2B0U');
+        expect(window.CafePortal.extractYouTubeId('https://www.youtube.com/embed/yflGY5bW_1g')).toBe('yflGY5bW_1g');
+        expect(window.CafePortal.extractYouTubeId('https://vimeo.com/123456')).toBeNull();
+        expect(window.CafePortal.extractYouTubeId(null)).toBeNull();
+    });
+
+    test('openRulesVideoModal populates video modal and sets YouTube embed iframe', () => {
+        const game = {
+            id: '266192',
+            name: 'Wingspan',
+            complexity: 2.4,
+            teach_time: '10 min teach',
+            rules_video_url: 'https://www.youtube.com/watch?v=lgDgcLI2B0U',
+            rules_video_id: 'lgDgcLI2B0U'
+        };
+
+        window.CafePortal.openRulesVideoModal(game);
+
+        const modal = document.getElementById('rules-video-modal');
+        const title = document.getElementById('modal-game-title');
+        const iframe = document.getElementById('rules-video-iframe');
+        const teachTime = document.getElementById('modal-teach-time');
+        const complexity = document.getElementById('modal-complexity');
+        const videoContainer = document.getElementById('video-player-container');
+        const fallbackNotice = document.getElementById('video-fallback-notice');
+
+        expect(modal.style.display).toBe('flex');
+        expect(title.textContent).toBe('Wingspan');
+        expect(teachTime.textContent).toContain('10 min teach');
+        expect(complexity.textContent).toContain('2.4 / 5');
+        expect(videoContainer.style.display).toBe('block');
+        expect(fallbackNotice.style.display).toBe('none');
+        expect(iframe.src).toContain('https://www.youtube-nocookie.com/embed/lgDgcLI2B0U');
+    });
+
+    test('openRulesVideoModal shows fallback YouTube search when game has no video', () => {
+        const game = {
+            id: '999',
+            name: 'Mystery Game',
+            complexity: 1.5,
+            teach_time: '3 min teach',
+            rules_video_url: null,
+            rules_video_id: null
+        };
+
+        window.CafePortal.openRulesVideoModal(game);
+
+        const modal = document.getElementById('rules-video-modal');
+        const videoContainer = document.getElementById('video-player-container');
+        const fallbackNotice = document.getElementById('video-fallback-notice');
+        const searchLink = document.getElementById('video-external-search-link');
+
+        expect(modal.style.display).toBe('flex');
+        expect(videoContainer.style.display).toBe('none');
+        expect(fallbackNotice.style.display).toBe('block');
+        expect(searchLink.href).toContain('youtube.com/results?search_query=');
+        expect(searchLink.href).toContain('Mystery%20Game');
+    });
+
+    test('closeRulesVideoModal hides modal and clears iframe src to stop playback', () => {
+        const game = {
+            id: '178900',
+            name: 'Codenames',
+            rules_video_url: 'https://www.youtube.com/watch?v=zQVHkl8oQEU'
+        };
+
+        window.CafePortal.openRulesVideoModal(game);
+        const modal = document.getElementById('rules-video-modal');
+        const iframe = document.getElementById('rules-video-iframe');
+
+        expect(modal.style.display).toBe('flex');
+        expect(iframe.src).toContain('zQVHkl8oQEU');
+
+        window.CafePortal.closeRulesVideoModal();
+
+        expect(modal.style.display).toBe('none');
+        expect(iframe.src).not.toContain('zQVHkl8oQEU');
+        expect(iframe.getAttribute('src')).toBeFalsy();
+    });
+
+    test('renderCafeCards attaches Watch Rules buttons that trigger video modal', () => {
+        const grid = document.getElementById('cafe-collection-grid');
+        const games = [
+            {
+                id: '230802',
+                name: 'Azul',
+                complexity: 1.8,
+                teach_time: '5 min teach',
+                rules_video_url: 'https://www.youtube.com/watch?v=yflGY5bW_1g'
+            }
+        ];
+
+        window.CafePortal.state.collection = games;
+        window.CafePortal.renderCafeCards(grid, games);
+        window.CafePortal.setupVideoModalControls();
+
+        const watchBtn = grid.querySelector('.btn-watch-rules');
+        expect(watchBtn).not.toBeNull();
+        expect(watchBtn.getAttribute('data-game-id')).toBe('230802');
+
+        watchBtn.click();
+
+        const modal = document.getElementById('rules-video-modal');
+        const title = document.getElementById('modal-game-title');
+        const iframe = document.getElementById('rules-video-iframe');
+
+        expect(modal.style.display).toBe('flex');
+        expect(title.textContent).toBe('Azul');
+        expect(iframe.src).toContain('yflGY5bW_1g');
+    });
 });
+
 

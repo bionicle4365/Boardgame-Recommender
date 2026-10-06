@@ -374,6 +374,44 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
 
     </div>
 
+    <!-- Rules Video In-App Modal -->
+    <div class="cafe-video-modal-overlay" id="rules-video-modal" role="dialog" aria-modal="true" aria-labelledby="modal-game-title" style="display: none;">
+        <div class="cafe-video-modal-dialog">
+            <div class="cafe-video-modal-header">
+                <div class="cafe-video-modal-title-group">
+                    <span class="cafe-video-modal-badge">🎬 How to Play</span>
+                    <h3 class="cafe-video-modal-title" id="modal-game-title">Game Title</h3>
+                </div>
+                <button type="button" class="cafe-video-modal-close" id="btn-close-video-modal" aria-label="Close rules video modal">✕</button>
+            </div>
+            <div class="cafe-video-modal-body">
+                <div class="video-player-container" id="video-player-container">
+                    <iframe id="rules-video-iframe" 
+                            src="" 
+                            title="Board Game Rules Tutorial" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                            allowfullscreen>
+                    </iframe>
+                </div>
+                <div class="video-fallback-notice" id="video-fallback-notice" style="display: none;">
+                    <p class="video-fallback-msg">No direct video tutorial embed available for this game.</p>
+                    <a href="#" id="video-external-search-link" target="_blank" rel="noopener noreferrer" class="btn-external-video">
+                        🔍 Search YouTube for Rules Tutorials
+                    </a>
+                </div>
+                <div class="video-modal-footer">
+                    <div class="video-meta-pills">
+                        <span class="teach-time-badge" id="modal-teach-time">⏱️ 5-10 min teach</span>
+                        <span class="cafe-stat-pill" id="modal-complexity">⚙️ 2.1 / 5</span>
+                    </div>
+                    <a href="#" id="modal-bgg-link" target="_blank" rel="noopener noreferrer" class="btn-modal-bgg">
+                        📖 View on BGG
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script src="{{ 'assets/js/cafe.js' | relative_url }}"></script>

@@ -1,4 +1,5 @@
 import json
+import re
 import requests
 import xml.etree.ElementTree as ET
 import os
@@ -72,7 +73,10 @@ _PARQUET_SCHEMA = pyarrow.schema([
     ('designers', pyarrow.list_(pyarrow.string())),
     ('publishers', pyarrow.list_(pyarrow.string())),
     ('suggested_players_best', pyarrow.list_(pyarrow.string())),
-    ('suggested_players_recommended', pyarrow.list_(pyarrow.string()))
+    ('suggested_players_recommended', pyarrow.list_(pyarrow.string())),
+    ('rules_video_url', pyarrow.string()),
+    ('rules_video_id', pyarrow.string()),
+    ('rules_video_title', pyarrow.string())
 ])
 
 
@@ -98,6 +102,89 @@ def _get_links(item_element, link_type):
         if value:
             links.append(value)
     return links
+
+def _extract_youtube_id(url):
+    """Extract YouTube video ID from standard YouTube URL formats."""
+    if not url or not isinstance(url, str):
+        return None
+    patterns = [
+        r'(?:v=|/v/|youtu\.be/|/embed/|/live/)([a-zA-Z0-9_-]{11})',
+        r'(?:[?&]v=)([a-zA-Z0-9_-]{11})'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def _extract_rules_video(item):
+    """
+    Extracts the highest-priority instructional/rules video from the <videos> section.
+    Prioritizes:
+    1. Category == 'instructional'
+    2. English language
+    3. Instructional keywords in title (watch it played, how to play, rules, tutorial, learn to play)
+    4. YouTube direct embeddability
+    """
+    videos_container = item.find('videos')
+    if videos_container is None:
+        return {'url': None, 'id': None, 'title': None}
+
+    candidates = []
+    for video in videos_container.findall('video'):
+        link = (video.get('link') or '').strip()
+        if not link:
+            continue
+        title = (video.get('title') or '').strip()
+        category = (video.get('category') or '').strip().lower()
+        language = (video.get('language') or '').strip().lower()
+
+        score = 0
+        # Category weight
+        if category == 'instructional':
+            score += 100
+        elif category in ('overview', 'review'):
+            score += 20
+
+        # Title keyword weight
+        title_lower = title.lower()
+        if 'watch it played' in title_lower:
+            score += 50
+        if 'how to play' in title_lower:
+            score += 40
+        if 'rules' in title_lower or 'regeln' in title_lower:
+            score += 30
+        if 'tutorial' in title_lower:
+            score += 25
+        if 'learn to play' in title_lower:
+            score += 20
+        if 'quick play' in title_lower:
+            score += 15
+
+        # Language weight
+        if language in ('english', 'en', ''):
+            score += 20
+        else:
+            score -= 30
+
+        # YouTube ID bonus (enables seamless in-app embedding)
+        yt_id = _extract_youtube_id(link)
+        if yt_id:
+            score += 15
+
+        candidates.append((score, link, yt_id, title))
+
+    if not candidates:
+        return {'url': None, 'id': None, 'title': None}
+
+    candidates.sort(key=lambda c: c[0], reverse=True)
+    best_score, best_link, best_yt_id, best_title = candidates[0]
+
+    return {
+        'url': best_link,
+        'id': best_yt_id,
+        'title': best_title
+    }
 
 def _parse_item(item):
     """Parse a single <item> XML element into a game data dict."""
@@ -136,6 +223,8 @@ def _parse_item(item):
                 if (best_votes + rec_votes) > not_rec_votes:
                     rec_players.append(num_players)
 
+    rules_vid = _extract_rules_video(item)
+
     return {
         'id': item.get('id'),
         'type': item.get('type'),
@@ -157,6 +246,9 @@ def _parse_item(item):
         'publishers': _get_links(item, 'boardgamepublisher'),
         'suggested_players_best': best_players,
         'suggested_players_recommended': rec_players,
+        'rules_video_url': rules_vid['url'],
+        'rules_video_id': rules_vid['id'],
+        'rules_video_title': rules_vid['title'],
     }
 
 
@@ -164,7 +256,7 @@ def get_batch_game_data(game_ids, max_retries=5, base_delay=2):
     """
     Fetch data for multiple game IDs in a SINGLE BGG API call.
 
-    BGG supports comma-separated IDs: ?id=1,2,3&stats=1
+    BGG supports comma-separated IDs: ?id=1,2,3&stats=1&videos=1
     BGG API enforces a maximum of 20 IDs per request.
 
     Returns:
@@ -176,7 +268,7 @@ def get_batch_game_data(game_ids, max_retries=5, base_delay=2):
         raise ValueError(f"get_batch_game_data called with {len(game_ids)} IDs, which exceeds BGG limit of 20.")
         
     ids_str = ','.join(str(gid) for gid in game_ids)
-    api_url = f"{BGG_API_BASE_URL}?id={ids_str}&stats=1"
+    api_url = f"{BGG_API_BASE_URL}?id={ids_str}&stats=1&videos=1"
 
     bgg_api_token = os.environ.get('BGG_API_TOKEN')
     headers = {}

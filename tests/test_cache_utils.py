@@ -60,7 +60,9 @@ def test_build_game_metadata():
         'rating': 7.8,
         'complexity': 2.5,
         'thumbnail': 'thumb.jpg',
-        'image': 'image.jpg'
+        'image': 'image.jpg',
+        'rules_video_url': 'https://www.youtube.com/watch?v=sample12345',
+        'rules_video_id': 'sample12345'
     }
     metadata = cache_utils.build_game_metadata(row)
     assert metadata['id'] == '100'
@@ -69,6 +71,8 @@ def test_build_game_metadata():
     assert metadata['rating'] == 7.8
     assert metadata['complexity'] == 2.5
     assert metadata['thumbnail'] == 'thumb.jpg'
+    assert metadata['rules_video_url'] == 'https://www.youtube.com/watch?v=sample12345'
+    assert metadata['rules_video_id'] == 'sample12345'
 
     # Test with NaN / null values
     row_nulls = {

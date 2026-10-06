@@ -63,7 +63,10 @@ TARGET_SCHEMA = pa.schema([
     ('designers', pa.list_(pa.string())),
     ('publishers', pa.list_(pa.string())),
     ('suggested_players_best', pa.list_(pa.string())),
-    ('suggested_players_recommended', pa.list_(pa.string()))
+    ('suggested_players_recommended', pa.list_(pa.string())),
+    ('rules_video_url', pa.string()),
+    ('rules_video_id', pa.string()),
+    ('rules_video_title', pa.string())
 ])
 
 def align_table_to_schema(table, target_schema):

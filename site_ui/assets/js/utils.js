@@ -185,6 +185,8 @@ function getMockCafeCatalog() {
             year_published: 2021,
             shelf_location: "Shelf B-1",
             teach_time: "5 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=6h0G1QG1_1w",
+            rules_video_id: "6h0G1QG1_1w",
             mechanics: ["Tile Placement", "Drafting", "Pattern Building"],
             categories: ["Animals", "Puzzle", "Environmental"],
             reason: "Accessible spatial tile-laying puzzle that is effortless to learn and relaxing to play."
@@ -201,6 +203,8 @@ function getMockCafeCatalog() {
             year_published: 2015,
             shelf_location: "Shelf A-1",
             teach_time: "3-5 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=zQVHkl8oQEU",
+            rules_video_id: "zQVHkl8oQEU",
             mechanics: ["Word Play", "Memory", "Team-Based Game"],
             categories: ["Party Game", "Word Game", "Deduction"],
             reason: "High-energy word association that gets your table laughing and bantering right away."
@@ -217,6 +221,8 @@ function getMockCafeCatalog() {
             year_published: 2019,
             shelf_location: "Shelf B-3",
             teach_time: "10 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=lgDgcLI2B0U",
+            rules_video_id: "lgDgcLI2B0U",
             mechanics: ["Engine Building", "Hand Management", "Card Drafting"],
             categories: ["Animals", "Card Game", "Economic"],
             reason: "Rewarding bird habitat engine building with smooth turns and gorgeous components."
@@ -233,6 +239,8 @@ function getMockCafeCatalog() {
             year_published: 2017,
             shelf_location: "Shelf B-4",
             teach_time: "5 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=yflGY5bW_1g",
+            rules_video_id: "yflGY5bW_1g",
             mechanics: ["Pattern Building", "Tile Placement", "Drafting"],
             categories: ["Abstract Strategy", "Puzzle"],
             reason: "Tactile tile-drafting masterpiece with crisp turns and satisfying pattern completion."
@@ -249,6 +257,8 @@ function getMockCafeCatalog() {
             year_published: 2018,
             shelf_location: "Shelf A-2",
             teach_time: "2-3 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=68E6G9vP_xM",
+            rules_video_id: "68E6G9vP_xM",
             mechanics: ["Cooperative Game", "Word Play", "Communication Limits"],
             categories: ["Party Game", "Word Game"],
             reason: "Effortless cooperative clue-giving that breaks the ice instantly for groups."
@@ -265,6 +275,8 @@ function getMockCafeCatalog() {
             year_published: 2018,
             shelf_location: "Shelf D-2",
             teach_time: "20 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=VIdZ-3iG0rA",
+            rules_video_id: "VIdZ-3iG0rA",
             mechanics: ["Network Building", "Hand Management", "Market"],
             categories: ["Economic", "Industry", "Transportation"],
             reason: "Deep industrial network economics with satisfyingly tight tactical decisions."
@@ -281,6 +293,8 @@ function getMockCafeCatalog() {
             year_published: 2020,
             shelf_location: "Shelf D-4",
             teach_time: "15 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=ZfFw_i0bM18",
+            rules_video_id: "ZfFw_i0bM18",
             mechanics: ["Deck Construction", "Worker Placement", "Area Majority"],
             categories: ["Science Fiction", "Political", "Space Exploration"],
             reason: "Tense deck-building and worker placement that keeps all players engaged until the final combat."
@@ -297,6 +311,8 @@ function getMockCafeCatalog() {
             year_published: 2021,
             shelf_location: "Shelf C-1",
             teach_time: "5 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=Gk3K_U-i-8U",
+            rules_video_id: "Gk3K_U-i-8U",
             mechanics: ["Trick-taking", "Cooperative Game", "Communication Limits"],
             categories: ["Card Game", "Nautical"],
             reason: "Brilliant cooperative trick-taking with silent communication that bonds your table together."
@@ -313,6 +329,8 @@ function getMockCafeCatalog() {
             year_published: 2008,
             shelf_location: "Shelf C-3",
             teach_time: "8 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=ytK1zDPPDhw",
+            rules_video_id: "ytK1zDPPDhw",
             mechanics: ["Cooperative Game", "Point to Point Movement", "Set Collection"],
             categories: ["Medical", "Adventure"],
             reason: "Classic cooperative tension where everyone coordinates specialist roles to contain global outbreaks."
@@ -329,6 +347,8 @@ function getMockCafeCatalog() {
             year_published: 2019,
             shelf_location: "Shelf E-1",
             teach_time: "5 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=8V3-q1H8f5M",
+            rules_video_id: "8V3-q1H8f5M",
             mechanics: ["Hand Management", "Grid Movement", "Variable Player Powers"],
             categories: ["Fighting", "Fantasy", "Miniatures"],
             reason: "Fast, punchy card-driven skirmish duels with dynamic movement and clever bluffing."
@@ -345,6 +365,8 @@ function getMockCafeCatalog() {
             year_published: 1995,
             shelf_location: "Shelf A-3",
             teach_time: "10 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=o33KV7l_t-Y",
+            rules_video_id: "o33KV7l_t-Y",
             mechanics: ["Trading", "Dice Rolling", "Network Building"],
             categories: ["Economic", "Negotiation"],
             reason: "The quintessential trade-and-build modern classic."
@@ -361,6 +383,8 @@ function getMockCafeCatalog() {
             year_published: 2004,
             shelf_location: "Shelf B-2",
             teach_time: "5 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=qHbgmB7wY30",
+            rules_video_id: "qHbgmB7wY30",
             mechanics: ["Set Collection", "Route Building", "Hand Management"],
             categories: ["Trains", "Family"],
             reason: "Cross-country train route building that everyone loves."
@@ -377,6 +401,8 @@ function getMockCafeCatalog() {
             year_published: 2000,
             shelf_location: "Shelf B-5",
             teach_time: "5 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=U3d4K8fC-2c",
+            rules_video_id: "U3d4K8fC-2c",
             mechanics: ["Tile Placement", "Area Majority"],
             categories: ["Medieval", "Territory Building"],
             reason: "Classic countryside tile-laying with castles, roads, and monasteries."
@@ -393,6 +419,8 @@ function getMockCafeCatalog() {
             year_published: 2016,
             shelf_location: "Shelf D-1",
             teach_time: "15 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=8V-P3G1Qc-c",
+            rules_video_id: "8V-P3G1Qc-c",
             mechanics: ["Engine Building", "Hand Management", "Drafting"],
             categories: ["Science Fiction", "Economic", "Space Exploration"],
             reason: "Transform the Red Planet into a thriving ecosystem."
@@ -409,6 +437,8 @@ function getMockCafeCatalog() {
             year_published: 2019,
             shelf_location: "",
             teach_time: "3 min teach",
+            rules_video_url: "https://www.youtube.com/watch?v=4y53zF7q4Lw",
+            rules_video_id: "4y53zF7q4Lw",
             mechanics: ["Ladder Climbing", "Hand Management"],
             categories: ["Card Game", "Circus"],
             reason: "Ingenious ladder-climbing card game where you cannot rearrange cards in your hand."
@@ -425,6 +455,8 @@ function getMockCafeCatalog() {
             year_published: 2012,
             shelf_location: null,
             teach_time: "2 min teach",
+            rules_video_url: null,
+            rules_video_id: null,
             mechanics: ["Deduction", "Hand Management", "Player Elimination"],
             categories: ["Card Game", "Bluffing", "Renaissance"],
             reason: "16 cards, maximum deduction, risk, and bluffing."

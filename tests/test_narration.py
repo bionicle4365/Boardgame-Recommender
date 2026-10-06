@@ -525,3 +525,22 @@ def test_build_fallback_recommendations_cafe():
     assert recs[0]['shelf_location'] == 'B-3'
 
 
+def test_recommendations_rules_video_url_propagation():
+    candidates = [
+        {
+            'id': '13',
+            'name': 'Catan',
+            'rating': 7.2,
+            'complexity': 2.3,
+            'mechanics': ['Trading'],
+            'shelf_location': 'B-3',
+            'rules_video_url': 'https://www.youtube.com/watch?v=wip12345678'
+        }
+    ]
+    recs = narration.build_fallback_recommendations(candidates, is_cafe=True)
+    assert len(recs) == 1
+    assert recs[0]['rules_video_url'] == 'https://www.youtube.com/watch?v=wip12345678'
+    assert recs[0]['teach_time'] == '5-10 mins'
+
+
+

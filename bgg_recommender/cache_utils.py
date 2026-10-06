@@ -104,7 +104,7 @@ def build_game_metadata(row):
 
     Accepts both a pandas Series and a plain dict.
     """
-    return {
+    meta = {
         'id': str(row['id']),
         'name': row['name'],
         'year_published': int(row['year_published']) if pd.notna(row.get('year_published')) else None,
@@ -119,6 +119,47 @@ def build_game_metadata(row):
         'thumbnail': str(row['thumbnail']) if pd.notna(row.get('thumbnail')) else None,
         'image': str(row['image']) if pd.notna(row.get('image')) else None,
     }
+
+    # Video tutorial links (Watch It Played, rules how-to)
+    if pd.notna(row.get('rules_video_url')) and row.get('rules_video_url'):
+        meta['rules_video_url'] = str(row['rules_video_url'])
+    else:
+        vids = get_game_videos()
+        if vids and str(row.get('id')) in vids:
+            vid_entry = vids[str(row.get('id'))]
+            if vid_entry.get('url'):
+                meta['rules_video_url'] = str(vid_entry['url'])
+            if vid_entry.get('id') and not meta.get('rules_video_id'):
+                meta['rules_video_id'] = str(vid_entry['id'])
+            if vid_entry.get('title') and not meta.get('rules_video_title'):
+                meta['rules_video_title'] = str(vid_entry['title'])
+
+    if pd.notna(row.get('rules_video_id')) and row.get('rules_video_id'):
+        meta['rules_video_id'] = str(row['rules_video_id'])
+    if pd.notna(row.get('rules_video_title')) and row.get('rules_video_title'):
+        meta['rules_video_title'] = str(row['rules_video_title'])
+
+    return meta
+
+
+def get_game_videos(ttl_seconds=3600):
+    """Downloads game_videos.json from S3 and caches it in memory."""
+    import bgg_recommender
+    now = time.time()
+    if getattr(bgg_recommender, 'GAME_VIDEOS_CACHE', None) is not None and getattr(bgg_recommender, 'GAME_VIDEOS_CACHE_TIME', None) is not None and (now - bgg_recommender.GAME_VIDEOS_CACHE_TIME) < ttl_seconds:
+        return bgg_recommender.GAME_VIDEOS_CACHE
+
+    try:
+        key = "data/game_videos.json"
+        local_path = "/tmp/game_videos.json"
+        _s3().download_file(bucket, key, local_path)
+        with open(local_path, 'r', encoding='utf-8') as f:
+            bgg_recommender.GAME_VIDEOS_CACHE = json.load(f)
+        bgg_recommender.GAME_VIDEOS_CACHE_TIME = now
+        return bgg_recommender.GAME_VIDEOS_CACHE
+    except Exception:
+        return getattr(bgg_recommender, 'GAME_VIDEOS_CACHE', None) if getattr(bgg_recommender, 'GAME_VIDEOS_CACHE', None) is not None else {}
+
 
 
 def get_active_previews_games(ttl_seconds=3600):

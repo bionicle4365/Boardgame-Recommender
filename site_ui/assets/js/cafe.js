@@ -14,6 +14,7 @@
         activeTab: "collection",
         collection: [],
         filteredCollection: [],
+        recommendations: [],
         searchQuery: "",
         activeFilter: "all",
         sortBy: "name_asc",
@@ -352,6 +353,7 @@
             }
 
             const recs = data.recommendations || [];
+            state.recommendations = recs;
             if (recs.length === 0) {
                 renderEmptyState(resultsContainer);
             } else {
@@ -499,10 +501,10 @@
 
                     <!-- Actions -->
                     <div class="cafe-card-actions">
-                        <a href="${videoUrl}" target="_blank" class="btn-card-action primary">
-                            🎬 Watch Rules (3-5m)
-                        </a>
-                        <a href="${bggUrl}" target="_blank" class="btn-card-action">
+                        <button type="button" class="btn-card-action primary btn-watch-rules" data-game-id="${escape(rec.id)}" title="Watch video rules tutorial in-app">
+                            🎬 Watch Rules
+                        </button>
+                        <a href="${bggUrl}" target="_blank" class="btn-card-action" rel="noopener noreferrer">
                             📖 BGG Info
                         </a>
                     </div>
@@ -692,30 +694,36 @@
             ? state.venueMeta.bgg_username 
             : state.cafeId;
 
+        let data = null;
         try {
             // Try collection endpoint first
             let resp = await window.fetchApi(`/cafe/collection?cafe_id=${encodeURIComponent(targetCafe)}`);
-            let data = null;
             if (resp && resp.ok) {
                 data = await resp.json();
-            } else {
-                // Fallback to recommendations endpoint with vibe=any
-                resp = await window.fetchApi(`/recommendations?cafe_id=${encodeURIComponent(targetCafe)}&vibe=any`);
+            }
+        } catch (err) {
+            console.warn("Failed fetching cafe collection, trying recommendations fallback:", err);
+        }
+
+        // Fallback to recommendations endpoint with vibe=any if collection endpoint failed or threw
+        if (!data || (!data.collection && !data.recommendations)) {
+            try {
+                let resp = await window.fetchApi(`/recommendations?cafe_id=${encodeURIComponent(targetCafe)}&vibe=any`);
                 if (resp && resp.ok) {
                     data = await resp.json();
                 }
+            } catch (fallbackErr) {
+                console.warn("Failed fetching fallback cafe recommendations:", fallbackErr);
             }
+        }
 
-            state.isCollectionLoading = false;
+        state.isCollectionLoading = false;
 
-            if (data && (data.collection || data.recommendations)) {
-                state.collection = data.collection || data.recommendations || [];
-                if (countBadge) countBadge.textContent = state.collection.length;
-                filterAndSortCollection();
-                return;
-            }
-        } catch (err) {
-            console.warn("Failed fetching cafe collection:", err);
+        if (data && (data.collection || data.recommendations)) {
+            state.collection = data.collection || data.recommendations || [];
+            if (countBadge) countBadge.textContent = state.collection.length;
+            filterAndSortCollection();
+            return;
         }
 
         state.isCollectionLoading = false;
@@ -913,6 +921,135 @@
         }
     }
 
+    // Helper: Extract YouTube video ID
+    function extractYouTubeId(url) {
+        if (!url || typeof url !== "string") return null;
+        const patterns = [
+            /(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/live\/)([a-zA-Z0-9_-]{11})/,
+            /[?&]v=([a-zA-Z0-9_-]{11})/
+        ];
+        for (const p of patterns) {
+            const match = url.match(p);
+            if (match && match[1]) return match[1];
+        }
+        return null;
+    }
+
+    // Helper: Find game by ID in active state collections
+    function findGameById(id) {
+        if (!id) return null;
+        const strId = String(id);
+        if (state.collection && state.collection.length) {
+            const found = state.collection.find(g => String(g.id) === strId);
+            if (found) return found;
+        }
+        if (state.recommendations && state.recommendations.length) {
+            const found = state.recommendations.find(g => String(g.id) === strId);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    // Open In-App Rules Video Modal
+    function openRulesVideoModal(game) {
+        if (!game) return;
+        const modal = document.getElementById("rules-video-modal");
+        const titleEl = document.getElementById("modal-game-title");
+        const iframe = document.getElementById("rules-video-iframe");
+        const videoContainer = document.getElementById("video-player-container");
+        const fallbackNotice = document.getElementById("video-fallback-notice");
+        const fallbackLink = document.getElementById("video-external-search-link");
+        const teachTimeEl = document.getElementById("modal-teach-time");
+        const compEl = document.getElementById("modal-complexity");
+        const bggLink = document.getElementById("modal-bgg-link");
+
+        if (!modal) return;
+
+        if (titleEl) titleEl.textContent = game.name || "Game Rules";
+
+        const teach = game.teach_time || estimateTeachTime(game.complexity);
+        if (teachTimeEl) teachTimeEl.textContent = `⏱️ ${teach}`;
+        if (compEl) {
+            const comp = game.complexity ? `${parseFloat(game.complexity).toFixed(1)} / 5` : "Accessible";
+            compEl.textContent = `⚙️ ${comp}`;
+        }
+        if (bggLink) {
+            bggLink.href = game.id
+                ? `https://boardgamegeek.com/boardgame/${game.id}`
+                : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(game.name)}`;
+        }
+
+        const ytId = game.rules_video_id || extractYouTubeId(game.rules_video_url);
+
+        if (ytId && iframe && videoContainer && fallbackNotice) {
+            iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0`;
+            videoContainer.style.display = "block";
+            fallbackNotice.style.display = "none";
+        } else {
+            if (iframe) iframe.src = "";
+            if (videoContainer) videoContainer.style.display = "none";
+            if (fallbackNotice) fallbackNotice.style.display = "block";
+            if (fallbackLink) {
+                fallbackLink.href = `https://www.youtube.com/results?search_query=${encodeURIComponent((game.name || "") + " board game how to play rules")}`;
+            }
+        }
+
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+
+        const closeBtn = document.getElementById("btn-close-video-modal");
+        if (closeBtn) closeBtn.focus();
+    }
+
+    // Close Rules Video Modal
+    function closeRulesVideoModal() {
+        const modal = document.getElementById("rules-video-modal");
+        const iframe = document.getElementById("rules-video-iframe");
+        if (modal) modal.style.display = "none";
+        if (iframe) {
+            iframe.src = "about:blank";
+            iframe.removeAttribute("src");
+        }
+        document.body.style.overflow = "";
+    }
+
+    // Set up Video Modal Controls & Global Click Delegation
+    function setupVideoModalControls() {
+        const closeBtn = document.getElementById("btn-close-video-modal");
+        const modal = document.getElementById("rules-video-modal");
+
+        if (closeBtn) {
+            closeBtn.addEventListener("click", closeRulesVideoModal);
+        }
+
+        if (modal) {
+            modal.addEventListener("click", (e) => {
+                if (e.target === modal) {
+                    closeRulesVideoModal();
+                }
+            });
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                closeRulesVideoModal();
+            }
+        });
+
+        // Click delegation for all 🎬 Watch Rules buttons
+        document.addEventListener("click", (e) => {
+            const btn = e.target.closest(".btn-watch-rules");
+            if (btn) {
+                e.preventDefault();
+                const gameId = btn.getAttribute("data-game-id");
+                const game = findGameById(gameId);
+                if (game) {
+                    openRulesVideoModal(game);
+                }
+            }
+        });
+    }
+
     // Export internal helpers for testing if module / test environment
     if (typeof window !== "undefined") {
         window.CafePortal = {
@@ -926,8 +1063,13 @@
             getDrinkPairing,
             fetchCafeRecommendations,
             renderCafeCards,
+            extractYouTubeId,
+            findGameById,
+            openRulesVideoModal,
+            closeRulesVideoModal,
             setupGatewayControls,
-            setupCollectionControls
+            setupCollectionControls,
+            setupVideoModalControls
         };
     }
 
@@ -950,6 +1092,7 @@
             loadVenueMetadata();
             setupQuizControls();
             setupCollectionControls();
+            setupVideoModalControls();
             loadCafeCollection();
 
             // Default view: Collection Browser!

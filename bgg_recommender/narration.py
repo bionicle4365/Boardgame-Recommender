@@ -401,6 +401,8 @@ Voice & Style Guidelines:
                 metadata['teach_time'] = estimate_teach_time(game_meta)
                 if game_meta.get('shelf_location') or game_meta.get('shelf'):
                     metadata['shelf_location'] = game_meta.get('shelf_location') or game_meta.get('shelf')
+                if (game_meta.get('rules_video_url') or game_meta.get('video_url')) and not metadata.get('rules_video_url'):
+                    metadata['rules_video_url'] = str(game_meta.get('rules_video_url') or game_meta.get('video_url'))
                 final_recs.append(metadata)
             else:
                 logger.warning(f"Excluding recommended game '{rec_name}' as it was not in top candidates list (or was duplicated).")
@@ -422,6 +424,8 @@ Voice & Style Guidelines:
                     metadata['teach_time'] = estimate_teach_time(row)
                     if row.get('shelf_location') or row.get('shelf'):
                         metadata['shelf_location'] = row.get('shelf_location') or row.get('shelf')
+                    if (row.get('rules_video_url') or row.get('video_url')) and not metadata.get('rules_video_url'):
+                        metadata['rules_video_url'] = str(row.get('rules_video_url') or row.get('video_url'))
                     final_recs.append(metadata)
 
         return final_recs
@@ -447,6 +451,8 @@ def build_fallback_recommendations(top_candidates, is_cafe=False):
         metadata['teach_time'] = estimate_teach_time(row)
         if row.get('shelf_location') or row.get('shelf'):
             metadata['shelf_location'] = row.get('shelf_location') or row.get('shelf')
+        if (row.get('rules_video_url') or row.get('video_url')) and not metadata.get('rules_video_url'):
+            metadata['rules_video_url'] = str(row.get('rules_video_url') or row.get('video_url'))
         recs.append(metadata)
     return recs
 

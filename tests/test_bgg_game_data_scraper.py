@@ -242,3 +242,36 @@ def test_lambda_handler_chunking(mock_sleep, mock_to_parquet, mock_get_batch):
     # Should sleep once for 1.0 second between the two chunks
     mock_sleep.assert_called_once_with(1.0)
     assert mock_to_parquet.call_count == 25
+
+
+def test_extract_youtube_id():
+    assert bgg_game_data_scraper._extract_youtube_id("https://www.youtube.com/watch?v=zQVHkl8oQEU") == "zQVHkl8oQEU"
+    assert bgg_game_data_scraper._extract_youtube_id("https://youtu.be/lgDgcLI2B0U") == "lgDgcLI2B0U"
+    assert bgg_game_data_scraper._extract_youtube_id("https://www.youtube.com/embed/yflGY5bW_1g") == "yflGY5bW_1g"
+    assert bgg_game_data_scraper._extract_youtube_id("https://vimeo.com/123456") is None
+    assert bgg_game_data_scraper._extract_youtube_id(None) is None
+
+
+def test_extract_rules_video_prioritization():
+    xml_str = """
+    <item id="13" type="boardgame">
+        <videos total="3">
+            <video id="101" title="Catan Review - Dice Tower" category="review" language="English" link="https://www.youtube.com/watch?v=rev11111111" />
+            <video id="102" title="How to Play Catan - Watch It Played" category="instructional" language="English" link="https://www.youtube.com/watch?v=wip22222222" />
+            <video id="103" title="Regeln Catan" category="instructional" language="German" link="https://www.youtube.com/watch?v=ger33333333" />
+        </videos>
+    </item>
+    """
+    item = ET.fromstring(xml_str)
+    video = bgg_game_data_scraper._extract_rules_video(item)
+    assert video['url'] == "https://www.youtube.com/watch?v=wip22222222"
+    assert video['id'] == "wip22222222"
+    assert "Watch It Played" in video['title']
+
+
+def test_extract_rules_video_empty():
+    xml_str = '<item id="13" type="boardgame"></item>'
+    item = ET.fromstring(xml_str)
+    video = bgg_game_data_scraper._extract_rules_video(item)
+    assert video == {'url': None, 'id': None, 'title': None}
+

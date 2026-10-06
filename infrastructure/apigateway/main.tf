@@ -183,6 +183,12 @@ resource "aws_apigatewayv2_route" "bgg_cafe_meta_route" {
   target    = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_cafe_collection_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "GET /cafe/collection"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_preferences_integration.id}"
+}
+
 resource "aws_apigatewayv2_route" "bgg_cafe_onboard_route" {
   api_id             = aws_apigatewayv2_api.bgg_api.id
   route_key          = "POST /cafe/onboard"
