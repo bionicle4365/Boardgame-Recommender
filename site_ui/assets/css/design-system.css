@@ -1566,3 +1566,155 @@ html[data-theme="dark"] .chip-indicator {
     border-color: var(--primary);
 }
 
+/* ── Reusable Announcement Banner (Milestone C10) ── */
+.site-announcement-banner {
+    position: relative;
+    width: 100%;
+    z-index: 90;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: bannerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.site-announcement-banner.banner-dismissing {
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+@keyframes bannerSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.announcement-banner-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.announcement-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.announcement-banner-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.announcement-banner-text {
+    color: var(--text-main);
+    line-height: 1.4;
+}
+
+.announcement-banner-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    padding: 3px 10px;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.announcement-banner-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.announcement-banner-dismiss:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--text-main);
+}
+
+html[data-theme="dark"] .announcement-banner-dismiss:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Banner Theme Variants ── */
+.site-announcement-banner.banner-info {
+    background: rgba(79, 70, 229, 0.08);
+    border-bottom-color: rgba(79, 70, 229, 0.25);
+}
+.site-announcement-banner.banner-info .announcement-banner-cta {
+    background: rgba(79, 70, 229, 0.15);
+    color: var(--primary, #4f46e5);
+}
+.site-announcement-banner.banner-info .announcement-banner-cta:hover {
+    background: var(--primary, #4f46e5);
+    color: #ffffff;
+}
+
+.site-announcement-banner.banner-event {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%);
+    border-bottom-color: rgba(245, 158, 11, 0.35);
+}
+.site-announcement-banner.banner-event .announcement-banner-text {
+    font-weight: 600;
+}
+.site-announcement-banner.banner-event .announcement-banner-cta {
+    background: #d97706;
+    color: #ffffff;
+}
+.site-announcement-banner.banner-event .announcement-banner-cta:hover {
+    background: #b45309;
+}
+
+.site-announcement-banner.banner-promo {
+    background: rgba(16, 185, 129, 0.1);
+    border-bottom-color: rgba(16, 185, 129, 0.3);
+}
+.site-announcement-banner.banner-promo .announcement-banner-cta {
+    background: #10b981;
+    color: #ffffff;
+}
+.site-announcement-banner.banner-promo .announcement-banner-cta:hover {
+    background: #059669;
+}
+
+.site-announcement-banner.banner-warning {
+    background: rgba(239, 68, 68, 0.1);
+    border-bottom-color: rgba(239, 68, 68, 0.3);
+}
+.site-announcement-banner.banner-warning .announcement-banner-cta {
+    background: #ef4444;
+    color: #ffffff;
+}
+.site-announcement-banner.banner-warning .announcement-banner-cta:hover {
+    background: #dc2626;
+}
+
+

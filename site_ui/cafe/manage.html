@@ -653,6 +653,24 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
                             <label for="manage-drink-pairings" style="margin-bottom: 0; cursor: pointer;">Enable drink pairings in patron recommendations</label>
                         </div>
 
+                        <div class="form-group" style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--manage-border);">
+                            <label for="manage-menu-url-input">Digital Menu / Ordering URL</label>
+                            <input type="url" id="manage-menu-url-input" class="form-input" placeholder="e.g. https://menu.toasttab.com/our-cafe or https://untappd.com/venue/...">
+                            <div class="field-hint">Direct link to your digital food, drinks, or tap list (Toast, Square, Untappd, PDF). Renders a prominent <strong>"🍺 Food &amp; Drinks Menu"</strong> button on patron phones.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="manage-announcement-input">Venue Event &amp; Announcement Banner</label>
+                            <input type="text" id="manage-announcement-input" class="form-input" maxlength="160" placeholder="e.g. 🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap">
+                            <div class="field-hint">Broadcast live announcements, drink specials, or tonight's event across all patron phones (Max 160 characters). Patrons can dismiss it once read.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="manage-featured-games-input">Featured "Guru Picks" / House Specials</label>
+                            <input type="text" id="manage-featured-games-input" class="form-input" placeholder="e.g. 13, 266192, 178900">
+                            <div class="field-hint">Comma-separated BGG Game IDs (up to 5) to spotlight in a dedicated "Guru Picks" carousel above your collection browser. Perfect for staff favorites or new arrivals.</div>
+                        </div>
+
                         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--manage-border); display: flex; justify-content: flex-end;">
                             <button type="submit" class="btn btn-primary" id="save-venue-btn">
                                 <span id="save-btn-icon">💾</span>
@@ -773,6 +791,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const formWifiPassInput   = document.getElementById("manage-wifi-pass-input");
     const formShelfRegexInput = document.getElementById("manage-shelf-regex-input");
     const formDrinkPairings   = document.getElementById("manage-drink-pairings");
+    const formMenuUrlInput    = document.getElementById("manage-menu-url-input");
+    const formAnnouncementInput = document.getElementById("manage-announcement-input");
+    const formFeaturedGamesInput = document.getElementById("manage-featured-games-input");
     const saveVenueBtn        = document.getElementById("save-venue-btn");
     const saveBtnIcon         = document.getElementById("save-btn-icon");
     const saveBtnText         = document.getElementById("save-btn-text");
@@ -939,6 +960,14 @@ document.addEventListener("DOMContentLoaded", function () {
         formWifiPassInput.value   = currentCafe.wifi_password || "";
         formShelfRegexInput.value = currentCafe.shelf_regex || "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)";
         formDrinkPairings.checked = (currentCafe.drink_pairings_enabled !== false);
+        if (formMenuUrlInput) formMenuUrlInput.value = currentCafe.menu_url || "";
+        if (formAnnouncementInput) formAnnouncementInput.value = currentCafe.announcement_banner || "";
+        if (formFeaturedGamesInput) {
+            const fGames = Array.isArray(currentCafe.featured_game_ids)
+                ? currentCafe.featured_game_ids.join(", ")
+                : (currentCafe.featured_game_ids || "");
+            formFeaturedGamesInput.value = fGames;
+        }
 
         // Populate Floor Tools
         updateFloorTools();
@@ -1038,6 +1067,10 @@ document.addEventListener("DOMContentLoaded", function () {
             ? formRoomNamesInput.value.split(",").map(r => r.trim()).filter(Boolean)
             : [];
 
+        const featuredIds = formFeaturedGamesInput
+            ? formFeaturedGamesInput.value.split(",").map(id => id.trim()).filter(Boolean).slice(0, 5)
+            : [];
+
         const payload = {
             cafe_id: currentCafe.cafe_id,
             name: formNameInput.value.trim(),
@@ -1048,7 +1081,10 @@ document.addEventListener("DOMContentLoaded", function () {
             wifi_ssid: formWifiSsidInput.value.trim(),
             wifi_password: formWifiPassInput.value.trim(),
             shelf_regex: formShelfRegexInput.value.trim(),
-            drink_pairings_enabled: formDrinkPairings.checked
+            drink_pairings_enabled: formDrinkPairings.checked,
+            menu_url: formMenuUrlInput ? formMenuUrlInput.value.trim() : "",
+            announcement_banner: formAnnouncementInput ? formAnnouncementInput.value.trim() : "",
+            featured_game_ids: featuredIds
         };
 
         try {

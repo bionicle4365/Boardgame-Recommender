@@ -2596,5 +2596,248 @@
     transform: none;
 }
 
+/* ── Digital Menu / F&B Ordering Button (Milestone C10) ── */
+.header-menu-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 15px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.22) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #b45309;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.12);
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .header-menu-cta-btn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.28) 100%);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: #fde68a;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.18);
+}
+
+.header-menu-cta-btn:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+    border-color: #d97706;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+}
+
+/* ── "Featured Guru Picks" / House Specials Carousel (Milestone C10) ── */
+.cafe-guru-picks-section {
+    margin-bottom: 24px;
+    background: var(--card-bg, rgba(255, 255, 255, 0.75));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 18px;
+    padding: 20px 24px;
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.08);
+}
+
+[data-theme="dark"] .cafe-guru-picks-section {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(245, 158, 11, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.guru-picks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.guru-picks-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.guru-picks-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.guru-picks-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.guru-picks-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 2px 0 0 0;
+}
+
+.guru-picks-count-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+[data-theme="dark"] .guru-picks-count-badge {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+}
+
+.guru-picks-carousel {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+@media (max-width: 640px) {
+    .guru-picks-carousel {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .guru-pick-card {
+        min-width: 250px;
+        scroll-snap-align: start;
+        flex: 0 0 250px;
+    }
+}
+
+.guru-pick-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--badge-bg, rgba(241, 245, 249, 0.8));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    position: relative;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] .guru-pick-card {
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.guru-pick-card:hover {
+    transform: translateY(-2px);
+    border-color: #f59e0b;
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);
+}
+
+.guru-pick-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+}
+
+.guru-pick-thumb-wrap {
+    width: 100%;
+    height: 120px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.guru-pick-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.guru-pick-name {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.guru-pick-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.guru-pick-shelf {
+    background: rgba(79, 70, 229, 0.12);
+    color: var(--primary);
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.guru-pick-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.btn-guru-pick-action {
+    flex: 1;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 8px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-main);
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.btn-guru-pick-action.primary {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+}
+
+.btn-guru-pick-action.primary:hover {
+    background: #4338ca;
+}
+
+.btn-guru-pick-action:hover:not(.primary) {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+
 
 

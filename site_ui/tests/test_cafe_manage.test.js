@@ -161,4 +161,43 @@ describe('Cafe Management Client Logic & Mock API', () => {
         const data = await res.json();
         expect(data.cafe.room_names).toEqual(['The Vault', "Dragon's Lair"]);
     });
+
+    test('manage.html contains C10 hospitality fields for menu, announcement banner, and featured games', () => {
+        const manageHtml = fs.readFileSync(path.resolve(__dirname, '../cafe/manage.html'), 'utf8');
+        expect(manageHtml).toContain('id="manage-menu-url-input"');
+        expect(manageHtml).toContain('id="manage-announcement-input"');
+        expect(manageHtml).toContain('id="manage-featured-games-input"');
+        expect(manageHtml).toContain('Digital Menu / Ordering URL');
+        expect(manageHtml).toContain('Venue Event &amp; Announcement Banner');
+        expect(manageHtml).toContain('Featured "Guru Picks" / House Specials');
+    });
+
+    test('fetchApi mock handles /cafe/update and /cafe/meta with menu_url, announcement_banner, and featured_game_ids', async () => {
+        const payload = {
+            cafe_id: 'the-malt-and-meeple',
+            name: 'The Malt & Meeple',
+            menu_url: 'https://toasttab.com/malt-and-meeple/menu',
+            announcement_banner: '🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap',
+            featured_game_ids: ['13', '266192', '178900']
+        };
+
+        const res = await window.fetchApi('/cafe/update', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        expect(res.ok).toBe(true);
+        const data = await res.json();
+        expect(data.cafe.menu_url).toBe('https://toasttab.com/malt-and-meeple/menu');
+        expect(data.cafe.announcement_banner).toBe('🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap');
+        expect(data.cafe.featured_game_ids).toEqual(['13', '266192', '178900']);
+
+        // Verify retrieval via /cafe/meta
+        const metaRes = await window.fetchApi('/cafe/meta?cafe_id=the-malt-and-meeple');
+        expect(metaRes.ok).toBe(true);
+        const metaData = await metaRes.json();
+        expect(metaData.menu_url).toBe('https://toasttab.com/malt-and-meeple/menu');
+        expect(metaData.announcement_banner).toBe('🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap');
+        expect(metaData.featured_game_ids).toEqual(['13', '266192', '178900']);
+    });
 });

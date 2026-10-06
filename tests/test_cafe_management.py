@@ -412,3 +412,98 @@ def test_cafe_delete_success(mock_cafes_table, mock_s3):
     saved_reg = json.loads(mock_s3.put_object.call_args[1]['Body'])
     assert 'the-malt-and-meeple' not in saved_reg
     assert 'other-cafe' in saved_reg
+
+
+# ── Milestone C10 Hospitality & Announcement Banner Tests ────────────────────
+
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_update_with_menu_url_banner_and_featured_games(mock_cafes_table, mock_s3):
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'the-malt-and-meeple',
+            'owner_cognito_id': 'user-123',
+            'name': 'The Malt & Meeple',
+            'table_count': 20
+        }
+    }
+    body_mock = MagicMock()
+    body_mock.read.return_value = b'{}'
+    mock_s3.get_object.return_value = {'Body': body_mock}
+
+    payload = {
+        'cafe_id': 'the-malt-and-meeple',
+        'menu_url': 'https://toasttab.com/malt-and-meeple/menu',
+        'announcement_banner': '🎉 Trivia Night tonight at 7:30 PM! $5 craft pints',
+        'featured_game_ids': ['13', '266192', '178900']
+    }
+
+    event = {
+        'rawPath': '/cafe/update',
+        'requestContext': {
+            'http': {'method': 'POST'},
+            'authorizer': {'jwt': {'claims': {'sub': 'user-123'}}}
+        },
+        'body': json.dumps(payload)
+    }
+
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert body['status'] == 'success'
+    cafe = body['cafe']
+    assert cafe['menu_url'] == 'https://toasttab.com/malt-and-meeple/menu'
+    assert cafe['announcement_banner'] == '🎉 Trivia Night tonight at 7:30 PM! $5 craft pints'
+    assert cafe['featured_game_ids'] == ['13', '266192', '178900']
+
+    # Check DynamoDB put_item call
+    mock_cafes_table.put_item.assert_called_once()
+    saved_item = mock_cafes_table.put_item.call_args[1]['Item']
+    assert saved_item['menu_url'] == 'https://toasttab.com/malt-and-meeple/menu'
+    assert saved_item['announcement_banner'] == '🎉 Trivia Night tonight at 7:30 PM! $5 craft pints'
+    assert saved_item['featured_game_ids'] == ['13', '266192', '178900']
+
+    # Check S3 registry put call
+    registry_put_calls = [c for c in mock_s3.put_object.call_args_list if c[1]['Key'] == 'data/cafes_registry.json']
+    assert len(registry_put_calls) == 1
+    saved_registry = json.loads(registry_put_calls[0][1]['Body'])
+    assert saved_registry['the-malt-and-meeple']['menu_url'] == 'https://toasttab.com/malt-and-meeple/menu'
+    assert saved_registry['the-malt-and-meeple']['announcement_banner'] == '🎉 Trivia Night tonight at 7:30 PM! $5 craft pints'
+    assert saved_registry['the-malt-and-meeple']['featured_game_ids'] == ['13', '266192', '178900']
+
+
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_meta_returns_c10_hospitality_fields(mock_cafes_table):
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'the-malt-and-meeple',
+            'name': 'The Malt & Meeple',
+            'slug': 'the-malt-and-meeple',
+            'bgg_username': 'maltandmeeple',
+            'table_count': 25,
+            'wifi_ssid': 'Malt-Guest',
+            'wifi_password': 'rollinitiative',
+            'tagline': 'Craft beer & board games',
+            'drink_pairings_enabled': True,
+            'logo_url': 'https://example.com/logo.png',
+            'menu_url': 'https://menu.untappd.com/venue/1234',
+            'announcement_banner': '🎲 New Arrivals: Arcs and Harmonies now on shelves!',
+            'featured_game_ids': ['13', '266192']
+        }
+    }
+
+    event = {
+        'rawPath': '/cafe/meta',
+        'rawQueryString': 'cafe_id=the-malt-and-meeple',
+        'queryStringParameters': {'cafe_id': 'the-malt-and-meeple'},
+        'requestContext': {'http': {'method': 'GET'}}
+    }
+
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    meta = json.loads(response['body'])
+    assert meta['cafe_id'] == 'the-malt-and-meeple'
+    assert meta['menu_url'] == 'https://menu.untappd.com/venue/1234'
+    assert meta['announcement_banner'] == '🎲 New Arrivals: Arcs and Harmonies now on shelves!'
+    assert meta['featured_game_ids'] == ['13', '266192']
+

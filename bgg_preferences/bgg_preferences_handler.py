@@ -374,7 +374,9 @@ def _handle_cafe_onboard(event, claims):
     drink_pairings_enabled = bool(body.get('drink_pairings_enabled', True))
     staff_pin = (body.get('staff_pin') or '').strip()
     logo_url = (body.get('logo_url') or '').strip()
-    featured_game_ids = [str(gid) for gid in body.get('featured_game_ids', []) if gid]
+    featured_game_ids = [str(gid).strip() for gid in body.get('featured_game_ids', []) if str(gid).strip()][:5]
+    menu_url = (body.get('menu_url') or '').strip()
+    announcement_banner = (body.get('announcement_banner') or '').strip()[:160]
 
     room_names = []
     if 'room_names' in body:
@@ -398,6 +400,8 @@ def _handle_cafe_onboard(event, claims):
         'shelf_regex': shelf_regex,
         'drink_pairings_enabled': drink_pairings_enabled,
         'featured_game_ids': featured_game_ids,
+        'menu_url': menu_url,
+        'announcement_banner': announcement_banner,
         'staff_pin': staff_pin,
         'logo_url': logo_url,
         'created_at': existing.get('created_at', now_iso) if existing else now_iso,
@@ -440,6 +444,9 @@ def _handle_cafe_onboard(event, claims):
             'table_count': table_count,
             'tagline': tagline,
             'logo_url': logo_url,
+            'menu_url': menu_url,
+            'announcement_banner': announcement_banner,
+            'featured_game_ids': featured_game_ids,
             'updated_at': now_iso
         }
         s3.put_object(
@@ -518,7 +525,10 @@ def _handle_cafe_meta(query_params):
             'wifi_password': item.get('wifi_password', ''),
             'tagline': item.get('tagline', ''),
             'drink_pairings_enabled': bool(item.get('drink_pairings_enabled', True)),
-            'logo_url': item.get('logo_url', '')
+            'logo_url': item.get('logo_url', ''),
+            'menu_url': item.get('menu_url', ''),
+            'announcement_banner': item.get('announcement_banner', ''),
+            'featured_game_ids': item.get('featured_game_ids', [])
         }
         return {
             'statusCode': 200,
@@ -1111,6 +1121,19 @@ def _handle_cafe_update(event, claims):
     if 'logo_url' in body:
         update_item['logo_url'] = str(body['logo_url']).strip()
 
+    if 'menu_url' in body:
+        update_item['menu_url'] = str(body['menu_url']).strip()
+
+    if 'announcement_banner' in body:
+        update_item['announcement_banner'] = str(body['announcement_banner']).strip()[:160]
+
+    if 'featured_game_ids' in body:
+        fg_val = body['featured_game_ids']
+        if isinstance(fg_val, list):
+            update_item['featured_game_ids'] = [str(gid).strip() for gid in fg_val if str(gid).strip()][:5]
+        elif isinstance(fg_val, str):
+            update_item['featured_game_ids'] = [gid.strip() for gid in fg_val.split(',') if gid.strip()][:5]
+
     if 'bgg_username' in body and body['bgg_username']:
         bgg_user = str(body['bgg_username']).strip()
         if re.match(r'^[a-zA-Z0-9_]{1,25}$', bgg_user):
@@ -1153,6 +1176,9 @@ def _handle_cafe_update(event, claims):
             'table_count': update_item.get('table_count'),
             'tagline': update_item.get('tagline'),
             'logo_url': update_item.get('logo_url'),
+            'menu_url': update_item.get('menu_url', ''),
+            'announcement_banner': update_item.get('announcement_banner', ''),
+            'featured_game_ids': update_item.get('featured_game_ids', []),
             'updated_at': now_iso
         }
         s3.put_object(

@@ -864,7 +864,10 @@ window.fetchApi = async function(endpoint, options = {}) {
                 wifi_ssid: "Malt-Guest",
                 wifi_password: "rollinitiative",
                 tagline: "Craft beer & tabletop games in downtown.",
-                drink_pairings_enabled: true
+                drink_pairings_enabled: true,
+                menu_url: "https://example.com/malt-and-meeple/menu",
+                announcement_banner: "🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap",
+                featured_game_ids: ["13", "266192", "178900"]
             };
         } else if (endpoint.startsWith('/cafe/sync')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
@@ -910,6 +913,9 @@ window.fetchApi = async function(endpoint, options = {}) {
                     tagline: "24 craft beers on tap & 600+ tabletop games. Ask staff for recommendations!",
                     shelf_regex: "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)",
                     drink_pairings_enabled: true,
+                    menu_url: "https://example.com/malt-and-meeple/menu",
+                    announcement_banner: "🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap",
+                    featured_game_ids: ["13", "266192", "178900"],
                     last_sync_timestamp: new Date().toISOString()
                 };
                 localStorage.setItem('bgg_mock_cafe_the-malt-and-meeple', JSON.stringify(defaultCafe));

@@ -55,6 +55,9 @@
                     } else if (pathParts[cafeIdx + 2] !== "table" && pathParts[cafeIdx + 2] !== "index.html") {
                         tableFromPath = pathParts[cafeIdx + 2];
                     }
+                    if (tableFromPath) {
+                        try { tableFromPath = decodeURIComponent(tableFromPath); } catch (e) {}
+                    }
                 }
             }
         }
@@ -126,64 +129,100 @@
         } catch (e) {}
     }
 
-    // Fetch Venue Metadata
-    async function loadVenueMetadata() {
+    // Apply venue branding to DOM and components
+    function applyVenueBranding(data) {
+        if (!data) return;
+        state.venueMeta = data;
         const titleEl = document.getElementById("venue-name-title");
         const taglineEl = document.getElementById("venue-tagline");
-        const tableBadge = document.getElementById("header-table-badge");
+        const avatarEl = document.getElementById("venue-avatar-wrap");
+        const wifiChip = document.getElementById("header-wifi-chip");
         const wifiSsid = document.getElementById("wifi-ssid-label");
         const wifiPass = document.getElementById("wifi-pass-label");
-        const wifiChip = document.getElementById("header-wifi-chip");
-        const avatarEl = document.getElementById("venue-avatar-wrap");
+        const menuBtn = document.getElementById("header-menu-btn");
 
-        if (tableBadge) {
-            if (state.table) {
-                tableBadge.style.display = "inline-flex";
-                tableBadge.textContent = /^\d+$/.test(state.table) ? `🪑 Table ${state.table}` : `🪑 ${state.table}`;
+        if (titleEl && data.name) titleEl.textContent = data.name;
+        if (taglineEl && data.tagline) taglineEl.textContent = data.tagline;
+        if (avatarEl && data.logo_url) {
+            avatarEl.innerHTML = `<img src="${window.escapeHTML ? window.escapeHTML(data.logo_url) : data.logo_url}" alt="Logo">`;
+        }
+
+        // Wi-Fi setup
+        if (wifiChip) {
+            if (data.wifi_ssid) {
+                wifiChip.style.display = "inline-flex";
+                if (wifiSsid) wifiSsid.textContent = data.wifi_ssid;
+                if (wifiPass && data.wifi_password) {
+                    wifiPass.textContent = `(${data.wifi_password})`;
+                } else if (wifiPass) {
+                    wifiPass.textContent = "";
+                }
             } else {
-                tableBadge.style.display = "none";
+                wifiChip.style.display = "none";
             }
         }
-        const ctaTableNum = document.getElementById("cta-table-num");
-        if (ctaTableNum) {
-            ctaTableNum.textContent = state.table ? state.table : "";
-        }
-        const ctaSub = document.getElementById("recommender-cta-sub");
-        if (ctaSub) {
-            if (state.table) {
-                const label = /^\d+$/.test(state.table) ? `Table ${state.table}` : state.table;
-                ctaSub.innerHTML = `Answer 3 quick taps to find recommendations tailored for <span class="cta-table-num" id="cta-table-num">${label}</span>.`;
+
+        // Digital Menu Button (Milestone C10)
+        if (menuBtn) {
+            if (data.menu_url && data.menu_url.trim()) {
+                menuBtn.href = data.menu_url.trim();
+                menuBtn.style.display = "inline-flex";
             } else {
+                menuBtn.style.display = "none";
+            }
+        }
+
+        // Venue Event Announcement Banner (Milestone C10)
+        if (typeof window !== "undefined" && window.AnnouncementBanner) {
+            if (data.announcement_banner && data.announcement_banner.trim()) {
+                const bannerId = `cafe_${state.cafeId}_${data.announcement_banner.length}`;
+                window.AnnouncementBanner.show({
+                    id: bannerId,
+                    text: data.announcement_banner.trim(),
+                    type: "event",
+                    icon: "🎉",
+                    dismissible: true
+                });
+            } else {
+                window.AnnouncementBanner.hide();
+            }
+        }
+
+        // Render Guru Picks Carousel
+        renderGuruPicks();
+    }
+
+    // Fetch Venue Metadata
+    async function loadVenueMetadata() {
+        if (!state.cafeId) return;
+
+        const tableBadge = document.getElementById("header-table-badge");
+        const ctaTableNum = document.getElementById("cta-table-num");
+        const ctaSub = document.getElementById("recommender-cta-sub");
+
+        if (state.table) {
+            if (tableBadge) {
+                tableBadge.textContent = /^\d+$/.test(state.table) ? `🪑 Table ${state.table}` : `🪑 ${state.table}`;
+                tableBadge.style.display = "inline-flex";
+            }
+            if (ctaTableNum) ctaTableNum.textContent = state.table;
+            if (ctaSub) {
+                ctaSub.innerHTML = `Answer 3 quick taps to find recommendations tailored for Table <span class="cta-table-num">${window.escapeHTML ? window.escapeHTML(state.table) : state.table}</span>.`;
+            }
+        } else {
+            if (tableBadge) {
+                tableBadge.style.display = "none";
+            }
+            if (ctaSub) {
                 ctaSub.textContent = "Answer 3 quick taps to find tailored game recommendations for your visit.";
             }
         }
 
         try {
             const resp = await window.fetchApi(`/cafe/meta?cafe_id=${encodeURIComponent(state.cafeId)}`);
-            if (resp.ok) {
+            if (resp && resp.ok) {
                 const data = await resp.json();
-                state.venueMeta = data;
-                
-                if (titleEl && data.name) titleEl.textContent = data.name;
-                if (taglineEl && data.tagline) taglineEl.textContent = data.tagline;
-                if (avatarEl && data.logo_url) {
-                    avatarEl.innerHTML = `<img src="${window.escapeHTML ? window.escapeHTML(data.logo_url) : data.logo_url}" alt="Logo">`;
-                }
-
-                // Wi-Fi setup
-                if (wifiChip) {
-                    if (data.wifi_ssid) {
-                        wifiChip.style.display = "inline-flex";
-                        if (wifiSsid) wifiSsid.textContent = data.wifi_ssid;
-                        if (wifiPass && data.wifi_password) {
-                            wifiPass.textContent = `(${data.wifi_password})`;
-                        } else if (wifiPass) {
-                            wifiPass.textContent = "";
-                        }
-                    } else {
-                        wifiChip.style.display = "none";
-                    }
-                }
+                applyVenueBranding(data);
                 return;
             }
         } catch (err) {
@@ -191,19 +230,19 @@
         }
 
         // Default fallback branding if venue not found
-        state.venueMeta = {
+        const fallbackMeta = {
             cafe_id: state.cafeId,
             name: "The Malt & Meeple Cafe",
             tagline: "Craft brews & 500+ tabletop games on tap.",
             wifi_ssid: "MaltMeeple-Guest",
             wifi_password: "rollforinitiative",
             drink_pairings_enabled: true,
-            bgg_username: "maltandmeeple"
+            bgg_username: "maltandmeeple",
+            menu_url: "",
+            announcement_banner: "",
+            featured_game_ids: []
         };
-        if (titleEl) titleEl.textContent = state.venueMeta.name;
-        if (taglineEl) taglineEl.textContent = state.venueMeta.tagline;
-        if (wifiSsid) wifiSsid.textContent = state.venueMeta.wifi_ssid;
-        if (wifiPass) wifiPass.textContent = `(${state.venueMeta.wifi_password})`;
+        applyVenueBranding(fallbackMeta);
     }
 
     // Set up interactive single-select pills and cards
@@ -823,6 +862,7 @@
                 // Ignore sessionStorage quota errors
             }
             if (countBadge) countBadge.textContent = state.collection.length;
+            renderGuruPicks();
             filterAndSortCollection();
             return;
         }
@@ -841,6 +881,123 @@
             const retry = document.getElementById("retry-collection-btn");
             if (retry) retry.addEventListener("click", loadCafeCollection);
         }
+    }
+
+    // Footprint Heuristic: Small Table Friendly (Milestone C10)
+    function isSmallTableFriendly(g) {
+        if (!g) return false;
+        const cats = Array.isArray(g.categories) ? g.categories.map(c => String(c).toLowerCase()) : (g.categories ? [String(g.categories).toLowerCase()] : []);
+        const mechs = Array.isArray(g.mechanics) ? g.mechanics.map(m => String(m).toLowerCase()) : (g.mechanics ? [String(g.mechanics).toLowerCase()] : []);
+        const name = (g.name || "").toLowerCase();
+
+        // Keywords in category or mechanics indicating compact tabletop footprint
+        const compactKeywords = [
+            "card game", "dice", "microgame", "pocket", "travel", "deduction", 
+            "word game", "party game", "bluffing", "trivia", "take that", "hand management"
+        ];
+
+        const matchesKeyword = compactKeywords.some(kw => 
+            cats.some(c => c.includes(kw)) || mechs.some(m => m.includes(kw))
+        );
+
+        // Specific notable small table titles
+        const smallTitles = [
+            "hive", "jaipur", "love letter", "sea salt & paper", "taco cat goat cheese pizza",
+            "cockroach poker", "spot it", "coup", "hanabi", "scout", "skull", 
+            "deep sea adventure", "the mind", "fox in the forest", "star realms", 
+            "regicide", "similo", "bandido", "saboteur", "port royal", "point salad", 
+            "exploding kittens", "sushi go", "splendor duel", "targi", "air, land, & sea"
+        ];
+        const matchesTitle = smallTitles.some(st => name.includes(st));
+
+        // Footprint heuristic: small table games should not have sprawling playtime (>90m) or high weight (>3.6)
+        const playtime = g.playing_time || g.max_playtime || 0;
+        const complexity = g.complexity || 0;
+        const isSprawling = (playtime > 90) || (complexity > 3.6);
+
+        if (isSprawling) return false;
+
+        return matchesKeyword || matchesTitle;
+    }
+
+    // "Featured Guru Picks" Spotlight Carousel (Milestone C10)
+    function renderGuruPicks() {
+        const section = document.getElementById("cafe-guru-picks-section");
+        const carousel = document.getElementById("guru-picks-carousel");
+        const countBadge = document.getElementById("guru-picks-count-badge");
+        if (!section || !carousel) return;
+
+        const featuredIds = (state.venueMeta && state.venueMeta.featured_game_ids) 
+            ? state.venueMeta.featured_game_ids 
+            : [];
+
+        if (!Array.isArray(featuredIds) || featuredIds.length === 0) {
+            section.style.display = "none";
+            return;
+        }
+
+        const allGamesMap = new Map();
+        (state.collection || []).forEach(g => allGamesMap.set(String(g.id), g));
+        (state.recommendations || []).forEach(g => {
+            if (!allGamesMap.has(String(g.id))) allGamesMap.set(String(g.id), g);
+        });
+
+        const featuredGames = [];
+        featuredIds.forEach(id => {
+            const found = allGamesMap.get(String(id));
+            if (found) {
+                featuredGames.push(found);
+            }
+        });
+
+        if (featuredGames.length === 0) {
+            section.style.display = "none";
+            return;
+        }
+
+        if (countBadge) {
+            countBadge.textContent = `${featuredGames.length} Featured`;
+        }
+
+        const escape = window.escapeHTML || (s => s);
+        let html = "";
+        featuredGames.forEach(g => {
+            const thumb = g.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
+            const shelf = (g.shelf_location || g.shelf || "").trim();
+            const rating = g.rating ? Number(g.rating).toFixed(1) : "—";
+            const complexity = g.complexity ? Number(g.complexity).toFixed(1) : "2.0";
+            const playtime = g.playing_time ? `${g.playing_time}m` : "30m";
+            const bggUrl = `https://boardgamegeek.com/boardgame/${encodeURIComponent(g.id)}`;
+
+            html += `
+                <div class="guru-pick-card" data-game-id="${escape(String(g.id))}">
+                    <span class="guru-pick-badge">⭐ House Pick</span>
+                    <div class="guru-pick-thumb-wrap">
+                        <img class="guru-pick-thumb" src="${thumb}" alt="${escape(g.name)}" onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
+                    </div>
+                    <div class="guru-pick-name" title="${escape(g.name)}">${escape(g.name)}</div>
+                    <div class="guru-pick-meta-row">
+                        ${shelf ? `<span class="guru-pick-shelf">📍 ${escape(shelf)}</span>` : ""}
+                        <span>★ ${rating}</span>
+                        <span>⚙️ ${complexity} / 5</span>
+                        <span>⏱️ ${playtime}</span>
+                    </div>
+                    <div class="guru-pick-actions">
+                        <button type="button" class="btn-guru-pick-action primary btn-watch-rules" data-game-id="${escape(String(g.id))}">
+                            ▶ Watch Rules
+                        </button>
+                        <a href="${bggUrl}" target="_blank" rel="noopener" class="btn-guru-pick-action" title="View on BoardGameGeek">
+                            BGG ↗
+                        </a>
+                    </div>
+                </div>
+            `;
+        });
+
+        carousel.innerHTML = html;
+        section.style.display = "block";
+
+        setupVideoModalControls();
     }
 
     // Filter and Sort Collection Browser items
@@ -866,7 +1023,9 @@
 
         // 2. Chip Filter
         const f = state.activeFilter;
-        if (f === "2p") {
+        if (f === "small_table") {
+            list = list.filter(g => isSmallTableFriendly(g));
+        } else if (f === "2p") {
             list = list.filter(g => (g.min_players <= 2 && g.max_players >= 2));
         } else if (f === "4p") {
             list = list.filter(g => (g.min_players <= 4 && g.max_players >= 4));
@@ -1172,7 +1331,7 @@
         if (activeSection) activeSection.style.display = "none";
 
         // Load collection if needed
-        if (!state.collection || state.collection.length === 0) {
+        if ((!state.collection || state.collection.length === 0) && (!state.recommendations || state.recommendations.length === 0)) {
             await loadCafeCollection();
         }
 
@@ -1211,7 +1370,12 @@
         }
 
         const query = (state.pollSearchQuery || "").trim().toLowerCase();
-        const games = state.collection || [];
+        const allGamesMap = new Map();
+        (state.collection || []).forEach(g => allGamesMap.set(String(g.id), g));
+        (state.recommendations || []).forEach(g => {
+            if (!allGamesMap.has(String(g.id))) allGamesMap.set(String(g.id), g);
+        });
+        const games = Array.from(allGamesMap.values());
         const escape = window.escapeHTML || (s => s);
 
         // Filter games by search query
@@ -1350,9 +1514,13 @@
         try {
             // Find selected game objects
             const selectedCandidates = [];
-            const games = state.collection || [];
+            const allGamesMap = new Map();
+            (state.collection || []).forEach(g => allGamesMap.set(String(g.id), g));
+            (state.recommendations || []).forEach(g => {
+                if (!allGamesMap.has(String(g.id))) allGamesMap.set(String(g.id), g);
+            });
             state.pollSelectedIds.forEach(id => {
-                const found = games.find(g => String(g.id) === String(id));
+                const found = allGamesMap.get(String(id));
                 if (found) {
                     selectedCandidates.push({
                         id: String(found.id),
@@ -1484,6 +1652,7 @@
 
     async function startTableVote() {
         await openPollCreationModal();
+        await launchConfiguredTablePoll();
     }
 
     function renderBallotCandidates(candidates) {
@@ -2024,7 +2193,10 @@
             openActiveTableVoteModal,
             updateTableVoteUI,
             checkActiveTableVoteSession,
-            scheduleVoteTtlTimer
+            scheduleVoteTtlTimer,
+            isSmallTableFriendly,
+            renderGuruPicks,
+            applyVenueBranding
         };
     }
 

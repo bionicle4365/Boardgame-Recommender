@@ -17,10 +17,7 @@ For comprehensive milestones, user journeys, and technical architecture specific
 - **Milestone C7: Table QR Code Generator & Real-Time Table Voting** (Completed)
 - **Milestone C8: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides** (Dropped — evaluated as operationally uncompelling; shelf parsing already operational via Milestone C2)
 - **Milestone C9: Cafe Library Analytics & Table Insights Dashboard** (Dropped — evaluated as unneeded overhead; core sommelier and venue onboarding completed)
-
-With the Cafe & Bar Edition core successfully delivered across Milestones C1–C7, active roadmap focus returns to the core recommender system.
-
-- **Next Up: Milestone 31: Similar Games API Endpoint** (See below)
+- **Milestone C10: Venue Hospitality, Reusable Announcement Banner & Table Experience** (Completed)
 
 ---
 
@@ -156,6 +153,4 @@ The following milestones have been evaluated and archived/deferred based on arch
 * **Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI** (Mobile-first responsive glassmorphic patron interface at `site_ui/cafe/index.html` with `cafe.css` and `cafe.js`, co-branded venue header with table badge and Wi-Fi credential copy, tactile 3-tap vibe quiz for player count, session duration, and vibe cards, collapsible BGG hobbyist bypass, mobile game cards with shelf location, teach time, AI sommelier quote, rules video links, empty state relaxation chips, and Vitest suite)
 * **Milestone C6: "Watch It Played" Rules Video & Media Integration** (Curated video link ingestion from BGG API XML `/thing?videos=1` in `bgg_game_data_scraper`, resolution of `rules_video_url` in recommender payload, accessible responsive in-app video modal in `site_ui/cafe/index.html` with YouTube nocookie embed and fallback search links, and rules teach time badges adjacent to video triggers)
 * **Milestone C7: Table QR Code Generator & Real-Time Table Voting** (`scripts/generate_cafe_table_qrs.py` vector SVG & printable HTML sheet generator with 180° inverted folding top panel, `POST /cafe/vote/start` single-tap session auto-creation with group naming `{Cafe} - Table {N}`, integration with `bgg-game-night-sessions` DynamoDB table and `sessions.py` consensus scoring engine, and live table voting cards)
-
-
-
+* **Milestone C10: Venue Hospitality, Reusable Announcement Banner & Table Experience** (Integrated digital food & beverage menu button linking to external POS/menus, modular and accessible glassmorphic announcement banner Jekyll include with persistent localStorage dismissal state, venue owner-curated "Guru Picks" carousel for spotlight titles, and heuristic "Small Table Friendly" physical footprint classification filter for compact seating)

@@ -20,3 +20,14 @@ defaults:
       path: ""
     values:
       image: assets/img/og-image.png
+
+# Reusable Announcement Banner (Site-wide)
+announcement:
+  enabled: false
+  id: "site-global-announcement"
+  type: "banner-info"
+  icon: "📢"
+  text: ""
+  link: ""
+  link_text: "Learn More →"
+  dismissible: true

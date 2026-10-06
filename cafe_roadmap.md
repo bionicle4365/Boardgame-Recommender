@@ -233,3 +233,47 @@ This milestone was evaluated and dropped for the following architectural and ope
 
 ### Evaluation & Rationale
 This milestone was evaluated and dropped to maintain a lean, zero-overhead operational model. Board game cafe and bar operators prioritize frictionless, turnkey patron sommelier recommendations, immediate table QR onboarding, and reliable BGG library synchronization without the overhead of maintaining Athena log pipelines, event telemetry aggregators, or secondary reporting dashboards. Core patron vibe check and collection browsing capabilities fully address the operational goals of the Cafe Edition.
+
+---
+
+## Milestone C10: Venue Hospitality, Reusable Announcement Banner & Table Experience (Completed)
+
+### Objective
+Enhance the cafe sommelier and table experience with revenue-driving digital menu integration, a reusable site-wide and venue announcement banner component, curated "Guru Picks" spotlights, and a "Small Table Friendly" physical footprint filter for compact bistro and bar seating.
+
+### Design Notes
+- **F&B Revenue Alignment:** Patrons scan QR codes with phones in hand; providing a direct digital menu or online ordering link (`menu_url` linking to Toast, Square, Untappd, or PDF) bridges game selection with the cafe's core food and beverage revenue model without staff friction.
+- **Site-Wide Reusable Announcement Banner:**
+  - Create a modular, accessible Jekyll component (`site_ui/_includes/announcement_banner.html`) styled with glassmorphism.
+  - **Reusable for General Site:** Supports site-wide announcements, new features, and maintenance alerts configured via Jekyll `_config.yml` or global state.
+  - **Dynamic for Cafe Venues:** Renders venue-specific event announcements (`announcement_banner`, e.g. *"🎉 Trivia Night tonight at 7:30 PM! $5 pints"*).
+  - **Polished Dismissal:** Clean `✕` button with `localStorage` dismissal tracking so patrons aren't re-nagged during their session.
+- **"Featured Guru Picks" / House Specials:**
+  - Venue owners can curate 1–5 spotlight titles (`featured_game_ids`) from their catalog to highlight house favorites, new arrivals, or games staff love to teach.
+  - Displayed as a prominent, sticky "🌟 Guru Picks / Tonight's Highlights" card carousel at the top of the collection browser.
+- **"Small Table Friendly" Footprint Filter:**
+  - Addresses a major physical venue pain point: 2-person high-tops and compact bar tables cannot fit massive board games with sprawling components (*Scythe*, *Eclipse*).
+  - A 1-tap `[ 🤏 Small Table Friendly ]` filter chip filters for card games, dice games, and low-footprint titles (*Hive*, *Cockroach Poker*, *Sea Salt & Paper*, *Jaipur*).
+
+### Architecture Decisions
+- **Venue Schema Extension (`bgg-cafes` DynamoDB):**
+  - `menu_url` (String, optional): Link to digital food/drink menu or ordering portal.
+  - `announcement_banner` (String, optional, max 160 chars): Venue event or promotional text.
+  - `featured_game_ids` (List of Strings, optional): BGG IDs of up to 5 featured games.
+- **S3 Metadata Mirror:** Propagate new attributes into `data/cafes/{cafe_id}/meta.json` and `data/cafes_registry.json`.
+- **Reusable Component Architecture:**
+  - Build `site_ui/_includes/announcement_banner.html` accepting parameters (`text`, `link`, `id`, `dismissible`) with CSS in `design-system.css`.
+  - Can be included globally in `_layouts/default.html` as well as dynamically populated by `cafe.js`.
+- **Footprint Heuristic Engine:**
+  - Map BGG categories and mechanics (`Card Game`, `Dice`, `Deduction`, `Microgame`, `Word Game`) to a `small_table_friendly` boolean flag in `collection.parquet` and client-side filters.
+- **Venue Settings UI:**
+  - Add input fields to `site_ui/cafe/manage.html` for Menu URL, Event Announcement Banner, and Guru Picks selector.
+
+### Tasks
+- [x] **DynamoDB & S3 Metadata Schema Updates:** Update `_handle_cafe_update()` in `bgg_preferences_handler.py` to persist `menu_url`, `announcement_banner`, and `featured_game_ids`, mirroring to S3 `meta.json` and `cafes_registry.json`.
+- [x] **Reusable Announcement Banner Component:** Build `site_ui/_includes/announcement_banner.html` and glassmorphic styles in `design-system.css` supporting both global site alerts and dynamic venue announcements with `localStorage` dismissal state.
+- [x] **Venue Settings UI Inputs:** Add form fields for Digital Menu URL, Announcement Banner, and Featured Game IDs in `site_ui/cafe/manage.html`.
+- [x] **Patron Portal F&B Integration:** Add "🍺 Food & Drinks Menu" header CTA in `site_ui/cafe/index.html` when `menu_url` is configured.
+- [x] **"Featured Guru Picks" Carousel:** Render spotlight carousel/cards for `featured_game_ids` at the top of the collection browser in `site_ui/cafe/index.html`.
+- [x] **"Small Table Friendly" Footprint Filter:** Implement footprint classification heuristic and add `[ 🤏 Small Table Friendly ]` chip to `site_ui/cafe/index.html` collection browser and recommendation filters.
+- [x] **Unit & Frontend Tests:** Add Python tests for metadata update/persistence and Vitest tests for reusable announcement banner dismissal, menu URL rendering, and footprint filtering.

@@ -175,14 +175,14 @@
                 <li id="profile-nav-item" style="display: none;">
                     <a href="{{ '/profile/' | relative_url }}"
                         class="nav-item {% if page.url contains '/profile' %}active{% endif %}">
-                        <span>👤 View Profile</span>
+                        <span>View Profile</span>
                     </a>
                 </li>
                 <!-- Settings: shown only when logged in (controlled by JS below) -->
                 <li id="settings-nav-item" style="display: none;">
                     <a href="{{ '/settings/' | relative_url }}"
                         class="nav-item {% if page.url contains '/settings' %}active{% endif %}">
-                        <span>⚙️ Settings</span>
+                        <span>Settings</span>
                     </a>
                 </li>
             </ul>
@@ -207,9 +207,12 @@
         </div>
         <div class="sidebar-footer">
             <div class="sidebar-kofi-container">
-                <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#6366f1', 'V8S126E4KZ');kofiwidget2.draw();</script> 
+                <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+                <script
+                    type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#6366f1', 'V8S126E4KZ'); kofiwidget2.draw();</script>
             </div>
-            <a href="http://www.boardgamegeek.com" target="_blank" rel="noopener noreferrer" class="sidebar-bgg-btn" title="Powered by BoardGameGeek">
+            <a href="http://www.boardgamegeek.com" target="_blank" rel="noopener noreferrer" class="sidebar-bgg-btn"
+                title="Powered by BoardGameGeek">
                 <img src="{{ 'assets/img/powered_by_BGG_02_MED.png' | relative_url }}" alt="Powered by BGG"
                     class="sidebar-footer-img">
             </a>

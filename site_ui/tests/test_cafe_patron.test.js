@@ -17,16 +17,32 @@ const cafeJsPath = path.resolve(__dirname, '../assets/js/cafe.js');
 const rawCafeCode = fs.readFileSync(cafeJsPath, 'utf8');
 eval(rawCafeCode);
 
+// Load AnnouncementBanner script from include
+const bannerHtmlPath = path.resolve(__dirname, '../_includes/announcement_banner.html');
+const rawBannerHtml = fs.readFileSync(bannerHtmlPath, 'utf8');
+const bannerScriptMatch = rawBannerHtml.match(/<script>([\s\S]*?)<\/script>/);
+if (bannerScriptMatch) {
+    eval(bannerScriptMatch[1]);
+}
+
 describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
     beforeEach(() => {
         localStorage.clear();
         sessionStorage.clear();
         document.body.innerHTML = `
+            <!-- Global Announcement Banner (Reusable Include) -->
+            <div id="site-announcement-banner" class="site-announcement-banner banner-info" style="display: none;" data-banner-id="site-global-announcement">
+                <span id="announcement-banner-icon">📢</span>
+                <span id="announcement-banner-text"></span>
+                <a id="announcement-banner-cta" href="#" style="display: none;"><span id="announcement-banner-cta-text">Learn More →</span></a>
+                <button id="announcement-banner-dismiss">✕</button>
+            </div>
             <div id="cafe-patron-view">
                 <div id="vibe-quiz-form"></div>
                 <div id="venue-name-title"></div>
                 <div id="venue-tagline"></div>
                 <div id="header-table-badge"></div>
+                <a id="header-menu-btn" class="header-menu-cta-btn" href="#" target="_blank" style="display: none;">🍺 Food &amp; Drinks Menu ↗</a>
                 <span id="cta-table-num"></span>
                 <div id="header-wifi-chip" style="display: none;">
                     <span id="wifi-ssid-label"></span>
@@ -38,11 +54,17 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
                     <span id="collection-count-badge"></span>
                 </div>
                 <div id="cafe-collection-view">
+                    <!-- Guru Picks Spotlight Carousel (Milestone C10) -->
+                    <div id="cafe-guru-picks-section" style="display: none;">
+                        <span id="guru-picks-count-badge"></span>
+                        <div id="guru-picks-carousel"></div>
+                    </div>
                     <button id="btn-launch-recommender"></button>
                     <input id="cafe-search-input">
                     <button id="cafe-search-clear" style="display: none;"></button>
                     <div id="collection-quick-filters">
                         <button class="cafe-filter-chip active" data-filter="all"></button>
+                        <button class="cafe-filter-chip" data-filter="small_table"></button>
                         <button class="cafe-filter-chip" data-filter="2p"></button>
                         <button class="cafe-filter-chip" data-filter="4p"></button>
                         <button class="cafe-filter-chip" data-filter="shelved"></button>
@@ -749,6 +771,151 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         window.CafePortal.state.pollSearchQuery = '';
         window.CafePortal.renderPollCandidatePicker();
         expect(picker.querySelectorAll('.poll-candidate-item').length).toBe(4);
+    });
+
+    // ── Milestone C10 Venue Hospitality & Table Experience Tests ────────────
+
+    test('AnnouncementBanner module displays announcement, handles dismissal, and respects localStorage state', () => {
+        expect(window.AnnouncementBanner).toBeDefined();
+
+        const shown = window.AnnouncementBanner.show({
+            id: 'test-event-banner-1',
+            text: '🎉 Trivia Night tonight at 7:30 PM! $5 pints',
+            link: 'https://example.com/trivia',
+            linkText: 'RSVP Now →',
+            type: 'event',
+            icon: '🎉',
+            dismissible: true
+        });
+
+        expect(shown).toBe(true);
+        const banner = document.getElementById('site-announcement-banner');
+        const text = document.getElementById('announcement-banner-text');
+        const cta = document.getElementById('announcement-banner-cta');
+        const icon = document.getElementById('announcement-banner-icon');
+
+        expect(banner.style.display).toBe('block');
+        expect(banner.classList.contains('banner-event')).toBe(true);
+        expect(text.textContent).toBe('🎉 Trivia Night tonight at 7:30 PM! $5 pints');
+        expect(cta.href).toBe('https://example.com/trivia');
+        expect(cta.style.display).toBe('inline-flex');
+        expect(icon.textContent).toBe('🎉');
+
+        // Dismiss the banner
+        window.AnnouncementBanner.dismiss('test-event-banner-1');
+        expect(window.AnnouncementBanner.isDismissed('test-event-banner-1')).toBe(true);
+
+        // Attempting to show again should return false and not display
+        const shownAgain = window.AnnouncementBanner.show({
+            id: 'test-event-banner-1',
+            text: '🎉 Trivia Night tonight at 7:30 PM! $5 pints'
+        });
+        expect(shownAgain).toBe(false);
+
+        // Reset dismissal
+        window.AnnouncementBanner.reset('test-event-banner-1');
+        expect(window.AnnouncementBanner.isDismissed('test-event-banner-1')).toBe(false);
+    });
+
+    test('loadVenueMetadata populates Food & Drinks Menu CTA button when menu_url is configured', async () => {
+        window.CafePortal.state.cafeId = 'the-malt-and-meeple';
+        const originalFetchApi = window.fetchApi;
+
+        window.fetchApi = async (url) => {
+            if (url.includes('/cafe/meta')) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        cafe_id: 'the-malt-and-meeple',
+                        name: 'The Malt & Meeple',
+                        menu_url: 'https://toasttab.com/malt-and-meeple/menu',
+                        announcement_banner: '🍺 Half-price drafts till 7PM!'
+                    })
+                };
+            }
+            return originalFetchApi(url);
+        };
+
+        try {
+            await window.CafePortal.loadVenueMetadata();
+
+            const menuBtn = document.getElementById('header-menu-btn');
+            expect(menuBtn).not.toBeNull();
+            expect(menuBtn.style.display).toBe('inline-flex');
+            expect(menuBtn.href).toBe('https://toasttab.com/malt-and-meeple/menu');
+
+            // Banner should also be displayed
+            const banner = document.getElementById('site-announcement-banner');
+            expect(banner.style.display).toBe('block');
+            const text = document.getElementById('announcement-banner-text');
+            expect(text.textContent).toContain('Half-price drafts');
+        } finally {
+            window.fetchApi = originalFetchApi;
+        }
+    });
+
+    test('renderGuruPicks renders spotlight carousel cards for venue featured_game_ids', () => {
+        const library = [
+            { id: '13', name: 'Catan', rating: 7.1, complexity: 2.3, playing_time: 75, shelf_location: 'A-1' },
+            { id: '266192', name: 'Wingspan', rating: 8.1, complexity: 2.4, playing_time: 70, shelf_location: 'B-2' },
+            { id: '178900', name: 'Codenames', rating: 7.6, complexity: 1.3, playing_time: 15, shelf_location: 'C-3' },
+            { id: '999', name: 'Unfeatured Game', rating: 6.0, complexity: 2.0, playing_time: 30 }
+        ];
+
+        window.CafePortal.state.collection = library;
+        window.CafePortal.state.venueMeta = {
+            featured_game_ids: ['13', '266192', '178900']
+        };
+
+        window.CafePortal.renderGuruPicks();
+
+        const section = document.getElementById('cafe-guru-picks-section');
+        const carousel = document.getElementById('guru-picks-carousel');
+        const countBadge = document.getElementById('guru-picks-count-badge');
+
+        expect(section.style.display).toBe('block');
+        expect(countBadge.textContent).toBe('3 Featured');
+
+        const cards = carousel.querySelectorAll('.guru-pick-card');
+        expect(cards.length).toBe(3);
+
+        const cardNames = Array.from(cards).map(c => c.querySelector('.guru-pick-name').textContent);
+        expect(cardNames).toContain('Catan');
+        expect(cardNames).toContain('Wingspan');
+        expect(cardNames).toContain('Codenames');
+        expect(cardNames).not.toContain('Unfeatured Game');
+
+        // Verify badge and watch rules button
+        expect(cards[0].querySelector('.guru-pick-badge').textContent).toBe('⭐ House Pick');
+        expect(cards[0].querySelector('.btn-watch-rules')).not.toBeNull();
+    });
+
+    test('isSmallTableFriendly accurately identifies compact games and filters library', () => {
+        const compactGame1 = { id: '1', name: 'Love Letter', categories: ['Card Game', 'Deduction'], playing_time: 20, complexity: 1.2 };
+        const compactGame2 = { id: '2', name: 'Hive', categories: ['Abstract Strategy'], playing_time: 20, complexity: 2.3 };
+        const compactGame3 = { id: '3', name: 'Sea Salt & Paper', categories: ['Card Game'], playing_time: 30, complexity: 1.8 };
+        const compactGame4 = { id: '4', name: 'Sushi Go!', categories: ['Card Game'], playing_time: 15, complexity: 1.1 };
+        const sprawlingGame1 = { id: '5', name: 'Scythe', categories: ['Economic', 'Miniatures'], playing_time: 115, complexity: 3.4 };
+        const sprawlingGame2 = { id: '6', name: 'Gloomhaven', categories: ['Adventure', 'Miniatures'], playing_time: 120, complexity: 3.8 };
+
+        expect(window.CafePortal.isSmallTableFriendly(compactGame1)).toBe(true);
+        expect(window.CafePortal.isSmallTableFriendly(compactGame2)).toBe(true);
+        expect(window.CafePortal.isSmallTableFriendly(compactGame3)).toBe(true);
+        expect(window.CafePortal.isSmallTableFriendly(compactGame4)).toBe(true);
+        expect(window.CafePortal.isSmallTableFriendly(sprawlingGame1)).toBe(false);
+        expect(window.CafePortal.isSmallTableFriendly(sprawlingGame2)).toBe(false);
+
+        // Test filtering via filterAndSortCollection
+        const library = [compactGame1, compactGame2, sprawlingGame1, sprawlingGame2];
+        window.CafePortal.state.collection = library;
+        window.CafePortal.state.searchQuery = '';
+        window.CafePortal.state.activeFilter = 'small_table';
+
+        window.CafePortal.filterAndSortCollection();
+
+        expect(window.CafePortal.state.filteredCollection.length).toBe(2);
+        const filteredIds = window.CafePortal.state.filteredCollection.map(g => g.id);
+        expect(filteredIds).toEqual(['2', '1']);
     });
 });
 

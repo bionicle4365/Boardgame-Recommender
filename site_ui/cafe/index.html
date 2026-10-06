@@ -122,6 +122,11 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                     <button type="button" class="wifi-copy-btn" aria-label="Copy Wi-Fi password">📋</button>
                 </div>
 
+                <!-- Digital Menu Button (Milestone C10) -->
+                <a id="header-menu-btn" class="header-menu-cta-btn" href="#" target="_blank" rel="noopener" style="display: none;">
+                    <span>🍺 Food &amp; Drinks Menu ↗</span>
+                </a>
+
                 <button type="button" class="table-selector-trigger" id="switch-table-trigger">
                     Wrong table? Switch
                 </button>
@@ -161,6 +166,23 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                 </div>
             </div>
 
+            <!-- Featured Guru Picks Spotlight Carousel (Milestone C10) -->
+            <div class="cafe-guru-picks-section" id="cafe-guru-picks-section" style="display: none;">
+                <div class="guru-picks-header">
+                    <div class="guru-picks-title-wrap">
+                        <span class="guru-picks-icon">🌟</span>
+                        <div>
+                            <h2 class="guru-picks-title">Guru Picks &amp; House Specials</h2>
+                            <p class="guru-picks-subtitle">Staff favorites, new arrivals, and games we love to teach tonight.</p>
+                        </div>
+                    </div>
+                    <span class="guru-picks-count-badge" id="guru-picks-count-badge">Featured</span>
+                </div>
+                <div class="guru-picks-carousel" id="guru-picks-carousel">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
             <!-- Collection Browser Toolbar & Search Bar -->
             <div class="collection-browser-toolbar">
                 <div class="collection-search-wrap">
@@ -176,6 +198,7 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                 <!-- Quick Filter Chips -->
                 <div class="collection-quick-filters" id="collection-quick-filters">
                     <button type="button" class="cafe-filter-chip active" data-filter="all">All Games</button>
+                    <button type="button" class="cafe-filter-chip" data-filter="small_table" title="Card games, dice, and compact games for 2-top bar & high tables">🤏 Small Table</button>
                     <button type="button" class="cafe-filter-chip" data-filter="2p">👥 2 Players</button>
                     <button type="button" class="cafe-filter-chip" data-filter="4p">👥 4 Players</button>
                     <button type="button" class="cafe-filter-chip" data-filter="party">🎉 Party (5+)</button>

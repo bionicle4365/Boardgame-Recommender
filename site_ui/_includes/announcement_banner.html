@@ -1,0 +1,191 @@
+<!-- Reusable Glassmorphic Announcement Banner Component (Milestone C10) -->
+{% assign banner_id = include.id | default: site.announcement.id | default: "site-global-announcement" %}
+{% assign banner_text = include.text | default: site.announcement.text %}
+{% assign banner_link = include.link | default: site.announcement.link %}
+{% assign banner_link_text = include.link_text | default: site.announcement.link_text | default: "Learn More →" %}
+{% assign banner_type = include.type | default: site.announcement.type | default: "banner-info" %}
+{% assign banner_icon = include.icon | default: site.announcement.icon | default: "📢" %}
+{% assign is_dismissible = include.dismissible | default: site.announcement.dismissible | default: true %}
+{% assign is_enabled = false %}
+{% if include.text and include.text != "" %}
+    {% assign is_enabled = true %}
+{% elsif site.announcement.enabled %}
+    {% assign is_enabled = true %}
+{% endif %}
+
+<div id="site-announcement-banner"
+     class="site-announcement-banner {{ banner_type }}"
+     role="region"
+     aria-label="Announcement"
+     data-banner-id="{{ banner_id }}"
+     style="{% if is_enabled %}display: block;{% else %}display: none;{% endif %}">
+    <div class="announcement-banner-inner">
+        <div class="announcement-banner-content">
+            <span class="announcement-banner-icon" id="announcement-banner-icon">{{ banner_icon }}</span>
+            <span class="announcement-banner-text" id="announcement-banner-text">{{ banner_text }}</span>
+            <a href="{{ banner_link | default: '#' }}" 
+               class="announcement-banner-cta" 
+               id="announcement-banner-cta" 
+               {% if banner_link and banner_link != "" %}style="display: inline-flex;"{% else %}style="display: none;"{% endif %}
+               {% if include.external or site.announcement.external %}target="_blank" rel="noopener"{% endif %}>
+                <span id="announcement-banner-cta-text">{{ banner_link_text }}</span>
+            </a>
+        </div>
+        <button type="button" 
+                class="announcement-banner-dismiss" 
+                id="announcement-banner-dismiss" 
+                aria-label="Dismiss announcement"
+                {% if is_dismissible == false %}style="display: none;"{% endif %}>
+            ✕
+        </button>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Reusable Announcement Banner Controller
+    function getBannerEl() {
+        return document.getElementById("site-announcement-banner");
+    }
+    function getTextEl() {
+        return document.getElementById("announcement-banner-text");
+    }
+    function getIconEl() {
+        return document.getElementById("announcement-banner-icon");
+    }
+    function getCtaEl() {
+        return document.getElementById("announcement-banner-cta");
+    }
+    function getCtaTextEl() {
+        return document.getElementById("announcement-banner-cta-text");
+    }
+    function getDismissBtn() {
+        return document.getElementById("announcement-banner-dismiss");
+    }
+
+    let currentBannerId = "site-global-announcement";
+
+    function getStorageKey(id) {
+        return "bgg_dismissed_banner_" + (id || currentBannerId);
+    }
+
+    function isDismissed(id) {
+        try {
+            return !!localStorage.getItem(getStorageKey(id));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function dismiss(id) {
+        const targetId = id || currentBannerId;
+        try {
+            localStorage.setItem(getStorageKey(targetId), String(Date.now()));
+        } catch (e) {}
+
+        const bannerEl = getBannerEl();
+        if (bannerEl) {
+            bannerEl.classList.add("banner-dismissing");
+            setTimeout(function() {
+                bannerEl.style.display = "none";
+                bannerEl.classList.remove("banner-dismissing");
+            }, 250);
+        }
+    }
+
+    function show(options) {
+        const bannerEl = getBannerEl();
+        if (!options || !bannerEl) return false;
+        const id = options.id || "announcement_" + (options.text ? options.text.length : "custom");
+        currentBannerId = id;
+        bannerEl.setAttribute("data-banner-id", id);
+
+        // Check dismissal unless force is specified
+        if (!options.force && isDismissed(id)) {
+            bannerEl.style.display = "none";
+            return false;
+        }
+
+        // Set Icon
+        const iconEl = getIconEl();
+        if (iconEl) {
+            iconEl.textContent = options.icon || (options.type === "event" ? "🎉" : options.type === "warning" ? "⚠️" : "📢");
+        }
+
+        // Set Text
+        const textEl = getTextEl();
+        if (textEl && options.text) {
+            textEl.textContent = options.text;
+        }
+
+        // Set CTA Link
+        const ctaEl = getCtaEl();
+        const ctaTextEl = getCtaTextEl();
+        if (ctaEl && ctaTextEl) {
+            if (options.link) {
+                ctaEl.href = options.link;
+                ctaTextEl.textContent = options.linkText || "Learn More →";
+                if (options.external) {
+                    ctaEl.setAttribute("target", "_blank");
+                    ctaEl.setAttribute("rel", "noopener");
+                } else {
+                    ctaEl.removeAttribute("target");
+                    ctaEl.removeAttribute("rel");
+                }
+                ctaEl.style.display = "inline-flex";
+            } else {
+                ctaEl.style.display = "none";
+            }
+        }
+
+        // Set Theme Type class
+        bannerEl.className = "site-announcement-banner";
+        const typeClass = options.type ? ("banner-" + options.type) : "banner-info";
+        bannerEl.classList.add(typeClass);
+
+        // Dismissible option
+        const dismissBtn = getDismissBtn();
+        if (dismissBtn) {
+            dismissBtn.style.display = (options.dismissible !== false) ? "inline-flex" : "none";
+        }
+
+        bannerEl.style.display = "block";
+        return true;
+    }
+
+    function hide() {
+        const bannerEl = getBannerEl();
+        if (bannerEl) bannerEl.style.display = "none";
+    }
+
+    function reset(id) {
+        try {
+            localStorage.removeItem(getStorageKey(id));
+        } catch (e) {}
+    }
+
+    // Attach click handler to dismiss button via event delegation
+    document.addEventListener("click", function(e) {
+        if (e.target && (e.target.id === "announcement-banner-dismiss" || (e.target.closest && e.target.closest("#announcement-banner-dismiss")))) {
+            dismiss(currentBannerId);
+        }
+    });
+
+    // Check if initial static banner was already dismissed
+    const bannerEl = getBannerEl();
+    if (bannerEl && bannerEl.style.display !== "none") {
+        if (isDismissed(currentBannerId)) {
+            bannerEl.style.display = "none";
+        }
+    }
+
+    // Export to global window scope for site-wide and dynamic page use
+    window.AnnouncementBanner = {
+        show: show,
+        dismiss: dismiss,
+        hide: hide,
+        reset: reset,
+        isDismissed: isDismissed
+    };
+})();
+</script>
