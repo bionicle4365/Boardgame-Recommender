@@ -79,6 +79,32 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
                 <span id="modal-complexity"></span>
                 <a id="modal-bgg-link" href="#"></a>
             </div>
+            <!-- Table Voting Modal (Milestone C7) -->
+            <button id="btn-start-table-vote"></button>
+            <button id="btn-launch-table-vote"></button>
+            <div id="cafe-table-vote-modal" style="display: none;">
+                <h3 id="vote-modal-title"></h3>
+                <button id="btn-close-vote-modal">✕</button>
+                <img id="vote-modal-qr-img" src="">
+                <button id="btn-vote-copy-link"></button>
+                <button id="btn-vote-share-link"></button>
+                <a id="btn-vote-open-external" href="#"></a>
+                <div id="vote-copy-feedback" style="display: none;"></div>
+                <div id="vote-ballot-section">
+                    <input id="vote-voter-name-input">
+                    <div id="vote-candidates-list"></div>
+                    <button id="btn-submit-table-vote"></button>
+                </div>
+                <div id="vote-consensus-section" style="display: none;">
+                    <div id="vote-winner-banner" style="display: none;">
+                        <h4 id="vote-winner-title"></h4>
+                    </div>
+                    <span id="vote-tally-count"></span>
+                    <div id="vote-rankings-list"></div>
+                    <button id="btn-revote-trigger"></button>
+                    <button id="btn-refresh-tally"></button>
+                </div>
+            </div>
         `;
     });
 
@@ -447,6 +473,117 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(cafeCss).toMatch(/\.collection-browser-toolbar\s*\{[^}]*position:\s*sticky;/s);
         expect(cafeCss).toMatch(/\.collection-browser-toolbar\s*\{[^}]*top:\s*70px;/s);
         expect(cafeCss).toMatch(/\.venue-header-card\s*\{[^}]*z-index:\s*1;/s);
+    });
+
+    test('startTableVote creates table vote session via API and populates modal with QR code', async () => {
+        const games = [
+            { id: '13', name: 'Catan', complexity: 2.3, thumbnail: 'https://example.com/catan.jpg', shelf_location: 'A-1' },
+            { id: '266192', name: 'Wingspan', complexity: 2.4, thumbnail: 'https://example.com/wingspan.jpg', shelf_location: 'B-2' },
+            { id: '174430', name: 'Gloomhaven', complexity: 3.8, thumbnail: 'https://example.com/gloom.jpg', shelf_location: 'C-3' }
+        ];
+
+        window.CafePortal.state.recommendations = games;
+        window.CafePortal.state.cafeId = 'the-malt-and-meeple';
+        window.CafePortal.state.table = '5';
+        window.CafePortal.state.venueMeta = { name: 'The Malt & Meeple' };
+
+        let apiCalledWith = null;
+        window.fetchApi = async (url, options) => {
+            apiCalledWith = { url, options: JSON.parse(options.body) };
+            return {
+                ok: true,
+                json: async () => ({
+                    session_id: 'test_sess_123',
+                    group_name: 'The Malt & Meeple - Table 5',
+                    table_number: '5',
+                    candidates: games
+                })
+            };
+        };
+
+        await window.CafePortal.startTableVote();
+
+        expect(apiCalledWith.url).toBe('/cafe/vote/start');
+        expect(apiCalledWith.options.table).toBe('5');
+        expect(apiCalledWith.options.candidates.length).toBe(3);
+
+        const modal = document.getElementById('cafe-table-vote-modal');
+        const modalTitle = document.getElementById('vote-modal-title');
+        const qrImg = document.getElementById('vote-modal-qr-img');
+        const candidatesList = document.getElementById('vote-candidates-list');
+
+        expect(modal.style.display).toBe('flex');
+        expect(modalTitle.textContent).toContain('The Malt & Meeple - Table 5 Vote');
+        expect(qrImg.src).toContain('test_sess_123');
+        expect(candidatesList.children.length).toBe(3);
+    });
+
+    test('submitTableVoteBallot submits votes and renders consensus standings', async () => {
+        const games = [
+            { id: '13', name: 'Catan', complexity: 2.3 },
+            { id: '266192', name: 'Wingspan', complexity: 2.4 }
+        ];
+
+        window.CafePortal.state.activeVoteSession = {
+            session_id: 'sess_vote_abc',
+            candidates: games
+        };
+        window.CafePortal.state.userBallot = { '13': 'yes', '266192': 'neutral' };
+        window.CafePortal.state.table = '2';
+
+        let votePayload = null;
+        window.fetchApi = async (url, options) => {
+            votePayload = JSON.parse(options.body);
+            return {
+                ok: true,
+                json: async () => ({
+                    session_id: 'sess_vote_abc',
+                    consensus: {
+                        total_voters: 1,
+                        winner: games[0],
+                        rankings: [
+                            { candidate: games[0], score: 2, is_vetoed: false },
+                            { candidate: games[1], score: 1, is_vetoed: false }
+                        ]
+                    }
+                })
+            };
+        };
+
+        await window.CafePortal.submitTableVoteBallot();
+
+        expect(votePayload.session_id).toBe('sess_vote_abc');
+        expect(votePayload.votes['13']).toBe('yes');
+
+        const consensusSection = document.getElementById('vote-consensus-section');
+        const winnerBanner = document.getElementById('vote-winner-banner');
+        const winnerTitle = document.getElementById('vote-winner-title');
+        const tallyCount = document.getElementById('vote-tally-count');
+
+        expect(consensusSection.style.display).toBe('flex');
+        expect(winnerBanner.style.display).toBe('flex');
+        expect(winnerTitle.textContent).toBe('Catan');
+        expect(tallyCount.textContent).toBe('1');
+    });
+
+    test('setupTableVotingControls wires close button and revote triggers', () => {
+        window.CafePortal.setupTableVotingControls();
+
+        const modal = document.getElementById('cafe-table-vote-modal');
+        const closeBtn = document.getElementById('btn-close-vote-modal');
+        const ballotSection = document.getElementById('vote-ballot-section');
+        const consensusSection = document.getElementById('vote-consensus-section');
+        const revoteBtn = document.getElementById('btn-revote-trigger');
+
+        modal.style.display = 'flex';
+        closeBtn.click();
+        expect(modal.style.display).toBe('none');
+
+        ballotSection.style.display = 'none';
+        consensusSection.style.display = 'flex';
+        revoteBtn.click();
+        expect(ballotSection.style.display).toBe('flex');
+        expect(consensusSection.style.display).toBe('none');
     });
 });
 

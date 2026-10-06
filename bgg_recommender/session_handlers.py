@@ -60,6 +60,83 @@ def _handle_create_session(body_params, event):
         }
 
 
+def _handle_cafe_vote_start(body_params, event):
+    """
+    POST /cafe/vote/start
+    Single-tap table voting session initialization prepopulated with candidate games.
+    Formats group_name = "{Cafe Name} - Table {Table Number}".
+    """
+    claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
+    
+    cafe_id = body_params.get('cafe_id') or 'cafe'
+    raw_table = body_params.get('table') or body_params.get('table_number') or '1'
+    table_num = str(raw_table).strip()
+    
+    raw_name = body_params.get('cafe_name') or body_params.get('name') or cafe_id.replace('-', ' ').title()
+    cafe_name = str(raw_name).strip()
+    
+    group_name = f"{cafe_name} - Table {table_num}"
+    
+    candidates = body_params.get('candidates', [])
+    if not candidates:
+        return {
+            'statusCode': 400,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': 'candidates array is required and cannot be empty'})
+        }
+
+    # Limit to top candidate games (e.g. top 4 for quick voting consensus, or all if <= 6)
+    shortlist = candidates[:6] if len(candidates) > 6 else candidates
+    
+    # Sanitize candidates
+    sanitized_candidates = []
+    for c in shortlist:
+        if isinstance(c, dict):
+            cand_dict = {
+                'id': str(c.get('id', '')),
+                'name': c.get('name', 'Unknown Game'),
+                'thumbnail': c.get('thumbnail', ''),
+                'rating': c.get('rating', 0),
+                'complexity': c.get('complexity', 0),
+                'playing_time': c.get('playing_time', 0),
+                'min_players': c.get('min_players', 0),
+                'max_players': c.get('max_players', 0),
+                'shelf_location': c.get('shelf_location', '')
+            }
+            sanitized_candidates.append(cand_dict)
+
+    duration_hours = float(body_params.get('duration_hours', 3.0))
+    creator_id = claims.get('sub') or body_params.get('creator_id') or f"cafe_{cafe_id}_table_{table_num}"
+    creator_name = body_params.get('creator_name') or f"Table {table_num}"
+    
+    try:
+        session = sessions.create_session(
+            creator_id=creator_id,
+            group_name=group_name,
+            candidates=sanitized_candidates,
+            duration_hours=duration_hours,
+            creator_name=creator_name
+        )
+        session['vote_url'] = f"/vote/?session_id={session['session_id']}"
+        session['table_number'] = table_num
+        session['cafe_id'] = cafe_id
+        session['cafe_name'] = cafe_name
+
+        return {
+            'statusCode': 201,
+            'headers': _cors_headers(),
+            'body': json.dumps(session)
+        }
+    except Exception as e:
+        logger.error(f"Error starting cafe table vote: {e}", exc_info=True)
+        return {
+            'statusCode': 500,
+            'headers': _cors_headers(),
+            'body': json.dumps({'error': str(e)})
+        }
+
+
+
 def _handle_get_session(params):
     session_id = params.get('session_id') or params.get('id')
     if not session_id:

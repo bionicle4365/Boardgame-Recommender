@@ -203,3 +203,53 @@ def test_lambda_handler_cafe_mode_saves_cafe_parquet(mock_to_parquet, mock_get_u
         engine='pyarrow'
     )
 
+
+@patch('bgg_user_data_scraper.boto3.client')
+@patch('bgg_user_data_scraper.get_user_data')
+@patch('pandas.DataFrame.to_parquet')
+def test_lambda_handler_cafe_mode_prerenders_collection_json(mock_to_parquet, mock_get_user_data, mock_boto3_client):
+    mock_s3 = MagicMock()
+    mock_boto3_client.return_value = mock_s3
+
+    mock_get_user_data.return_value = [
+        {
+            'id': '100',
+            'name': 'Azul',
+            'thumbnail': 'https://example.com/azul.jpg',
+            'shelf_location': 'B-3',
+            'year_published': 2017,
+            'rating': 7.8,
+            'complexity': 1.8,
+            'min_players': 2,
+            'max_players': 4,
+            'playing_time': 45,
+            'own': True
+        }
+    ]
+
+    event = {
+        "Records": [
+            {
+                "messageId": "msg_cafe_prerender",
+                "body": json.dumps({
+                    "username": "malt_bgg",
+                    "cafe_id": "malt-and-meeple",
+                    "is_cafe": True
+                })
+            }
+        ]
+    }
+    response = bgg_user_data_scraper.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+
+    mock_s3.put_object.assert_called_once()
+    put_args = mock_s3.put_object.call_args[1]
+    assert put_args['Key'] == 'data/cafes/malt-and-meeple/collection.json'
+    assert 'public, max-age=3600' in put_args['CacheControl']
+    payload = json.loads(put_args['Body'].decode('utf-8'))
+    assert payload['status'] == 'ready'
+    assert payload['total'] == 1
+    assert payload['collection'][0]['name'] == 'Azul'
+    assert payload['collection'][0]['shelf_location'] == 'B-3'
+
+

@@ -206,11 +206,11 @@ Provide cafe managers with a print-ready table tent QR generator and connect the
 - **QR Generation Tool:** Create a Python/HTML5 generator script in `scripts/generate_cafe_table_qrs.py` that outputs high-resolution print-ready vector SVGs and PDFs.
 
 ### Tasks
-- [ ] **QR Generator Script:** Implement `scripts/generate_cafe_table_qrs.py` accepting cafe ID, table count range (e.g. Tables 1–30), logo, and Wi-Fi credentials.
-- [ ] **Printable Table Tent Template:** Design clean, modern printable SVG template (double-sided folding table tent).
-- [ ] **One-Tap Table Session Creation:** Add "Start Table Vote" action on `site_ui/cafe/index.html` initializing session via existing API.
-- [ ] **Cafe Voting View:** Create a streamlined, mobile-optimized voting card view matching the cafe branding.
-- [ ] **Integration Tests:** Test end-to-end flow from table QR generation to multi-user voting consensus.
+- [x] **QR Generator Script:** Implement `scripts/generate_cafe_table_qrs.py` accepting cafe ID, table count range (e.g. Tables 1–30), logo, and Wi-Fi credentials.
+- [x] **Printable Table Tent Template:** Design clean, modern printable SVG template (double-sided folding table tent).
+- [x] **One-Tap Table Session Creation:** Add "Start Table Vote" action on `site_ui/cafe/index.html` initializing session via existing API.
+- [x] **Cafe Voting View:** Create a streamlined, mobile-optimized voting card view matching the cafe branding.
+- [x] **Integration Tests:** Test end-to-end flow from table QR generation to multi-user voting consensus.
 
 ---
 

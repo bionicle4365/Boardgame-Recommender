@@ -529,7 +529,39 @@ def _handle_cafe_collection(query_params):
     if not bgg_username:
         bgg_username = cafe_id
 
-    # 2. Try to load collection from S3 parquet
+    # 2. Fast Path: Check for pre-rendered collection.json in S3 (<50ms)
+    json_keys = [
+        f"data/cafes/{cafe_id}/collection.json",
+        f"data/cafes/{bgg_username}/collection.json"
+    ]
+    for jkey in list(dict.fromkeys(json_keys)):
+        try:
+            resp_json = s3.get_object(Bucket=s3_bucket, Key=jkey)
+            if resp_json:
+                raw_bytes = resp_json['Body'].read()
+                try:
+                    data_obj = json.loads(raw_bytes.decode('utf-8'))
+                    if isinstance(data_obj, dict) and ('collection' in data_obj or data_obj.get('status') == 'ready'):
+                        return {
+                            'statusCode': 200,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Cache-Control': 'public, max-age=3600, s-maxage=86400'
+                            },
+                            'body': raw_bytes.decode('utf-8')
+                        }
+                except Exception:
+                    # Rewind stream in case Body is a seekable stream (e.g. in test mocks)
+                    if hasattr(resp_json.get('Body'), 'seek'):
+                        try:
+                            resp_json['Body'].seek(0)
+                        except Exception:
+                            pass
+                    continue
+        except Exception:
+            continue
+
+    # 3. Fallback / Cold Path: Load collection from S3 parquet and link
     try:
         import pyarrow.parquet as pq
         import pandas as pd
@@ -557,7 +589,10 @@ def _handle_cafe_collection(query_params):
         if df.empty or 'id' not in df.columns:
             return {
                 'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'public, max-age=3600, s-maxage=86400'
+                },
                 'body': json.dumps({
                     'status': 'ready',
                     'cafe_id': cafe_id,
@@ -586,51 +621,89 @@ def _handle_cafe_collection(query_params):
                 catalog_df = _get_catalog_df()
                 if catalog_df is not None:
                     ids_set = set(str(gid) for gid in df['id'].dropna())
-                    matched = catalog_df[catalog_df['id'].astype(str).isin(ids_set)]
-                    catalog_lookup = {str(r['id']): r for _, r in matched.iterrows()}
+                    display_cols = [
+                        'id', 'name', 'thumbnail', 'year_published', 'rating', 'complexity',
+                        'min_players', 'max_players', 'playing_time', 'rules_video_url',
+                        'rules_video_id', 'rules_video_title', 'teach_time'
+                    ]
+                    avail_cols = [c for c in display_cols if c in catalog_df.columns]
+                    matched = catalog_df[catalog_df['id'].astype(str).isin(ids_set)][avail_cols]
+                    catalog_lookup = matched.set_index('id').to_dict(orient='index')
             except Exception as cat_err:
                 print(f"Warning: Failed to link with master catalog: {cat_err}")
 
         records = []
-        for _, row in df.iterrows():
+        for row in df.to_dict(orient='records'):
             gid = str(row.get('id', ''))
-            cat_row = catalog_lookup.get(gid)
-            src = cat_row if cat_row is not None else row
+            cat_row = catalog_lookup.get(gid) or {}
+
+            def get_val(key, default=None):
+                v = cat_row.get(key)
+                if v is not None and pd.notna(v):
+                    return v
+                v = row.get(key)
+                if v is not None and pd.notna(v):
+                    return v
+                return default
+
+            name_val = get_val('name', '')
+            thumb_val = get_val('thumbnail', '')
+            yp_val = get_val('year_published')
+            rat_val = get_val('rating')
+            comp_val = get_val('complexity')
+            min_p = get_val('min_players', 1)
+            max_p = get_val('max_players', 1)
+            play_t = get_val('playing_time', 0)
 
             rec = {
                 'id': gid,
-                'name': str(src.get('name', '')) if pd.notna(src.get('name')) else '',
-                'thumbnail': str(src.get('thumbnail', '')) if pd.notna(src.get('thumbnail')) else '',
-                'year_published': int(src.get('year_published', 0)) if pd.notna(src.get('year_published')) and src.get('year_published') != 0 else None,
-                'rating': float(src.get('rating', 0.0)) if pd.notna(src.get('rating')) else None,
-                'complexity': float(src.get('complexity', 0.0)) if pd.notna(src.get('complexity')) else None,
-                'min_players': int(src.get('min_players', 1)) if pd.notna(src.get('min_players')) else 1,
-                'max_players': int(src.get('max_players', 1)) if pd.notna(src.get('max_players')) else 1,
-                'playing_time': int(src.get('playing_time', 0)) if pd.notna(src.get('playing_time')) else 0,
+                'name': str(name_val) if name_val is not None else '',
+                'thumbnail': str(thumb_val) if thumb_val is not None else '',
+                'year_published': int(yp_val) if yp_val is not None and int(yp_val) != 0 else None,
+                'rating': float(rat_val) if rat_val is not None else None,
+                'complexity': float(comp_val) if comp_val is not None else None,
+                'min_players': int(min_p) if min_p is not None else 1,
+                'max_players': int(max_p) if max_p is not None else 1,
+                'playing_time': int(play_t) if play_t is not None else 0,
             }
             shelf = shelf_map.get(gid) or row.get('shelf_location') or row.get('shelf')
             if pd.notna(shelf) and str(shelf).strip():
                 rec['shelf_location'] = str(shelf).strip()
-            if pd.notna(src.get('rules_video_url')) and str(src.get('rules_video_url')).strip():
-                rec['rules_video_url'] = str(src['rules_video_url']).strip()
-            if pd.notna(src.get('rules_video_id')) and str(src.get('rules_video_id')).strip():
-                rec['rules_video_id'] = str(src['rules_video_id']).strip()
-            if pd.notna(src.get('rules_video_title')) and str(src.get('rules_video_title')).strip():
-                rec['rules_video_title'] = str(src['rules_video_title']).strip()
-            if pd.notna(src.get('teach_time')) and str(src.get('teach_time')).strip():
-                rec['teach_time'] = str(src['teach_time']).strip()
+
+            for f in ['rules_video_url', 'rules_video_id', 'rules_video_title', 'teach_time']:
+                val = get_val(f)
+                if val is not None and str(val).strip():
+                    rec[f] = str(val).strip()
             records.append(rec)
+
+        response_payload = {
+            'status': 'ready',
+            'cafe_id': cafe_id,
+            'bgg_username': bgg_username,
+            'total': len(records),
+            'collection': records
+        }
+        response_body = json.dumps(response_payload)
+
+        # Pre-render write-through: save to S3 so all subsequent calls take <50ms
+        try:
+            s3.put_object(
+                Bucket=s3_bucket,
+                Key=f"data/cafes/{cafe_id}/collection.json",
+                Body=response_body.encode('utf-8'),
+                ContentType='application/json',
+                CacheControl='public, max-age=3600, s-maxage=86400'
+            )
+        except Exception as put_err:
+            print(f"Warning: Could not save prerendered collection.json: {put_err}")
 
         return {
             'statusCode': 200,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                'status': 'ready',
-                'cafe_id': cafe_id,
-                'bgg_username': bgg_username,
-                'total': len(records),
-                'collection': records
-            })
+            'headers': {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, max-age=3600, s-maxage=86400'
+            },
+            'body': response_body
         }
     except Exception as err:
         print(f"Error loading cafe collection for {cafe_id} ({bgg_username}): {err}")
@@ -763,14 +836,18 @@ def _handle_cafe_sync(event, claims):
         for page in pages:
             for obj in page.get('Contents', []):
                 objects_to_delete.append({'Key': obj['Key']})
+        # Invalidate pre-rendered collection.json
+        objects_to_delete.append({'Key': f"data/cafes/{cafe_id}/collection.json"})
+        if bgg_username and bgg_username != cafe_id:
+            objects_to_delete.append({'Key': f"data/cafes/{bgg_username}/collection.json"})
         if objects_to_delete:
             s3.delete_objects(
                 Bucket=s3_bucket,
                 Delete={'Objects': objects_to_delete}
             )
-            print(f"Cleared {len(objects_to_delete)} recommendation cache objects for cafe {cafe_id}")
+            print(f"Cleared cache objects and collection.json for cafe {cafe_id}")
     except Exception as cache_err:
-        print(f"Warning: Failed to clear recommendation cache for cafe {cafe_id}: {cache_err}")
+        print(f"Warning: Failed to clear recommendation/collection cache for cafe {cafe_id}: {cache_err}")
 
     # 3. Enqueue scrape job to SQS with cafe context
     try:

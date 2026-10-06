@@ -119,8 +119,54 @@ def get_user_data(username, is_cafe=False):
                         if m:
                             shelf_location = m.group(1).strip() if m.groups() else m.group(0).strip()
 
+                    name_elem = item.find('name')
+                    name = name_elem.text.strip() if (name_elem is not None and name_elem.text) else ''
+
+                    thumb_elem = item.find('thumbnail')
+                    thumbnail = thumb_elem.text.strip() if (thumb_elem is not None and thumb_elem.text) else ''
+
+                    year_elem = item.find('yearpublished')
+                    year = int(year_elem.text.strip()) if (year_elem is not None and year_elem.text and year_elem.text.isdigit()) else None
+
+                    stats_elem = item.find('stats')
+                    min_players = 1
+                    max_players = 1
+                    playing_time = 0
+                    rating = None
+                    complexity = None
+
+                    if stats_elem is not None:
+                        try:
+                            min_players = int(stats_elem.get('minplayers', 1))
+                        except (ValueError, TypeError):
+                            min_players = 1
+                        try:
+                            max_players = int(stats_elem.get('maxplayers', 1))
+                        except (ValueError, TypeError):
+                            max_players = 1
+                        try:
+                            playing_time = int(stats_elem.get('playingtime', 0))
+                        except (ValueError, TypeError):
+                            playing_time = 0
+
+                        avg_elem = stats_elem.find('.//rating/average')
+                        if avg_elem is not None:
+                            rating = safe_float(avg_elem.get('value'))
+
+                        weight_elem = stats_elem.find('.//rating/averageweight')
+                        if weight_elem is not None:
+                            complexity = safe_float(weight_elem.get('value'))
+
                     entry = {
                         'id': str(item.get('objectid')),
+                        'name': name,
+                        'thumbnail': thumbnail,
+                        'year_published': year,
+                        'min_players': min_players,
+                        'max_players': max_players,
+                        'playing_time': playing_time,
+                        'rating': rating,
+                        'complexity': complexity,
                         'own': True
                     }
                     if shelf_location:
@@ -198,9 +244,7 @@ def lambda_handler(event, context):
                 logger.info(f"Successfully retrieved data for {user_id} (is_cafe={is_cafe}). Collection size: {len(collection_data)}")
 
                 if is_cafe:
-                    has_shelf = any('shelf_location' in r for r in collection_data)
-                    cols = ['id', 'shelf_location', 'own'] if has_shelf else ['id', 'own']
-                    df = pd.DataFrame(collection_data, columns=cols)
+                    df = pd.DataFrame(collection_data)
                     s3_output_key = f"cafes/{cafe_id}/collection.parquet"
                 else:
                     cols = ['id', 'username', 'rating', 'own']
@@ -212,6 +256,43 @@ def lambda_handler(event, context):
                 try:
                     df.to_parquet(s3_full_path, index=False, engine='pyarrow')
                     logger.info(f"Successfully saved data for {user_id} to S3: {s3_full_path}")
+                    if is_cafe:
+                        try:
+                            s3_client = boto3.client('s3', region_name='us-east-1')
+                            json_records = []
+                            for r in collection_data:
+                                rec = {
+                                    'id': str(r.get('id', '')),
+                                    'name': str(r.get('name', '')) if r.get('name') is not None else '',
+                                    'thumbnail': str(r.get('thumbnail', '')) if r.get('thumbnail') is not None else '',
+                                    'year_published': int(r.get('year_published')) if r.get('year_published') else None,
+                                    'rating': float(r.get('rating')) if r.get('rating') is not None else None,
+                                    'complexity': float(r.get('complexity')) if r.get('complexity') is not None else None,
+                                    'min_players': int(r.get('min_players', 1)) if r.get('min_players') is not None else 1,
+                                    'max_players': int(r.get('max_players', 1)) if r.get('max_players') is not None else 1,
+                                    'playing_time': int(r.get('playing_time', 0)) if r.get('playing_time') is not None else 0,
+                                }
+                                if r.get('shelf_location'):
+                                    rec['shelf_location'] = str(r['shelf_location'])
+                                json_records.append(rec)
+
+                            prerender_payload = {
+                                'status': 'ready',
+                                'cafe_id': cafe_id,
+                                'bgg_username': user_id,
+                                'total': len(json_records),
+                                'collection': json_records
+                            }
+                            s3_client.put_object(
+                                Bucket=S3_OUTPUT_BUCKET_NAME,
+                                Key=f"data/cafes/{cafe_id}/collection.json",
+                                Body=json.dumps(prerender_payload).encode('utf-8'),
+                                ContentType='application/json',
+                                CacheControl='public, max-age=3600, s-maxage=86400'
+                            )
+                            logger.info(f"Successfully pre-rendered collection.json for {cafe_id}")
+                        except Exception as json_e:
+                            logger.warning(f"Could not save pre-rendered collection.json for {cafe_id}: {json_e}")
                     processed_ids.append(user_id)
                 except Exception as s3_e:
                     logger.error(f"Error saving data for {user_id} to S3 ({s3_full_path}): {s3_e}")

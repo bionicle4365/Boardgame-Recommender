@@ -164,12 +164,14 @@ def test_cafe_sync_success_query_param(mock_boto_client, mock_s3, mock_cafes_tab
     update_kwargs = mock_cafes_table.update_item.call_args[1]
     assert update_kwargs['Key'] == {'cafe_id': 'the-malt-and-meeple'}
 
-    # 2. S3 cache objects deleted
+    # 2. S3 cache objects deleted (including prerendered collection.json)
     mock_s3.delete_objects.assert_called_once_with(
         Bucket=bgg_preferences_handler.s3_bucket,
         Delete={'Objects': [
             {'Key': 'data/recommendation_cache/cafe_the-malt-and-meeple_party_4_30.json'},
-            {'Key': 'data/recommendation_cache/cafe_the-malt-and-meeple_strategy_2_60.json'}
+            {'Key': 'data/recommendation_cache/cafe_the-malt-and-meeple_strategy_2_60.json'},
+            {'Key': 'data/cafes/the-malt-and-meeple/collection.json'},
+            {'Key': 'data/cafes/maltandmeeple/collection.json'}
         ]}
     )
 
@@ -216,6 +218,13 @@ def test_cafe_sync_success_json_body(mock_boto_client, mock_s3, mock_cafes_table
     assert body['status'] == 'success'
     assert body['cafe_id'] == 'the-malt-and-meeple'
 
+    mock_s3.delete_objects.assert_called_once_with(
+        Bucket=bgg_preferences_handler.s3_bucket,
+        Delete={'Objects': [
+            {'Key': 'data/cafes/the-malt-and-meeple/collection.json'},
+            {'Key': 'data/cafes/maltandmeeple/collection.json'}
+        ]}
+    )
     mock_sqs.send_message.assert_called_once()
 
 

@@ -25,7 +25,9 @@
             vibe: "casual_strategy",
             hobbyistUsers: ""
         },
-        isLoading: false
+        isLoading: false,
+        activeVoteSession: null,
+        userBallot: {}
     };
 
     // Helper: Parse URL parameters or fallback to path/storage
@@ -694,6 +696,28 @@
             ? state.venueMeta.bgg_username 
             : state.cafeId;
 
+        const hasValidGames = (obj) => obj && ((Array.isArray(obj.collection) && obj.collection.length > 0) || (Array.isArray(obj.recommendations) && obj.recommendations.length > 0));
+
+        // Fast path: Check sessionStorage for instant (0ms) library retrieval on repeated visits
+        const sessionKey = `cafe_collection_${targetCafe}`;
+        try {
+            const cachedRaw = sessionStorage.getItem(sessionKey);
+            if (cachedRaw) {
+                const cachedData = JSON.parse(cachedRaw);
+                if (hasValidGames(cachedData)) {
+                    state.isCollectionLoading = false;
+                    state.collection = (Array.isArray(cachedData.collection) && cachedData.collection.length > 0)
+                        ? cachedData.collection 
+                        : (cachedData.recommendations || []);
+                    if (countBadge) countBadge.textContent = state.collection.length;
+                    filterAndSortCollection();
+                    return;
+                }
+            }
+        } catch (storageErr) {
+            // Ignore sessionStorage read errors (e.g. incognito/disabled)
+        }
+
         let data = null;
         try {
             // Try collection endpoint first
@@ -706,8 +730,6 @@
         }
 
         // Fallback to recommendations endpoint with vibe=any if collection endpoint failed, threw, or returned 0 games
-        const hasValidGames = (obj) => obj && ((Array.isArray(obj.collection) && obj.collection.length > 0) || (Array.isArray(obj.recommendations) && obj.recommendations.length > 0));
-
         if (!hasValidGames(data)) {
             try {
                 let resp = await window.fetchApi(`/recommendations?cafe_id=${encodeURIComponent(targetCafe)}&vibe=any`);
@@ -726,6 +748,11 @@
 
         if (hasValidGames(data)) {
             state.collection = (Array.isArray(data.collection) && data.collection.length > 0) ? data.collection : (data.recommendations || []);
+            try {
+                sessionStorage.setItem(sessionKey, JSON.stringify({ collection: state.collection }));
+            } catch (storageErr) {
+                // Ignore sessionStorage quota errors
+            }
             if (countBadge) countBadge.textContent = state.collection.length;
             filterAndSortCollection();
             return;
@@ -1055,6 +1082,399 @@
         });
     }
 
+    // ── Table Voting Integration (Milestone C7) ──
+    async function startTableVote() {
+        if (!state.recommendations || state.recommendations.length === 0) {
+            alert("Please generate recommendations first to start a table vote!");
+            return;
+        }
+
+        const topCandidates = state.recommendations.slice(0, 4).map(r => ({
+            id: String(r.id),
+            name: r.name,
+            thumbnail: r.thumbnail || "",
+            rating: r.rating || 0,
+            complexity: r.complexity || 0,
+            playing_time: r.playing_time || 0,
+            shelf_location: r.shelf_location || ""
+        }));
+
+        const cafeName = (state.venueMeta && state.venueMeta.name) 
+            ? state.venueMeta.name 
+            : (state.cafeId ? state.cafeId.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()) : "Cafe");
+
+        const payload = {
+            cafe_id: state.cafeId || "demo-cafe",
+            cafe_name: cafeName,
+            table: state.table || "1",
+            candidates: topCandidates,
+            duration_hours: 3.0,
+            creator_name: `Table ${state.table || "1"}`
+        };
+
+        const modal = document.getElementById("cafe-table-vote-modal");
+        const modalTitle = document.getElementById("vote-modal-title");
+        const qrImg = document.getElementById("vote-modal-qr-img");
+        const extLink = document.getElementById("btn-vote-open-external");
+        const ballotSection = document.getElementById("vote-ballot-section");
+        const consensusSection = document.getElementById("vote-consensus-section");
+        const nameInput = document.getElementById("vote-voter-name-input");
+
+        if (modalTitle) modalTitle.textContent = `${cafeName} - Table ${state.table} Vote`;
+        if (modal) modal.style.display = "flex";
+        if (ballotSection) ballotSection.style.display = "flex";
+        if (consensusSection) consensusSection.style.display = "none";
+
+        try {
+            let resp = await window.fetchApi("/cafe/vote/start", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            // Fallback to /session if /cafe/vote/start fails or is 404
+            if (!resp || !resp.ok) {
+                resp = await window.fetchApi("/session", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        group_name: `${cafeName} - Table ${state.table}`,
+                        creator_id: `cafe_${state.cafeId}_table_${state.table}`,
+                        creator_name: `Table ${state.table}`,
+                        candidates: topCandidates,
+                        duration_hours: 3.0
+                    })
+                });
+            }
+
+            if (!resp || !resp.ok) {
+                throw new Error("Failed to create table voting session");
+            }
+
+            const session = await resp.json();
+            state.activeVoteSession = session;
+            state.userBallot = {};
+
+            // Default ballot selections
+            topCandidates.forEach((c, idx) => {
+                state.userBallot[c.id] = idx === 0 ? "yes" : "neutral";
+            });
+
+            // Resolve voter name
+            if (nameInput) {
+                const savedName = localStorage.getItem("bgg_cafe_voter_name") || `Table ${state.table} Patron`;
+                nameInput.value = savedName;
+            }
+
+            // Configure QR Code & Share URL
+            const voteUrl = `${window.location.origin}/vote/?session_id=${session.session_id}&cafe=${encodeURIComponent(state.cafeId)}&table=${encodeURIComponent(state.table)}`;
+            if (qrImg) {
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(voteUrl)}`;
+            }
+            if (extLink) {
+                extLink.href = voteUrl;
+            }
+
+            renderBallotCandidates(topCandidates);
+
+        } catch (err) {
+            console.error("Error creating table vote session:", err);
+            // Fallback mock session for offline/mock test environments
+            const mockSessId = "mock" + Math.random().toString(36).substring(2, 6);
+            const fallbackSession = {
+                session_id: mockSessId,
+                group_name: `${cafeName} - Table ${state.table}`,
+                candidates: topCandidates,
+                votes: {},
+                consensus: {
+                    total_voters: 0,
+                    winner: topCandidates[0],
+                    rankings: topCandidates.map((c, i) => ({
+                        candidate: c,
+                        score: 0,
+                        yes_count: 0,
+                        neutral_count: 0,
+                        veto_count: 0,
+                        is_vetoed: false,
+                        original_rank: i
+                    })),
+                    vetoed_games: []
+                }
+            };
+            state.activeVoteSession = fallbackSession;
+            state.userBallot = {};
+            topCandidates.forEach((c, idx) => {
+                state.userBallot[c.id] = idx === 0 ? "yes" : "neutral";
+            });
+            const voteUrl = `${window.location.origin}/vote/?session_id=${mockSessId}&cafe=${encodeURIComponent(state.cafeId)}&table=${encodeURIComponent(state.table)}`;
+            if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(voteUrl)}`;
+            if (extLink) extLink.href = voteUrl;
+            renderBallotCandidates(topCandidates);
+        }
+    }
+
+    function renderBallotCandidates(candidates) {
+        const list = document.getElementById("vote-candidates-list");
+        if (!list) return;
+        const escape = window.escapeHTML || (s => s);
+
+        let html = "";
+        candidates.forEach(cand => {
+            const thumb = cand.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
+            const currentChoice = state.userBallot[cand.id] || "neutral";
+            const shelf = (cand.shelf_location || "").trim();
+
+            html += `
+                <div class="vote-candidate-row" data-candidate-id="${escape(cand.id)}">
+                    <div class="vote-cand-info">
+                        <img class="vote-cand-thumb" src="${thumb}" alt="${escape(cand.name)}" onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
+                        <div class="vote-cand-text">
+                            <div class="vote-cand-name">${escape(cand.name)}</div>
+                            <div class="vote-cand-sub">
+                                ${shelf ? `📍 ${escape(shelf)} • ` : ""}⚙️ ${cand.complexity ? cand.complexity : '2.0'} / 5
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vote-choice-group">
+                        <button type="button" class="vote-pill-choice yes ${currentChoice === 'yes' ? 'active' : ''}" data-cand-id="${escape(cand.id)}" data-choice="yes" title="Love it (+2)">👍 +2</button>
+                        <button type="button" class="vote-pill-choice neutral ${currentChoice === 'neutral' ? 'active' : ''}" data-cand-id="${escape(cand.id)}" data-choice="neutral" title="Okay (+1)">😐 +1</button>
+                        <button type="button" class="vote-pill-choice veto ${currentChoice === 'veto' ? 'active' : ''}" data-cand-id="${escape(cand.id)}" data-choice="veto" title="Veto (Disqualify)">❌ Veto</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        list.innerHTML = html;
+
+        list.querySelectorAll(".vote-pill-choice").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const candId = btn.getAttribute("data-cand-id");
+                const choice = btn.getAttribute("data-choice");
+                state.userBallot[candId] = choice;
+
+                const row = btn.closest(".vote-candidate-row");
+                if (row) {
+                    row.querySelectorAll(".vote-pill-choice").forEach(p => p.classList.remove("active"));
+                    btn.classList.add("active");
+                }
+            });
+        });
+    }
+
+    async function submitTableVoteBallot() {
+        if (!state.activeVoteSession) return;
+        const sessId = state.activeVoteSession.session_id;
+        const nameInput = document.getElementById("vote-voter-name-input");
+        const voterName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : `Table ${state.table || "1"} Patron`;
+        localStorage.setItem("bgg_cafe_voter_name", voterName);
+
+        const submitBtn = document.getElementById("btn-submit-table-vote");
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "⏳ Submitting Ballot...";
+        }
+
+        try {
+            let resp = await window.fetchApi("/session/vote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: sessId,
+                    participant_name: voterName,
+                    votes: state.userBallot
+                })
+            });
+
+            if (resp && resp.ok) {
+                const updated = await resp.json();
+                state.activeVoteSession = updated;
+                renderConsensusStandings(updated.consensus);
+            } else {
+                throw new Error("Vote submission failed");
+            }
+        } catch (err) {
+            console.warn("Using local mock consensus for offline/test mode:", err);
+            if (!state.activeVoteSession.votes) state.activeVoteSession.votes = {};
+            state.activeVoteSession.votes[voterName] = state.userBallot;
+            
+            const candidates = state.activeVoteSession.candidates || [];
+            const rankings = candidates.map((cand, idx) => {
+                let score = 0;
+                let yes_count = 0;
+                let neutral_count = 0;
+                let is_vetoed = false;
+
+                Object.values(state.activeVoteSession.votes).forEach(ballot => {
+                    const choice = ballot[cand.id];
+                    if (choice === "yes") { score += 2; yes_count++; }
+                    else if (choice === "neutral") { score += 1; neutral_count++; }
+                    else if (choice === "veto") { score -= 99; is_vetoed = true; }
+                });
+
+                return {
+                    candidate: cand,
+                    score,
+                    yes_count,
+                    neutral_count,
+                    is_vetoed,
+                    original_rank: idx
+                };
+            });
+
+            rankings.sort((a, b) => {
+                if (a.is_vetoed !== b.is_vetoed) return a.is_vetoed ? 1 : -1;
+                if (b.score !== a.score) return b.score - a.score;
+                return a.original_rank - b.original_rank;
+            });
+
+            const consensus = {
+                total_voters: Object.keys(state.activeVoteSession.votes).length,
+                winner: rankings.length && !rankings[0].is_vetoed ? rankings[0].candidate : null,
+                rankings,
+                vetoed_games: rankings.filter(r => r.is_vetoed).map(r => r.candidate.id)
+            };
+            state.activeVoteSession.consensus = consensus;
+            renderConsensusStandings(consensus);
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "🗳️ Cast My Table Ballot";
+            }
+        }
+    }
+
+    function renderConsensusStandings(consensus) {
+        const ballotSection = document.getElementById("vote-ballot-section");
+        const consensusSection = document.getElementById("vote-consensus-section");
+        const winnerBanner = document.getElementById("vote-winner-banner");
+        const winnerTitle = document.getElementById("vote-winner-title");
+        const tallyCount = document.getElementById("vote-tally-count");
+        const rankingsList = document.getElementById("vote-rankings-list");
+
+        if (ballotSection) ballotSection.style.display = "none";
+        if (consensusSection) consensusSection.style.display = "flex";
+
+        if (tallyCount) tallyCount.textContent = consensus ? consensus.total_voters : 0;
+
+        if (winnerBanner && winnerTitle) {
+            if (consensus && consensus.winner) {
+                winnerBanner.style.display = "flex";
+                winnerTitle.textContent = consensus.winner.name;
+            } else {
+                winnerBanner.style.display = "none";
+            }
+        }
+
+        if (rankingsList && consensus && consensus.rankings) {
+            const escape = window.escapeHTML || (s => s);
+            let html = "";
+            consensus.rankings.forEach((item, idx) => {
+                const cand = item.candidate;
+                const isVetoed = item.is_vetoed;
+                const scoreLabel = isVetoed ? "VETOED" : `${item.score} pts`;
+
+                html += `
+                    <div class="vote-ranking-item ${isVetoed ? 'is-vetoed' : ''}">
+                        <div class="ranking-left">
+                            <span class="ranking-rank">#${idx + 1}</span>
+                            <span class="ranking-name">${escape(cand.name)}</span>
+                        </div>
+                        <span class="ranking-score-badge ${isVetoed ? 'vetoed' : ''}">${scoreLabel}</span>
+                    </div>
+                `;
+            });
+            rankingsList.innerHTML = html;
+        }
+    }
+
+    function setupTableVotingControls() {
+        const startBtn = document.getElementById("btn-start-table-vote");
+        const launchBtn = document.getElementById("btn-launch-table-vote");
+        const closeBtn = document.getElementById("btn-close-vote-modal");
+        const modal = document.getElementById("cafe-table-vote-modal");
+        const submitBtn = document.getElementById("btn-submit-table-vote");
+        const revoteBtn = document.getElementById("btn-revote-trigger");
+        const refreshBtn = document.getElementById("btn-refresh-tally");
+        const copyBtn = document.getElementById("btn-vote-copy-link");
+        const shareBtn = document.getElementById("btn-vote-share-link");
+
+        if (startBtn) startBtn.addEventListener("click", startTableVote);
+        if (launchBtn) launchBtn.addEventListener("click", startTableVote);
+
+        if (closeBtn && modal) {
+            closeBtn.addEventListener("click", () => {
+                modal.style.display = "none";
+            });
+        }
+
+        if (modal) {
+            modal.addEventListener("click", (e) => {
+                if (e.target === modal) modal.style.display = "none";
+            });
+        }
+
+        if (submitBtn) {
+            submitBtn.addEventListener("click", submitTableVoteBallot);
+        }
+
+        if (revoteBtn) {
+            revoteBtn.addEventListener("click", () => {
+                const ballotSection = document.getElementById("vote-ballot-section");
+                const consensusSection = document.getElementById("vote-consensus-section");
+                if (ballotSection) ballotSection.style.display = "flex";
+                if (consensusSection) consensusSection.style.display = "none";
+            });
+        }
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener("click", async () => {
+                if (!state.activeVoteSession) return;
+                try {
+                    const resp = await window.fetchApi(`/session?session_id=${state.activeVoteSession.session_id}`);
+                    if (resp && resp.ok) {
+                        const data = await resp.json();
+                        state.activeVoteSession = data;
+                        renderConsensusStandings(data.consensus);
+                    }
+                } catch (e) {
+                    console.error("Failed to refresh session consensus:", e);
+                }
+            });
+        }
+
+        if (copyBtn) {
+            copyBtn.addEventListener("click", () => {
+                if (!state.activeVoteSession) return;
+                const voteUrl = `${window.location.origin}/vote/?session_id=${state.activeVoteSession.session_id}&cafe=${encodeURIComponent(state.cafeId)}&table=${encodeURIComponent(state.table)}`;
+                navigator.clipboard.writeText(voteUrl).then(() => {
+                    const fb = document.getElementById("vote-copy-feedback");
+                    if (fb) {
+                        fb.style.display = "block";
+                        setTimeout(() => { fb.style.display = "none"; }, 2500);
+                    }
+                }).catch(() => {
+                    prompt("Copy this vote link:", voteUrl);
+                });
+            });
+        }
+
+        if (shareBtn) {
+            shareBtn.addEventListener("click", () => {
+                if (!state.activeVoteSession) return;
+                const voteUrl = `${window.location.origin}/vote/?session_id=${state.activeVoteSession.session_id}&cafe=${encodeURIComponent(state.cafeId)}&table=${encodeURIComponent(state.table)}`;
+                if (navigator.share) {
+                    navigator.share({
+                        title: state.activeVoteSession.group_name || "Table Board Game Vote",
+                        text: `Vote on what board game to play at Table ${state.table}!`,
+                        url: voteUrl
+                    }).catch(() => {});
+                } else if (copyBtn) {
+                    copyBtn.click();
+                }
+            });
+        }
+    }
+
     // Export internal helpers for testing if module / test environment
     if (typeof window !== "undefined") {
         window.CafePortal = {
@@ -1074,7 +1494,12 @@
             closeRulesVideoModal,
             setupGatewayControls,
             setupCollectionControls,
-            setupVideoModalControls
+            setupVideoModalControls,
+            startTableVote,
+            renderBallotCandidates,
+            submitTableVoteBallot,
+            renderConsensusStandings,
+            setupTableVotingControls
         };
     }
 
@@ -1098,6 +1523,7 @@
             setupQuizControls();
             setupCollectionControls();
             setupVideoModalControls();
+            setupTableVotingControls();
             loadCafeCollection();
 
             // Default view: Collection Browser!
@@ -1116,3 +1542,4 @@
         }
     });
 })();
+

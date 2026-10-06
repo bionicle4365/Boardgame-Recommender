@@ -162,6 +162,7 @@ def _handle_conventions():
 
 from session_handlers import (
     _handle_create_session,
+    _handle_cafe_vote_start,
     _handle_get_session,
     _handle_vote_session,
     _handle_close_session,
@@ -761,6 +762,8 @@ def lambda_handler(event, context):
             response = _handle_delete_session(combined_params)
         elif '/session/vote' in path or (path.startswith('/session') and http_method == 'POST' and ('vote' in path or 'participant_name' in body_params)):
             response = _handle_vote_session(combined_params)
+        elif '/cafe/vote/start' in path or (path.startswith('/cafe/vote') and http_method == 'POST'):
+            response = _handle_cafe_vote_start(body_params, event)
         elif path.startswith('/session') and http_method == 'POST':
             response = _handle_create_session(body_params, event)
         elif path.startswith('/session') and (http_method == 'GET' or not http_method):

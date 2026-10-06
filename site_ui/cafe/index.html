@@ -356,6 +356,9 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                         Picks for Table <span id="results-table-num">1</span>
                     </h2>
                     <div class="results-header-actions">
+                        <button type="button" class="btn-start-table-vote" id="btn-start-table-vote">
+                            🗳️ Vote with Table
+                        </button>
                         <button type="button" class="btn-reroll-quiz" id="btn-reroll-quiz">
                             🔄 Change Vibe
                         </button>
@@ -363,6 +366,20 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                             📚 Browse Full Library
                         </button>
                     </div>
+                </div>
+
+                <!-- Table Voting CTA Card (Milestone C7) -->
+                <div class="table-vote-cta-card" id="table-vote-cta-card">
+                    <div class="vote-cta-left">
+                        <span class="vote-cta-icon">🗳️</span>
+                        <div class="vote-cta-text">
+                            <h3 class="vote-cta-heading">Can't agree on a game?</h3>
+                            <p class="vote-cta-sub">Start a 60-second table vote for Table <span class="vote-cta-table-num" id="vote-cta-table-num">1</span>. Tablemates scan or tap to vote on the top picks!</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-launch-table-vote" id="btn-launch-table-vote">
+                        🗳️ Start Table Vote
+                    </button>
                 </div>
 
                 <div id="cafe-results-container">
@@ -407,6 +424,76 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                     <a href="#" id="modal-bgg-link" target="_blank" rel="noopener noreferrer" class="btn-modal-bgg">
                         📖 View on BGG
                     </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cafe Table Voting In-App Modal (Milestone C7) -->
+    <div class="cafe-table-vote-modal-overlay" id="cafe-table-vote-modal" role="dialog" aria-modal="true" aria-labelledby="vote-modal-title" style="display: none;">
+        <div class="cafe-table-vote-modal-dialog">
+            <div class="cafe-vote-modal-header">
+                <div class="cafe-vote-modal-title-group">
+                    <span class="cafe-vote-modal-badge">🗳️ Table Poll</span>
+                    <h3 class="cafe-vote-modal-title" id="vote-modal-title">Table 1 Vote</h3>
+                </div>
+                <button type="button" class="cafe-vote-modal-close" id="btn-close-vote-modal" aria-label="Close vote modal">✕</button>
+            </div>
+
+            <div class="cafe-vote-modal-body">
+                <!-- Top Sharing Strip: QR + Direct Link -->
+                <div class="vote-share-card">
+                    <div class="vote-qr-wrap">
+                        <img class="vote-qr-img" id="vote-modal-qr-img" src="" alt="Table Vote QR Code">
+                        <span class="vote-qr-caption">Scan with camera</span>
+                    </div>
+                    <div class="vote-share-details">
+                        <div class="vote-share-heading">Invite Table to Vote</div>
+                        <p class="vote-share-desc">Friends scan the QR or open the link to cast votes (+2 👍, +1 😐, Veto ❌).</p>
+                        <div class="vote-share-actions">
+                            <button type="button" class="btn-vote-copy-link" id="btn-vote-copy-link">📋 Copy Link</button>
+                            <button type="button" class="btn-vote-share-link" id="btn-vote-share-link">📱 Share</button>
+                            <a href="#" target="_blank" class="btn-vote-open-external" id="btn-vote-open-external" rel="noopener noreferrer">↗️ Full Poll</a>
+                        </div>
+                        <div class="vote-copy-feedback" id="vote-copy-feedback" style="display: none;">✓ Link copied to clipboard!</div>
+                    </div>
+                </div>
+
+                <!-- In-Modal Quick Ballot Form -->
+                <div class="vote-ballot-section" id="vote-ballot-section">
+                    <div class="vote-voter-name-row">
+                        <label for="vote-voter-name-input" class="vote-voter-label">Your Name / Nickname:</label>
+                        <input type="text" id="vote-voter-name-input" class="vote-voter-input" placeholder="e.g. Table 1 Patron" maxlength="25">
+                    </div>
+
+                    <div class="vote-candidates-list" id="vote-candidates-list">
+                        <!-- Candidate voting rows rendered here -->
+                    </div>
+
+                    <button type="button" class="btn-submit-table-vote" id="btn-submit-table-vote">
+                        🗳️ Cast My Table Ballot
+                    </button>
+                </div>
+
+                <!-- Live Consensus Results -->
+                <div class="vote-consensus-section" id="vote-consensus-section" style="display: none;">
+                    <div class="vote-winner-banner" id="vote-winner-banner" style="display: none;">
+                        <span class="winner-trophy">🏆</span>
+                        <div>
+                            <div class="winner-label">Current Table Consensus Pick</div>
+                            <h4 class="winner-title" id="vote-winner-title">Game Title</h4>
+                        </div>
+                    </div>
+
+                    <h4 class="consensus-heading">Live Table Standings (<span id="vote-tally-count">0</span> votes)</h4>
+                    <div class="vote-rankings-list" id="vote-rankings-list">
+                        <!-- Dynamically populated rankings -->
+                    </div>
+
+                    <div class="vote-re-cast-row">
+                        <button type="button" class="btn-revote-trigger" id="btn-revote-trigger">✏️ Change My Vote</button>
+                        <button type="button" class="btn-refresh-tally" id="btn-refresh-tally">🔄 Refresh Tally</button>
+                    </div>
                 </div>
             </div>
         </div>

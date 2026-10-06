@@ -583,7 +583,14 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
             ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">👤 Voting as ${window.escapeHTML(currentVoterName)}</span>`
             : `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-left: 6px;">👤 Voting anonymously</span>`;
 
-        document.getElementById('poll-creator-text').innerHTML = `Created by <strong>${window.escapeHTML(creatorDisplay)}</strong> • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates • ${voterBadge}`;
+        const urlParams = new URLSearchParams(window.location.search);
+        const cafeParam = urlParams.get('cafe') || (currentSession && currentSession.cafe_id);
+        const tableParam = urlParams.get('table') || (currentSession && currentSession.table_number);
+        const cafeBadge = (cafeParam || tableParam)
+            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(79, 70, 229, 0.15); color: #818cf8; border: 1px solid rgba(79, 70, 229, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">☕ Table ${window.escapeHTML(tableParam || 'Vote')}</span>`
+            : '';
+
+        document.getElementById('poll-creator-text').innerHTML = `Created by <strong>${window.escapeHTML(creatorDisplay)}</strong> • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates • ${voterBadge} ${cafeBadge}`;
 
         // Update Host Controls visibility
         const hostBanner = document.getElementById('host-controls-banner');

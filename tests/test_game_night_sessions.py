@@ -450,3 +450,133 @@ def test_lambda_handler_list_sessions_route(monkeypatch):
     body = json.loads(resp['body'])
     assert 'sessions' in body
     assert len(body['sessions']) == 1
+
+
+def test_cafe_vote_start_endpoint_creates_session(sample_candidates, monkeypatch):
+    import bgg_recommender
+    import sessions
+
+    mock_table = MagicMock()
+    monkeypatch.setattr(sessions, 'get_dynamodb_table', lambda: mock_table)
+
+    event = {
+        'rawPath': '/cafe/vote/start',
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            'cafe_id': 'the-malt-and-meeple',
+            'cafe_name': 'The Malt & Meeple',
+            'table': '3',
+            'candidates': sample_candidates,
+            'duration_hours': 3.0
+        })
+    }
+
+    resp = bgg_recommender.lambda_handler(event, None)
+    assert resp['statusCode'] == 201
+    body = json.loads(resp['body'])
+    assert body['group_name'] == 'The Malt & Meeple - Table 3'
+    assert body['table_number'] == '3'
+    assert body['cafe_id'] == 'the-malt-and-meeple'
+    assert 'session_id' in body
+    assert body['vote_url'] == f"/vote/?session_id={body['session_id']}"
+    assert len(body['candidates']) == len(sample_candidates)
+    assert mock_table.put_item.called
+
+
+def test_cafe_vote_start_validation_empty_candidates():
+    import bgg_recommender
+
+    event = {
+        'rawPath': '/cafe/vote/start',
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            'cafe_id': 'the-malt-and-meeple',
+            'table': '1',
+            'candidates': []
+        })
+    }
+
+    resp = bgg_recommender.lambda_handler(event, None)
+    assert resp['statusCode'] == 400
+    body = json.loads(resp['body'])
+    assert 'candidates array is required' in body['error']
+
+
+def test_cafe_vote_multi_user_consensus_flow(sample_candidates, monkeypatch):
+    import bgg_recommender
+    import sessions
+
+    mock_table = MagicMock()
+    monkeypatch.setattr(sessions, 'get_dynamodb_table', lambda: mock_table)
+
+    # 1. Start table vote
+    start_event = {
+        'rawPath': '/cafe/vote/start',
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            'cafe_id': 'the-malt-and-meeple',
+            'cafe_name': 'The Malt & Meeple',
+            'table': '4',
+            'candidates': sample_candidates
+        })
+    }
+    start_resp = bgg_recommender.lambda_handler(start_event, None)
+    assert start_resp['statusCode'] == 201
+    session_data = json.loads(start_resp['body'])
+    sess_id = session_data['session_id']
+
+    # 2. Mock table state for subsequent vote submissions
+    current_votes = {}
+    def mock_get_item(Key):
+        now = datetime.now(timezone.utc).isoformat()
+        future = (datetime.now(timezone.utc) + timedelta(hours=3)).isoformat()
+        return {
+            'Item': {
+                'session_id': sess_id,
+                'creator_id': 'cafe_table_4',
+                'creator_name': 'Table 4',
+                'group_name': 'The Malt & Meeple - Table 4',
+                'created_at': now,
+                'closes_at': future,
+                'candidates': sample_candidates,
+                'votes': current_votes
+            }
+        }
+    mock_table.get_item.side_effect = mock_get_item
+
+    # 3. Patron A votes (+2 for Dune, +1 for Brass, veto for Catan)
+    vote_a = {
+        'rawPath': '/session/vote',
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            'session_id': sess_id,
+            'participant_name': 'Patron Alice',
+            'votes': {'1': 'yes', '2': 'neutral', '3': 'veto'}
+        })
+    }
+    current_votes['Patron Alice'] = {'1': 'yes', '2': 'neutral', '3': 'veto'}
+    resp_a = bgg_recommender.lambda_handler(vote_a, None)
+    assert resp_a['statusCode'] == 200
+
+    # 4. Patron B votes (+2 for Dune, +2 for Brass, +1 for Catan)
+    current_votes['Patron Bob'] = {'1': 'yes', '2': 'yes', '3': 'neutral'}
+    vote_b = {
+        'rawPath': '/session/vote',
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            'session_id': sess_id,
+            'participant_name': 'Patron Bob',
+            'votes': {'1': 'yes', '2': 'yes', '3': 'neutral'}
+        })
+    }
+    resp_b = bgg_recommender.lambda_handler(vote_b, None)
+    assert resp_b['statusCode'] == 200
+    res_data = json.loads(resp_b['body'])
+
+    consensus = res_data['consensus']
+    assert consensus['total_voters'] == 2
+    # Catan was vetoed by Alice, so it must be in vetoed_games and disqualified from winning
+    assert '3' in consensus['vetoed_games']
+    # Dune: Imperium has 2 yes (+4 points) -> Winner!
+    assert consensus['winner']['name'] == 'Dune: Imperium'
+

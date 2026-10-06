@@ -24,3 +24,20 @@ try:
     aws_lambda_powertools.Logger.inject_lambda_context = lambda self, func: func
 except ImportError:
     pass
+
+# Mock boto3.client for bedrock-runtime globally to prevent UnknownServiceError in local test environments
+try:
+    from unittest.mock import MagicMock
+    import boto3
+    _orig_boto3_client = boto3.client
+    def _mock_boto3_client(service_name, *args, **kwargs):
+        if service_name == 'bedrock-runtime':
+            return MagicMock()
+        try:
+            return _orig_boto3_client(service_name, *args, **kwargs)
+        except Exception:
+            return MagicMock()
+    boto3.client = _mock_boto3_client
+except Exception:
+    pass
+

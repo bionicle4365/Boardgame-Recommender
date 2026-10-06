@@ -76,6 +76,12 @@ resource "aws_apigatewayv2_route" "bgg_create_session_route" {
   target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "bgg_cafe_vote_start_route" {
+  api_id    = aws_apigatewayv2_api.bgg_api.id
+  route_key = "POST /cafe/vote/start"
+  target    = "integrations/${aws_apigatewayv2_integration.bgg_recommender_integration.id}"
+}
+
 resource "aws_apigatewayv2_route" "bgg_get_session_route" {
   api_id    = aws_apigatewayv2_api.bgg_api.id
   route_key = "GET /session"

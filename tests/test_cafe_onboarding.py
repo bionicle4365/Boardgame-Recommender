@@ -546,3 +546,136 @@ def test_generate_qr_svg_path_fallback(tmp_path, monkeypatch):
     assert (tmp_path / 'table_1.svg').exists()
 
 
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_collection_serves_prerendered_json(mock_cafes_table, mock_s3):
+    import io
+
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'fast-cafe',
+            'bgg_username': 'fast_bgg'
+        }
+    }
+    prerendered = {
+        'status': 'ready',
+        'cafe_id': 'fast-cafe',
+        'bgg_username': 'fast_bgg',
+        'total': 1,
+        'collection': [
+            {
+                'id': '42',
+                'name': 'Cosmic Encounter',
+                'thumbnail': 'https://example.com/cosmic.jpg',
+                'shelf_location': 'Shelf E-1'
+            }
+        ]
+    }
+    mock_s3.get_object.return_value = {
+        'Body': io.BytesIO(json.dumps(prerendered).encode('utf-8'))
+    }
+
+    event = {
+        'rawPath': '/cafe/collection',
+        'queryStringParameters': {'cafe_id': 'fast-cafe'}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    assert 'Cache-Control' in response['headers']
+    assert 'max-age=3600' in response['headers']['Cache-Control']
+    body = json.loads(response['body'])
+    assert body['status'] == 'ready'
+    assert body['total'] == 1
+    assert body['collection'][0]['name'] == 'Cosmic Encounter'
+    assert body['collection'][0]['shelf_location'] == 'Shelf E-1'
+
+
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_collection_writes_prerendered_json(mock_cafes_table, mock_s3):
+    import io
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'new-cafe',
+            'bgg_username': 'new_bgg'
+        }
+    }
+    df_data = {
+        'id': [99],
+        'name': ['Dune'],
+        'thumbnail': ['dune.jpg'],
+        'year_published': [2019],
+        'rating': [8.2],
+        'complexity': [3.5],
+        'min_players': [2],
+        'max_players': [6],
+        'playing_time': [120],
+        'shelf_location': ['Top Shelf']
+    }
+    table = pa.Table.from_pydict(df_data)
+    sink = io.BytesIO()
+    pq.write_table(table, sink)
+    parquet_bytes = sink.getvalue()
+
+    def mock_get_object_side_effect(Bucket, Key):
+        if Key.endswith('.json'):
+            raise Exception("NoSuchKey")
+        return {'Body': io.BytesIO(parquet_bytes)}
+
+    mock_s3.get_object.side_effect = mock_get_object_side_effect
+
+    event = {
+        'rawPath': '/cafe/collection',
+        'queryStringParameters': {'cafe_id': 'new-cafe'}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    # Verify write-through put_object was invoked to save collection.json
+    mock_s3.put_object.assert_called_once()
+    put_call_kwargs = mock_s3.put_object.call_args[1]
+    assert put_call_kwargs['Key'] == 'data/cafes/new-cafe/collection.json'
+    assert 'public, max-age=3600' in put_call_kwargs['CacheControl']
+    saved_payload = json.loads(put_call_kwargs['Body'].decode('utf-8'))
+    assert saved_payload['collection'][0]['name'] == 'Dune'
+    assert saved_payload['collection'][0]['shelf_location'] == 'Top Shelf'
+
+
+@patch('bgg_preferences_handler.boto3.client')
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_sync_invalidates_prerendered_json(mock_cafes_table, mock_s3, mock_boto_client):
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'sync-cafe',
+            'bgg_username': 'sync_bgg',
+            'owner_cognito_id': 'user-123'
+        }
+    }
+    mock_paginator = MagicMock()
+    mock_paginator.paginate.return_value = [{'Contents': [{'Key': 'data/recommendation_cache/cafe_sync-cafe_old'}]}]
+    mock_s3.get_paginator.return_value = mock_paginator
+
+    event = {
+        'rawPath': '/cafe/sync',
+        'requestContext': {
+            'authorizer': {
+                'jwt': {
+                    'claims': {'sub': 'user-123'}
+                }
+            }
+        },
+        'queryStringParameters': {'cafe_id': 'sync-cafe'}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    mock_s3.delete_objects.assert_called_once()
+    delete_call = mock_s3.delete_objects.call_args[1]
+    deleted_keys = [obj['Key'] for obj in delete_call['Delete']['Objects']]
+    assert 'data/cafes/sync-cafe/collection.json' in deleted_keys
+    assert 'data/cafes/sync_bgg/collection.json' in deleted_keys
+
+
+

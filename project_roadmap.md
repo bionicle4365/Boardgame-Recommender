@@ -13,7 +13,9 @@ For comprehensive milestones, user journeys, and technical architecture specific
 - **Milestone C3: Self-Service Cafe Management Portal & Venue Dashboard** (Completed)
 - **Milestone C4: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine** (Completed)
 - **Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI** (Completed)
-- **Next Up: Milestone C6: "Watch It Played" Rules Video & Media Integration** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L164-L185))
+- **Milestone C6: "Watch It Played" Rules Video & Media Integration** (Completed)
+- **Milestone C7: Table QR Code Generator & Real-Time Table Voting** (Completed)
+- **Next Up: Milestone C8: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L217))
 
 ---
 
