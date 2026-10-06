@@ -705,12 +705,17 @@
             console.warn("Failed fetching cafe collection, trying recommendations fallback:", err);
         }
 
-        // Fallback to recommendations endpoint with vibe=any if collection endpoint failed or threw
-        if (!data || (!data.collection && !data.recommendations)) {
+        // Fallback to recommendations endpoint with vibe=any if collection endpoint failed, threw, or returned 0 games
+        const hasValidGames = (obj) => obj && ((Array.isArray(obj.collection) && obj.collection.length > 0) || (Array.isArray(obj.recommendations) && obj.recommendations.length > 0));
+
+        if (!hasValidGames(data)) {
             try {
                 let resp = await window.fetchApi(`/recommendations?cafe_id=${encodeURIComponent(targetCafe)}&vibe=any`);
                 if (resp && resp.ok) {
-                    data = await resp.json();
+                    const fallbackData = await resp.json();
+                    if (hasValidGames(fallbackData)) {
+                        data = fallbackData;
+                    }
                 }
             } catch (fallbackErr) {
                 console.warn("Failed fetching fallback cafe recommendations:", fallbackErr);
@@ -719,8 +724,8 @@
 
         state.isCollectionLoading = false;
 
-        if (data && (data.collection || data.recommendations)) {
-            state.collection = data.collection || data.recommendations || [];
+        if (hasValidGames(data)) {
+            state.collection = (Array.isArray(data.collection) && data.collection.length > 0) ? data.collection : (data.recommendations || []);
             if (countBadge) countBadge.textContent = state.collection.length;
             filterAndSortCollection();
             return;

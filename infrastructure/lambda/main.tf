@@ -141,7 +141,8 @@ resource "aws_lambda_function" "bgg_preferences" {
   source_code_hash = data.archive_file.bgg_preferences_zip.output_base64sha256
   runtime          = "python3.12"
   timeout          = 30
-  memory_size      = 256
+  memory_size      = 512
+  layers           = [var.pandas_layer_arn]
 
   environment {
     variables = {

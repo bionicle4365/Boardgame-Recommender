@@ -92,3 +92,9 @@ variable "bgg_taste_analytics_ecr_url" {
   description = "The ECR repository URL for the BGG taste analytics image"
   type        = string
 }
+
+variable "pandas_layer_arn" {
+  description = "The ARN of the AWS SDK for pandas layer"
+  type        = string
+  default     = "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:14"
+}

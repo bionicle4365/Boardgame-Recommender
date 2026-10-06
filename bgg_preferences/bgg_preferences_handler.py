@@ -502,8 +502,23 @@ def _handle_cafe_collection(query_params):
     try:
         import pyarrow.parquet as pq
         import pandas as pd
-        parquet_key = f"data/cafes/{bgg_username}/collection.parquet"
-        resp = s3.get_object(Bucket=s3_bucket, Key=parquet_key)
+
+        parquet_keys = [
+            f"data/cafes/{bgg_username}/collection.parquet",
+            f"data/cafes/{cafe_id}/collection.parquet"
+        ]
+        resp = None
+        for key in list(dict.fromkeys(parquet_keys)):
+            try:
+                resp = s3.get_object(Bucket=s3_bucket, Key=key)
+                if resp:
+                    break
+            except Exception:
+                continue
+
+        if not resp:
+            raise FileNotFoundError(f"No collection.parquet found for {cafe_id} or {bgg_username}")
+
         buffer = io.BytesIO(resp['Body'].read())
         table = pq.read_table(buffer)
         df = table.to_pandas()
@@ -546,23 +561,24 @@ def _handle_cafe_collection(query_params):
             })
         }
     except Exception as err:
+        print(f"Error loading cafe collection for {cafe_id} ({bgg_username}): {err}")
         # Check if scraping in progress
-        status_key = f"data/cafes/{bgg_username}/scrape_status.json"
-        try:
-            status_obj = s3.get_object(Bucket=s3_bucket, Key=status_key)
-            status_data = json.loads(status_obj['Body'].read().decode('utf-8'))
-            if status_data.get('status') == 'scraping':
-                return {
-                    'statusCode': 200,
-                    'headers': {'Content-Type': 'application/json'},
-                    'body': json.dumps({
-                        'status': 'scraping',
-                        'message': 'Syncing library for this venue...',
-                        'collection': []
-                    })
-                }
-        except Exception:
-            pass
+        for status_key in list(dict.fromkeys([f"data/cafes/{bgg_username}/scrape_status.json", f"data/cafes/{cafe_id}/scrape_status.json"])):
+            try:
+                status_obj = s3.get_object(Bucket=s3_bucket, Key=status_key)
+                status_data = json.loads(status_obj['Body'].read().decode('utf-8'))
+                if status_data.get('status') == 'scraping':
+                    return {
+                        'statusCode': 200,
+                        'headers': {'Content-Type': 'application/json'},
+                        'body': json.dumps({
+                            'status': 'scraping',
+                            'message': 'Syncing library for this venue...',
+                            'collection': []
+                        })
+                    }
+            except Exception:
+                pass
 
         return {
             'statusCode': 200,
