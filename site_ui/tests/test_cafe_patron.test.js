@@ -297,13 +297,6 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(window.CafePortal.estimateTeachTime(4.2)).toBe('15-20 min teach');
     });
 
-    test('getDrinkPairing provides thematic suggestions for each vibe', () => {
-        expect(window.CafePortal.getDrinkPairing('party')).toContain('Pilsner');
-        expect(window.CafePortal.getDrinkPairing('deep_strategy')).toContain('Cold Brew');
-        expect(window.CafePortal.getDrinkPairing('cooperative')).toContain('Shareable Craft Pitcher');
-        expect(window.CafePortal.getDrinkPairing('direct_conflict')).toContain('Smoked Old Fashioned');
-    });
-
     test('fetchCafeRecommendations retrieves mock cafe recommendations with shelf location and guru quotes', async () => {
         delete window.location;
         window.location = new URL('https://meeplemanifesto.com/cafe/?cafe=the-malt-and-meeple&table=3');

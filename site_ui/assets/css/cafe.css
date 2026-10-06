@@ -735,24 +735,6 @@
     font-style: italic;
 }
 
-/* Drink Pairing Hint */
-.drink-pairing-tag {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
-    color: #b45309;
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.25);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-weight: 600;
-}
-
-[data-theme="dark"] .drink-pairing-tag {
-    color: #fbbf24;
-}
-
 /* Card Action Buttons */
 .cafe-card-actions {
     display: flex;

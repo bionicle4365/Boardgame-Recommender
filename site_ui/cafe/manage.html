@@ -396,36 +396,6 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
         margin-bottom: 0;
     }
 
-    .checkbox-group {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        margin-top: 10px;
-        min-width: 0;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .checkbox-group input[type="checkbox"] {
-        flex-shrink: 0;
-        width: 18px;
-        height: 18px;
-        margin-top: 2px;
-        cursor: pointer;
-    }
-
-    .checkbox-group label {
-        margin-bottom: 0;
-        cursor: pointer;
-        font-size: 0.9rem;
-        font-weight: 500;
-        line-height: 1.4;
-        word-break: break-word;
-        text-transform: none;
-        letter-spacing: normal;
-        flex: 1;
-        min-width: 0;
-    }
 
     .form-submit-row {
         margin-top: 24px;
@@ -958,10 +928,6 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
                             <div class="field-hint">Regular expression pattern used to extract shelf locations from your BGG game comments.</div>
                         </div>
 
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="manage-drink-pairings">
-                            <label for="manage-drink-pairings">Enable drink pairings in patron recommendations</label>
-                        </div>
 
                         <div class="form-group" style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--manage-border);">
                             <label for="manage-menu-url-input">Digital Menu / Ordering URL</label>
@@ -976,9 +942,9 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
                         </div>
 
                         <div class="form-group">
-                            <label for="manage-featured-games-input">Featured "Guru Picks" / House Specials</label>
+                            <label for="manage-featured-games-input">Featured Games</label>
                             <input type="text" id="manage-featured-games-input" class="form-input" placeholder="e.g. 13, 266192, 178900">
-                            <div class="field-hint">Comma-separated BGG Game IDs (up to 5) to spotlight in a dedicated "Guru Picks" carousel above your collection browser. Perfect for staff favorites or new arrivals.</div>
+                            <div class="field-hint">Comma-separated BGG Game IDs (up to 5) to spotlight in a dedicated "Featured Games" carousel above your collection browser. Perfect for staff favorites or new arrivals.</div>
                         </div>
 
                         <div class="form-submit-row">
@@ -1100,7 +1066,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const formWifiSsidInput   = document.getElementById("manage-wifi-ssid-input");
     const formWifiPassInput   = document.getElementById("manage-wifi-pass-input");
     const formShelfRegexInput = document.getElementById("manage-shelf-regex-input");
-    const formDrinkPairings   = document.getElementById("manage-drink-pairings");
     const formMenuUrlInput    = document.getElementById("manage-menu-url-input");
     const formAnnouncementInput = document.getElementById("manage-announcement-input");
     const formFeaturedGamesInput = document.getElementById("manage-featured-games-input");
@@ -1269,7 +1234,6 @@ document.addEventListener("DOMContentLoaded", function () {
         formWifiSsidInput.value   = currentCafe.wifi_ssid || "";
         formWifiPassInput.value   = currentCafe.wifi_password || "";
         formShelfRegexInput.value = currentCafe.shelf_regex || "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)";
-        formDrinkPairings.checked = (currentCafe.drink_pairings_enabled !== false);
         if (formMenuUrlInput) formMenuUrlInput.value = currentCafe.menu_url || "";
         if (formAnnouncementInput) formAnnouncementInput.value = currentCafe.announcement_banner || "";
         if (formFeaturedGamesInput) {
@@ -1391,7 +1355,6 @@ document.addEventListener("DOMContentLoaded", function () {
             wifi_ssid: formWifiSsidInput.value.trim(),
             wifi_password: formWifiPassInput.value.trim(),
             shelf_regex: formShelfRegexInput.value.trim(),
-            drink_pairings_enabled: formDrinkPairings.checked,
             menu_url: formMenuUrlInput ? formMenuUrlInput.value.trim() : "",
             announcement_banner: formAnnouncementInput ? formAnnouncementInput.value.trim() : "",
             featured_game_ids: featuredIds

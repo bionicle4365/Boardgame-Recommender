@@ -2320,6 +2320,182 @@ def test_cafe_ownership_inversion_for_visiting_hobbyist(mock_bedrock, mock_s3, m
     assert body['recommendations'][0]['name'] == 'Catan'
 
 
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_group_member_affinities_invariant_to_query_filters(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+
+    def mock_download(bucket, key, local_path):
+        if "alice_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Engine Building": 5.0},
+                    "cat_weights": {"Sci-Fi": 5.0},
+                    "complexity_weights": {"Light": 0.0, "Medium-Light": 0.0, "Medium-Heavy": 5.0, "Heavy": 0.0, "user_mean_complexity": 3.3},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+        elif "bob_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Engine Building": 2.0},
+                    "cat_weights": {"Sci-Fi": 2.0},
+                    "complexity_weights": {"Light": 5.0, "Medium-Light": 0.0, "Medium-Heavy": 0.0, "Heavy": 0.0, "user_mean_complexity": 1.8},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+
+    mock_s3.download_file.side_effect = mock_download
+    mock_s3.head_object.return_value = {}
+
+    user_df = pd.DataFrame([
+        {"id": "789", "username": "alice", "rating": 8.0, "own": True},
+        {"id": "789", "username": "bob", "rating": 8.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "100", "name": "Terraforming Mars", "categories": ["Sci-Fi"], "mechanics": ["Engine Building"], "rating": 8.4, "year_published": 2016, "complexity": 3.3, "designers": [], "publishers": [], "min_players": 1, "max_players": 5, "suggested_players_best": ["3"], "suggested_players_recommended": ["2", "4", "5"]}
+    ])
+
+    def mock_read(path, *args, **kwargs):
+        if "catalog" in str(path):
+            return catalog_df
+        else:
+            username = "alice"
+            if "bob" in str(path):
+                username = "bob"
+            return user_df[user_df['username'] == username].copy()
+
+    mock_read_parquet.side_effect = mock_read
+    mock_hotness.return_value = []
+
+    mock_bedrock.converse.return_value = {
+        'output': {
+            'message': {
+                'content': [
+                    {'text': '{"recommendations": [{"id": "100", "name": "Terraforming Mars", "reason": "Great engine builder"}]}'}
+                ]
+            }
+        }
+    }
+
+    # Call 1: With "High" complexity filter, 4 players, and long duration
+    event1 = {
+        'queryStringParameters': {
+            'username': 'alice,bob',
+            'own_status': 'any',
+            'complexity_pref': 'any',
+            'duration_pref': 'long',
+            'player_count': '4'
+        }
+    }
+    res1 = bgg_recommender.lambda_handler(event1, None)
+    assert res1['statusCode'] == 200
+    recs1 = json.loads(res1['body'])['recommendations']
+    affinities1 = recs1[0]['member_affinities']
+
+    # Call 2: With "Low" complexity filter, 1 player, and short duration
+    mock_read_parquet.side_effect = mock_read
+    event2 = {
+        'queryStringParameters': {
+            'username': 'alice,bob',
+            'own_status': 'any',
+            'complexity_pref': 'low',
+            'duration_pref': 'short',
+            'player_count': '1'
+        }
+    }
+    res2 = bgg_recommender.lambda_handler(event2, None)
+    assert res2['statusCode'] == 200
+    recs2 = json.loads(res2['body'])['recommendations']
+    affinities2 = recs2[0]['member_affinities']
+
+    # Taste alignment must be invariant to search/query parameters
+    assert affinities1['alice'] == affinities2['alice']
+    assert affinities1['bob'] == affinities2['bob']
+    # Alice (who loves heavy engine builders) should score higher than Bob (who prefers light games)
+    assert affinities1['alice'] > affinities1['bob']
+
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_candidate_filtering_complexity_pref_strict(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+
+    user_df = pd.DataFrame([
+        {"id": "999", "username": "gamer", "rating": 8.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "1", "name": "Heavy Game", "categories": ["Strategy"], "mechanics": ["Engine Building"], "rating": 8.5, "complexity": 4.0, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "year_published": 2020},
+        {"id": "2", "name": "Terraforming Mars", "categories": ["Strategy"], "mechanics": ["Engine Building"], "rating": 8.4, "complexity": 3.3, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "year_published": 2016},
+        {"id": "3", "name": "Light Game", "categories": ["Party"], "mechanics": ["Dice"], "rating": 7.5, "complexity": 1.5, "designers": [], "publishers": [], "min_players": 1, "max_players": 4, "year_published": 2018}
+    ])
+
+    def mock_read(path, *args, **kwargs):
+        if "catalog" in str(path):
+            return catalog_df.copy()
+        return user_df.copy()
+
+    mock_read_parquet.side_effect = mock_read
+    mock_hotness.return_value = []
+
+    def mock_converse(*args, **kwargs):
+        prompt_text = kwargs['messages'][0]['content'][0]['text']
+        if "Heavy Game" in prompt_text:
+            return {'output': {'message': {'content': [{'text': '{"recommendations": [{"name": "Heavy Game", "reason": "Heavy"}]}'}]}}}
+        elif "Terraforming Mars" in prompt_text:
+            return {'output': {'message': {'content': [{'text': '{"recommendations": [{"name": "Terraforming Mars", "reason": "Medium"}]}'}]}}}
+        else:
+            return {'output': {'message': {'content': [{'text': '{"recommendations": [{"name": "Light Game", "reason": "Light"}]}'}]}}}
+
+    mock_bedrock.converse.side_effect = mock_converse
+
+    # 1. Filter by "high": should keep Heavy Game (4.0) and exclude Terraforming Mars (3.3) and Light Game (1.5)
+    mock_read_parquet.side_effect = mock_read
+    event_high = {
+        'queryStringParameters': {
+            'username': 'gamer',
+            'own_status': 'any',
+            'complexity_pref': 'high'
+        }
+    }
+    res_high = bgg_recommender.lambda_handler(event_high, None)
+    assert res_high['statusCode'] == 200
+    high_prompt = mock_bedrock.converse.call_args[1]['messages'][0]['content'][0]['text']
+    assert "Heavy Game" in high_prompt
+    assert "Terraforming Mars" not in high_prompt
+    assert "Light Game" not in high_prompt
+
+    # 2. Filter by "medium": should keep Terraforming Mars (3.3) and exclude Heavy Game (4.0) and Light Game (1.5)
+    mock_read_parquet.side_effect = mock_read
+    event_med = {
+        'queryStringParameters': {
+            'username': 'gamer',
+            'own_status': 'any',
+            'complexity_pref': 'medium'
+        }
+    }
+    res_med = bgg_recommender.lambda_handler(event_med, None)
+    assert res_med['statusCode'] == 200
+    med_prompt = mock_bedrock.converse.call_args[1]['messages'][0]['content'][0]['text']
+    assert "Terraforming Mars" in med_prompt
+    assert "Heavy Game" not in med_prompt
+    assert "Light Game" not in med_prompt
+
+
 
 
 

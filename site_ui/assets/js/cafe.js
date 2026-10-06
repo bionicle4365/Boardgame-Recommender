@@ -254,7 +254,6 @@
             tagline: "Craft brews & 500+ tabletop games on tap.",
             wifi_ssid: "MaltMeeple-Guest",
             wifi_password: "rollforinitiative",
-            drink_pairings_enabled: true,
             bgg_username: "maltandmeeple",
             menu_url: "",
             announcement_banner: "",
@@ -507,18 +506,6 @@
         return "15-20 min teach";
     }
 
-    // Derive Drink Pairing based on Vibe
-    function getDrinkPairing(vibe) {
-        const pairings = {
-            party: "🍺 Guru Pairing: Crisp Pilsner, Hard Seltzer, or Loaded Nachos",
-            casual_strategy: "🍷 Guru Pairing: Hazy IPA, Red Blend, or Artisan Flatbread",
-            deep_strategy: "☕ Guru Pairing: Nitro Cold Brew, Imperial Stout, or Pretzel Bites",
-            cooperative: "🍹 Guru Pairing: Shareable Craft Pitcher or Warm Cider",
-            direct_conflict: "🥃 Guru Pairing: Smoked Old Fashioned or Buffalo Wings"
-        };
-        return pairings[vibe] || pairings.casual_strategy;
-    }
-
     // Render Game Cards (Shared for Collection Browser & Recommendations)
     function renderCafeCards(container, recs, options = {}) {
         const isRecView = options.isRecommendationView !== false;
@@ -575,10 +562,6 @@
                 `;
             }
 
-            // Drink Pairing (in recommendation view)
-            const drinkTag = (isRecView && state.venueMeta && state.venueMeta.drink_pairings_enabled !== false) 
-                ? `<div class="drink-pairing-tag">${escape(getDrinkPairing(state.quiz.vibe))}</div>` 
-                : "";
 
             // Genre / Mechanic Tags for collection browser
             let tagsHtml = "";
@@ -624,7 +607,6 @@
                     </div>
 
                     ${quoteHtml}
-                    ${drinkTag}
 
                     <!-- Actions -->
                     <div class="cafe-card-actions">
@@ -2190,7 +2172,6 @@
             filterAndSortCollection,
             switchTab,
             estimateTeachTime,
-            getDrinkPairing,
             fetchCafeRecommendations,
             renderCafeCards,
             extractYouTubeId,

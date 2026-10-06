@@ -867,7 +867,6 @@ window.fetchApi = async function(endpoint, options = {}) {
                 wifi_ssid: "Malt-Guest",
                 wifi_password: "rollinitiative",
                 tagline: "Craft beer & tabletop games in downtown.",
-                drink_pairings_enabled: true,
                 menu_url: "https://example.com/malt-and-meeple/menu",
                 announcement_banner: "🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap",
                 featured_game_ids: ["13", "266192", "178900"]
@@ -915,7 +914,6 @@ window.fetchApi = async function(endpoint, options = {}) {
                     wifi_password: "rollinitiative",
                     tagline: "24 craft beers on tap & 600+ tabletop games. Ask staff for recommendations!",
                     shelf_regex: "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)",
-                    drink_pairings_enabled: true,
                     menu_url: "https://example.com/malt-and-meeple/menu",
                     announcement_banner: "🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap",
                     featured_game_ids: ["13", "266192", "178900"],

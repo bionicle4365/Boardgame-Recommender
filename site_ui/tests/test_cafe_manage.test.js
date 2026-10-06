@@ -169,7 +169,7 @@ describe('Cafe Management Client Logic & Mock API', () => {
         expect(manageHtml).toContain('id="manage-featured-games-input"');
         expect(manageHtml).toContain('Digital Menu / Ordering URL');
         expect(manageHtml).toContain('Venue Event &amp; Announcement Banner');
-        expect(manageHtml).toContain('Featured "Guru Picks" / House Specials');
+        expect(manageHtml).toContain('Featured Games');
     });
 
     test('fetchApi mock handles /cafe/update and /cafe/meta with menu_url, announcement_banner, and featured_game_ids', async () => {

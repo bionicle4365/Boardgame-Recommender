@@ -559,6 +559,25 @@ def _handle_recommendations(query_params):
         except ValueError:
             pass
 
+    # Complexity level filter
+    if complexity_pref and complexity_pref != 'any' and 'complexity' in candidates.columns:
+        filtered_candidates = candidates
+        if complexity_pref in ('low', 'light'):
+            filtered_candidates = candidates[candidates['complexity'].notna() & (candidates['complexity'] <= 2.0)]
+        elif complexity_pref in ('high', 'heavy'):
+            filtered_candidates = candidates[candidates['complexity'].notna() & (candidates['complexity'] >= 3.5)]
+        elif complexity_pref == 'medium':
+            filtered_candidates = candidates[candidates['complexity'].notna() & (candidates['complexity'] >= 2.0) & (candidates['complexity'] <= 3.5)]
+
+        if not filtered_candidates.empty:
+            candidates = filtered_candidates
+            logger.info(f"Filtered catalog by complexity_pref '{complexity_pref}'. Candidates left: {len(candidates)}")
+        else:
+            logger.warning(
+                f"Complexity filter '{complexity_pref}' matched 0 games in candidate pool; "
+                f"falling back to full candidate pool ({len(candidates)} games) so scoring can rank nearest matches."
+            )
+
     # Pre-filter by rating for unowned recommendations
     if not cafe_id and own_status != 'owned' and len(candidates) > 100:
         candidates = candidates[candidates['rating'] >= 5.0]
@@ -640,6 +659,14 @@ def _handle_recommendations(query_params):
         has_complexity = 'complexity' in catalog_df.columns
         has_publishers = 'publishers' in catalog_df.columns
         
+        # Member taste alignment should evaluate pure, intrinsic taste against the game,
+        # invariant to session/situational query filters (complexity, duration, player count).
+        member_query_params = {
+            'complexity_pref': 'any',
+            'duration_pref': 'any',
+            'player_count': None
+        }
+        
         for rec in recs_list:
             game_id = str(rec['id'])
             matching_rows = catalog_df[catalog_df['id'] == game_id]
@@ -662,7 +689,7 @@ def _handle_recommendations(query_params):
                     
                     u_score = calculate_game_score(
                         game_row, u_mech, u_cat, u_des, u_pub, u_comp,
-                        hotness_scores, query_params, weights,
+                        hotness_scores, member_query_params, weights,
                         u_total_mech, u_total_cat, u_total_comp, u_total_des, u_total_pub,
                         has_complexity, has_publishers
                     )
