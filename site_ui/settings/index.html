@@ -383,6 +383,8 @@ description: "Manage your Boardgame Recommender settings, configure your account
         display: flex;
         align-items: center;
         gap: 12px;
+        flex: 1;
+        min-width: 240px;
     }
 
     .cafe-card {
@@ -526,6 +528,8 @@ description: "Manage your Boardgame Recommender settings, configure your account
         color: var(--primary) !important;
         border: 1.5px dashed var(--primary);
         transition: all 0.15s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .cafe-register-btn-outline:hover {
@@ -636,7 +640,7 @@ description: "Manage your Boardgame Recommender settings, configure your account
                         <p>Turn your venue's board game collection into an interactive digital sommelier for tables</p>
                     </div>
                 </div>
-                <a href="{{ '/cafe/onboard.html' | relative_url }}" class="cafe-register-btn-outline" id="settings-register-cafe-top-btn" title="Register a new venue">
+                <a href="{{ '/cafe/onboard.html' | relative_url }}" class="cafe-register-btn-outline" id="settings-register-cafe-top-btn" title="Register a new venue" style="display: none;">
                     <span>➕</span>
                     <span>Register New Cafe</span>
                 </a>
@@ -665,11 +669,6 @@ description: "Manage your Boardgame Recommender settings, configure your account
             <div id="settings-cafes-list" style="display: none;">
                 <div id="settings-cafes-cards-container">
                     <!-- Populated dynamically via loadManagedCafes() -->
-                </div>
-                <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
-                    <a href="{{ '/cafe/onboard.html' | relative_url }}" class="cafe-register-btn-outline">
-                        <span>➕ Register Another Venue</span>
-                    </a>
                 </div>
             </div>
 
@@ -834,6 +833,7 @@ description: "Manage your Boardgame Recommender settings, configure your account
             const cardsContainer = document.getElementById("settings-cafes-cards-container");
             const errorEl   = document.getElementById("settings-cafes-error");
             const errorMsg  = document.getElementById("settings-cafes-error-msg");
+            const topRegisterBtn = document.getElementById("settings-register-cafe-top-btn");
 
             if (!loadingEl || !emptyEl || !listEl || !cardsContainer) return;
 
@@ -841,6 +841,7 @@ description: "Manage your Boardgame Recommender settings, configure your account
             emptyEl.style.display = "none";
             listEl.style.display = "none";
             if (errorEl) errorEl.style.display = "none";
+            if (topRegisterBtn) topRegisterBtn.style.display = "none";
 
             const escape = window.escapeHTML || (s => s ? String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) : "");
 
@@ -854,13 +855,16 @@ description: "Manage your Boardgame Recommender settings, configure your account
                         errorEl.style.display = "block";
                         if (errorMsg) errorMsg.textContent = data.error || `Server responded with ${res.status}`;
                     }
+                    if (topRegisterBtn) topRegisterBtn.style.display = "none";
                     return;
                 }
 
                 const cafes = data.cafes || [];
                 if (cafes.length === 0) {
                     emptyEl.style.display = "block";
+                    if (topRegisterBtn) topRegisterBtn.style.display = "none";
                 } else {
+                    if (topRegisterBtn) topRegisterBtn.style.display = "inline-flex";
                     cardsContainer.innerHTML = "";
                     cafes.forEach(cafe => {
                         const slug = cafe.slug || cafe.cafe_id;
@@ -905,6 +909,7 @@ description: "Manage your Boardgame Recommender settings, configure your account
             } catch (err) {
                 console.error("Failed to load managed cafes:", err);
                 loadingEl.style.display = "none";
+                if (topRegisterBtn) topRegisterBtn.style.display = "none";
                 if (errorEl) {
                     errorEl.style.display = "block";
                     if (errorMsg) errorMsg.textContent = "Network error retrieving registered venues.";

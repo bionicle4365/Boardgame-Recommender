@@ -105,4 +105,10 @@ describe('Cafe Management Client Logic & Mock API', () => {
         expect(validateTableCount(501)).toBe(false);
         expect(validateTableCount("abc")).toBe(false);
     });
+
+    test('settings page contains single register button in header and none at bottom of list', () => {
+        const settingsHtml = fs.readFileSync(path.resolve(__dirname, '../settings/index.html'), 'utf8');
+        expect(settingsHtml).toContain('id="settings-register-cafe-top-btn"');
+        expect(settingsHtml).not.toContain('Register Another Venue');
+    });
 });
