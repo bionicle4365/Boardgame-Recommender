@@ -1,69 +1,97 @@
-# Serving Recommendation Lambda API
+# Serving Recommendation Lambda API (`bgg_recommender`)
 
-This directory contains the code and configuration for the serving AI recommendation Lambda function.
+This directory contains the containerized AWS Lambda function that powers personalized AI board game recommendations, content-based candidate ranking, Amazon Bedrock (Nova Micro) sommelier narrations, and real-time game night table voting sessions.
 
-## Components
+---
 
-* **`bgg_recommender.py`**: The Lambda handler entry point. It:
-  1. Receives a BGG username query parameter (and optional filters like publishing year range).
-  2. Checks if the user's collection Parquet file exists in S3 (`s3://boardgame-app/data/users/{username}.parquet`). If not, it dispatches a scraping message to the SQS queue and returns a `{"status": "scraping"}` response.
-  3. Downloads and parses the combined boardgame catalog Parquet files from S3.
-  4. Filters candidates based on user rated games (excluding already owned/rated games unless requested otherwise).
-  5. Computes a similarity score using **Jaccard Similarity** matching between user rated game categories/mechanics and candidate game categories/mechanics.
-  6. Prompts Amazon Bedrock (**Amazon Nova Micro**) to rank the candidates, select the top 10, and write personalized AI reasoning explanations.
-* **`combine_raw_to_single_file.py`**: The entry point for the `bgg_compactor` Lambda function. It downloads thousands of raw, single-game Parquet files from S3, aligns their schemas, merges them into a single pandas/PyArrow table, Snappy-compresses them, and uploads the final `catalog.parquet` table back to S3.
-* **`Dockerfile`**: Configures the container base layer to build the function run inside the AWS Lambda environment (shared by both the recommender and compactor entry points).
-* **`requirements.txt`**: List of dependencies (`pandas`, `numpy`, `pyarrow`, `boto3`).
+## Architecture & Modular Components
 
-## Configuration (Environment Variables)
-
-The function uses the following variables (injected via Terraform):
-* `S3_OUTPUT_BUCKET_NAME`: The S3 data lake bucket name (default: `boardgame-app`).
-* `USER_SQS_QUEUE_URL`: SQS queue URL used to trigger the user profile scraper asynchronously.
-* `BEDROCK_MODEL_ID`: Bedrock LLM ID used for generating recommendations (default: `amazon.nova-lite-v1:0`).
-
-## Taste Profile Schema (`data/users/{username}_taste_profile.json`)
-
-User taste profiles are generated asynchronously by `bgg_taste_analytics` upon collection scrape, or computed inline by `scoring.py`. The profile applies logarithmic damping and catalog-wide Inverse Document Frequency (IDF) discounting to elevate distinctive preferences over ubiquitous tags:
-
-```json
-{
-  "mech_weights": {
-    "Trick-taking": 14.52,
-    "Hand Management": 6.84
-  },
-  "cat_weights": {
-    "Economic": 8.75,
-    "Card Game": 4.12
-  },
-  "raw_mech_weights": {
-    "Trick-taking": 3.76,
-    "Hand Management": 4.88
-  },
-  "raw_cat_weights": {
-    "Economic": 3.42,
-    "Card Game": 4.15
-  },
-  "complexity_weights": {
-    "Light": 0.0,
-    "Medium-Light": 2.5,
-    "Medium-Heavy": 4.0,
-    "Heavy": 1.0
-  },
-  "user_mean_complexity": 2.85,
-  "designer_weights": {
-    "Uwe Rosenberg": 4.2
-  },
-  "publisher_weights": {
-    "Lookout Games": 4.2
-  },
-  "idf_applied": true,
-  "generated_at": "2026-10-05T13:20:00.000000+00:00"
-}
+```mermaid
+graph TD
+    Client[Web / Mobile Patron Client] -->|GET /recommendations, POST /cafe/vote/start| APIGW[API Gateway]
+    APIGW --> Handler[bgg_recommender.py]
+    
+    Handler --> Route{Route Match}
+    Route -->|/recommendations| Engine[Recommendation Engine]
+    Route -->|/session, /cafe/vote/start| SessHandler[session_handlers.py]
+    
+    Engine --> Scoring[scoring.py<br/>Cosine Sim & Gaussian Decay]
+    Engine --> Narration[narration.py<br/>Bedrock Nova Micro Sommelier]
+    Engine --> Cache[cache_utils.py<br/>S3 Caches & Cafe Inventory]
+    
+    SessHandler --> Sessions[sessions.py<br/>Voting & Consensus Engine]
+    Sessions --> DDBSess[(DynamoDB: bgg-game-night-sessions)]
+    
+    Cache --> S3Catalog[(S3: catalog.parquet)]
+    Cache --> S3Cafe[(S3: data/cafes/{cafe_id}/collection.parquet)]
+    Cache --> S3Cache[(S3: data/recommendation_cache/)]
 ```
 
-* `mech_weights` / `cat_weights`: Final TF-IDF weighted affinity scores used in cosine similarity candidate scoring.
-* `raw_mech_weights` / `raw_cat_weights`: Raw logarithmically damped affinities before IDF scaling.
-* `user_mean_complexity`: Rating-weighted average complexity (1.0–5.0) of user's liked games.
-* `idf_applied`: Boolean indicator indicating TF-IDF catalog frequency discounting is applied.
+### Module Directory Breakdown
 
+* **`bgg_recommender.py`**: Main AWS Lambda handler entry point. Routes `/recommendations`, `/profile`, `/conventions`, and session paths (`/session`, `/sessions`, `/cafe/vote/start`). Manages SQS scrape dispatch on cache misses.
+* **`scoring.py`**: Core deterministic scoring pipeline:
+  - **Tag Affinity (TF-IDF & Cosine Similarity):** True cosine similarity dividing tag dot products by candidate vector norms $\sqrt{|\text{cand\_tags}|}$.
+  - **Continuous Gaussian Complexity Decay:** Replaces hard buckets with distance decay centered on target/user mean complexity ($\sigma = 0.75$).
+  - **Cafe Vibe Weight Vectors:** Pre-configured Gaussian curves and mechanic affinity matrices for table vibes (`party`, `casual_strategy`, `deep_strategy`, `cooperative`, `direct_conflict`).
+  - **Candidate Diversification:** Deterministic multi-tag post-scoring pass to prevent category and mechanic clustering in shortlists.
+* **`narration.py`**: Bedrock LLM grounding and narration engine:
+  - Employs Amazon Nova Micro with high-temperature conversational grounding.
+  - Dedicated **Cafe Sommelier Persona** prompt emphasizing rules teach times, table atmosphere over drinks, group banter, and shelf locations.
+  - Injects candidate mechanics to eliminate LLM hallucinations.
+  - Enforces strict 1-sentence explanations (20–28 words) with diverse openers.
+* **`session_handlers.py`**: Route handlers for voting session operations:
+  - `POST /cafe/vote/start`: Single-tap cafe table session initialization prepopulated with top recommended games and formatted as `"{Cafe Name} - Table {Table Number}"`.
+  - `POST /session`, `GET /session`, `POST /session/vote`, `POST /session/close`, `DELETE /session`, `GET /sessions`.
+* **`sessions.py`**: State machine and DynamoDB persistence layer for table voting sessions using $+2$ (Favorite), $+1$ (Interested), and $-99$ (Veto) consensus scoring.
+* **`cache_utils.py`**: In-memory and S3 caching layer:
+  - `get_cafe_inventory(cafe_id)`: Loads cafe library with in-memory caching and S3 parquet fallback.
+  - `get_cached_recommendations(cache_key)`: Smart cache invalidation ensuring recommendations are newer than the profile.
+  - `get_catalog()`: Downloads and caches `catalog.parquet` into Lambda `/tmp`.
+* **`Dockerfile`**: Container image definition for deployment to Amazon ECR and AWS Lambda.
+
+---
+
+## API Endpoints
+
+### 1. `GET /recommendations`
+- **Standard Mode:** `?username=boardgamer123&player_count=4&duration_pref=medium`
+- **Cafe Sommelier Mode:** `?cafe_id=the-malt-and-meeple&vibe=casual_strategy&player_count=4&duration_pref=medium&table=7`
+  - Restricts candidate pool strictly to the cafe's owned inventory (`own=1`).
+  - Generates recommendations even for patrons without BGG accounts.
+  - Returns shelf coordinates (e.g. `📍 Shelf B-3`), estimated rules teach times, rules video links, and Bedrock sommelier quotes.
+
+### 2. `POST /recommendations`
+- Accepts inline weight overrides and taste test / personality quiz inputs for cold-start users.
+
+### 3. `POST /cafe/vote/start`
+- **Payload:**
+  ```json
+  {
+    "cafe_id": "the-malt-and-meeple",
+    "cafe_name": "The Malt & Meeple",
+    "table": "4",
+    "candidates": [ ...top recommendations... ]
+  }
+  ```
+- **Response:** Creates voting session in DynamoDB and returns `{ session_id, vote_url, ... }`.
+
+---
+
+## Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `S3_OUTPUT_BUCKET_NAME` | S3 data lake bucket name | `boardgame-app` |
+| `USER_SQS_QUEUE_URL` | SQS queue URL for collection scraping jobs | - |
+| `BEDROCK_MODEL_ID` | Amazon Bedrock LLM identifier | `amazon.nova-lite-v1:0` |
+| `DYNAMODB_SESSIONS_TABLE_NAME` | DynamoDB table name for game night voting sessions | `bgg-game-night-sessions` |
+
+---
+
+## Local Development & Testing
+
+Run the full recommender test suite:
+```bash
+pytest tests/test_bgg_recommender.py tests/test_narration.py tests/test_cache_utils.py tests/test_game_night_sessions.py -v
+```

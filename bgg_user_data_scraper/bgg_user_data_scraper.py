@@ -57,6 +57,31 @@ def safe_int(val):
     except (ValueError, TypeError):
         return None
 
+def safe_float(val):
+    """Safely converts value to float or returns None if invalid/empty."""
+    try:
+        return float(val) if val is not None else None
+    except (ValueError, TypeError):
+        return None
+
+def _build_prerender_record(r):
+    """Builds a JSON-serializable dictionary for a cafe game record."""
+    rec = {
+        'id': str(r.get('id', '')),
+        'name': str(r.get('name', '')) if r.get('name') is not None else '',
+        'thumbnail': str(r.get('thumbnail', '')) if r.get('thumbnail') is not None else '',
+        'year_published': int(r.get('year_published')) if r.get('year_published') else None,
+        'rating': float(r.get('rating')) if r.get('rating') is not None else None,
+        'complexity': float(r.get('complexity')) if r.get('complexity') is not None else None,
+        'min_players': int(r.get('min_players', 1)) if r.get('min_players') is not None else 1,
+        'max_players': int(r.get('max_players', 1)) if r.get('max_players') is not None else 1,
+        'playing_time': int(r.get('playing_time', 0)) if r.get('playing_time') is not None else 0,
+    }
+    if r.get('shelf_location'):
+        rec['shelf_location'] = str(r['shelf_location'])
+    return rec
+
+
 def get_user_data(username, is_cafe=False):
     """
     Queries the BoardGameGeek API for a user's or cafe's collection data.
@@ -97,12 +122,6 @@ def get_user_data(username, is_cafe=False):
             if not items:
                 logger.warning(f"No collection items found for user {username}.")
                 return None
-
-            def safe_float(val):
-                try:
-                    return float(val) if val is not None else None
-                except (ValueError, TypeError):
-                    return None
 
             if is_cafe:
                 cafe_data = []
@@ -259,22 +278,7 @@ def lambda_handler(event, context):
                     if is_cafe:
                         try:
                             s3_client = boto3.client('s3', region_name='us-east-1')
-                            json_records = []
-                            for r in collection_data:
-                                rec = {
-                                    'id': str(r.get('id', '')),
-                                    'name': str(r.get('name', '')) if r.get('name') is not None else '',
-                                    'thumbnail': str(r.get('thumbnail', '')) if r.get('thumbnail') is not None else '',
-                                    'year_published': int(r.get('year_published')) if r.get('year_published') else None,
-                                    'rating': float(r.get('rating')) if r.get('rating') is not None else None,
-                                    'complexity': float(r.get('complexity')) if r.get('complexity') is not None else None,
-                                    'min_players': int(r.get('min_players', 1)) if r.get('min_players') is not None else 1,
-                                    'max_players': int(r.get('max_players', 1)) if r.get('max_players') is not None else 1,
-                                    'playing_time': int(r.get('playing_time', 0)) if r.get('playing_time') is not None else 0,
-                                }
-                                if r.get('shelf_location'):
-                                    rec['shelf_location'] = str(r['shelf_location'])
-                                json_records.append(rec)
+                            json_records = [_build_prerender_record(r) for r in collection_data]
 
                             prerender_payload = {
                                 'status': 'ready',

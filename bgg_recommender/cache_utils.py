@@ -482,9 +482,10 @@ def get_cafe_inventory(cafe_id, ttl_seconds=3600):
     Caches the inventory DataFrame in memory for warm starts.
     Returns pd.DataFrame (with string 'id' column) or None if not found.
     """
-    import bgg_recommender
+    import sys
+    bgg_rec = sys.modules.get('bgg_recommender')
     now = time.time()
-    cafe_cache = getattr(bgg_recommender, 'CAFE_INVENTORY_CACHE', CAFE_INVENTORY_CACHE)
+    cafe_cache = getattr(bgg_rec, 'CAFE_INVENTORY_CACHE', CAFE_INVENTORY_CACHE) if bgg_rec else CAFE_INVENTORY_CACHE
     if cafe_id in cafe_cache:
         cached_time, cached_df = cafe_cache[cafe_id]
         if (now - cached_time) < ttl_seconds and cached_df is not None:
@@ -501,8 +502,8 @@ def get_cafe_inventory(cafe_id, ttl_seconds=3600):
         if 'id' in df.columns:
             df['id'] = df['id'].astype(str)
         cafe_cache[cafe_id] = (now, df)
-        if hasattr(bgg_recommender, 'CAFE_INVENTORY_CACHE'):
-            bgg_recommender.CAFE_INVENTORY_CACHE[cafe_id] = (now, df)
+        if bgg_rec and hasattr(bgg_rec, 'CAFE_INVENTORY_CACHE'):
+            bgg_rec.CAFE_INVENTORY_CACHE[cafe_id] = (now, df)
         logger.info(f"Successfully loaded cafe inventory for '{cafe_id}' with {len(df)} games.")
         return df
     except Exception as e:
@@ -515,10 +516,12 @@ def get_cafe_inventory(cafe_id, ttl_seconds=3600):
             if 'own' in u_df.columns:
                 u_df = u_df[u_df['own'] == True]
             if 'id' in u_df.columns:
-                u_df['id'] = u_df['id'].astype(str)
+                u_df = u_df[u_df['id'].notna()]['id'].astype(str).to_frame() if 'id' in u_df.columns and len(u_df.columns) == 1 else u_df
+                if 'id' in u_df.columns:
+                    u_df['id'] = u_df['id'].astype(str)
             cafe_cache[cafe_id] = (now, u_df)
-            if hasattr(bgg_recommender, 'CAFE_INVENTORY_CACHE'):
-                bgg_recommender.CAFE_INVENTORY_CACHE[cafe_id] = (now, u_df)
+            if bgg_rec and hasattr(bgg_rec, 'CAFE_INVENTORY_CACHE'):
+                bgg_rec.CAFE_INVENTORY_CACHE[cafe_id] = (now, u_df)
             logger.info(f"Successfully loaded fallback user collection for '{cafe_id}' with {len(u_df)} owned games.")
             return u_df
         except Exception as e2:

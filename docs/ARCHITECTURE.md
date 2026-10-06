@@ -24,12 +24,12 @@ graph TD
         PrefLambda[BGG Preferences Lambda<br/>Python 3.12]
         ProxyLambda[BGG API Proxy Lambda<br/>CORS & Token Injection]
         
-        Web -->|2. Scored Recs / Profile / Sessions| APIGW
-        Web -->|3. Read/Write Preferences| APIGW
+        Web -->|2. Scored Recs / Profile / Sessions / Cafe Recs| APIGW
+        Web -->|3. Read/Write Preferences & Cafe Management| APIGW
         Web -->|4. Bypass CORS BGG XML Fetch| APIGW
         
-        APIGW -->|Route: /recommendations, /profile, /sessions| RecLambda
-        APIGW -->|Route: /preferences - JWT Auth| PrefLambda
+        APIGW -->|Route: /recommendations, /profile, /sessions, /cafe/vote/start| RecLambda
+        APIGW -->|Route: /preferences, /cafe/* - Public & JWT Auth| PrefLambda
         APIGW -->|Route: /collection - Public| ProxyLambda
     end
 
@@ -62,10 +62,12 @@ graph TD
 
     subgraph Persistence & Reasoning
         DDBPref[(DynamoDB: bgg-user-preferences)]
+        DDBCafe[(DynamoDB: bgg-cafes)]
         DDBSess[(DynamoDB: bgg-game-night-sessions)]
         Bedrock[Amazon Bedrock<br/>Nova Micro LLM]
         
         PrefLambda <-->|User settings & playgroups| DDBPref
+        PrefLambda <-->|Venue registry & settings| DDBCafe
         RecLambda <-->|Session voting & veto consensus| DDBSess
         RecLambda -->|Top 40 Candidates| Bedrock
         Bedrock -->|Top 10 Selection & Personalized Reasons| RecLambda
@@ -167,6 +169,26 @@ boardgame-app/
   - `candidates`: List of 3–5 candidate games with thumbnail and metadata.
   - `votes`: Map of `{ participant_name: { game_id: score } }` where score is $+2$ (Favorite), $+1$ (Interested), or $-99$ (Veto).
 
+#### 5. Cafe Venue Registry DynamoDB Table (`bgg-cafes`)
+- **Partition Key (`PK`):** `cafe_id` (vanity slug string)
+- **Global Secondary Index:** `owner_cognito_id-index` (Partition Key: `owner_cognito_id`)
+- **Attributes:**
+  - `name`, `bgg_username`, `slug`, `table_count`, `wifi_ssid`, `wifi_password`, `tagline`, `shelf_regex`, `drink_pairings_enabled`, `logo_url`, `created_at`, `updated_at`, `last_sync_timestamp`.
+
+#### 6. Cafe Inventory Parquet Schema (`data/cafes/{cafe_id}/collection.parquet`)
+| Column | Type | Description |
+|---|---|---|
+| `id` | `string` | BGG game identifier. |
+| `name` | `string` | Primary game title. |
+| `thumbnail` | `string` | Box art thumbnail URL. |
+| `year_published` | `int64` | Initial release year. |
+| `min_players` / `max_players` | `int64` | Player count boundaries. |
+| `playing_time` | `int64` | Playing duration in minutes. |
+| `rating` | `float64` | Average BGG rating. |
+| `complexity` | `float64` | Weight / complexity score ($1.0 - 5.0$). |
+| `own` | `bool` | True if owned by venue. |
+| `shelf_location` | `string` | Physical location parsed from comments (e.g. `Shelf B-3`). |
+
 ---
 
 ## 4. Recommendation Scoring & Reasoning Pipeline
@@ -228,12 +250,16 @@ sequenceDiagram
 ## 5. Security & Authentication Architecture
 
 - **Public Endpoints (Anonymous / Ephemeral):**
-  - `GET /recommendations`: Accessible without credentials; allows cold-start quiz inputs and BGG handle querying.
+  - `GET /recommendations`: Accessible without credentials; allows cold-start quiz inputs, BGG handle querying, and cafe sommelier table recommendations (`?cafe_id=...&vibe=...`).
   - `GET /collection`: Proxied BGG collection queries to bypass browser CORS.
   - `GET /vote/:session_id` & `POST /vote/:session_id`: Ephemeral table voting using client participant names.
+  - `POST /cafe/vote/start`: Single-tap cafe table voting session instantiation.
+  - `GET /cafe/validate-bgg`, `GET /cafe/check-slug`, `GET /cafe/meta`, `GET /cafe/collection`: Public venue metadata and collection serving.
 - **Secured Endpoints (Amazon Cognito JWT):**
   - `GET /preferences` & `POST /preferences`: Protected by API Gateway HTTP API Cognito Authorizer.
-  - Claims Extraction: Handlers extract `sub` directly from verified claims, guaranteeing users cannot read or modify another user's preferences.
+  - `POST /cafe/onboard`: Venue onboarding persisting owner Cognito `sub` claims.
+  - `POST /cafe/sync`, `GET /cafe/my-cafes`, `POST /cafe/update`: Verified against `owner_cognito_id` in `bgg-cafes` DynamoDB.
+  - Claims Extraction: Handlers extract `sub` directly from verified claims, guaranteeing users cannot read or modify another user's preferences or venues.
 - **Account Recovery & Identity Management:**
   - Client-side Cognito self-service password recovery via `ForgotPassword` and `ConfirmForgotPassword` APIs in [utils.js](file:///d:/Git/Boardgame-Recommender/site_ui/assets/js/utils.js).
   - Multi-step modal views with verification code delivery via SES custom HTML templates and real-time password complexity validation.

@@ -507,6 +507,8 @@ def _handle_recommendations(query_params):
                 shelf_map = dict(zip(cafe_df['id'].astype(str), cafe_df[shelf_col]))
                 candidates['shelf_location'] = candidates['id'].map(shelf_map)
                 break
+        if 'shelf_location' not in candidates.columns:
+            candidates['shelf_location'] = None
 
     # Convention filter
     convention_id = query_params.get('convention_id')

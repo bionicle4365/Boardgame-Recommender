@@ -1,3 +1,5 @@
+import gzip
+import io
 import os
 import json
 import base64
@@ -17,6 +19,32 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, Decimal):
             return int(obj) if obj % 1 == 0 else float(obj)
         return super(DecimalEncoder, self).default(obj)
+
+def floats_to_decimals(obj):
+    """
+    Recursively converts float types to Decimals for DynamoDB serialization.
+    """
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {k: floats_to_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [floats_to_decimals(x) for x in obj]
+    return obj
+
+def _extract_collection_field_value(cat_row, row, key, default=None):
+    """
+    Extracts a game attribute, prioritizing the master catalog row over the
+    scraped collection row, ignoring NaN or None values.
+    """
+    import pandas as pd
+    v = cat_row.get(key)
+    if v is not None and pd.notna(v):
+        return v
+    v = row.get(key)
+    if v is not None and pd.notna(v):
+        return v
+    return default
 
 # Initialize DynamoDB Resource
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -501,7 +529,6 @@ def _handle_cafe_collection(query_params):
     Returns the cafe's owned board games library with shelf locations (GET /cafe/collection).
     Public endpoint used by patron collection browser.
     """
-    import io
     cafe_id = (query_params.get('cafe_id') or query_params.get('slug') or '').strip().lower()
     if not cafe_id:
         return {
@@ -637,23 +664,14 @@ def _handle_cafe_collection(query_params):
             gid = str(row.get('id', ''))
             cat_row = catalog_lookup.get(gid) or {}
 
-            def get_val(key, default=None):
-                v = cat_row.get(key)
-                if v is not None and pd.notna(v):
-                    return v
-                v = row.get(key)
-                if v is not None and pd.notna(v):
-                    return v
-                return default
-
-            name_val = get_val('name', '')
-            thumb_val = get_val('thumbnail', '')
-            yp_val = get_val('year_published')
-            rat_val = get_val('rating')
-            comp_val = get_val('complexity')
-            min_p = get_val('min_players', 1)
-            max_p = get_val('max_players', 1)
-            play_t = get_val('playing_time', 0)
+            name_val = _extract_collection_field_value(cat_row, row, 'name', '')
+            thumb_val = _extract_collection_field_value(cat_row, row, 'thumbnail', '')
+            yp_val = _extract_collection_field_value(cat_row, row, 'year_published')
+            rat_val = _extract_collection_field_value(cat_row, row, 'rating')
+            comp_val = _extract_collection_field_value(cat_row, row, 'complexity')
+            min_p = _extract_collection_field_value(cat_row, row, 'min_players', 1)
+            max_p = _extract_collection_field_value(cat_row, row, 'max_players', 1)
+            play_t = _extract_collection_field_value(cat_row, row, 'playing_time', 0)
 
             rec = {
                 'id': gid,
@@ -671,7 +689,7 @@ def _handle_cafe_collection(query_params):
                 rec['shelf_location'] = str(shelf).strip()
 
             for f in ['rules_video_url', 'rules_video_id', 'rules_video_title', 'teach_time']:
-                val = get_val(f)
+                val = _extract_collection_field_value(cat_row, row, f)
                 if val is not None and str(val).strip():
                     rec[f] = str(val).strip()
             records.append(rec)
@@ -1239,16 +1257,6 @@ def _lambda_handler_impl(event, context):
             user_preferences = body.get('user_preferences', {})
             bgg_username = body.get('bgg_username')
 
-            # Helper function to convert float types to Decimals for DynamoDB
-            def floats_to_decimals(obj):
-                if isinstance(obj, float):
-                    return Decimal(str(obj))
-                elif isinstance(obj, dict):
-                    return {k: floats_to_decimals(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [floats_to_decimals(x) for x in obj]
-                return obj
-
             update_parts = []
             expression_attribute_values = {}
             expression_attribute_names = {}
@@ -1305,8 +1313,6 @@ def _lambda_handler_impl(event, context):
     }
 
 def _compress_response(event, response):
-    import gzip
-
     if not isinstance(response, dict):
         return response
     headers = event.get('headers') or {}

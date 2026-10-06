@@ -31,7 +31,6 @@
     };
 
     // Helper: Parse URL parameters or fallback to path/storage
-    // Helper: Parse URL parameters or fallback to path/storage
     function parseVenueContext() {
         const urlParams = new URLSearchParams(window.location.search);
         
@@ -393,7 +392,6 @@
         return pairings[vibe] || pairings.casual_strategy;
     }
 
-    // Render Game Cards
     // Render Game Cards (Shared for Collection Browser & Recommendations)
     function renderCafeCards(container, recs, options = {}) {
         const isRecView = options.isRecommendationView !== false;
