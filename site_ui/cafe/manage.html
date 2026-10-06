@@ -625,6 +625,12 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
                             <div class="field-hint">Determines the number of individual table QR tent cards generated for your venue floor.</div>
                         </div>
 
+                        <div class="form-group">
+                            <label for="manage-room-names-input">Custom Room / Table Names (Optional)</label>
+                            <input type="text" id="manage-room-names-input" class="form-input" placeholder="e.g. The Vault, Dragon's Lair, VIP Room">
+                            <div class="field-hint">Comma-separated names of private rental rooms, booths, or custom-named tables. Individual table tents and direct links will be generated for these in addition to numbered tables.</div>
+                        </div>
+
                         <div class="form-row-2">
                             <div class="form-group">
                                 <label for="manage-wifi-ssid-input">Guest Wi-Fi Network (SSID)</label>
@@ -762,6 +768,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const formTaglineInput    = document.getElementById("manage-tagline-input");
     const formBggInput        = document.getElementById("manage-bgg-input");
     const formTableCountInput = document.getElementById("manage-table-count-input");
+    const formRoomNamesInput  = document.getElementById("manage-room-names-input");
     const formWifiSsidInput   = document.getElementById("manage-wifi-ssid-input");
     const formWifiPassInput   = document.getElementById("manage-wifi-pass-input");
     const formShelfRegexInput = document.getElementById("manage-shelf-regex-input");
@@ -901,7 +908,11 @@ document.addEventListener("DOMContentLoaded", function () {
         heroPortalLink.href = portalUrl;
         heroOpenPortalBtn.href = portalUrl;
 
-        badgeTableCount.textContent = `🪑 ${currentCafe.table_count || 20} Tables`;
+        if (currentCafe.room_names && currentCafe.room_names.length) {
+            badgeTableCount.textContent = `🪑 ${currentCafe.table_count || 20} Tables • 🚪 ${currentCafe.room_names.length} Rooms`;
+        } else {
+            badgeTableCount.textContent = `🪑 ${currentCafe.table_count || 20} Tables`;
+        }
         badgeBggUser.textContent = `🎲 BGG: ${currentCafe.bgg_username || 'None'}`;
 
         if (currentCafe.last_sync_timestamp) {
@@ -918,6 +929,12 @@ document.addEventListener("DOMContentLoaded", function () {
         formTaglineInput.value    = currentCafe.tagline || "";
         formBggInput.value        = currentCafe.bgg_username || "";
         formTableCountInput.value = currentCafe.table_count || 20;
+        if (formRoomNamesInput) {
+            const rooms = Array.isArray(currentCafe.room_names) 
+                ? currentCafe.room_names.join(", ") 
+                : (currentCafe.room_names || "");
+            formRoomNamesInput.value = rooms;
+        }
         formWifiSsidInput.value   = currentCafe.wifi_ssid || "";
         formWifiPassInput.value   = currentCafe.wifi_password || "";
         formShelfRegexInput.value = currentCafe.shelf_regex || "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)";
@@ -941,6 +958,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const previewUrl = `${baseUrl}/cafe/${encodeURIComponent(slug)}/1`;
         previewQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(previewUrl)}`;
 
+        // Parse custom room names
+        const customRoomsStr = formRoomNamesInput ? formRoomNamesInput.value : "";
+        const customRooms = (Array.isArray(customRoomsStr) ? customRoomsStr : customRoomsStr.split(","))
+            .map(r => String(r).trim())
+            .filter(Boolean);
+
         // Populate Table Links
         tableLinksContainer.innerHTML = "";
         const maxDisplay = Math.min(tables, 100);
@@ -958,6 +981,22 @@ document.addEventListener("DOMContentLoaded", function () {
             tableLinksContainer.appendChild(row);
         }
 
+        // Add custom named rooms
+        customRooms.forEach(room => {
+            const row = document.createElement("div");
+            row.className = "table-link-row room-link-row";
+            const roomUrl = `${baseUrl}/cafe/${encodeURIComponent(slug)}/${encodeURIComponent(room)}`;
+            const escape = window.escapeHTML || (s => s);
+            row.innerHTML = `
+                <span class="table-link-title">🚪 ${escape(room)}</span>
+                <div class="table-link-actions">
+                    <button type="button" class="table-btn-small copy-btn" data-url="${roomUrl}">📋 Copy URL</button>
+                    <a href="${roomUrl}" target="_blank" class="table-btn-small">↗ Test</a>
+                </div>
+            `;
+            tableLinksContainer.appendChild(row);
+        });
+
         // Bind copy buttons
         tableLinksContainer.querySelectorAll(".copy-btn").forEach(btn => {
             btn.addEventListener("click", function () {
@@ -972,8 +1011,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ── Form Input Change Event ──
-    [formNameInput, formTableCountInput, formWifiSsidInput, formWifiPassInput].forEach(inp => {
-        inp.addEventListener("input", updateFloorTools);
+    [formNameInput, formTableCountInput, formRoomNamesInput, formWifiSsidInput, formWifiPassInput].forEach(inp => {
+        if (inp) inp.addEventListener("input", updateFloorTools);
     });
 
     // ── Copy Main Portal URL ──
@@ -995,12 +1034,17 @@ document.addEventListener("DOMContentLoaded", function () {
         saveBtnIcon.textContent = "⏳";
         saveBtnText.textContent = "Saving...";
 
+        const roomNamesList = formRoomNamesInput 
+            ? formRoomNamesInput.value.split(",").map(r => r.trim()).filter(Boolean)
+            : [];
+
         const payload = {
             cafe_id: currentCafe.cafe_id,
             name: formNameInput.value.trim(),
             tagline: formTaglineInput.value.trim(),
             bgg_username: formBggInput.value.trim(),
             table_count: parseInt(formTableCountInput.value, 10),
+            room_names: roomNamesList,
             wifi_ssid: formWifiSsidInput.value.trim(),
             wifi_password: formWifiPassInput.value.trim(),
             shelf_regex: formShelfRegexInput.value.trim(),
@@ -1198,6 +1242,46 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
             </div>`;
         }
+
+        // Custom Named Rooms / Tables
+        const customRoomsStr = formRoomNamesInput ? formRoomNamesInput.value : "";
+        const customRooms = (Array.isArray(venue.room_names) ? venue.room_names : customRoomsStr.split(","))
+            .map(r => String(r).trim())
+            .filter(Boolean);
+
+        customRooms.forEach(room => {
+            const roomUrl = `https://meeplemanifesto.com/cafe/${slug}/${encodeURIComponent(room)}`;
+            const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(roomUrl)}`;
+            const badgeLabel = room.toUpperCase();
+            
+            cardsHtml += `
+            <div class="print-page">
+                <div class="tent-card">
+                    <!-- Top Panel (Inverted 180° for folded tent) -->
+                    <div class="tent-panel tent-panel-top">
+                        <div class="tent-bar"></div>
+                        <div class="tent-cafe-title">${venue.name}</div>
+                        <div class="tent-badge">${badgeLabel}</div>
+                        <img class="tent-qr" src="${qrSrc}" alt="${badgeLabel} QR">
+                        <div class="tent-cta-heading">🎲 Find What to Play</div>
+                        <div class="tent-cta-sub">${venue.tagline || 'Scan to find your perfect game in 30 seconds'}</div>
+                        <div class="tent-wifi-box">📶 ${wifiInfo}</div>
+                    </div>
+                    <!-- Fold Indicator -->
+                    <div class="tent-fold">✂️ FOLD HERE FOR STANDING TENT CARD</div>
+                    <!-- Bottom Panel -->
+                    <div class="tent-panel">
+                        <div class="tent-bar"></div>
+                        <div class="tent-cafe-title">${venue.name}</div>
+                        <div class="tent-badge">${badgeLabel}</div>
+                        <img class="tent-qr" src="${qrSrc}" alt="${badgeLabel} QR">
+                        <div class="tent-cta-heading">🎲 Find What to Play</div>
+                        <div class="tent-cta-sub">${venue.tagline || 'Scan to find your perfect game in 30 seconds'}</div>
+                        <div class="tent-wifi-box">📶 ${wifiInfo}</div>
+                    </div>
+                </div>
+            </div>`;
+        });
 
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`

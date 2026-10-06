@@ -251,6 +251,49 @@ def test_cafe_update_success(mock_cafes_table, mock_s3):
     assert mock_s3.put_object.call_count == 2
 
 
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_update_with_room_names(mock_cafes_table, mock_s3):
+    initial_cafe = {
+        'cafe_id': 'the-malt-and-meeple',
+        'owner_cognito_id': 'user-123',
+        'name': 'The Malt & Meeple',
+        'table_count': 10,
+        'room_names': ['The Vault'],
+        'created_at': '2026-01-01T00:00:00Z'
+    }
+    mock_cafes_table.get_item.return_value = {'Item': initial_cafe}
+
+    registry_data = json.dumps({'the-malt-and-meeple': {'name': 'The Malt & Meeple'}}).encode('utf-8')
+    body_mock = MagicMock()
+    body_mock.read.return_value = registry_data
+    mock_s3.get_object.return_value = {'Body': body_mock}
+
+    payload = {
+        'cafe_id': 'the-malt-and-meeple',
+        'room_names': ['The Vault', "Dragon's Lair", 'VIP Room']
+    }
+
+    event = {
+        'rawPath': '/cafe/update',
+        'requestContext': {
+            'http': {'method': 'POST'},
+            'authorizer': {'jwt': {'claims': {'sub': 'user-123'}}}
+        },
+        'body': json.dumps(payload)
+    }
+
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert body['status'] == 'success'
+    cafe = body['cafe']
+    assert cafe['room_names'] == ['The Vault', "Dragon's Lair", 'VIP Room']
+
+    saved_item = mock_cafes_table.put_item.call_args[1]['Item']
+    assert saved_item['room_names'] == ['The Vault', "Dragon's Lair", 'VIP Room']
+
+
 # ── POST /cafe/delete Tests ──────────────────────────────────────────────────
 
 def test_cafe_delete_unauthorized():

@@ -84,27 +84,40 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
             <div class="table-vote-cta-card" id="table-vote-cta-card">
                 <button id="btn-launch-table-vote"></button>
             </div>
+            <button id="btn-banner-start-poll"></button>
             <div id="cafe-table-vote-modal" style="display: none;">
                 <h3 id="vote-modal-title"></h3>
                 <button id="btn-close-vote-modal">✕</button>
-                <img id="vote-modal-qr-img" src="">
-                <button id="btn-vote-copy-link"></button>
-                <button id="btn-vote-share-link"></button>
-                <a id="btn-vote-open-external" href="#"></a>
-                <div id="vote-copy-feedback" style="display: none;"></div>
-                <div id="vote-ballot-section">
-                    <input id="vote-voter-name-input">
-                    <div id="vote-candidates-list"></div>
-                    <button id="btn-submit-table-vote"></button>
+                <div id="vote-setup-section">
+                    <input id="poll-search-input">
+                    <button id="poll-search-clear" style="display: none;"></button>
+                    <button id="btn-poll-select-rec"></button>
+                    <button id="btn-poll-clear-all"></button>
+                    <span id="poll-selected-count-chip">0 selected</span>
+                    <div id="poll-candidates-picker"></div>
+                    <div id="poll-setup-error" style="display: none;"></div>
+                    <button id="btn-launch-configured-poll"></button>
                 </div>
-                <div id="vote-consensus-section" style="display: none;">
-                    <div id="vote-winner-banner" style="display: none;">
-                        <h4 id="vote-winner-title"></h4>
+                <div id="vote-active-section" style="display: none;">
+                    <img id="vote-modal-qr-img" src="">
+                    <button id="btn-vote-copy-link"></button>
+                    <button id="btn-vote-share-link"></button>
+                    <a id="btn-vote-open-external" href="#"></a>
+                    <div id="vote-copy-feedback" style="display: none;"></div>
+                    <div id="vote-ballot-section">
+                        <input id="vote-voter-name-input">
+                        <div id="vote-candidates-list"></div>
+                        <button id="btn-submit-table-vote"></button>
                     </div>
-                    <span id="vote-tally-count"></span>
-                    <div id="vote-rankings-list"></div>
-                    <button id="btn-revote-trigger"></button>
-                    <button id="btn-refresh-tally"></button>
+                    <div id="vote-consensus-section" style="display: none;">
+                        <div id="vote-winner-banner" style="display: none;">
+                            <h4 id="vote-winner-title"></h4>
+                        </div>
+                        <span id="vote-tally-count"></span>
+                        <div id="vote-rankings-list"></div>
+                        <button id="btn-revote-trigger"></button>
+                        <button id="btn-refresh-tally"></button>
+                    </div>
                 </div>
             </div>
         `;
@@ -662,6 +675,80 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
 
         startBtn.click();
         expect(modal.style.display).toBe('flex');
+    });
+
+    test('base cafe URL hides table-badge-pill and leaves state.table empty', async () => {
+        delete window.location;
+        window.location = new URL('https://meeplemanifesto.com/cafe/pawtucket-library');
+
+        const hasVenue = window.CafePortal.parseVenueContext();
+        expect(hasVenue).toBe(true);
+        expect(window.CafePortal.state.cafeId).toBe('pawtucket-library');
+        expect(window.CafePortal.state.table).toBe('');
+
+        await window.CafePortal.loadVenueMetadata();
+        const badge = document.getElementById('header-table-badge');
+        expect(badge.style.display).toBe('none');
+    });
+
+    test('table badge pill displays custom room name when specified', async () => {
+        delete window.location;
+        window.location = new URL('https://meeplemanifesto.com/cafe/pawtucket-library/The%20Vault');
+
+        window.CafePortal.parseVenueContext();
+        expect(window.CafePortal.state.table).toBe('The Vault');
+
+        await window.CafePortal.loadVenueMetadata();
+        const badge = document.getElementById('header-table-badge');
+        expect(badge.style.display).toBe('inline-flex');
+        expect(badge.textContent).toBe('🪑 The Vault');
+    });
+
+    test('openPollCreationModal shows all cafe games with recommended pre-selected at top and text search filtering', async () => {
+        const fullLibrary = [
+            { id: '101', name: '7 Wonders', rating: 7.7, complexity: 2.3, playing_time: 30, mechanics: ['Card Drafting'] },
+            { id: '102', name: 'Azul', rating: 7.8, complexity: 1.8, playing_time: 45, mechanics: ['Tile Placement'] },
+            { id: '103', name: 'Brass Birmingham', rating: 8.6, complexity: 3.9, playing_time: 120, mechanics: ['Economic', 'Network'] },
+            { id: '104', name: 'Catan', rating: 7.1, complexity: 2.3, playing_time: 75, mechanics: ['Trading'] }
+        ];
+
+        window.CafePortal.state.collection = fullLibrary;
+        window.CafePortal.state.recommendations = [fullLibrary[1], fullLibrary[2]]; // Azul and Brass
+        window.CafePortal.state.cafeId = 'demo-cafe';
+        window.CafePortal.state.table = '3';
+
+        await window.CafePortal.openPollCreationModal();
+
+        const setupSection = document.getElementById('vote-setup-section');
+        const activeSection = document.getElementById('vote-active-section');
+        const picker = document.getElementById('poll-candidates-picker');
+        const countChip = document.getElementById('poll-selected-count-chip');
+
+        expect(setupSection.style.display).toBe('flex');
+        expect(activeSection.style.display).toBe('none');
+        expect(countChip.textContent).toBe('2 selected');
+
+        // Check that all 4 games are in the picker
+        const items = picker.querySelectorAll('.poll-candidate-item');
+        expect(items.length).toBe(4);
+
+        // First items in list should be the selected/recommended games (Azul, Brass)
+        const firstId = items[0].getAttribute('data-game-id');
+        const secondId = items[1].getAttribute('data-game-id');
+        expect(['102', '103']).toContain(firstId);
+        expect(['102', '103']).toContain(secondId);
+
+        // Real-time search filter
+        window.CafePortal.state.pollSearchQuery = 'catan';
+        window.CafePortal.renderPollCandidatePicker();
+        const filteredItems = picker.querySelectorAll('.poll-candidate-item');
+        expect(filteredItems.length).toBe(1);
+        expect(filteredItems[0].querySelector('.poll-cand-title').textContent).toBe('Catan');
+
+        // Clear search
+        window.CafePortal.state.pollSearchQuery = '';
+        window.CafePortal.renderPollCandidatePicker();
+        expect(picker.querySelectorAll('.poll-candidate-item').length).toBe(4);
     });
 });
 

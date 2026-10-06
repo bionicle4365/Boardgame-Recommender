@@ -10,7 +10,7 @@
     const state = {
         cafeId: "",
         venueMeta: null,
-        table: "1",
+        table: "",
         activeTab: "collection",
         collection: [],
         filteredCollection: [],
@@ -19,6 +19,9 @@
         activeFilter: "all",
         sortBy: "name_asc",
         isCollectionLoading: false,
+        pollSelectedIds: new Set(),
+        pollSearchQuery: "",
+        recommendedIds: new Set(),
         quiz: {
             playerCount: "4",
             duration: "medium",
@@ -67,12 +70,16 @@
         let table = tableFromPath || urlParams.get("table") || urlParams.get("t");
 
         state.cafeId = cafeId.trim().toLowerCase();
-        state.table = table ? table.trim() : (sessionStorage.getItem("cafe_patron_table") || "");
+        state.table = table ? table.trim() : "";
 
         // Persist in session
         try {
             sessionStorage.setItem("cafe_patron_cafe_id", state.cafeId);
-            if (state.table) sessionStorage.setItem("cafe_patron_table", state.table);
+            if (state.table) {
+                sessionStorage.setItem("cafe_patron_table", state.table);
+            } else {
+                sessionStorage.removeItem("cafe_patron_table");
+            }
         } catch (e) {}
 
         // Ensure browser address bar displays clean RESTful path: /cafe/:cafeId/:table or /cafe/:cafeId
@@ -130,11 +137,25 @@
         const avatarEl = document.getElementById("venue-avatar-wrap");
 
         if (tableBadge) {
-            tableBadge.textContent = state.table ? `🪑 Table ${state.table}` : "🪑 Seating (Set Table #)";
+            if (state.table) {
+                tableBadge.style.display = "inline-flex";
+                tableBadge.textContent = /^\d+$/.test(state.table) ? `🪑 Table ${state.table}` : `🪑 ${state.table}`;
+            } else {
+                tableBadge.style.display = "none";
+            }
         }
         const ctaTableNum = document.getElementById("cta-table-num");
         if (ctaTableNum) {
-            ctaTableNum.textContent = state.table ? state.table : "1";
+            ctaTableNum.textContent = state.table ? state.table : "";
+        }
+        const ctaSub = document.getElementById("recommender-cta-sub");
+        if (ctaSub) {
+            if (state.table) {
+                const label = /^\d+$/.test(state.table) ? `Table ${state.table}` : state.table;
+                ctaSub.innerHTML = `Answer 3 quick taps to find recommendations tailored for <span class="cta-table-num" id="cta-table-num">${label}</span>.`;
+            } else {
+                ctaSub.textContent = "Answer 3 quick taps to find tailored game recommendations for your visit.";
+            }
         }
 
         try {
@@ -262,23 +283,40 @@
 
         // Table Switcher
         const switchTableBtn = document.getElementById("switch-table-trigger");
+        const tableBadge = document.getElementById("header-table-badge");
         if (switchTableBtn) {
+            switchTableBtn.textContent = state.table ? "Wrong table? Switch" : "Select table / room";
             switchTableBtn.addEventListener("click", () => {
-                const newTable = prompt("Enter your table number:", state.table);
+                const newTable = prompt("Enter your table number or room name (e.g. 5 or The Vault):", state.table || "");
                 if (newTable && newTable.trim()) {
                     state.table = newTable.trim();
                     try {
                         sessionStorage.setItem("cafe_patron_table", state.table);
                     } catch (e) {}
-                    const tableBadge = document.getElementById("header-table-badge");
-                    if (tableBadge) tableBadge.textContent = `🪑 Table ${state.table}`;
+                    if (tableBadge) {
+                        tableBadge.style.display = "inline-flex";
+                        tableBadge.textContent = /^\d+$/.test(state.table) ? `🪑 Table ${state.table}` : `🪑 ${state.table}`;
+                    }
+                    switchTableBtn.textContent = "Wrong table? Switch";
+                    const formattedLabel = /^\d+$/.test(state.table) ? `Table ${state.table}` : state.table;
                     const resTitle = document.getElementById("results-table-num");
-                    if (resTitle) resTitle.textContent = state.table;
+                    if (resTitle) resTitle.textContent = formattedLabel;
                     const ctaTableEl = document.getElementById("cta-table-num");
-                    if (ctaTableEl) ctaTableEl.textContent = state.table;
+                    if (ctaTableEl) ctaTableEl.textContent = formattedLabel;
+                    const voteCtaTableEl = document.getElementById("vote-cta-table-num");
+                    if (voteCtaTableEl) voteCtaTableEl.textContent = formattedLabel;
+                    const ctaSub = document.getElementById("recommender-cta-sub");
+                    if (ctaSub) {
+                        ctaSub.innerHTML = `Answer 3 quick taps to find recommendations tailored for <span class="cta-table-num" id="cta-table-num">${formattedLabel}</span>.`;
+                    }
                     state.activeVoteSession = null;
                     checkActiveTableVoteSession();
                 }
+            });
+        }
+        if (tableBadge) {
+            tableBadge.addEventListener("click", () => {
+                if (switchTableBtn) switchTableBtn.click();
             });
         }
 
@@ -1113,91 +1151,307 @@
         });
     }
 
-    // ── Table Voting Integration (Milestone C7) ──
-    async function startTableVote() {
-        if (!state.recommendations || state.recommendations.length === 0) {
-            alert("Please generate recommendations first to start a table vote!");
-            return;
-        }
-
-        const topCandidates = state.recommendations.slice(0, 4).map(r => ({
-            id: String(r.id),
-            name: r.name,
-            thumbnail: r.thumbnail || "",
-            rating: r.rating || 0,
-            complexity: r.complexity || 0,
-            playing_time: r.playing_time || 0,
-            shelf_location: r.shelf_location || ""
-        }));
+    // ── Table Voting & Poll Creation Integration (Milestone C7 Expansion) ──
+    async function openPollCreationModal() {
+        const modal = document.getElementById("cafe-table-vote-modal");
+        const modalTitle = document.getElementById("vote-modal-title");
+        const setupSection = document.getElementById("vote-setup-section");
+        const activeSection = document.getElementById("vote-active-section");
 
         const cafeName = (state.venueMeta && state.venueMeta.name) 
             ? state.venueMeta.name 
             : (state.cafeId ? state.cafeId.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()) : "Cafe");
 
-        const payload = {
-            cafe_id: state.cafeId || "demo-cafe",
-            cafe_name: cafeName,
-            table: state.table || "1",
-            candidates: topCandidates,
-            duration_hours: 0.25,
-            creator_name: `Table ${state.table || "1"}`
-        };
-
-        const modal = document.getElementById("cafe-table-vote-modal");
-        const modalTitle = document.getElementById("vote-modal-title");
-        const qrImg = document.getElementById("vote-modal-qr-img");
-        const extLink = document.getElementById("btn-vote-open-external");
-        const ballotSection = document.getElementById("vote-ballot-section");
-        const consensusSection = document.getElementById("vote-consensus-section");
-        const nameInput = document.getElementById("vote-voter-name-input");
-
-        if (modalTitle) modalTitle.textContent = `${cafeName} - Table ${state.table} Vote`;
+        if (modalTitle) {
+            modalTitle.textContent = state.table 
+                ? `${cafeName} - ${/^\d+$/.test(state.table) ? 'Table ' + state.table : state.table} Vote`
+                : `${cafeName} - Table Vote`;
+        }
         if (modal) modal.style.display = "flex";
-        if (ballotSection) ballotSection.style.display = "flex";
-        if (consensusSection) consensusSection.style.display = "none";
+        if (setupSection) setupSection.style.display = "flex";
+        if (activeSection) activeSection.style.display = "none";
+
+        // Load collection if needed
+        if (!state.collection || state.collection.length === 0) {
+            await loadCafeCollection();
+        }
+
+        // Determine recommended candidate IDs
+        let recIds = [];
+        if (state.recommendations && state.recommendations.length > 0) {
+            recIds = state.recommendations.slice(0, 4).map(r => String(r.id));
+        } else if (state.collection && state.collection.length > 0) {
+            // Pick top 4 by rating as default recommendations
+            const sorted = [...state.collection].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            recIds = sorted.slice(0, 4).map(r => String(r.id));
+        }
+
+        state.recommendedIds = new Set(recIds);
+        // Pre-select recommended games
+        state.pollSelectedIds = new Set(recIds);
+        state.pollSearchQuery = "";
+
+        const searchInp = document.getElementById("poll-search-input");
+        if (searchInp) searchInp.value = "";
+        const searchClear = document.getElementById("poll-search-clear");
+        if (searchClear) searchClear.style.display = "none";
+        const errEl = document.getElementById("poll-setup-error");
+        if (errEl) errEl.style.display = "none";
+
+        renderPollCandidatePicker();
+    }
+
+    function renderPollCandidatePicker() {
+        const container = document.getElementById("poll-candidates-picker");
+        const countChip = document.getElementById("poll-selected-count-chip");
+        if (!container) return;
+
+        if (countChip) {
+            countChip.textContent = `${state.pollSelectedIds.size} selected`;
+        }
+
+        const query = (state.pollSearchQuery || "").trim().toLowerCase();
+        const games = state.collection || [];
+        const escape = window.escapeHTML || (s => s);
+
+        // Filter games by search query
+        let filtered = games.filter(g => {
+            if (!query) return true;
+            const name = (g.name || "").toLowerCase();
+            const mechs = Array.isArray(g.mechanics) ? g.mechanics.join(" ").toLowerCase() : (g.mechanics || "").toLowerCase();
+            const cats = Array.isArray(g.categories) ? g.categories.join(" ").toLowerCase() : (g.categories || "").toLowerCase();
+            return name.includes(query) || mechs.includes(query) || cats.includes(query);
+        });
+
+        // Sort: Selected games moved to the top!
+        filtered.sort((a, b) => {
+            const aSel = state.pollSelectedIds.has(String(a.id)) ? 1 : 0;
+            const bSel = state.pollSelectedIds.has(String(b.id)) ? 1 : 0;
+            if (aSel !== bSel) return bSel - aSel; // Selected first
+
+            const aRec = state.recommendedIds && state.recommendedIds.has(String(a.id)) ? 1 : 0;
+            const bRec = state.recommendedIds && state.recommendedIds.has(String(b.id)) ? 1 : 0;
+            if (aRec !== bRec) return bRec - aRec; // Recommended next
+
+            return (a.name || "").localeCompare(b.name || "");
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.9rem;">
+                    No games found matching "${escape(query)}".
+                </div>
+            `;
+            return;
+        }
+
+        let html = "";
+        filtered.forEach(g => {
+            const gid = String(g.id);
+            const isSelected = state.pollSelectedIds.has(gid);
+            const isRec = state.recommendedIds && state.recommendedIds.has(gid);
+            const thumb = g.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
+            const shelf = (g.shelf_location || "").trim();
+
+            html += `
+                <div class="poll-candidate-item ${isSelected ? 'is-selected' : ''}" data-game-id="${escape(gid)}">
+                    <input type="checkbox" class="poll-cand-checkbox" data-game-id="${escape(gid)}" ${isSelected ? 'checked' : ''} aria-label="Select ${escape(g.name)}">
+                    <img class="poll-cand-thumb" src="${thumb}" alt="${escape(g.name)}" onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
+                    <div class="poll-cand-info">
+                        <div class="poll-cand-title">${escape(g.name)}</div>
+                        <div class="poll-cand-meta">
+                            ${isRec ? '<span class="poll-rec-badge">⭐ Recommended</span>' : ''}
+                            ${shelf ? `<span>📍 ${escape(shelf)}</span> • ` : ""}
+                            <span>★ ${(g.rating ? Number(g.rating).toFixed(1) : '—')}</span> • 
+                            <span>⚙️ ${(g.complexity ? Number(g.complexity).toFixed(1) : '2.0')}</span> • 
+                            <span>⏱️ ${g.playing_time ? g.playing_time + 'm' : '30m'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+        // Bind clicks on rows and checkboxes
+        container.querySelectorAll(".poll-candidate-item").forEach(item => {
+            item.addEventListener("click", (e) => {
+                const gid = item.getAttribute("data-game-id");
+                const checkbox = item.querySelector(".poll-cand-checkbox");
+
+                if (state.pollSelectedIds.has(gid)) {
+                    state.pollSelectedIds.delete(gid);
+                    if (checkbox) checkbox.checked = false;
+                    item.classList.remove("is-selected");
+                } else {
+                    state.pollSelectedIds.add(gid);
+                    if (checkbox) checkbox.checked = true;
+                    item.classList.add("is-selected");
+                }
+
+                if (countChip) {
+                    countChip.textContent = `${state.pollSelectedIds.size} selected`;
+                }
+
+                const errEl = document.getElementById("poll-setup-error");
+                if (errEl && state.pollSelectedIds.size >= 2) {
+                    errEl.style.display = "none";
+                }
+
+                if (e.target !== checkbox) {
+                    renderPollCandidatePicker();
+                }
+            });
+        });
+
+        container.querySelectorAll(".poll-cand-checkbox").forEach(cb => {
+            cb.addEventListener("change", (e) => {
+                e.stopPropagation();
+                const gid = cb.getAttribute("data-game-id");
+                if (cb.checked) {
+                    state.pollSelectedIds.add(gid);
+                } else {
+                    state.pollSelectedIds.delete(gid);
+                }
+                renderPollCandidatePicker();
+            });
+        });
+    }
+
+    async function launchConfiguredTablePoll() {
+        const errEl = document.getElementById("poll-setup-error");
+        if (state.pollSelectedIds.size < 2) {
+            if (errEl) {
+                errEl.textContent = "⚠️ Please select at least 2 games to start a table vote.";
+                errEl.style.display = "block";
+            }
+            return;
+        }
+        if (errEl) errEl.style.display = "none";
+
+        // Prompt for table if not set
+        if (!state.table) {
+            const entered = prompt("Enter your table number or room name (e.g. 5 or The Vault):", "1");
+            state.table = (entered && entered.trim()) ? entered.trim() : "1";
+            try { sessionStorage.setItem("cafe_patron_table", state.table); } catch (e) {}
+            const tableBadge = document.getElementById("header-table-badge");
+            if (tableBadge) {
+                tableBadge.style.display = "inline-flex";
+                tableBadge.textContent = /^\d+$/.test(state.table) ? `🪑 Table ${state.table}` : `🪑 ${state.table}`;
+            }
+        }
+
+        const launchBtn = document.getElementById("btn-launch-configured-poll");
+        if (launchBtn) {
+            launchBtn.disabled = true;
+            launchBtn.textContent = "⏳ Creating Table Poll...";
+        }
 
         try {
-            let resp = await window.fetchApi("/cafe/vote/start", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+            // Find selected game objects
+            const selectedCandidates = [];
+            const games = state.collection || [];
+            state.pollSelectedIds.forEach(id => {
+                const found = games.find(g => String(g.id) === String(id));
+                if (found) {
+                    selectedCandidates.push({
+                        id: String(found.id),
+                        name: found.name,
+                        thumbnail: found.thumbnail || "",
+                        rating: found.rating || 0,
+                        complexity: found.complexity || 0,
+                        playing_time: found.playing_time || 0,
+                        shelf_location: found.shelf_location || ""
+                    });
+                }
             });
 
-            // Fallback to /session if /cafe/vote/start fails or is 404
-            if (!resp || !resp.ok) {
-                resp = await window.fetchApi("/session", {
+            const cafeName = (state.venueMeta && state.venueMeta.name) 
+                ? state.venueMeta.name 
+                : (state.cafeId ? state.cafeId.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()) : "Cafe");
+
+            const tableName = /^\d+$/.test(state.table) ? `Table ${state.table}` : state.table;
+            const payload = {
+                cafe_id: state.cafeId || "demo-cafe",
+                cafe_name: cafeName,
+                table: state.table || "1",
+                candidates: selectedCandidates,
+                duration_hours: 0.25,
+                creator_name: tableName
+            };
+
+            const qrImg = document.getElementById("vote-modal-qr-img");
+            const extLink = document.getElementById("btn-vote-open-external");
+            const nameInput = document.getElementById("vote-voter-name-input");
+
+            let session = null;
+            try {
+                let resp = await window.fetchApi("/cafe/vote/start", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        group_name: `${cafeName} - Table ${state.table}`,
-                        creator_id: `cafe_${state.cafeId}_table_${state.table}`,
-                        creator_name: `Table ${state.table}`,
-                        candidates: topCandidates,
-                        duration_hours: 0.25
-                    })
+                    body: JSON.stringify(payload)
                 });
+                if (!resp || !resp.ok) {
+                    resp = await window.fetchApi("/session", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            group_name: `${cafeName} - ${tableName}`,
+                            creator_id: `cafe_${state.cafeId}_table_${state.table}`,
+                            creator_name: tableName,
+                            candidates: selectedCandidates,
+                            duration_hours: 0.25
+                        })
+                    });
+                }
+                if (resp && resp.ok) {
+                    session = await resp.json();
+                }
+            } catch (netErr) {
+                console.warn("API poll creation failed, falling back to mock session:", netErr);
             }
 
-            if (!resp || !resp.ok) {
-                throw new Error("Failed to create table voting session");
+            if (!session) {
+                // Mock session fallback
+                const mockSessId = "mock" + Math.random().toString(36).substring(2, 6);
+                const now = new Date();
+                const closesAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+                session = {
+                    session_id: mockSessId,
+                    group_name: `${cafeName} - ${tableName}`,
+                    candidates: selectedCandidates,
+                    created_at: now.toISOString(),
+                    closes_at: closesAt,
+                    duration_hours: 0.25,
+                    votes: {},
+                    consensus: {
+                        total_voters: 0,
+                        winner: selectedCandidates[0],
+                        rankings: selectedCandidates.map((c, i) => ({
+                            candidate: c,
+                            score: 0,
+                            yes_count: 0,
+                            neutral_count: 0,
+                            veto_count: 0,
+                            is_vetoed: false,
+                            original_rank: i
+                        })),
+                        vetoed_games: []
+                    }
+                };
             }
 
-            const session = await resp.json();
             state.activeVoteSession = session;
             state.userBallot = {};
-
-            // Default ballot selections
-            topCandidates.forEach((c, idx) => {
+            selectedCandidates.forEach((c, idx) => {
                 state.userBallot[c.id] = idx === 0 ? "yes" : "neutral";
             });
 
-            // Resolve voter name
             if (nameInput) {
-                const savedName = localStorage.getItem("bgg_cafe_voter_name") || `Table ${state.table} Patron`;
+                const savedName = localStorage.getItem("bgg_cafe_voter_name") || `${tableName} Patron`;
                 nameInput.value = savedName;
             }
 
-            // Configure QR Code & Share URL
             const voteUrl = `${window.location.origin}/vote/?session_id=${session.session_id}&cafe=${encodeURIComponent(state.cafeId)}&table=${encodeURIComponent(state.table)}`;
             if (qrImg) {
                 qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(voteUrl)}`;
@@ -1206,7 +1460,13 @@
                 extLink.href = voteUrl;
             }
 
-            renderBallotCandidates(topCandidates);
+            // Transition modal from setup view to active ballot view
+            const setupSection = document.getElementById("vote-setup-section");
+            const activeSection = document.getElementById("vote-active-section");
+            if (setupSection) setupSection.style.display = "none";
+            if (activeSection) activeSection.style.display = "block";
+
+            renderBallotCandidates(selectedCandidates);
 
             try {
                 localStorage.setItem(`cafe_active_vote_${state.cafeId}_${state.table}`, JSON.stringify(session));
@@ -1214,51 +1474,16 @@
             scheduleVoteTtlTimer(session);
             updateTableVoteUI();
 
-        } catch (err) {
-            console.error("Error creating table vote session:", err);
-            // Fallback mock session for offline/mock test environments
-            const mockSessId = "mock" + Math.random().toString(36).substring(2, 6);
-            const now = new Date();
-            const closesAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
-            const fallbackSession = {
-                session_id: mockSessId,
-                group_name: `${cafeName} - Table ${state.table}`,
-                candidates: topCandidates,
-                created_at: now.toISOString(),
-                closes_at: closesAt,
-                duration_hours: 0.25,
-                votes: {},
-                consensus: {
-                    total_voters: 0,
-                    winner: topCandidates[0],
-                    rankings: topCandidates.map((c, i) => ({
-                        candidate: c,
-                        score: 0,
-                        yes_count: 0,
-                        neutral_count: 0,
-                        veto_count: 0,
-                        is_vetoed: false,
-                        original_rank: i
-                    })),
-                    vetoed_games: []
-                }
-            };
-            state.activeVoteSession = fallbackSession;
-            state.userBallot = {};
-            topCandidates.forEach((c, idx) => {
-                state.userBallot[c.id] = idx === 0 ? "yes" : "neutral";
-            });
-            const voteUrl = `${window.location.origin}/vote/?session_id=${mockSessId}&cafe=${encodeURIComponent(state.cafeId)}&table=${encodeURIComponent(state.table)}`;
-            if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(voteUrl)}`;
-            if (extLink) extLink.href = voteUrl;
-            renderBallotCandidates(topCandidates);
-
-            try {
-                localStorage.setItem(`cafe_active_vote_${state.cafeId}_${state.table}`, JSON.stringify(fallbackSession));
-            } catch (e) {}
-            scheduleVoteTtlTimer(fallbackSession);
-            updateTableVoteUI();
+        } finally {
+            if (launchBtn) {
+                launchBtn.disabled = false;
+                launchBtn.textContent = "🚀 Launch 15-Min Table Poll";
+            }
         }
+    }
+
+    async function startTableVote() {
+        await openPollCreationModal();
     }
 
     function renderBallotCandidates(candidates) {
@@ -1479,6 +1704,11 @@
             if (startVoteBtn) startVoteBtn.style.display = "none";
             if (voteCtaCard) voteCtaCard.style.display = "flex";
         }
+
+        const bannerPollBtn = document.getElementById("btn-banner-start-poll");
+        if (bannerPollBtn) {
+            bannerPollBtn.textContent = hasActiveVote ? "🗳️ Vote with Table" : "🗳️ Start Table Vote";
+        }
     }
 
     function openActiveTableVoteModal() {
@@ -1493,14 +1723,22 @@
 
         const modal = document.getElementById("cafe-table-vote-modal");
         const modalTitle = document.getElementById("vote-modal-title");
+        const setupSection = document.getElementById("vote-setup-section");
+        const activeSection = document.getElementById("vote-active-section");
         const qrImg = document.getElementById("vote-modal-qr-img");
         const extLink = document.getElementById("btn-vote-open-external");
         const ballotSection = document.getElementById("vote-ballot-section");
         const consensusSection = document.getElementById("vote-consensus-section");
         const nameInput = document.getElementById("vote-voter-name-input");
 
-        if (modalTitle) modalTitle.textContent = `${cafeName} - Table ${state.table} Vote`;
+        if (modalTitle) {
+            modalTitle.textContent = state.table 
+                ? `${cafeName} - ${/^\d+$/.test(state.table) ? 'Table ' + state.table : state.table} Vote`
+                : `${cafeName} - Table Vote`;
+        }
         if (modal) modal.style.display = "flex";
+        if (setupSection) setupSection.style.display = "none";
+        if (activeSection) activeSection.style.display = "block";
 
         if (nameInput) {
             const savedName = localStorage.getItem("bgg_cafe_voter_name") || `Table ${state.table} Patron`;
@@ -1612,6 +1850,7 @@
     function setupTableVotingControls() {
         const startBtn = document.getElementById("btn-start-table-vote");
         const launchBtn = document.getElementById("btn-launch-table-vote");
+        const bannerPollBtn = document.getElementById("btn-banner-start-poll");
         const closeBtn = document.getElementById("btn-close-vote-modal");
         const modal = document.getElementById("cafe-table-vote-modal");
         const submitBtn = document.getElementById("btn-submit-table-vote");
@@ -1619,6 +1858,11 @@
         const refreshBtn = document.getElementById("btn-refresh-tally");
         const copyBtn = document.getElementById("btn-vote-copy-link");
         const shareBtn = document.getElementById("btn-vote-share-link");
+        const btnLaunchConfigured = document.getElementById("btn-launch-configured-poll");
+        const btnPollSelectRec = document.getElementById("btn-poll-select-rec");
+        const btnPollClearAll = document.getElementById("btn-poll-clear-all");
+        const pollSearchInput = document.getElementById("poll-search-input");
+        const pollSearchClear = document.getElementById("poll-search-clear");
 
         if (startBtn) {
             startBtn.addEventListener("click", () => {
@@ -1631,11 +1875,49 @@
                 if (hasActive) {
                     openActiveTableVoteModal();
                 } else {
-                    startTableVote();
+                    openPollCreationModal();
                 }
             });
         }
-        if (launchBtn) launchBtn.addEventListener("click", startTableVote);
+        if (launchBtn) launchBtn.addEventListener("click", openPollCreationModal);
+        if (bannerPollBtn) bannerPollBtn.addEventListener("click", openPollCreationModal);
+
+        if (btnLaunchConfigured) {
+            btnLaunchConfigured.addEventListener("click", launchConfiguredTablePoll);
+        }
+
+        if (btnPollSelectRec) {
+            btnPollSelectRec.addEventListener("click", () => {
+                state.pollSelectedIds = new Set(state.recommendedIds || []);
+                renderPollCandidatePicker();
+            });
+        }
+
+        if (btnPollClearAll) {
+            btnPollClearAll.addEventListener("click", () => {
+                state.pollSelectedIds = new Set();
+                renderPollCandidatePicker();
+            });
+        }
+
+        if (pollSearchInput) {
+            pollSearchInput.addEventListener("input", (e) => {
+                state.pollSearchQuery = e.target.value;
+                if (pollSearchClear) {
+                    pollSearchClear.style.display = e.target.value ? "block" : "none";
+                }
+                renderPollCandidatePicker();
+            });
+        }
+
+        if (pollSearchClear) {
+            pollSearchClear.addEventListener("click", () => {
+                if (pollSearchInput) pollSearchInput.value = "";
+                state.pollSearchQuery = "";
+                pollSearchClear.style.display = "none";
+                renderPollCandidatePicker();
+            });
+        }
 
         if (closeBtn && modal) {
             closeBtn.addEventListener("click", () => {
@@ -1731,6 +2013,9 @@
             setupGatewayControls,
             setupCollectionControls,
             setupVideoModalControls,
+            openPollCreationModal,
+            renderPollCandidatePicker,
+            launchConfiguredTablePoll,
             startTableVote,
             renderBallotCandidates,
             submitTableVoteBallot,

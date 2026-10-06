@@ -376,6 +376,14 @@ def _handle_cafe_onboard(event, claims):
     logo_url = (body.get('logo_url') or '').strip()
     featured_game_ids = [str(gid) for gid in body.get('featured_game_ids', []) if gid]
 
+    room_names = []
+    if 'room_names' in body:
+        rooms_val = body['room_names']
+        if isinstance(rooms_val, list):
+            room_names = [str(r).strip() for r in rooms_val if str(r).strip()][:100]
+        elif isinstance(rooms_val, str):
+            room_names = [r.strip() for r in rooms_val.split(',') if r.strip()][:100]
+
     cafe_item = {
         'cafe_id': cafe_id,
         'owner_cognito_id': user_id,
@@ -383,6 +391,7 @@ def _handle_cafe_onboard(event, claims):
         'bgg_username': bgg_username,
         'slug': cafe_id,
         'table_count': table_count,
+        'room_names': room_names,
         'wifi_ssid': wifi_ssid,
         'wifi_password': wifi_password,
         'tagline': tagline,
@@ -1079,6 +1088,13 @@ def _handle_cafe_update(event, claims):
                 update_item['table_count'] = tc
         except (ValueError, TypeError):
             pass
+
+    if 'room_names' in body:
+        rooms_val = body['room_names']
+        if isinstance(rooms_val, list):
+            update_item['room_names'] = [str(r).strip() for r in rooms_val if str(r).strip()][:100]
+        elif isinstance(rooms_val, str):
+            update_item['room_names'] = [r.strip() for r in rooms_val.split(',') if r.strip()][:100]
 
     if 'wifi_ssid' in body:
         update_item['wifi_ssid'] = str(body['wifi_ssid']).strip()

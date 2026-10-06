@@ -139,4 +139,26 @@ describe('Cafe Management Client Logic & Mock API', () => {
         expect(manageHtml).toContain('id="cancel-delete-cafe-btn"');
         expect(manageHtml).toContain('Danger Zone');
     });
+
+    test('manage.html contains custom room names input field and handles room names in mock update', async () => {
+        const manageHtml = fs.readFileSync(path.resolve(__dirname, '../cafe/manage.html'), 'utf8');
+        expect(manageHtml).toContain('id="manage-room-names-input"');
+        expect(manageHtml).toContain('Custom Room / Table Names');
+
+        const updatePayload = {
+            cafe_id: 'the-malt-and-meeple',
+            name: 'The Malt & Meeple',
+            table_count: 20,
+            room_names: ['The Vault', "Dragon's Lair"]
+        };
+
+        const res = await window.fetchApi('/cafe/update', {
+            method: 'POST',
+            body: JSON.stringify(updatePayload)
+        });
+
+        expect(res.ok).toBe(true);
+        const data = await res.json();
+        expect(data.cafe.room_names).toEqual(['The Vault', "Dragon's Lair"]);
+    });
 });
