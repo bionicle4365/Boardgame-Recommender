@@ -134,30 +134,36 @@ Extend the recommendation engine in [`bgg_recommender.py`](file:///d:/Git/Boardg
 ## Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI
 
 ### Objective
-Design and implement a mobile-first, glassmorphic patron web interface at `site_ui/cafe/` that provides a seamless 3-tap recommendation experience when scanning a table QR code.
+Design and implement a mobile-first, glassmorphic patron web interface at `site_ui/cafe/` that defaults to a venue collection browser with a live search bar and a prominent 1-tap launcher to bring up the 3-tap vibe recommendation quiz.
 
 ### Design Notes
-- **Immediate Value:** Patrons should see recommendations within 10 seconds of scanning the table QR code.
+- **Default Collection Browser First:** Scanning a table QR code lands patrons directly on the venue's game library with a top search bar, quick filters, and shelf location coordinates.
+- **Immediate Recommender Access:** A prominent glassmorphic callout card (*"Not sure what to play? Let our Guru recommend the perfect game for your table in 3 taps!"*) and segmented tab switcher (`[ 📚 Browse Library ] [ 🎲 Vibe Recommender ]`) provide instant 1-tap switching to the quiz.
 - **Design Aesthetic:** Co-branded header with cafe logo and table badge, sleek dark glassmorphism styling consistent with `site_ui/assets/css/design-system.css`, high-contrast text readable in dim bar lighting.
 - **The 3-Tap Vibe Quiz:**
   1. *Player Count:* Tactile pill selectors `[ 2 ] [ 3 ] [ 4 ] [ 5 ] [ 6+ ]`.
   2. *Time Window:* `[ < 30m ] [ 45-60m ] [ 90m+ ]`.
   3. *Vibe:* Visual cards with icons (`🍻 Party`, `🏰 Casual Strategy`, `🧠 Heavy Strategy`, `🤝 Cooperative`).
 - **Hobbyist Bypass:** Clean accordion toggle: *"Have BGG accounts? Enter usernames for group recommendations."*
-- **Game Cards:** Highlight physical shelf location (when available, e.g. `📍 Shelf B-3`), complexity level, estimated teach time, and a 1-tap "Watch Video Rules" button.
+- **Game Cards & Shelf Coordinates:** Highlight physical shelf location (e.g. `📍 Shelf B-3`) when explicitly defined in comments; strictly omit the shelf pill if no shelf coordinate exists (zero fallback text).
+- **Drink Pairings:** Highlight drink and food pairing badges when enabled by the venue.
 
 ### Architecture Decisions
 - **Jekyll Page:** Create `site_ui/cafe/index.html` with dedicated styles in `site_ui/assets/css/cafe.css` and logic in `site_ui/assets/js/cafe.js`.
+- **Backend Collection Route:** Support `GET /cafe/collection?cafe_id=...` in `bgg_preferences_handler.py` reading S3 parquet collections with seamless fallback to `/recommendations?cafe_id=...&vibe=any`.
 - **Dynamic Cafe Loading:** Read `:cafe_id` from URL path/query parameter (`?cafe=...&table=...`) and fetch cafe branding from `data/cafes_registry.json` or backend endpoint `GET /cafe/meta?cafe_id=...`.
-- **Client State:** Store table number and current filter selections in `sessionStorage` for smooth navigation between screens.
+- **Client State:** Store table number, active tab (`collection` vs `recommender`), and filter selections in client state.
 
 ### Tasks
-- [x] **Cafe Portal Layout:** Build `site_ui/cafe/index.html` using existing glassmorphic design tokens and responsive CSS grid.
+- [x] **Venue Collection Browser:** Default landing view with top search bar, quick filter chips (player count, playtime, genre), sort options, and shelf location badges.
+- [x] **Prominent Recommender Launcher:** 1-tap CTA banner ("✨ Launch 3-Tap Quiz") and segmented tab switcher to transition smoothly between browsing and the vibe recommender.
+- [x] **Backend Collection Endpoint:** Implement `GET /cafe/collection` in `bgg_preferences_handler.py` with S3 parquet loading.
 - [x] **Interactive Vibe Quiz Component:** Build tactile single-select chips with smooth CSS transitions for player count, time, and vibe.
 - [x] **Recommendation Results View:** Design mobile-first game cards featuring shelf location pill, teach time badge, and Bedrock sommelier quote.
 - [x] **Hobbyist BGG Input:** Add collapsible input field allowing 1–5 BGG usernames with group scoring integration.
-- [x] **Error & Empty States:** Friendly empty states if no cafe games match strict filters with one-tap filter relaxation buttons.
-- [x] **Visual Testing:** Verify responsive rendering across mobile screen sizes (iPhone Safari, Android Chrome).
+- [x] **Strict Shelf Badge Handling:** Ensure games without physical shelf comments omit the shelf badge entirely without placeholder text.
+- [x] **Error & Empty States:** Friendly empty states with clear button for search results.
+- [x] **Visual & Automated Testing:** Verified with Vitest frontend tests and browser subagent session recordings.
 
 ---
 

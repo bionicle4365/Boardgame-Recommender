@@ -140,6 +140,7 @@ def test_get_user_data_cafe_mode(mock_get):
                 </rating>
             </stats>
             <status own="1"/>
+            <comment>Shelf: B-3</comment>
         </item>
         <item objectid="200" subtype="boardgame">
             <name>Unowned Game</name>
@@ -177,6 +178,7 @@ def test_get_user_data_cafe_mode(mock_get):
     assert game['average_rating'] == 7.8
     assert game['users_rated'] == 45000
     assert game['num_owned'] == 50000
+    assert game['shelf_location'] == 'B-3'
     assert game['own'] is True
 
 

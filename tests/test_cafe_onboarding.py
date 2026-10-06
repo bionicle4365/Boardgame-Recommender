@@ -299,7 +299,8 @@ def test_cafe_onboard_success(mock_boto_client, mock_s3, mock_cafes_table):
     assert sent_payload['is_cafe'] is True
 
 
-# ── 4. Cafe Meta Tests ───────────────────────────────────────────────────────
+
+# ── 4. Cafe Meta & Collection Tests ───────────────────────────────────────────
 
 def test_cafe_meta_missing_param():
     event = {
@@ -310,6 +311,66 @@ def test_cafe_meta_missing_param():
     assert response['statusCode'] == 400
     body = json.loads(response['body'])
     assert 'cafe_id or slug' in body['error']
+
+
+def test_cafe_collection_missing_param():
+    event = {
+        'rawPath': '/cafe/collection',
+        'queryStringParameters': {}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 400
+    body = json.loads(response['body'])
+    assert 'cafe_id or slug' in body['error']
+
+
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_collection_success(mock_cafes_table, mock_s3):
+    import io
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'the-dice-box',
+            'bgg_username': 'diceboxcafe'
+        }
+    }
+    df_data = {
+        'id': [13, 266192],
+        'name': ['Catan', 'Wingspan'],
+        'thumbnail': ['thumb1.jpg', 'thumb2.jpg'],
+        'year_published': [1995, 2019],
+        'rating': [7.1, 8.1],
+        'complexity': [2.3, 2.4],
+        'min_players': [3, 1],
+        'max_players': [4, 5],
+        'playing_time': [75, 60],
+        'shelf_location': ['A-3', None]
+    }
+    table = pa.Table.from_pydict(df_data)
+    sink = io.BytesIO()
+    pq.write_table(table, sink)
+    parquet_bytes = sink.getvalue()
+
+    mock_s3.get_object.return_value = {
+        'Body': io.BytesIO(parquet_bytes)
+    }
+
+    event = {
+        'rawPath': '/cafe/collection',
+        'queryStringParameters': {'cafe_id': 'the-dice-box'}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert body['status'] == 'ready'
+    assert body['total'] == 2
+    assert body['collection'][0]['name'] == 'Catan'
+    assert body['collection'][0]['shelf_location'] == 'A-3'
+    # Wingspan had None for shelf_location -> verify shelf_location omitted
+    assert 'shelf_location' not in body['collection'][1]
 
 
 @patch('bgg_preferences_handler.cafes_table')

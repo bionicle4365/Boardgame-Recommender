@@ -465,6 +465,109 @@ def _handle_cafe_meta(query_params):
         }
 
 
+def _handle_cafe_collection(query_params):
+    """
+    Returns the cafe's owned board games library with shelf locations (GET /cafe/collection).
+    Public endpoint used by patron collection browser.
+    """
+    import io
+    cafe_id = (query_params.get('cafe_id') or query_params.get('slug') or '').strip().lower()
+    if not cafe_id:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'cafe_id or slug query parameter is required'})
+        }
+
+    # 1. Resolve cafe BGG username
+    bgg_username = None
+    try:
+        res = cafes_table.get_item(Key={'cafe_id': cafe_id})
+        item = res.get('Item')
+        if not item:
+            try:
+                meta_obj = s3.get_object(Bucket=s3_bucket, Key=f"data/cafes/{cafe_id}/meta.json")
+                item = json.loads(meta_obj['Body'].read().decode('utf-8'))
+            except Exception:
+                item = None
+        if item:
+            bgg_username = item.get('bgg_username')
+    except Exception as e:
+        print(f"Warning: Could not fetch cafe item for {cafe_id}: {e}")
+
+    if not bgg_username:
+        bgg_username = cafe_id
+
+    # 2. Try to load collection from S3 parquet
+    try:
+        import pyarrow.parquet as pq
+        import pandas as pd
+        parquet_key = f"data/cafes/{bgg_username}/collection.parquet"
+        resp = s3.get_object(Bucket=s3_bucket, Key=parquet_key)
+        buffer = io.BytesIO(resp['Body'].read())
+        table = pq.read_table(buffer)
+        df = table.to_pandas()
+
+        records = []
+        for _, row in df.iterrows():
+            rec = {
+                'id': str(row.get('id', '')),
+                'name': str(row.get('name', '')),
+                'thumbnail': str(row.get('thumbnail', '')) if pd.notna(row.get('thumbnail')) else '',
+                'year_published': int(row.get('year_published', 0)) if pd.notna(row.get('year_published')) else None,
+                'rating': float(row.get('rating', 0.0)) if pd.notna(row.get('rating')) else None,
+                'complexity': float(row.get('complexity', 0.0)) if pd.notna(row.get('complexity')) else None,
+                'min_players': int(row.get('min_players', 1)) if pd.notna(row.get('min_players')) else 1,
+                'max_players': int(row.get('max_players', 1)) if pd.notna(row.get('max_players')) else 1,
+                'playing_time': int(row.get('playing_time', 0)) if pd.notna(row.get('playing_time')) else 0,
+            }
+            shelf = row.get('shelf_location') or row.get('shelf')
+            if pd.notna(shelf) and str(shelf).strip():
+                rec['shelf_location'] = str(shelf).strip()
+            records.append(rec)
+
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({
+                'status': 'ready',
+                'cafe_id': cafe_id,
+                'bgg_username': bgg_username,
+                'total': len(records),
+                'collection': records
+            })
+        }
+    except Exception as err:
+        # Check if scraping in progress
+        status_key = f"data/cafes/{bgg_username}/scrape_status.json"
+        try:
+            status_obj = s3.get_object(Bucket=s3_bucket, Key=status_key)
+            status_data = json.loads(status_obj['Body'].read().decode('utf-8'))
+            if status_data.get('status') == 'scraping':
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json'},
+                    'body': json.dumps({
+                        'status': 'scraping',
+                        'message': 'Syncing library for this venue...',
+                        'collection': []
+                    })
+                }
+        except Exception:
+            pass
+
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({
+                'status': 'ready',
+                'cafe_id': cafe_id,
+                'total': 0,
+                'collection': []
+            })
+        }
+
+
 def _handle_cafe_sync(event, claims):
     """
     On-demand sync endpoint for cafe inventory (POST /cafe/sync).
@@ -894,6 +997,8 @@ def _lambda_handler_impl(event, context):
         return _handle_check_slug(query_params)
     if '/cafe/meta' in path:
         return _handle_cafe_meta(query_params)
+    if '/cafe/collection' in path:
+        return _handle_cafe_collection(query_params)
 
     # Authenticated endpoints
     claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})

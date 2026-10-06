@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import os
 import random
 import time
+import re
 
 import pandas as pd
 import pyarrow
@@ -64,6 +65,8 @@ def get_user_data(username, is_cafe=False):
     Returns a list of dictionaries with collection information.
     """
     api_url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&subtype=boardgame&excludesubtype=boardgameexpansion&stats=1"
+    if is_cafe:
+        api_url += "&comments=1"
     logger.info(f"Querying BGG API for user: {username} at {api_url} (is_cafe={is_cafe})")
 
     retries = 3
@@ -127,6 +130,14 @@ def get_user_data(username, is_cafe=False):
                     users_rated = safe_int(_get_element_value(item, ".//stats/rating/usersrated", attribute='value'))
                     num_owned = safe_int(_get_element_value(item, ".//stats", attribute='numowned'))
 
+                    comment_elem = item.find('comment')
+                    comment_text = comment_elem.text.strip() if (comment_elem is not None and comment_elem.text) else None
+                    shelf_location = None
+                    if comment_text:
+                        m = re.search(r'(?:Shelf|Location|Bin):?\s*([A-Za-z0-9\-]+)', comment_text, re.IGNORECASE)
+                        if m:
+                            shelf_location = m.group(1).strip() if m.groups() else m.group(0).strip()
+
                     cafe_data.append({
                         'id': str(item.get('objectid')),
                         'name': name,
@@ -142,6 +153,7 @@ def get_user_data(username, is_cafe=False):
                         'average_rating': avg_rating,
                         'users_rated': users_rated,
                         'num_owned': num_owned,
+                        'shelf_location': shelf_location,
                         'own': True
                     })
                 return cafe_data

@@ -170,6 +170,268 @@ window.friendlyResetError = function(err) {
     }
 };
 
+// Shared Mock Cafe Catalog for local testing & demos
+function getMockCafeCatalog() {
+    return [
+        {
+            id: "295947",
+            name: "Cascadia",
+            thumbnail: "https://cf.geekdo-images.com/MJE673qOvyIfPkTviqUKGg__thumb/img/pic5100791.jpg",
+            rating: 8.0,
+            complexity: 2.0,
+            min_players: 1,
+            max_players: 4,
+            playing_time: 45,
+            year_published: 2021,
+            shelf_location: "Shelf B-1",
+            teach_time: "5 min teach",
+            mechanics: ["Tile Placement", "Drafting", "Pattern Building"],
+            categories: ["Animals", "Puzzle", "Environmental"],
+            reason: "Accessible spatial tile-laying puzzle that is effortless to learn and relaxing to play."
+        },
+        {
+            id: "178900",
+            name: "Codenames",
+            thumbnail: "https://cf.geekdo-images.com/F_KDEu0GjdUtMW-M5RDePg__thumb/img/6P8eD6_s17m3x5kK.jpg",
+            rating: 7.6,
+            complexity: 1.3,
+            min_players: 2,
+            max_players: 8,
+            playing_time: 15,
+            year_published: 2015,
+            shelf_location: "Shelf A-1",
+            teach_time: "3-5 min teach",
+            mechanics: ["Word Play", "Memory", "Team-Based Game"],
+            categories: ["Party Game", "Word Game", "Deduction"],
+            reason: "High-energy word association that gets your table laughing and bantering right away."
+        },
+        {
+            id: "266192",
+            name: "Wingspan",
+            thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/4nOFLn4e75E7v9gN8GgdFj8z1v0=/fit-in/200x150/filters:strip_icc()/pic4458123.jpg",
+            rating: 8.1,
+            complexity: 2.4,
+            min_players: 1,
+            max_players: 5,
+            playing_time: 60,
+            year_published: 2019,
+            shelf_location: "Shelf B-3",
+            teach_time: "10 min teach",
+            mechanics: ["Engine Building", "Hand Management", "Card Drafting"],
+            categories: ["Animals", "Card Game", "Economic"],
+            reason: "Rewarding bird habitat engine building with smooth turns and gorgeous components."
+        },
+        {
+            id: "230802",
+            name: "Azul",
+            thumbnail: "https://cf.geekdo-images.com/tz19Pf9klD_5.jpg",
+            rating: 7.8,
+            complexity: 1.8,
+            min_players: 2,
+            max_players: 4,
+            playing_time: 30,
+            year_published: 2017,
+            shelf_location: "Shelf B-4",
+            teach_time: "5 min teach",
+            mechanics: ["Pattern Building", "Tile Placement", "Drafting"],
+            categories: ["Abstract Strategy", "Puzzle"],
+            reason: "Tactile tile-drafting masterpiece with crisp turns and satisfying pattern completion."
+        },
+        {
+            id: "254640",
+            name: "Just One",
+            thumbnail: "https://cf.geekdo-images.com/ocwvx4_jL3e8q5p.jpg",
+            rating: 7.5,
+            complexity: 1.1,
+            min_players: 3,
+            max_players: 7,
+            playing_time: 20,
+            year_published: 2018,
+            shelf_location: "Shelf A-2",
+            teach_time: "2-3 min teach",
+            mechanics: ["Cooperative Game", "Word Play", "Communication Limits"],
+            categories: ["Party Game", "Word Game"],
+            reason: "Effortless cooperative clue-giving that breaks the ice instantly for groups."
+        },
+        {
+            id: "28720",
+            name: "Brass: Birmingham",
+            thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/L-92966Zg7xS0F8B-UshZk1917A=/fit-in/200x150/filters:strip_icc()/pic2437871.jpg",
+            rating: 8.6,
+            complexity: 3.9,
+            min_players: 2,
+            max_players: 4,
+            playing_time: 120,
+            year_published: 2018,
+            shelf_location: "Shelf D-2",
+            teach_time: "20 min teach",
+            mechanics: ["Network Building", "Hand Management", "Market"],
+            categories: ["Economic", "Industry", "Transportation"],
+            reason: "Deep industrial network economics with satisfyingly tight tactical decisions."
+        },
+        {
+            id: "316554",
+            name: "Dune: Imperium",
+            thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/pic5666597.jpg",
+            rating: 8.4,
+            complexity: 3.0,
+            min_players: 1,
+            max_players: 4,
+            playing_time: 90,
+            year_published: 2020,
+            shelf_location: "Shelf D-4",
+            teach_time: "15 min teach",
+            mechanics: ["Deck Construction", "Worker Placement", "Area Majority"],
+            categories: ["Science Fiction", "Political", "Space Exploration"],
+            reason: "Tense deck-building and worker placement that keeps all players engaged until the final combat."
+        },
+        {
+            id: "324856",
+            name: "The Crew: Mission Deep Sea",
+            thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/pic5758253.jpg",
+            rating: 8.2,
+            complexity: 2.0,
+            min_players: 2,
+            max_players: 5,
+            playing_time: 20,
+            year_published: 2021,
+            shelf_location: "Shelf C-1",
+            teach_time: "5 min teach",
+            mechanics: ["Trick-taking", "Cooperative Game", "Communication Limits"],
+            categories: ["Card Game", "Nautical"],
+            reason: "Brilliant cooperative trick-taking with silent communication that bonds your table together."
+        },
+        {
+            id: "30549",
+            name: "Pandemic",
+            thumbnail: "https://cf.geekdo-images.com/S3ybV1_xDY4BEID4.jpg",
+            rating: 7.6,
+            complexity: 2.4,
+            min_players: 2,
+            max_players: 4,
+            playing_time: 45,
+            year_published: 2008,
+            shelf_location: "Shelf C-3",
+            teach_time: "8 min teach",
+            mechanics: ["Cooperative Game", "Point to Point Movement", "Set Collection"],
+            categories: ["Medical", "Adventure"],
+            reason: "Classic cooperative tension where everyone coordinates specialist roles to contain global outbreaks."
+        },
+        {
+            id: "274637",
+            name: "Unmatched: Battle of Legends",
+            thumbnail: "https://cf.geekdo-images.com/pic4747471.jpg",
+            rating: 7.9,
+            complexity: 2.1,
+            min_players: 2,
+            max_players: 4,
+            playing_time: 30,
+            year_published: 2019,
+            shelf_location: "Shelf E-1",
+            teach_time: "5 min teach",
+            mechanics: ["Hand Management", "Grid Movement", "Variable Player Powers"],
+            categories: ["Fighting", "Fantasy", "Miniatures"],
+            reason: "Fast, punchy card-driven skirmish duels with dynamic movement and clever bluffing."
+        },
+        {
+            id: "13",
+            name: "Catan",
+            thumbnail: "https://cf.geekdo-images.com/W_ftXvnlGDPyqTm2UJKDxA__thumb/img/p8Jd_h_7L2A2q8p.jpg",
+            rating: 7.1,
+            complexity: 2.3,
+            min_players: 3,
+            max_players: 4,
+            playing_time: 75,
+            year_published: 1995,
+            shelf_location: "Shelf A-3",
+            teach_time: "10 min teach",
+            mechanics: ["Trading", "Dice Rolling", "Network Building"],
+            categories: ["Economic", "Negotiation"],
+            reason: "The quintessential trade-and-build modern classic."
+        },
+        {
+            id: "9209",
+            name: "Ticket to Ride",
+            thumbnail: "https://cf.geekdo-images.com/ZWJg0dCdrWHxVnc0eFXK8w__thumb/img/pic38668.jpg",
+            rating: 7.4,
+            complexity: 1.8,
+            min_players: 2,
+            max_players: 5,
+            playing_time: 45,
+            year_published: 2004,
+            shelf_location: "Shelf B-2",
+            teach_time: "5 min teach",
+            mechanics: ["Set Collection", "Route Building", "Hand Management"],
+            categories: ["Trains", "Family"],
+            reason: "Cross-country train route building that everyone loves."
+        },
+        {
+            id: "822",
+            name: "Carcassonne",
+            thumbnail: "https://cf.geekdo-images.com/okM0dq_bEXnbyQTOvHkw0w__thumb/img/pic6544250.png",
+            rating: 7.4,
+            complexity: 1.9,
+            min_players: 2,
+            max_players: 5,
+            playing_time: 35,
+            year_published: 2000,
+            shelf_location: "Shelf B-5",
+            teach_time: "5 min teach",
+            mechanics: ["Tile Placement", "Area Majority"],
+            categories: ["Medieval", "Territory Building"],
+            reason: "Classic countryside tile-laying with castles, roads, and monasteries."
+        },
+        {
+            id: "167791",
+            name: "Terraforming Mars",
+            thumbnail: "https://cf.geekdo-images.com/wg9oOLcsKvDesqruapstqA__thumb/img/pic3536616.jpg",
+            rating: 8.4,
+            complexity: 3.3,
+            min_players: 1,
+            max_players: 5,
+            playing_time: 120,
+            year_published: 2016,
+            shelf_location: "Shelf D-1",
+            teach_time: "15 min teach",
+            mechanics: ["Engine Building", "Hand Management", "Drafting"],
+            categories: ["Science Fiction", "Economic", "Space Exploration"],
+            reason: "Transform the Red Planet into a thriving ecosystem."
+        },
+        {
+            id: "329839",
+            name: "Scout",
+            thumbnail: "https://cf.geekdo-images.com/inbA0cE3_v03Q5U1n1X4Zw__thumb/img/pic6518179.jpg",
+            rating: 7.8,
+            complexity: 1.3,
+            min_players: 2,
+            max_players: 5,
+            playing_time: 15,
+            year_published: 2019,
+            shelf_location: "",
+            teach_time: "3 min teach",
+            mechanics: ["Ladder Climbing", "Hand Management"],
+            categories: ["Card Game", "Circus"],
+            reason: "Ingenious ladder-climbing card game where you cannot rearrange cards in your hand."
+        },
+        {
+            id: "129622",
+            name: "Love Letter",
+            thumbnail: "https://cf.geekdo-images.com/T1O22ZO2FdflwKYzNOtawg__thumb/img/pic1401448.jpg",
+            rating: 7.2,
+            complexity: 1.2,
+            min_players: 2,
+            max_players: 4,
+            playing_time: 15,
+            year_published: 2012,
+            shelf_location: null,
+            teach_time: "2 min teach",
+            mechanics: ["Deduction", "Hand Management", "Player Elimination"],
+            categories: ["Card Game", "Bluffing", "Renaissance"],
+            reason: "16 cards, maximum deduction, risk, and bluffing."
+        }
+    ];
+}
+
 // API Fetch Wrapper
 window.fetchApi = async function(endpoint, options = {}) {
     const apiUrl = "{{ site.api_url }}";
@@ -190,6 +452,16 @@ window.fetchApi = async function(endpoint, options = {}) {
                 { "convention_id": "spielessen2026", "name": "SPIEL Essen 2026", "date": "2026-10-25", "game_count": 1166 },
                 { "convention_id": "paxunplugged2026", "name": "PAX Unplugged 2026 Preview", "date": "2026-12-06", "game_count": 135 }
             ];
+        } else if (endpoint.startsWith('/cafe/collection')) {
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const cafeId = urlParams.get('cafe_id') || urlParams.get('slug') || 'demo-cafe';
+            const catalog = getMockCafeCatalog();
+            data = {
+                status: "ready",
+                cafe_id: cafeId,
+                total: catalog.length,
+                collection: catalog
+            };
         } else if (endpoint.startsWith('/recommendations')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1]);
             const cafeIdParam = urlParams.get('cafe_id') || urlParams.get('cafe_username');
@@ -206,172 +478,26 @@ window.fetchApi = async function(endpoint, options = {}) {
 
             if (cafeIdParam) {
                 let cafeRecs = [];
-                if (vibeParam === 'party') {
-                    cafeRecs = [
-                        {
-                            id: "178900",
-                            name: "Codenames",
-                            thumbnail: "https://cf.geekdo-images.com/F_KDEu0GjdUtMW-M5RDePg__thumb/img/6P8eD6_s17m3x5kK.jpg",
-                            rating: 7.6,
-                            complexity: 1.3,
-                            min_players: 2,
-                            max_players: 8,
-                            playing_time: 15,
-                            year_published: 2015,
-                            shelf_location: "Shelf A-1",
-                            teach_time: "3-5 min teach",
-                            reason: "High-energy word association that gets your table laughing and bantering right away.",
-                            member_affinities: memberAffinities
-                        },
-                        {
-                            id: "254640",
-                            name: "Just One",
-                            thumbnail: "https://cf.geekdo-images.com/ocwvx4_jL3e8q5p.jpg",
-                            rating: 7.5,
-                            complexity: 1.1,
-                            min_players: 3,
-                            max_players: 7,
-                            playing_time: 20,
-                            year_published: 2018,
-                            shelf_location: "Shelf A-2",
-                            teach_time: "2-3 min teach",
-                            reason: "Effortless cooperative clue-giving that breaks the ice instantly for groups.",
-                            member_affinities: memberAffinities
-                        }
-                    ];
+                const allGames = getMockCafeCatalog();
+                if (vibeParam === 'all' || vibeParam === 'any') {
+                    cafeRecs = allGames;
+                } else if (vibeParam === 'party') {
+                    cafeRecs = allGames.filter(g => ['178900', '254640', '13', '9209', '329839', '129622'].includes(g.id));
                 } else if (vibeParam === 'deep_strategy') {
-                    cafeRecs = [
-                        {
-                            id: "28720",
-                            name: "Brass: Birmingham",
-                            thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/L-92966Zg7xS0F8B-UshZk1917A=/fit-in/200x150/filters:strip_icc()/pic2437871.jpg",
-                            rating: 8.6,
-                            complexity: 3.9,
-                            min_players: 2,
-                            max_players: 4,
-                            playing_time: 120,
-                            year_published: 2018,
-                            shelf_location: "Shelf D-2",
-                            teach_time: "20 min teach",
-                            reason: "Deep industrial network economics with satisfyingly tight tactical decisions.",
-                            member_affinities: memberAffinities
-                        },
-                        {
-                            id: "316554",
-                            name: "Dune: Imperium",
-                            thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/pic5666597.jpg",
-                            rating: 8.4,
-                            complexity: 3.0,
-                            min_players: 1,
-                            max_players: 4,
-                            playing_time: 90,
-                            year_published: 2020,
-                            shelf_location: "Shelf D-4",
-                            teach_time: "15 min teach",
-                            reason: "Tense deck-building and worker placement that keeps all players engaged until the final combat.",
-                            member_affinities: memberAffinities
-                        }
-                    ];
+                    cafeRecs = allGames.filter(g => ['28720', '316554', '167791'].includes(g.id));
                 } else if (vibeParam === 'cooperative') {
-                    cafeRecs = [
-                        {
-                            id: "324856",
-                            name: "The Crew: Mission Deep Sea",
-                            thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/pic5758253.jpg",
-                            rating: 8.2,
-                            complexity: 2.0,
-                            min_players: 2,
-                            max_players: 5,
-                            playing_time: 20,
-                            year_published: 2021,
-                            shelf_location: "Shelf C-1",
-                            teach_time: "5 min teach",
-                            reason: "Brilliant cooperative trick-taking with silent communication that bonds your table together.",
-                            member_affinities: memberAffinities
-                        },
-                        {
-                            id: "30549",
-                            name: "Pandemic",
-                            thumbnail: "https://cf.geekdo-images.com/S3ybV1_xDY4BEID4.jpg",
-                            rating: 7.6,
-                            complexity: 2.4,
-                            min_players: 2,
-                            max_players: 4,
-                            playing_time: 45,
-                            year_published: 2008,
-                            shelf_location: "Shelf C-3",
-                            teach_time: "8 min teach",
-                            reason: "Classic cooperative tension where everyone coordinates specialist roles to contain global outbreaks.",
-                            member_affinities: memberAffinities
-                        }
-                    ];
+                    cafeRecs = allGames.filter(g => ['324856', '30549', '254640'].includes(g.id));
                 } else if (vibeParam === 'direct_conflict') {
-                    cafeRecs = [
-                        {
-                            id: "274637",
-                            name: "Unmatched: Battle of Legends",
-                            thumbnail: "https://cf.geekdo-images.com/pic4747471.jpg",
-                            rating: 7.9,
-                            complexity: 2.1,
-                            min_players: 2,
-                            max_players: 4,
-                            playing_time: 30,
-                            year_published: 2019,
-                            shelf_location: "Shelf E-1",
-                            teach_time: "5 min teach",
-                            reason: "Fast, punchy card-driven skirmish duels with dynamic movement and clever bluffing.",
-                            member_affinities: memberAffinities
-                        }
-                    ];
+                    cafeRecs = allGames.filter(g => ['274637', '316554'].includes(g.id));
                 } else {
-                    cafeRecs = [
-                        {
-                            id: "295947",
-                            name: "Cascadia",
-                            thumbnail: "https://cf.geekdo-images.com/MJE673qOvyIfPkTviqUKGg__thumb/img/pic5100791.jpg",
-                            rating: 8.0,
-                            complexity: 2.0,
-                            min_players: 1,
-                            max_players: 4,
-                            playing_time: 45,
-                            year_published: 2021,
-                            shelf_location: "Shelf B-1",
-                            teach_time: "5 min teach",
-                            reason: "Accessible spatial tile-laying puzzle that is effortless to learn and relaxing to play.",
-                            member_affinities: memberAffinities
-                        },
-                        {
-                            id: "266192",
-                            name: "Wingspan",
-                            thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/4nOFLn4e75E7v9gN8GgdFj8z1v0=/fit-in/200x150/filters:strip_icc()/pic4458123.jpg",
-                            rating: 8.1,
-                            complexity: 2.4,
-                            min_players: 1,
-                            max_players: 5,
-                            playing_time: 60,
-                            year_published: 2019,
-                            shelf_location: "Shelf B-3",
-                            teach_time: "10 min teach",
-                            reason: "Rewarding bird habitat engine building with smooth turns and gorgeous components.",
-                            member_affinities: memberAffinities
-                        },
-                        {
-                            id: "230802",
-                            name: "Azul",
-                            thumbnail: "https://cf.geekdo-images.com/tz19Pf9klD_5.jpg",
-                            rating: 7.8,
-                            complexity: 1.8,
-                            min_players: 2,
-                            max_players: 4,
-                            playing_time: 30,
-                            year_published: 2017,
-                            shelf_location: "Shelf B-4",
-                            teach_time: "5 min teach",
-                            reason: "Tactile tile-drafting masterpiece with crisp turns and satisfying pattern completion.",
-                            member_affinities: memberAffinities
-                        }
-                    ];
+                    // casual_strategy default
+                    cafeRecs = allGames.filter(g => ['295947', '266192', '230802', '822', '13', '9209'].includes(g.id));
                 }
+
+                if (memberAffinities) {
+                    cafeRecs = cafeRecs.map(r => ({ ...r, member_affinities: memberAffinities }));
+                }
+
                 data = {
                     status: "ready",
                     recommendations: cafeRecs

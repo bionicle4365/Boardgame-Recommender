@@ -11,6 +11,13 @@
         cafeId: "",
         venueMeta: null,
         table: "1",
+        activeTab: "collection",
+        collection: [],
+        filteredCollection: [],
+        searchQuery: "",
+        activeFilter: "all",
+        sortBy: "name_asc",
+        isCollectionLoading: false,
         quiz: {
             playerCount: "4",
             duration: "medium",
@@ -20,6 +27,7 @@
         isLoading: false
     };
 
+    // Helper: Parse URL parameters or fallback to path/storage
     // Helper: Parse URL parameters or fallback to path/storage
     function parseVenueContext() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -37,24 +45,27 @@
                 }
             }
         }
+
+        // If no cafe is provided in URL or path, do NOT assume a venue or table!
         if (!cafeId) {
-            cafeId = sessionStorage.getItem("cafe_patron_cafe_id") || "the-malt-and-meeple";
+            state.cafeId = "";
+            state.table = "";
+            return false;
         }
 
-        // 2. Extract table
+        // 2. Extract table (optional)
         let table = urlParams.get("table");
-        if (!table) {
-            table = sessionStorage.getItem("cafe_patron_table") || "1";
-        }
 
         state.cafeId = cafeId.trim().toLowerCase();
-        state.table = table.trim();
+        state.table = table ? table.trim() : (sessionStorage.getItem("cafe_patron_table") || "");
 
         // Persist in session
         try {
             sessionStorage.setItem("cafe_patron_cafe_id", state.cafeId);
-            sessionStorage.setItem("cafe_patron_table", state.table);
+            if (state.table) sessionStorage.setItem("cafe_patron_table", state.table);
         } catch (e) {}
+
+        return true;
     }
 
     // Load saved quiz state from sessionStorage if available
@@ -88,7 +99,11 @@
         const avatarEl = document.getElementById("venue-avatar-wrap");
 
         if (tableBadge) {
-            tableBadge.textContent = `🪑 Table ${state.table}`;
+            tableBadge.textContent = state.table ? `🪑 Table ${state.table}` : "🪑 Seating (Set Table #)";
+        }
+        const ctaTableNum = document.getElementById("cta-table-num");
+        if (ctaTableNum) {
+            ctaTableNum.textContent = state.table ? state.table : "1";
         }
 
         try {
@@ -228,6 +243,8 @@
                     if (tableBadge) tableBadge.textContent = `🪑 Table ${state.table}`;
                     const resTitle = document.getElementById("results-table-num");
                     if (resTitle) resTitle.textContent = state.table;
+                    const ctaTableEl = document.getElementById("cta-table-num");
+                    if (ctaTableEl) ctaTableEl.textContent = state.table;
                 }
             });
         }
@@ -282,7 +299,7 @@
         const submitBtn = document.getElementById("quiz-submit-btn");
         const resTableNum = document.getElementById("results-table-num");
 
-        if (resTableNum) resTableNum.textContent = state.table;
+        if (resTableNum) resTableNum.textContent = state.table ? state.table : "Your Table";
         if (resultsSection) resultsSection.style.display = "block";
 
         if (submitBtn) {
@@ -306,7 +323,7 @@
             vibe: state.quiz.vibe,
             player_count: state.quiz.playerCount === "6+" ? "6" : state.quiz.playerCount,
             duration_pref: state.quiz.duration,
-            table: state.table
+            table: state.table || "General"
         });
 
         // Hobbyist usernames if provided
@@ -373,7 +390,9 @@
     }
 
     // Render Game Cards
-    function renderCafeCards(container, recs) {
+    // Render Game Cards (Shared for Collection Browser & Recommendations)
+    function renderCafeCards(container, recs, options = {}) {
+        const isRecView = options.isRecommendationView !== false;
         const escape = window.escapeHTML || (s => s ? String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) : "");
         let html = "";
 
@@ -382,8 +401,13 @@
             const bggUrl = rec.id ? `https://boardgamegeek.com/boardgame/${rec.id}` : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(rec.name)}`;
             const videoUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(rec.name + " board game how to play rules")}`;
 
-            // Prominent Shelf Location
-            const shelf = rec.shelf_location || rec.shelf || `Shelf ${String.fromCharCode(65 + (idx % 5))}-${(idx % 4) + 1}`;
+            // Prominent Shelf Location (Only if present in comments/data - STRICTLY NO fallback)
+            const shelf = (rec.shelf_location || rec.shelf || "").trim();
+            const shelfBadgeHtml = shelf ? `
+                <span class="shelf-location-badge" title="Physical shelf location in cafe">
+                    📍 ${escape(shelf)}
+                </span>
+            ` : "";
             
             // Teach Time
             const teach = rec.teach_time || estimateTeachTime(rec.complexity);
@@ -408,16 +432,39 @@
                 timeStr = `<span class="cafe-stat-pill" title="Playtime">🕒 ${t}m</span>`;
             }
 
-            // Sommelier Quote
-            const reasonText = rec.reason || `Perfect for Table ${state.table}! High engagement with clean rules and satisfying decisions.`;
+            // Sommelier Quote (in recommendation view or if explicitly included)
+            let quoteHtml = "";
+            if (isRecView) {
+                const reasonText = rec.reason || `Perfect for Table ${state.table}! High engagement with clean rules and satisfying decisions.`;
+                quoteHtml = `
+                    <div class="sommelier-quote-bubble">
+                        <div class="sommelier-header">
+                            <span>🍷 Cafe Guru Recommendation</span>
+                        </div>
+                        <p class="sommelier-quote-text">"${escape(reasonText)}"</p>
+                    </div>
+                `;
+            }
 
-            // Drink Pairing
-            const drinkTag = (state.venueMeta && state.venueMeta.drink_pairings_enabled !== false) 
+            // Drink Pairing (in recommendation view)
+            const drinkTag = (isRecView && state.venueMeta && state.venueMeta.drink_pairings_enabled !== false) 
                 ? `<div class="drink-pairing-tag">${escape(getDrinkPairing(state.quiz.vibe))}</div>` 
                 : "";
 
+            // Genre / Mechanic Tags for collection browser
+            let tagsHtml = "";
+            if (!isRecView && (rec.mechanics || rec.categories)) {
+                const tags = [
+                    ...(Array.isArray(rec.mechanics) ? rec.mechanics.slice(0, 2) : []),
+                    ...(Array.isArray(rec.categories) ? rec.categories.slice(0, 1) : [])
+                ];
+                if (tags.length > 0) {
+                    tagsHtml = `<div class="cafe-card-tags">${tags.map(t => `<span class="cafe-genre-tag">${escape(t)}</span>`).join('')}</div>`;
+                }
+            }
+
             html += `
-                <div class="cafe-game-card" style="animation-delay: ${idx * 0.06}s;">
+                <div class="cafe-game-card" style="animation-delay: ${idx * 0.04}s;">
                     <div class="cafe-card-top">
                         <div class="cafe-card-thumb-wrap">
                             <img class="cafe-card-thumb" src="${thumb}" alt="${escape(rec.name)}" loading="lazy" onerror="this.onerror=null; this.src='https://cf.geekdo-images.com/images/placeholder_thumb.png';">
@@ -428,11 +475,9 @@
                                 ${rec.year_published ? `<span class="cafe-card-year">(${rec.year_published})</span>` : ''}
                             </div>
 
-                            <!-- Prominent Shelf Location & Teach Time -->
+                            <!-- Badges (Shelf Location strictly if present, Teach Time) -->
                             <div class="cafe-prominent-badges">
-                                <span class="shelf-location-badge" title="Physical shelf location in cafe">
-                                    📍 ${escape(shelf)}
-                                </span>
+                                ${shelfBadgeHtml}
                                 <span class="teach-time-badge" title="Estimated rules explanation time">
                                     ⏱️ ${escape(teach)}
                                 </span>
@@ -444,17 +489,12 @@
                                 ${playerStr}
                                 ${timeStr}
                             </div>
+
+                            ${tagsHtml}
                         </div>
                     </div>
 
-                    <!-- AI Sommelier Guru Bubble -->
-                    <div class="sommelier-quote-bubble">
-                        <div class="sommelier-header">
-                            <span>🍷 Cafe Guru Recommendation</span>
-                        </div>
-                        <p class="sommelier-quote-text">"${escape(reasonText)}"</p>
-                    </div>
-
+                    ${quoteHtml}
                     ${drinkTag}
 
                     <!-- Actions -->
@@ -581,33 +621,350 @@
         }
     }
 
+    function setupGatewayControls() {
+        const slugInput = document.getElementById("gateway-slug-input");
+        const slugBtn = document.getElementById("gateway-slug-btn");
+        if (slugBtn && slugInput) {
+            slugBtn.addEventListener("click", () => {
+                const val = slugInput.value.trim().toLowerCase();
+                if (val) {
+                    window.location.search = `?cafe=${encodeURIComponent(val)}`;
+                }
+            });
+            slugInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                    slugBtn.click();
+                }
+            });
+        }
+    }
+
+    // Tab Switcher between Collection Browser and Recommender
+    function switchTab(tabName) {
+        state.activeTab = tabName;
+        const tabColBtn = document.getElementById("tab-btn-collection");
+        const tabRecBtn = document.getElementById("tab-btn-recommender");
+        const collectionView = document.getElementById("cafe-collection-view");
+        const recommenderView = document.getElementById("cafe-recommender-view");
+
+        if (tabName === "recommender") {
+            if (tabColBtn) {
+                tabColBtn.classList.remove("active");
+                tabColBtn.setAttribute("aria-selected", "false");
+            }
+            if (tabRecBtn) {
+                tabRecBtn.classList.add("active");
+                tabRecBtn.setAttribute("aria-selected", "true");
+            }
+            if (collectionView) collectionView.style.display = "none";
+            if (recommenderView) recommenderView.style.display = "block";
+            const quizCard = document.getElementById("vibe-quiz-card");
+            if (quizCard && typeof quizCard.scrollIntoView === "function") {
+                quizCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        } else {
+            if (tabRecBtn) {
+                tabRecBtn.classList.remove("active");
+                tabRecBtn.setAttribute("aria-selected", "false");
+            }
+            if (tabColBtn) {
+                tabColBtn.classList.add("active");
+                tabColBtn.setAttribute("aria-selected", "true");
+            }
+            if (collectionView) collectionView.style.display = "block";
+            if (recommenderView) recommenderView.style.display = "none";
+        }
+    }
+
+    // Fetch Cafe Library for Collection Browser
+    async function loadCafeCollection() {
+        const grid = document.getElementById("cafe-collection-grid");
+        const countBadge = document.getElementById("collection-count-badge");
+        const resultsCount = document.getElementById("collection-results-count");
+
+        if (state.isCollectionLoading) return;
+        state.isCollectionLoading = true;
+
+        if (grid) renderCafeSkeletons(grid, 6);
+        if (resultsCount) resultsCount.textContent = "Loading library...";
+
+        const targetCafe = (state.venueMeta && state.venueMeta.bgg_username) 
+            ? state.venueMeta.bgg_username 
+            : state.cafeId;
+
+        try {
+            // Try collection endpoint first
+            let resp = await window.fetchApi(`/cafe/collection?cafe_id=${encodeURIComponent(targetCafe)}`);
+            let data = null;
+            if (resp && resp.ok) {
+                data = await resp.json();
+            } else {
+                // Fallback to recommendations endpoint with vibe=any
+                resp = await window.fetchApi(`/recommendations?cafe_id=${encodeURIComponent(targetCafe)}&vibe=any`);
+                if (resp && resp.ok) {
+                    data = await resp.json();
+                }
+            }
+
+            state.isCollectionLoading = false;
+
+            if (data && (data.collection || data.recommendations)) {
+                state.collection = data.collection || data.recommendations || [];
+                if (countBadge) countBadge.textContent = state.collection.length;
+                filterAndSortCollection();
+                return;
+            }
+        } catch (err) {
+            console.warn("Failed fetching cafe collection:", err);
+        }
+
+        state.isCollectionLoading = false;
+        state.collection = [];
+        if (grid) {
+            grid.innerHTML = `
+                <div class="empty-results-card" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">⚠️</div>
+                    <h3 class="empty-title">Could not load library</h3>
+                    <p class="empty-desc">Failed to connect to this venue's collection.</p>
+                    <button type="button" class="btn-relax-filter" id="retry-collection-btn">🔄 Retry</button>
+                </div>
+            `;
+            const retry = document.getElementById("retry-collection-btn");
+            if (retry) retry.addEventListener("click", loadCafeCollection);
+        }
+    }
+
+    // Filter and Sort Collection Browser items
+    function filterAndSortCollection() {
+        const grid = document.getElementById("cafe-collection-grid");
+        const resultsCount = document.getElementById("collection-results-count");
+        if (!grid) return;
+
+        let list = [...state.collection];
+        const q = (state.searchQuery || "").trim().toLowerCase();
+
+        // 1. Search Query Filter
+        if (q) {
+            list = list.filter(game => {
+                const name = (game.name || "").toLowerCase();
+                const mechs = Array.isArray(game.mechanics) ? game.mechanics.join(" ").toLowerCase() : "";
+                const cats = Array.isArray(game.categories) ? game.categories.join(" ").toLowerCase() : "";
+                const shelf = (game.shelf_location || game.shelf || "").toLowerCase();
+                const year = String(game.year_published || "");
+                return name.includes(q) || mechs.includes(q) || cats.includes(q) || shelf.includes(q) || year.includes(q);
+            });
+        }
+
+        // 2. Chip Filter
+        const f = state.activeFilter;
+        if (f === "2p") {
+            list = list.filter(g => (g.min_players <= 2 && g.max_players >= 2));
+        } else if (f === "4p") {
+            list = list.filter(g => (g.min_players <= 4 && g.max_players >= 4));
+        } else if (f === "party") {
+            list = list.filter(g => (g.max_players >= 5));
+        } else if (f === "short") {
+            list = list.filter(g => {
+                const t = g.playing_time || g.min_playtime || 0;
+                return t > 0 && t <= 30;
+            });
+        } else if (f === "strategy") {
+            list = list.filter(g => (g.complexity >= 2.5));
+        } else if (f === "coop") {
+            list = list.filter(g => {
+                const mechs = (Array.isArray(g.mechanics) ? g.mechanics.join(" ") : "").toLowerCase();
+                const desc = (g.reason || "").toLowerCase();
+                return mechs.includes("cooperative") || desc.includes("cooperative") || desc.includes("co-op");
+            });
+        } else if (f === "shelved") {
+            list = list.filter(g => !!(g.shelf_location || g.shelf));
+        }
+
+        // 3. Sort
+        const sort = state.sortBy;
+        list.sort((a, b) => {
+            if (sort === "name_asc") {
+                return (a.name || "").localeCompare(b.name || "");
+            } else if (sort === "rating_desc") {
+                return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
+            } else if (sort === "complexity_asc") {
+                return (parseFloat(a.complexity) || 0) - (parseFloat(b.complexity) || 0);
+            } else if (sort === "complexity_desc") {
+                return (parseFloat(b.complexity) || 0) - (parseFloat(a.complexity) || 0);
+            } else if (sort === "playtime_asc") {
+                const ta = a.playing_time || a.min_playtime || 999;
+                const tb = b.playing_time || b.min_playtime || 999;
+                return ta - tb;
+            }
+            return 0;
+        });
+
+        state.filteredCollection = list;
+
+        // Update counts
+        if (resultsCount) {
+            if (state.collection.length === 0) {
+                resultsCount.textContent = "No games found in catalog";
+            } else if (list.length === state.collection.length) {
+                resultsCount.textContent = `Showing all ${list.length} games`;
+            } else {
+                resultsCount.textContent = `Showing ${list.length} of ${state.collection.length} games`;
+            }
+        }
+
+        // Render Cards or Empty State
+        if (list.length === 0) {
+            const escape = window.escapeHTML || (s => s);
+            grid.innerHTML = `
+                <div class="empty-results-card" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">🔍</div>
+                    <h3 class="empty-title">No games found</h3>
+                    <p class="empty-desc">
+                        ${q ? `No titles matching "<strong>${escape(q)}</strong>"` : "No games match the selected filters."}
+                    </p>
+                    <button type="button" class="btn-relax-filter" id="btn-reset-filters">
+                        ✕ Clear Search &amp; Filters
+                    </button>
+                </div>
+            `;
+            const resetBtn = document.getElementById("btn-reset-filters");
+            if (resetBtn) {
+                resetBtn.addEventListener("click", () => {
+                    const searchInput = document.getElementById("cafe-search-input");
+                    const searchClear = document.getElementById("cafe-search-clear");
+                    if (searchInput) searchInput.value = "";
+                    if (searchClear) searchClear.style.display = "none";
+                    state.searchQuery = "";
+                    state.activeFilter = "all";
+                    document.querySelectorAll(".cafe-filter-chip").forEach(c => {
+                        c.classList.toggle("active", c.getAttribute("data-filter") === "all");
+                    });
+                    filterAndSortCollection();
+                });
+            }
+        } else {
+            renderCafeCards(grid, list, { isRecommendationView: false });
+        }
+    }
+
+    // Set up Collection Browser controls & event handlers
+    function setupCollectionControls() {
+        // Tab switcher
+        const tabColBtn = document.getElementById("tab-btn-collection");
+        const tabRecBtn = document.getElementById("tab-btn-recommender");
+        if (tabColBtn) tabColBtn.addEventListener("click", () => switchTab("collection"));
+        if (tabRecBtn) tabRecBtn.addEventListener("click", () => switchTab("recommender"));
+
+        // Launch recommender CTA button
+        const launchBtn = document.getElementById("btn-launch-recommender");
+        if (launchBtn) launchBtn.addEventListener("click", () => switchTab("recommender"));
+
+        // Back to library buttons
+        const backBtn = document.getElementById("btn-back-to-library");
+        if (backBtn) backBtn.addEventListener("click", () => switchTab("collection"));
+        const backFromResBtn = document.getElementById("btn-back-from-results");
+        if (backFromResBtn) backFromResBtn.addEventListener("click", () => switchTab("collection"));
+
+        // Search input
+        const searchInput = document.getElementById("cafe-search-input");
+        const searchClear = document.getElementById("cafe-search-clear");
+        if (searchInput) {
+            let debounceTimer = null;
+            searchInput.addEventListener("input", (e) => {
+                const val = e.target.value;
+                state.searchQuery = val;
+                if (searchClear) searchClear.style.display = val ? "inline-flex" : "none";
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    filterAndSortCollection();
+                }, 150);
+            });
+        }
+        if (searchClear) {
+            searchClear.addEventListener("click", () => {
+                if (searchInput) {
+                    searchInput.value = "";
+                    searchInput.focus();
+                }
+                searchClear.style.display = "none";
+                state.searchQuery = "";
+                filterAndSortCollection();
+            });
+        }
+
+        // Quick filter chips
+        const chips = document.querySelectorAll(".cafe-filter-chip");
+        chips.forEach(chip => {
+            chip.addEventListener("click", () => {
+                chips.forEach(c => c.classList.remove("active"));
+                chip.classList.add("active");
+                state.activeFilter = chip.getAttribute("data-filter") || "all";
+                filterAndSortCollection();
+            });
+        });
+
+        // Sort select
+        const sortSelect = document.getElementById("collection-sort-select");
+        if (sortSelect) {
+            sortSelect.addEventListener("change", (e) => {
+                state.sortBy = e.target.value;
+                filterAndSortCollection();
+            });
+        }
+    }
+
     // Export internal helpers for testing if module / test environment
     if (typeof window !== "undefined") {
         window.CafePortal = {
             state,
             parseVenueContext,
             loadVenueMetadata,
+            loadCafeCollection,
+            filterAndSortCollection,
+            switchTab,
             estimateTeachTime,
             getDrinkPairing,
             fetchCafeRecommendations,
-            renderCafeCards
+            renderCafeCards,
+            setupGatewayControls,
+            setupCollectionControls
         };
     }
 
     // Initialize when DOM is ready
     document.addEventListener("DOMContentLoaded", function () {
-        // Only run on cafe patron portal
-        if (!document.getElementById("vibe-quiz-form")) return;
+        const gatewayView = document.getElementById("cafe-gateway-view");
+        const patronView = document.getElementById("cafe-patron-view");
+        if (!gatewayView && !patronView && !document.getElementById("vibe-quiz-form")) return;
 
-        parseVenueContext();
-        restoreQuizState();
-        loadVenueMetadata();
-        setupQuizControls();
+        const hasVenue = parseVenueContext();
 
-        // If URL has auto=1, trigger automatically
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get("auto") === "1") {
-            fetchCafeRecommendations();
+        if (!hasVenue) {
+            if (gatewayView) gatewayView.style.display = "block";
+            if (patronView) patronView.style.display = "none";
+            setupGatewayControls();
+        } else {
+            if (gatewayView) gatewayView.style.display = "none";
+            if (patronView) patronView.style.display = "block";
+            restoreQuizState();
+            loadVenueMetadata();
+            setupQuizControls();
+            setupCollectionControls();
+            loadCafeCollection();
+
+            // Default view: Collection Browser!
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get("quiz") === "1" || urlParams.get("recommender") === "1") {
+                switchTab("recommender");
+            } else {
+                switchTab("collection");
+            }
+
+            // If URL has auto=1, trigger recommendations
+            if (urlParams.get("auto") === "1") {
+                switchTab("recommender");
+                fetchCafeRecommendations();
+            }
         }
     });
 })();
