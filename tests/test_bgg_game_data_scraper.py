@@ -36,8 +36,9 @@ def test_xml_helpers():
     links = bgg_game_data_scraper._get_links(root, "boardgamecategory")
     assert links == ["Negotiation", "Trading"]
 
+@patch('bgg_game_data_scraper._fetch_geekdo_rules_video', return_value=None)
 @patch('requests.get')
-def test_get_game_data_success(mock_get):
+def test_get_game_data_success(mock_get, mock_geekdo):
     xml_str = """
     <items>
         <item id="10" type="boardgame">
@@ -108,9 +109,10 @@ def test_get_game_data_success(mock_get):
     assert data['suggested_players_best'] == ['3']
     assert data['suggested_players_recommended'] == ['3', '4']
 
+@patch('bgg_game_data_scraper._fetch_geekdo_rules_video', return_value=None)
 @patch('requests.get')
 @patch('time.sleep') # prevent sleep from delaying tests
-def test_get_game_data_retry_and_success(mock_sleep, mock_get):
+def test_get_game_data_retry_and_success(mock_sleep, mock_get, mock_geekdo):
     xml_str = """
     <items>
         <item id="10" type="boardgame">
@@ -252,7 +254,8 @@ def test_extract_youtube_id():
     assert bgg_game_data_scraper._extract_youtube_id(None) is None
 
 
-def test_extract_rules_video_prioritization():
+@patch('bgg_game_data_scraper._fetch_geekdo_rules_video', return_value=None)
+def test_extract_rules_video_prioritization(mock_geekdo):
     xml_str = """
     <item id="13" type="boardgame">
         <videos total="3">
@@ -269,9 +272,49 @@ def test_extract_rules_video_prioritization():
     assert "Watch It Played" in video['title']
 
 
-def test_extract_rules_video_empty():
+@patch('bgg_game_data_scraper._fetch_geekdo_rules_video', return_value=None)
+def test_extract_rules_video_empty(mock_geekdo):
     xml_str = '<item id="13" type="boardgame"></item>'
     item = ET.fromstring(xml_str)
     video = bgg_game_data_scraper._extract_rules_video(item)
     assert video == {'url': None, 'id': None, 'title': None}
+
+
+@patch('bgg_game_data_scraper.requests.get')
+def test_fetch_geekdo_rules_video_watch_it_played(mock_get):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        'videos': [
+            {
+                'extvideoid': 'DHahKBg-kEI',
+                'videohost': 'youtube',
+                'title': 'How to Play Monopoly',
+                'numrecommend': 2,
+                'user': {'username': 'Hogwa5h'}
+            },
+            {
+                'extvideoid': '4nz-_hvFw44',
+                'videohost': 'youtube',
+                'title': 'Monopoly - How To Play',
+                'numrecommend': 29,
+                'user': {'username': 'Watch It Played'}
+            },
+            {
+                'extvideoid': 'qa-iDNdQokA',
+                'videohost': 'youtube',
+                'title': 'Magical Mr Monopoly | Board Game Cosplay',
+                'numrecommend': 1,
+                'user': {'username': 'cosplayer'}
+            }
+        ]
+    }
+    mock_get.return_value = mock_response
+
+    video = bgg_game_data_scraper._fetch_geekdo_rules_video(1406)
+    assert video is not None
+    assert video['id'] == '4nz-_hvFw44'
+    assert video['url'] == 'https://www.youtube.com/watch?v=4nz-_hvFw44'
+    assert 'Watch' in video['title'] or 'Monopoly' in video['title']
+
 

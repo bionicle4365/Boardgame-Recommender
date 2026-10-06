@@ -430,6 +430,24 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(title.textContent).toBe('Azul');
         expect(iframe.src).toContain('yflGY5bW_1g');
     });
+
+    test('venue-header-card is structured as a div to avoid header tag collisions and toolbar is sticky', () => {
+        const cafeHtmlPath = path.resolve(__dirname, '../cafe/index.html');
+        const cafeHtml = fs.readFileSync(cafeHtmlPath, 'utf8');
+
+        // Venue header card must not use <header> element
+        expect(cafeHtml).toMatch(/<div class="venue-header-card"/);
+        expect(cafeHtml).not.toMatch(/<header class="venue-header-card"/);
+
+        // Cafe CSS must configure collection-browser-toolbar as sticky
+        const cafeCssPath = path.resolve(__dirname, '../assets/css/cafe.css');
+        const cafeCss = fs.readFileSync(cafeCssPath, 'utf8');
+
+        expect(cafeCss).toContain('.collection-browser-toolbar {');
+        expect(cafeCss).toMatch(/\.collection-browser-toolbar\s*\{[^}]*position:\s*sticky;/s);
+        expect(cafeCss).toMatch(/\.collection-browser-toolbar\s*\{[^}]*top:\s*70px;/s);
+        expect(cafeCss).toMatch(/\.venue-header-card\s*\{[^}]*z-index:\s*1;/s);
+    });
 });
 
 

@@ -55,6 +55,7 @@
     flex-direction: column;
     gap: 14px;
     position: relative;
+    z-index: 1;
     overflow: hidden;
 }
 
@@ -1172,10 +1173,37 @@
 
 /* ── Collection Browser Toolbar ── */
 .collection-browser-toolbar {
+    position: sticky;
+    top: 70px;
+    z-index: 40;
+    background: var(--header-bg, rgba(255, 255, 255, 0.92));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 12px 14px 10px 14px;
+    margin-left: -14px;
+    margin-right: -14px;
+    margin-top: -6px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0 0 var(--radius-lg, 16px) var(--radius-lg, 16px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: 10px;
+}
+
+@media (max-width: 480px) {
+    .collection-browser-toolbar {
+        top: 64px;
+        padding: 10px 12px 8px 12px;
+        gap: 8px;
+    }
+}
+
+[data-theme="dark"] .collection-browser-toolbar {
+    background: rgba(15, 23, 42, 0.92);
+    border-bottom-color: rgba(51, 65, 85, 0.7);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .collection-search-wrap {

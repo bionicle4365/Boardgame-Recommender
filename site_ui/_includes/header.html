@@ -1,5 +1,6 @@
 <style>
-    header {
+    header.site-header,
+    .site-header {
         background-color: var(--header-bg);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
@@ -10,7 +11,7 @@
         border-bottom: 1px solid var(--border);
         position: sticky;
         top: 0;
-        z-index: 100;
+        z-index: 200;
         height: 70px;
     }
 
@@ -449,7 +450,8 @@
     }
 
     @media (max-width: 480px) {
-        header {
+        header.site-header,
+        .site-header {
             padding: 12px 14px;
             height: 64px;
         }

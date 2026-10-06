@@ -182,11 +182,11 @@ Integrate concise video rules tutorials directly into recommendation cards so pa
 - **Frontend Video Modal:** Accessible, responsive iframe modal component in `site_ui/cafe/` with clean close gestures and playback controls.
 
 ### Tasks
-- [ ] **BGG Video Link Extractor:** Add video link extraction logic to [`bgg_game_data_scraper`](file:///d:/Git/Boardgame-Recommender/bgg_game_data_scraper) prioritizing instructional/how-to-play tags.
-- [ ] **Video URL Resolution in Recommender:** Include `rules_video_url` in the `/recommendations` API response payload.
-- [ ] **Frontend Video Modal:** Build accessible glassmorphic video modal in `site_ui/cafe/index.html` with YouTube embed and fallback search link.
-- [ ] **Teach Time Badge:** Display rulebook complexity and estimated rules teach time directly adjacent to the video button.
-- [ ] **Unit & E2E Tests:** Test video URL resolution and modal open/close behaviors.
+- [x] **BGG Video Link Extractor:** Add video link extraction logic to [`bgg_game_data_scraper`](file:///d:/Git/Boardgame-Recommender/bgg_game_data_scraper) prioritizing instructional/how-to-play tags.
+- [x] **Video URL Resolution in Recommender:** Include `rules_video_url` in the `/recommendations` API response payload.
+- [x] **Frontend Video Modal:** Build accessible glassmorphic video modal in `site_ui/cafe/index.html` with YouTube embed and fallback search link.
+- [x] **Teach Time Badge:** Display rulebook complexity and estimated rules teach time directly adjacent to the video button.
+- [x] **Unit & E2E Tests:** Test video URL resolution and modal open/close behaviors.
 
 ---
 

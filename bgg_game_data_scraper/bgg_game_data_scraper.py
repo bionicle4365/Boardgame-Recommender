@@ -117,15 +117,97 @@ def _extract_youtube_id(url):
             return match.group(1)
     return None
 
-def _extract_rules_video(item):
+def _score_geekdo_video(video):
+    """Calculates priority score for a video from the BGG geekdo API."""
+    title = (video.get('title') or '').lower()
+    uploader = (video.get('user', {}).get('username') or '').lower() if isinstance(video.get('user'), dict) else ''
+    num_rec = int(video.get('numrecommend') or 0)
+
+    score = num_rec * 2  # base community recommendation weight
+
+    # Priority tutorial channels
+    if 'watch it played' in uploader or 'watch it played' in title:
+        score += 100
+    elif '3-minute' in uploader or '3-minute' in title:
+        score += 60
+    elif 'nights around a table' in uploader:
+        score += 50
+    elif 'harsh rules' in uploader:
+        score += 50
+    elif 'rtfm' in uploader:
+        score += 50
+
+    # High-signal title keywords
+    if 'how to play' in title:
+        score += 40
+    if 'rules' in title:
+        score += 30
+    if 'tutorial' in title:
+        score += 25
+    if 'learn to play' in title:
+        score += 20
+
+    # Negative / off-topic penalization (we want rules tutorials, not history or strategies)
+    if any(k in title for k in ['strategy', 'strategies', 'history', 'tokens', 'cosplay', 'review', 'unboxing', 'fixed', 'wrong ways']):
+        score -= 50
+
+    return score
+
+
+def _fetch_geekdo_rules_video(game_id, timeout=3):
     """
-    Extracts the highest-priority instructional/rules video from the <videos> section.
-    Prioritizes:
-    1. Category == 'instructional'
-    2. English language
-    3. Instructional keywords in title (watch it played, how to play, rules, tutorial, learn to play)
-    4. YouTube direct embeddability
+    Queries BGG's backend API (api.geekdo.com) for curated English instructional videos,
+    sorted by community recommendation / popularity.
     """
+    if not game_id:
+        return None
+    try:
+        url = f"https://api.geekdo.com/api/videos?objectid={game_id}&objecttype=thing&gallery=instructional&languageid=2184&sort=hot&showcount=20"
+        headers = {'User-Agent': 'bgg-game-data-scraper'}
+        bgg_api_token = os.environ.get('BGG_API_TOKEN')
+        if bgg_api_token:
+            headers['Authorization'] = f"Bearer {bgg_api_token}"
+
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        if resp.status_code != 200:
+            return None
+
+        data = resp.json()
+        videos = data.get('videos', [])
+        if not videos:
+            return None
+
+        candidates = []
+        for v in videos:
+            ext_id = v.get('extvideoid')
+            host = (v.get('videohost') or '').lower()
+            title = v.get('title') or ''
+            if not ext_id or host != 'youtube':
+                continue
+            score = _score_geekdo_video(v)
+            candidates.append((score, ext_id, title))
+
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda c: c[0], reverse=True)
+        best_score, best_id, best_title = candidates[0]
+        return {
+            'url': f"https://www.youtube.com/watch?v={best_id}",
+            'id': best_id,
+            'title': best_title
+        }
+    except Exception as e:
+        logger.warning(f"Failed to fetch geekdo video for game {game_id}: {e}")
+        return None
+
+
+def _extract_rules_video_from_xml(item):
+    """
+    Extracts instructional rules video from XML <videos> with strict English language filtering.
+    """
+    if item is None:
+        return {'url': None, 'id': None, 'title': None}
     videos_container = item.find('videos')
     if videos_container is None:
         return {'url': None, 'id': None, 'title': None}
@@ -138,6 +220,10 @@ def _extract_rules_video(item):
         title = (video.get('title') or '').strip()
         category = (video.get('category') or '').strip().lower()
         language = (video.get('language') or '').strip().lower()
+
+        # Strict language filter: English only! Never select foreign-language videos for English rules.
+        if language not in ('english', 'en', ''):
+            continue
 
         score = 0
         # Category weight
@@ -152,7 +238,7 @@ def _extract_rules_video(item):
             score += 50
         if 'how to play' in title_lower:
             score += 40
-        if 'rules' in title_lower or 'regeln' in title_lower:
+        if 'rules' in title_lower:
             score += 30
         if 'tutorial' in title_lower:
             score += 25
@@ -160,12 +246,6 @@ def _extract_rules_video(item):
             score += 20
         if 'quick play' in title_lower:
             score += 15
-
-        # Language weight
-        if language in ('english', 'en', ''):
-            score += 20
-        else:
-            score -= 30
 
         # YouTube ID bonus (enables seamless in-app embedding)
         yt_id = _extract_youtube_id(link)
@@ -185,6 +265,24 @@ def _extract_rules_video(item):
         'id': best_yt_id,
         'title': best_title
     }
+
+
+def _extract_rules_video(item, game_id=None):
+    """
+    Extracts the highest-priority instructional/rules video for a board game.
+    First queries BGG's backend API (api.geekdo.com) for curated English
+    instructional videos sorted by community recommendations/popularity.
+    Falls back to parsing the <videos> section of the BGG XML payload with
+    strict English-only filtering.
+    """
+    gid = game_id or (item.get('id') if item is not None else None)
+    if gid:
+        geekdo_vid = _fetch_geekdo_rules_video(gid)
+        if geekdo_vid:
+            return geekdo_vid
+
+    return _extract_rules_video_from_xml(item)
+
 
 def _parse_item(item):
     """Parse a single <item> XML element into a game data dict."""
@@ -223,7 +321,8 @@ def _parse_item(item):
                 if (best_votes + rec_votes) > not_rec_votes:
                     rec_players.append(num_players)
 
-    rules_vid = _extract_rules_video(item)
+    item_id = item.get('id')
+    rules_vid = _extract_rules_video(item, game_id=item_id)
 
     return {
         'id': item.get('id'),
