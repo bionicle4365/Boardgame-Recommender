@@ -47,7 +47,7 @@ Build the automated data ingestion pipeline that syncs a cafe's owned collection
 - **Dedicated S3 Cafe Partition:** Generates `s3://boardgame-app/data/cafes/{cafe_id}/collection.parquet`, containing standard catalog attributes (`id`, `name`, `year_published`, `min_players`, `max_players`, `playing_time`, `min_age`, `weight`, etc.) isolated from individual user profiles.
 - **On-Demand "Sync from BGG":** When cafe staff finish logging newly acquired games on BGG, they can invoke an on-demand sync (`POST /cafe/sync`), immediately enqueuing a scrape job via SQS without waiting for weekly batch runs.
 - **Cache Invalidation:** Triggering a sync automatically clears recommendation cache keys for the venue so newly synced games can be recommended immediately upon completion.
-- **Deferred Customizations:** Shelf coordinate parsing from BGG comments and manual catalog overrides (`overrides.json`, manual additions without BGG) are deferred to later in the roadmap (Milestone C8) to maintain a lean, focused ingestion core.
+- **Integrated Shelf Location Ingestion:** Shelf coordinate parsing from BGG comments (`Shelf: B-3`, `Location: 4A`) is directly parsed during ingestion and embedded into `collection.parquet` (manual catalog overrides evaluated and dropped per Milestone C8).
 
 ### Architecture Decisions
 - **Storage Location:** Save cafe libraries to `s3://boardgame-app/data/cafes/{cafe_id}/collection.parquet`.
@@ -82,7 +82,6 @@ Create a dedicated, authenticated management dashboard at `site_ui/cafe/manage.h
   - *Trigger BGG Sync:* One-click `POST /cafe/sync` button with a live sync indicator showing last-synced timestamp.
   - *Reprint Table Tents:* Instant button to view, customize, and print/download the full double-sided folding table tent sheet (with inverted top half for upright display when folded).
   - *Live Table URLs:* Quick-copy links for all tables (`/cafe/{slug}?table={N}`) to test patron vibe recommendations.
-  - *Link to Staff Floor Portal:* Direct shortcut to the staff availability and shelf location editor (`site_ui/cafe/staff.html`).
 - **Profile & Navigation Integration:**
   - In `site_ui/profile/index.html`, display a "My Venues" section for authenticated users showing their registered cafes with a "Manage Venue" button, and an "Onboard a New Cafe" action.
   - If a user owns a cafe, display a convenient "Manage Cafe" link in the account dropdown menu.
@@ -90,16 +89,18 @@ Create a dedicated, authenticated management dashboard at `site_ui/cafe/manage.h
 ### Architecture Decisions
 - **List Owned Venues Endpoint:** Add `GET /cafe/my-cafes` protected by Cognito authorizer. Queries DynamoDB `bgg-cafes` table using the existing `owner_cognito_id-index` Global Secondary Index (GSI) using the caller's Cognito identity `sub`.
 - **Venue Update Endpoint:** Add `POST /cafe/update` (Cognito authorizer). Validates that the caller's Cognito `sub` matches `owner_cognito_id` on the target `cafe_id`, updates venue attributes in DynamoDB `bgg-cafes`, updates the S3 cache at `data/cafes/{cafe_id}/meta.json`, and refreshes `data/cafes_registry.json`.
-- **API Gateway Routes:** Define `GET /cafe/my-cafes` and `POST /cafe/update` under the API Gateway HTTP REST API in `infrastructure/apigateway/main.tf` with the Cognito authorizer.
+- **Venue Deletion Endpoint:** Add `POST /cafe/delete` (Cognito authorizer). Validates ownership, deletes the venue record from DynamoDB `bgg-cafes`, removes `meta.json` from S3, and purges the venue from `data/cafes_registry.json`.
+- **API Gateway Routes:** Define `GET /cafe/my-cafes`, `POST /cafe/update`, and `POST /cafe/delete` under the API Gateway HTTP REST API in `infrastructure/apigateway/main.tf` with the Cognito authorizer.
 - **Management UI:** Create `site_ui/cafe/manage.html` leveraging existing design tokens in `design-system.css`, with tabbed or card-based venue settings, responsive table tent generator integration, and toast alerts.
 
 ### Tasks
 - [x] **My Cafes Query Handler:** Implement `_handle_get_my_cafes()` in `bgg_preferences_handler.py` querying the `owner_cognito_id-index` GSI in DynamoDB.
 - [x] **Venue Update Handler:** Implement `_handle_cafe_update()` in `bgg_preferences_handler.py` validating ownership, updating DynamoDB `bgg-cafes`, and syncing S3 metadata mirror.
-- [x] **API Gateway Routes:** Add `GET /cafe/my-cafes` and `POST /cafe/update` with Cognito authorizers to `infrastructure/apigateway/main.tf`.
+- [x] **Venue Deletion Handler & Danger Zone:** Implement `_handle_cafe_delete()` in `bgg_preferences_handler.py`, add `POST /cafe/delete` route, and add Danger Zone with confirmation modal to `site_ui/cafe/manage.html`.
+- [x] **API Gateway Routes:** Add `GET /cafe/my-cafes`, `POST /cafe/update`, and `POST /cafe/delete` with Cognito authorizers to `infrastructure/apigateway/main.tf`.
 - [x] **Owner Management Portal UI:** Build `site_ui/cafe/manage.html` with venue selection, settings form (tables, Wi-Fi, branding, shelf regex), live BGG sync trigger with status, and table tent re-printing modal.
 - [x] **User Profile Integration:** Add "My Cafes" card to `site_ui/profile/index.html` and header navigation linking to `/cafe/manage.html`.
-- [x] **Unit & Frontend Tests:** Add Python unit tests for `_handle_get_my_cafes` and `_handle_cafe_update` (authorization checks, GSI query, validation), and Vitest frontend tests for management portal interactions.
+- [x] **Unit & Frontend Tests:** Add Python unit tests for `_handle_get_my_cafes`, `_handle_cafe_update`, and `_handle_cafe_delete` (authorization checks, GSI query, validation), and Vitest frontend tests for management portal interactions.
 
 ---
 
@@ -214,64 +215,21 @@ Provide cafe managers with a print-ready table tent QR generator and connect the
 
 ---
 
-## Milestone C8: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides
+## Milestone C8: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides (Dropped)
 
-### Objective
-Create a mobile-optimized staff portal for cafe floor staff and game masters to mark real-time game availability, extract and edit physical shelf location coordinates (via BGG comments and inline overrides), and support manual game additions independent of BGG with durable `overrides.json` persistence.
+### Status: Dropped / Superseded
 
-### Design Notes
-- **Problem Solved:** Patrons get frustrated when recommended a game that is already being played at another table, or when they cannot locate a game on crowded shelves.
-- **Physical Shelf Location Tracking:** Parse physical shelf coordinates from BGG collection comments and private comments (e.g. `Shelf: B-3`, `[Loc: 4A]`) using regex patterns configured during onboarding, displaying shelf locations on patron recommendation cards.
-- **Manual Game Additions (No BGG Required):** Staff can search the catalog and add newly acquired games directly into the cafe's library with shelf coordinates, custom notes, and drink pairings — ideal for putting new games on the shelf immediately.
-- **Manual Shelf Location Editing:** Staff can adjust shelf coordinates (e.g. moving a game from `Shelf A-1` to `Shelf C-4`) directly from the management interface.
-- **Durable Overrides Preservation:** Manual additions and shelf edits are stored in `s3://boardgame-app/data/cafes/{cafe_id}/overrides.json`. Automated BGG syncs preserve manual overrides so staff modifications are never overwritten.
-- **Staff UX:** Servers have 5 seconds between orders. The interface must feature instant barcode/search lookup and 1-tap availability toggles ("In Use at Table X", "Damaged", or "Back on Shelf").
-- **Security:** Protected via Cognito authentication with venue owner/staff authorization to prevent unauthorized patron modification.
-
-### Architecture Decisions
-- **Shelf Parsing Regex:** Ingest and parse shelf tags from `comment` and `private_comment` fields using venue-specific regex patterns from `bgg-cafes`.
-- **Durable Overrides Storage:** Save manual additions, custom shelf coordinates, and exclusions to `s3://boardgame-app/data/cafes/{cafe_id}/overrides.json`.
-- **Merge Engine:** Implement `merge_cafe_inventory(bgg_df, overrides_json)` that merges BGG items with manual additions, applies shelf coordinate overrides, and removes manually deleted games.
-- **Inventory State Storage:** Store live table assignment and availability status in DynamoDB or an S3 overlay: `data/cafes/{cafe_id}/live_status.json`.
-- **Cache Invalidation:** When a game's status or inventory changes, invalidate active recommendation cache keys for that venue.
-- **API Endpoints:**
-  - `POST /cafe/inventory/status` (authenticated): Allows authenticated staff to toggle `in_stock: true | false` or assign a game to a table.
-  - `GET /cafe/search-games?query=...` (authenticated): Queries catalog database for autocomplete title searches for manual additions.
-  - `POST /cafe/inventory/manual` (authenticated): Adds a manual game or updates shelf coordinates in `overrides.json`.
-
-### Tasks
-- [ ] **BGG Shelf Comment Parser:** Implement regex extraction of shelf tags from BGG comments and private comments into explicit `shelf_location` attributes.
-- [ ] **Manual Overrides Storage & Merger:** Implement `overrides.json` read/write and merge logic combining BGG scraped collection with manual additions, shelf overrides, and exclusions.
-- [ ] **Manual Game Search & Add API:** Implement `GET /cafe/search-games?query=...` and `POST /cafe/inventory/manual` to search the master catalog and append manual additions/shelf edits to `overrides.json`.
-- [ ] **Real-Time Availability Handler:** Implement `_handle_cafe_inventory_status()` in backend Lambda to update game availability and table assignment.
-- [ ] **Staff Dashboard UI:** Build `site_ui/cafe/staff.html` with instant fuzzy search, availability toggles, table assignment, a prominent "🔄 Sync from BGG" button, and an "➕ Add Game to Shelf" catalog search modal.
-- [ ] **Inline Shelf Editor:** Enable quick editing of shelf locations directly on existing games from the staff dashboard with instant persistence to `overrides.json`.
-- [ ] **Live Inventory Filter:** Ensure `_handle_recommendations` excludes games with `in_stock == false` and populates `shelf_location`.
-- [ ] **Auth Protection:** Protect staff routes using Cognito authentication with cafe staff role.
-- [ ] **Unit Tests:** Add tests for shelf regex extraction, override merging, availability toggles, and candidate pool updates.
+### Evaluation & Rationale
+This milestone was evaluated and dropped for the following architectural and operational reasons:
+1. **Shelf Locations Already Operational:** Physical shelf coordinates (`shelf_location`) were integrated directly into the BGG collection scraper (`bgg_user_data_scraper.py`), stored in `collection.parquet`, and surfaced across patron recommendation cards and Bedrock narration as part of Milestones C2, C4, and C5. No separate extraction milestone was needed.
+2. **Floor Staff Operational Realities:** Real-time game checkout toggles ("In Use at Table X") place high operational friction on busy floor servers during peak weekend service. Compliance failures create false negatives that hide available games from patrons. In physical venues, tables effortlessly select alternate recommendations if a game is being played.
+3. **Single Source of Truth:** BGG serves as the venue's catalog of record. Introducing an external `overrides.json` creates split-brain catalog maintenance and sync collisions. The 1-click on-demand BGG sync (`POST /cafe/sync` built in Milestone C3) fulfills rapid inventory updates without shadow database overhead.
 
 ---
 
-## Milestone C9: Cafe Library Analytics & Table Insights Dashboard
+## Milestone C9: Cafe Library Analytics & Table Insights Dashboard (Dropped)
 
-### Objective
-Provide cafe owners with an automated analytics dashboard detailing patron search trends, most requested mechanics, busiest table party sizes, and shelf utilization.
+### Status: Dropped / Superseded
 
-### Design Notes
-- **Actionable Business Intelligence:**
-  - *"Which games on our shelves are never recommended or played?"* (Candidates for selling).
-  - *"What are patrons searching for that we don't own?"* (Acquisition recommendations).
-  - *"What is the peak party size on Friday night vs. Sunday afternoon?"*
-- **Privacy First:** Strictly anonymous, aggregated session logs. No patron personal data is tracked or stored.
-
-### Architecture Decisions
-- **Telemetry Logging:** Log lightweight anonymous JSON events to CloudWatch / S3 Athena on recommendation and vote events: `{cafe_id, table_id, timestamp, player_count, vibe, selected_game_id}`.
-- **Analytics Reporting:** Athena query or weekly Python aggregator script outputting `data/cafes/{cafe_id}/analytics_summary.json`.
-- **Owner Dashboard:** Analytics view in `site_ui/cafe/dashboard.html` with charts for popular vibes, player counts, and shelf heatmaps.
-
-### Tasks
-- [ ] **Telemetry Logger:** Add anonymous structured logging to recommendation and voting Lambda handlers.
-- [ ] **Athena / S3 Log Partitioning:** Configure S3 partition scheme for cafe analytics events.
-- [ ] **Analytics Aggregator Script:** Create `scripts/aggregate_cafe_analytics.py` computing weekly utilization metrics.
-- [ ] **Owner Analytics UI:** Build glassmorphic dashboard with chart visualizations (Chart.js or Vanilla SVG) in `site_ui/cafe/dashboard.html`.
-- [ ] **Documentation:** Document metrics definitions and data retention policies.
+### Evaluation & Rationale
+This milestone was evaluated and dropped to maintain a lean, zero-overhead operational model. Board game cafe and bar operators prioritize frictionless, turnkey patron sommelier recommendations, immediate table QR onboarding, and reliable BGG library synchronization without the overhead of maintaining Athena log pipelines, event telemetry aggregators, or secondary reporting dashboards. Core patron vibe check and collection browsing capabilities fully address the operational goals of the Cafe Edition.

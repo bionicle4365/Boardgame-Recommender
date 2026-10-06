@@ -111,4 +111,32 @@ describe('Cafe Management Client Logic & Mock API', () => {
         expect(settingsHtml).toContain('id="settings-register-cafe-top-btn"');
         expect(settingsHtml).not.toContain('Register Another Venue');
     });
+
+    test('fetchApi mock handles /cafe/delete removing venue from storage', async () => {
+        localStorage.setItem('bgg_mock_cafe_to-delete', JSON.stringify({
+            cafe_id: 'to-delete',
+            name: 'Doomed Cafe',
+            table_count: 5
+        }));
+
+        const res = await window.fetchApi('/cafe/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cafe_id: 'to-delete' })
+        });
+        expect(res.ok).toBe(true);
+        const data = await res.json();
+        expect(data.status).toBe('success');
+        expect(data.message).toContain('deleted successfully');
+        expect(localStorage.getItem('bgg_mock_cafe_to-delete')).toBeNull();
+    });
+
+    test('manage.html contains Danger Zone and Delete Cafe confirmation modal', () => {
+        const manageHtml = fs.readFileSync(path.resolve(__dirname, '../cafe/manage.html'), 'utf8');
+        expect(manageHtml).toContain('id="open-delete-cafe-modal-btn"');
+        expect(manageHtml).toContain('id="delete-cafe-modal"');
+        expect(manageHtml).toContain('id="confirm-delete-cafe-btn"');
+        expect(manageHtml).toContain('id="cancel-delete-cafe-btn"');
+        expect(manageHtml).toContain('Danger Zone');
+    });
 });

@@ -898,7 +898,7 @@ window.fetchApi = async function(endpoint, options = {}) {
                     } catch (e) {}
                 }
             }
-            if (cafes.length === 0) {
+            if (cafes.length === 0 && !localStorage.getItem('bgg_mock_cafe_cleared')) {
                 const defaultCafe = {
                     cafe_id: "the-malt-and-meeple",
                     name: "The Malt & Meeple Cafe",
@@ -935,6 +935,22 @@ window.fetchApi = async function(endpoint, options = {}) {
                 status: "success",
                 message: "Cafe settings updated successfully",
                 cafe: updated
+            };
+        } else if (endpoint.startsWith('/cafe/delete') && options.method === 'POST') {
+            const payload = JSON.parse(options.body || '{}');
+            const cafeId = (payload.cafe_id || '').toLowerCase();
+            if (!cafeId) {
+                return {
+                    ok: false,
+                    status: 400,
+                    json: async () => ({ error: "cafe_id is required" })
+                };
+            }
+            localStorage.removeItem('bgg_mock_cafe_' + cafeId);
+            localStorage.setItem('bgg_mock_cafe_cleared', 'true');
+            data = {
+                status: "success",
+                message: `Cafe "${cafeId}" deleted successfully`
             };
         } else if (endpoint.startsWith('/collection')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');

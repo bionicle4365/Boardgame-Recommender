@@ -49,7 +49,7 @@ journey
 ### Persona 3: Cafe Floor Staff / Game Guru
 - **Profile:** Busy server/game sommelier managing 15 tables on a Friday night.
 - **Pain Point:** Spends excessive time answering "What should we play?" instead of serving orders or teaching rules.
-- **Journey:** Points patrons to the table QR code; can mark high-demand games as "In Use" from a quick mobile toggle.
+- **Journey:** Points patrons directly to the table QR code for self-service game recommendations, rules videos, and table voting.
 
 ### Persona 4: Cafe Owner / General Manager
 - **Profile:** Manages library investments, floor operations, and table turnover.
@@ -85,8 +85,6 @@ graph TD
 
     subgraph Interactive Features
         Patron -->|Create / Cast Vote| Sessions[Table Sessions API<br/>bgg-game-night-sessions DynamoDB]
-        Staff[Floor Staff] -->|Toggle In-Use / Shelf Status| StaffPortal[Staff Portal / PIN Auth]
-        StaffPortal --> APIGW
     end
 ```
 
@@ -138,7 +136,6 @@ sequenceDiagram
    - 1-click download of the complete **Printable QR Table Tent Kit** (vector PDF with foldable table tents, QR codes, and table badges).
    - Immediate access to:
      - Patron Table URL: `https://recommender.domain.com/cafe/malt-and-meeple?table=1`
-     - Staff Floor Portal: `https://recommender.domain.com/cafe/malt-and-meeple/staff`
      - Owner Management Dashboard: `https://recommender.domain.com/cafe/malt-and-meeple/admin`
 
 ---
@@ -176,73 +173,25 @@ Venues are stored in DynamoDB for fast self-service updates and owner management
 #### S3 Metadata Mirror
 Upon registration or update, DynamoDB triggers a write to `s3://boardgame-app/data/cafes/{cafe_id}/meta.json` and updates `data/cafes_registry.json` so recommendation serving Lambdas can read cached venue settings from memory/S3 without incur DynamoDB read costs on every table scan.
 
-### 5.2 Catalog Management: On-Demand Sync & Manual Inventory Overrides
+### 5.2 Catalog Management: Single-Source BGG Ingestion & On-Demand Sync
 
-Venues update their physical game inventory through two complementary mechanisms:
+Venues manage their physical game inventory using BoardGameGeek as the single authoritative source of truth:
 
 ```mermaid
 graph TD
-    subgraph Automatic / On-Demand Sync
-        BGG[BGG Account] -->|Scrape own=1| Scraper[User Data Scraper]
-        Scraper --> RawBGG[Raw Scraped Collection]
-    end
-
-    subgraph Manual Staff Edits
-        Staff[Cafe Staff Portal] -->|Add Game / Edit Shelf / Remove| OverridesAPI[POST /cafe/inventory/manual]
-        OverridesAPI --> OverridesStore[S3/DDB: data/cafes/{cafe_id}/overrides.json]
-    end
-
-    RawBGG --> Merge[Inventory Merger Engine]
-    OverridesStore --> Merge
-    Merge --> FinalParquet[S3: data/cafes/{cafe_id}/collection.parquet]
+    BGG[BGG Account: own=1 + Shelf Comments] -->|Scheduled Weekly or On-Demand POST /cafe/sync| Scraper[User Data Scraper Lambda]
+    Scraper -->|Extract catalog, player limits, weight & shelf regex| FinalParquet[S3: data/cafes/{cafe_id}/collection.parquet]
     FinalParquet --> Recommender[Recommendation Engine]
+    Manager[Cafe Owner / Manager] -->|Trigger On-Demand Sync| SyncAPI[POST /cafe/sync]
+    SyncAPI --> Scraper
 ```
 
-#### 1. On-Demand BGG Sync ("Refresh from BGG")
+#### On-Demand BGG Sync ("Refresh from BGG")
 Whenever cafe staff finishes adding or updating games on their BGG account:
 - Staff clicks **"🔄 Sync Library from BGG"** in their management portal.
-- API: `POST /cafe/sync` (Cognito/PIN protected).
-- Re-runs the BGG scraper, parses new titles and updated comments, merges with existing manual overrides, updates `collection.parquet`, and clears the cafe's recommendation cache.
-- The portal displays a real-time progress banner: *"Synced 680 games (14 newly added from BGG)"*.
-
-#### 2. Direct In-App Game Addition & Catalog Search
-For games that have not yet been logged on BGG (or for venues that prefer in-app shelf management):
-- Staff clicks **"➕ Add Game to Shelf"**.
-- An autocomplete search queries the master board game catalog (`GET /cafe/search-games?query=Sky+Team`).
-- Staff inputs:
-  - **Shelf Location** (e.g., `Shelf A-2` or `Staff Feature Table`).
-  - **Drink Pairing** (optional, e.g. *"Best enjoyed with our Cold Brew Stout"*).
-  - **Custom Staff Note** (e.g. *"Great for couples, 20 mins"*).
-- The game is immediately added to the cafe's active candidate pool without requiring a BGG account update.
-
-#### 3. Manual Shelf Location & Metadata Overrides
-- Staff can edit shelf locations for existing games directly in the portal (e.g., moving *Wingspan* from `Shelf B-1` to `Shelf C-4`).
-- Staff can soft-delete / retire games that are permanently removed from the library.
-
-#### 4. Persistent Overrides Storage & Merge Contract
-To ensure that automated weekly BGG syncs do not overwrite manual staff edits, customizations are stored in `s3://boardgame-app/data/cafes/{cafe_id}/overrides.json`:
-```json
-{
-  "manual_additions": [
-    {
-      "id": "366013",
-      "name": "Sky Team",
-      "shelf_location": "Shelf A-1",
-      "drink_pairing": "Cold Brew Stout",
-      "in_stock": true,
-      "added_at": "2026-10-05T14:30:00Z"
-    }
-  ],
-  "shelf_overrides": {
-    "266192": "Shelf C-4"
-  },
-  "deletions": ["12345"]
-}
-```
-
-**Merge Logic (`collection.parquet` generator):**
-$$\text{Final Inventory} = \left(\text{BGG\_Owned} \setminus \text{Deletions}\right) \cup \text{Manual\_Additions}$$
-with $\text{Shelf\_Overrides}$ taking strict precedence over BGG comment regex.
+- API: `POST /cafe/sync` (Cognito protected).
+- Re-runs the BGG scraper, parses new titles, extracts shelf locations from collection comments (`Shelf: B-3`), generates `collection.parquet`, and clears the cafe's recommendation cache.
+- The portal displays a real-time progress banner with the last-synced timestamp.
 
 ---
 
@@ -372,4 +321,4 @@ Each card displays:
 
 - **Zero Sign-In for Patrons:** Patrons do not need Cognito accounts; all table voting and recommendations run via ephemeral sessions.
 - **Aggressive Edge Caching:** Candidate candidate pools per cafe are pre-filtered and cached in S3. Repeating queries for standard table presets (e.g. `4 players + 45 min + Casual`) serve from S3 cache in $<300\text{ms}$.
-- **Staff Controls:** Venue administration (marking games unavailable, editing shelf locations) is protected behind Cognito authentication.
+- **Owner Controls:** Venue administration (updating table counts, Wi-Fi credentials, and triggering BGG library syncs) is protected behind Cognito authentication.

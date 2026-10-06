@@ -15,7 +15,12 @@ For comprehensive milestones, user journeys, and technical architecture specific
 - **Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI** (Completed)
 - **Milestone C6: "Watch It Played" Rules Video & Media Integration** (Completed)
 - **Milestone C7: Table QR Code Generator & Real-Time Table Voting** (Completed)
-- **Next Up: Milestone C8: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L217))
+- **Milestone C8: Cafe Floor Staff Portal, Shelf Locations & Manual Catalog Overrides** (Dropped — evaluated as operationally uncompelling; shelf parsing already operational via Milestone C2)
+- **Milestone C9: Cafe Library Analytics & Table Insights Dashboard** (Dropped — evaluated as unneeded overhead; core sommelier and venue onboarding completed)
+
+With the Cafe & Bar Edition core successfully delivered across Milestones C1–C7, active roadmap focus returns to the core recommender system.
+
+- **Next Up: Milestone 31: Similar Games API Endpoint** (See below)
 
 ---
 

@@ -1160,6 +1160,110 @@ def _handle_cafe_update(event, claims):
     }
 
 
+def _handle_cafe_delete(event, claims):
+    """
+    Deletes an existing cafe (POST /cafe/delete).
+    Requires Cognito authentication. Verifies caller is owner_cognito_id.
+    Deletes venue from DynamoDB bgg-cafes, mirrors deletion in S3 metadata & registry.
+    """
+    user_id = claims.get('sub')
+    if not user_id:
+        return {
+            'statusCode': 401,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Unauthorized: Missing user authentication'})
+        }
+
+    body_str = event.get('body', '{}')
+    if event.get('isBase64Encoded', False):
+        body_str = base64.b64decode(body_str).decode('utf-8')
+
+    try:
+        body = json.loads(body_str) if isinstance(body_str, str) else body_str
+        if not isinstance(body, dict):
+            body = {}
+    except Exception:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Invalid JSON in request body'})
+        }
+
+    cafe_id = str(body.get('cafe_id', '')).strip().lower()
+    if not cafe_id:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'cafe_id is required'})
+        }
+
+    try:
+        res = cafes_table.get_item(Key={'cafe_id': cafe_id})
+        existing = res.get('Item')
+        if not existing:
+            return {
+                'statusCode': 404,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': f'Cafe "{cafe_id}" not found'})
+            }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Failed to query cafe: {str(e)}'})
+        }
+
+    if existing.get('owner_cognito_id') != user_id:
+        return {
+            'statusCode': 403,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Forbidden: You do not have permission to delete this cafe'})
+        }
+
+    try:
+        cafes_table.delete_item(Key={'cafe_id': cafe_id})
+    except Exception as ddb_err:
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'Failed to delete cafe from DynamoDB: {str(ddb_err)}'})
+        }
+
+    try:
+        s3_bucket = os.environ.get('DATA_BUCKET_NAME', 'boardgame-app')
+        meta_key = f"data/cafes/{cafe_id}/meta.json"
+        try:
+            s3.delete_object(Bucket=s3_bucket, Key=meta_key)
+        except Exception:
+            pass
+
+        reg_key = "data/cafes_registry.json"
+        try:
+            reg_resp = s3.get_object(Bucket=s3_bucket, Key=reg_key)
+            registry = json.loads(reg_resp['Body'].read().decode('utf-8'))
+            if cafe_id in registry:
+                del registry[cafe_id]
+                s3.put_object(
+                    Bucket=s3_bucket,
+                    Key=reg_key,
+                    Body=json.dumps(registry, cls=DecimalEncoder, indent=2),
+                    ContentType='application/json'
+                )
+        except Exception:
+            pass
+    except Exception as s3_err:
+        print(f"Warning: Failed to update S3 after cafe deletion: {s3_err}")
+
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps({
+            'status': 'success',
+            'message': f'Cafe "{cafe_id}" deleted successfully'
+        })
+    }
+
+
 def _lambda_handler_impl(event, context):
     # Scheduled EventBridge or direct action for weekly cafe sync
     if event.get('action') == 'sync_all_cafes' or (event.get('source') == 'aws.events' and any('cafe' in r for r in event.get('resources', []))):
@@ -1201,6 +1305,8 @@ def _lambda_handler_impl(event, context):
         return _handle_get_my_cafes(event, claims)
     if '/cafe/update' in path:
         return _handle_cafe_update(event, claims)
+    if '/cafe/delete' in path:
+        return _handle_cafe_delete(event, claims)
 
     # Extract user ID from JWT Claims for /preferences
     user_id = claims.get('sub')

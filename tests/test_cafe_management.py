@@ -249,3 +249,123 @@ def test_cafe_update_success(mock_cafes_table, mock_s3):
 
     # Verify S3 mirror calls (meta.json and cafes_registry.json)
     assert mock_s3.put_object.call_count == 2
+
+
+# ── POST /cafe/delete Tests ──────────────────────────────────────────────────
+
+def test_cafe_delete_unauthorized():
+    event = {
+        'rawPath': '/cafe/delete',
+        'requestContext': {
+            'http': {'method': 'POST'},
+            'authorizer': {'jwt': {'claims': {}}}
+        },
+        'body': json.dumps({'cafe_id': 'the-malt-and-meeple'})
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 401
+    body = json.loads(response['body'])
+    assert 'Unauthorized' in body['error']
+
+
+def test_cafe_delete_missing_id():
+    event = {
+        'rawPath': '/cafe/delete',
+        'requestContext': {
+            'http': {'method': 'POST'},
+            'authorizer': {'jwt': {'claims': {'sub': 'user-123'}}}
+        },
+        'body': json.dumps({})
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 400
+    body = json.loads(response['body'])
+    assert 'cafe_id is required' in body['error']
+
+
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_delete_not_found(mock_cafes_table):
+    mock_cafes_table.get_item.return_value = {}  # No Item
+
+    event = {
+        'rawPath': '/cafe/delete',
+        'requestContext': {
+            'http': {'method': 'POST'},
+            'authorizer': {'jwt': {'claims': {'sub': 'user-123'}}}
+        },
+        'body': json.dumps({'cafe_id': 'non-existent-cafe'})
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 404
+    body = json.loads(response['body'])
+    assert 'not found' in body['error']
+
+
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_delete_forbidden(mock_cafes_table):
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'the-malt-and-meeple',
+            'owner_cognito_id': 'real-owner-456'
+        }
+    }
+
+    event = {
+        'rawPath': '/cafe/delete',
+        'requestContext': {
+            'http': {'method': 'POST'},
+            'authorizer': {'jwt': {'claims': {'sub': 'imposter-789'}}}
+        },
+        'body': json.dumps({'cafe_id': 'the-malt-and-meeple'})
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 403
+    body = json.loads(response['body'])
+    assert 'Forbidden' in body['error']
+
+
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_delete_success(mock_cafes_table, mock_s3):
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'the-malt-and-meeple',
+            'owner_cognito_id': 'user-123',
+            'name': 'The Malt & Meeple'
+        }
+    }
+
+    registry_data = json.dumps({
+        'the-malt-and-meeple': {'name': 'The Malt & Meeple'},
+        'other-cafe': {'name': 'Other Cafe'}
+    }).encode('utf-8')
+    body_mock = MagicMock()
+    body_mock.read.return_value = registry_data
+    mock_s3.get_object.return_value = {'Body': body_mock}
+
+    event = {
+        'rawPath': '/cafe/delete',
+        'requestContext': {
+            'http': {'method': 'POST'},
+            'authorizer': {'jwt': {'claims': {'sub': 'user-123'}}}
+        },
+        'body': json.dumps({'cafe_id': 'the-malt-and-meeple'})
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert body['status'] == 'success'
+    assert 'deleted successfully' in body['message']
+
+    # Verify DynamoDB deletion
+    mock_cafes_table.delete_item.assert_called_once_with(Key={'cafe_id': 'the-malt-and-meeple'})
+
+    # Verify S3 meta delete
+    mock_s3.delete_object.assert_called_once()
+    assert mock_s3.delete_object.call_args[1]['Key'] == 'data/cafes/the-malt-and-meeple/meta.json'
+
+    # Verify S3 registry updated with the-malt-and-meeple removed
+    mock_s3.put_object.assert_called_once()
+    saved_reg = json.loads(mock_s3.put_object.call_args[1]['Body'])
+    assert 'the-malt-and-meeple' not in saved_reg
+    assert 'other-cafe' in saved_reg
