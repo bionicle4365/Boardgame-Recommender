@@ -35,7 +35,7 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                     <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">
                         Want to test how table recommendations work?
                     </span>
-                    <a href="{{ '/cafe/?cafe=the-malt-and-meeple&table=1' | relative_url }}" 
+                    <a href="{{ '/cafe/the-malt-and-meeple/1' | relative_url }}" 
                        class="btn-card-action primary" 
                        id="try-demo-cafe-btn"
                        style="padding: 12px; font-size: 0.95rem; text-decoration: none;">
@@ -356,7 +356,7 @@ description: "Instant 3-tap board game recommendations tailored for your cafe ta
                         Picks for Table <span id="results-table-num">1</span>
                     </h2>
                     <div class="results-header-actions">
-                        <button type="button" class="btn-start-table-vote" id="btn-start-table-vote">
+                        <button type="button" class="btn-start-table-vote" id="btn-start-table-vote" style="display: none;">
                             🗳️ Vote with Table
                         </button>
                         <button type="button" class="btn-reroll-quiz" id="btn-reroll-quiz">

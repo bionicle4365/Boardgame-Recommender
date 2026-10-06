@@ -11,6 +11,7 @@ Handles voting session CRUD operations:
 """
 import json
 import base64
+from datetime import datetime, timezone, timedelta
 from cache_utils import logger
 import sessions
 
@@ -105,10 +106,10 @@ def _handle_cafe_vote_start(body_params, event):
             }
             sanitized_candidates.append(cand_dict)
 
-    duration_hours = float(body_params.get('duration_hours', 3.0))
+    duration_hours = float(body_params.get('duration_hours', 0.25))
     creator_id = claims.get('sub') or body_params.get('creator_id') or f"cafe_{cafe_id}_table_{table_num}"
     creator_name = body_params.get('creator_name') or f"Table {table_num}"
-    
+
     try:
         session = sessions.create_session(
             creator_id=creator_id,

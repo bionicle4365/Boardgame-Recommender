@@ -636,7 +636,47 @@ window.fetchApi = async function(endpoint, options = {}) {
                     s.creator_name = (window.Auth && window.Auth.getBggUsername && window.Auth.getBggUsername()) || 'Host';
                 }
             });
-            data = { sessions };
+            const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+            const creatorId = urlParams.get('creator_id');
+            if (creatorId) {
+                const cids = creatorId.split(',').map(c => c.trim().toLowerCase());
+                data = { sessions: sessions.filter(s => cids.includes((s.creator_id || '').toLowerCase())) };
+            } else {
+                data = { sessions };
+            }
+        } else if (endpoint.startsWith('/cafe/vote/start') && options.method === 'POST') {
+            const payload = JSON.parse(options.body || '{}');
+            const now = new Date();
+            const durationHours = parseFloat(payload.duration_hours || 0.25);
+            const closesAt = new Date(now.getTime() + durationHours * 3600 * 1000).toISOString();
+            const sessId = Math.random().toString(36).substring(2, 10);
+            const newSession = {
+                session_id: sessId,
+                creator_id: payload.creator_id || `cafe_${payload.cafe_id || 'cafe'}_table_${payload.table || '1'}`,
+                creator_name: payload.creator_name || `Table ${payload.table || '1'}`,
+                group_name: payload.cafe_name ? `${payload.cafe_name} - Table ${payload.table || '1'}` : `Table ${payload.table || '1'} Vote`,
+                created_at: now.toISOString(),
+                closes_at: closesAt,
+                duration_hours: durationHours,
+                candidates: payload.candidates || [],
+                roster: [],
+                votes: {},
+                is_closed: false,
+                consensus: {
+                    total_voters: 0,
+                    winner: payload.candidates && payload.candidates.length ? payload.candidates[0] : null,
+                    rankings: (payload.candidates || []).map((c, i) => ({ id: String(c.id), name: c.name, score: 0, yes_count: 0, neutral_count: 0, veto_count: 0, is_vetoed: false, original_rank: i, candidate: c })),
+                    vetoed_games: []
+                },
+                vote_url: `/vote/?session_id=${sessId}`,
+                table_number: String(payload.table || '1'),
+                cafe_id: payload.cafe_id || 'cafe',
+                cafe_name: payload.cafe_name || 'Cafe'
+            };
+            const sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
+            sessions.unshift(newSession);
+            localStorage.setItem('bgg_mock_sessions', JSON.stringify(sessions));
+            data = newSession;
         } else if (endpoint.startsWith('/session/vote') || (endpoint.startsWith('/session') && options.method === 'POST' && options.body && options.body.includes('participant_name'))) {
             let sessions = JSON.parse(localStorage.getItem('bgg_mock_sessions') || '[]');
             const payload = JSON.parse(options.body || '{}');

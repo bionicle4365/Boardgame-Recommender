@@ -368,6 +368,7 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
     .manage-alert.visible { display: block; animation: fadeIn 0.3s ease; }
     .manage-alert.success { background: var(--success-bg, #ecfdf5); color: var(--success, #10b981); border: 1px solid var(--success-border, #a7f3d0); }
     .manage-alert.error { background: var(--danger-bg, #fef2f2); color: var(--danger, #ef4444); border: 1px solid var(--danger-border, #fecaca); }
+    .manage-alert.info { background: var(--info-bg, #eff6ff); color: var(--info-text, #1e40af); border: 1px solid var(--info-border, #bfdbfe); }
 
     /* ── Mini Tent Preview Card ── */
     .tent-preview-box {
@@ -609,7 +610,7 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
                     <div class="tent-preview-box">
                         <div class="tent-preview-header" id="preview-venue-name">The Malt & Meeple</div>
                         <div class="tent-preview-badge">TABLE 1 PREVIEW</div>
-                        <img id="preview-qr-img" class="tent-preview-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://meeplemanifesto.com/cafe/demo?table=1" alt="Table QR">
+                        <img id="preview-qr-img" class="tent-preview-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://meeplemanifesto.com/cafe/demo/1" alt="Table QR">
                         <div class="tent-preview-wifi" id="preview-wifi-label">📶 Wi-Fi: MaltMeeple-Guest</div>
                     </div>
 
@@ -632,13 +633,17 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
 
                 <!-- Card 3: Staff Floor Portal -->
                 <div class="section-card" style="margin-bottom: 0;">
-                    <h2 class="section-card-title">🧑‍🍳 Floor Staff Portal</h2>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h2 class="section-card-title" style="margin-bottom: 0;">🧑‍🍳 Floor Staff Portal</h2>
+                        <span class="meta-badge" style="font-size: 0.72rem; background: rgba(79, 70, 229, 0.1); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.25);">Milestone C8</span>
+                    </div>
                     <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
-                        Floor staff and game gurus can mark games as currently in-use at specific tables, view shelf locations, and search the collection from their mobile devices.
+                        Floor staff and game gurus can mark games as currently in-use at specific tables, view shelf locations, and search the collection from their mobile devices. <em>(Scheduled for Milestone C8)</em>
                     </p>
-                    <a id="open-staff-portal-btn" href="#" class="btn btn-secondary" style="width: 100%;">
-                        📱 Open Floor Staff Portal
-                    </a>
+                    <button id="open-staff-portal-btn" type="button" class="btn btn-secondary" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer;">
+                        <span>📱</span>
+                        <span>Open Floor Staff Portal (Preview)</span>
+                    </button>
                 </div>
 
             </div>
@@ -801,7 +806,7 @@ document.addEventListener("DOMContentLoaded", function () {
         heroVenueName.textContent = currentCafe.name;
         const slug = currentCafe.slug || currentCafe.cafe_id;
         const baseUrl = window.location.origin || 'https://meeplemanifesto.com';
-        const portalUrl = `${baseUrl}/cafe/?cafe=${encodeURIComponent(slug)}`;
+        const portalUrl = `${baseUrl}/cafe/${encodeURIComponent(slug)}`;
         heroPortalLink.textContent = portalUrl;
         heroPortalLink.href = portalUrl;
         heroOpenPortalBtn.href = portalUrl;
@@ -843,7 +848,7 @@ document.addEventListener("DOMContentLoaded", function () {
         previewVenueName.textContent = formNameInput.value || currentCafe.name;
         previewWifiLabel.textContent = ssid ? `📶 Wi-Fi: ${ssid}${pass ? ' (' + pass + ')' : ''}` : "📶 Wi-Fi: None";
         
-        const previewUrl = `${baseUrl}/cafe/?cafe=${encodeURIComponent(slug)}&table=1`;
+        const previewUrl = `${baseUrl}/cafe/${encodeURIComponent(slug)}/1`;
         previewQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(previewUrl)}`;
 
         // Populate Table Links
@@ -852,7 +857,7 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let t = 1; t <= maxDisplay; t++) {
             const row = document.createElement("div");
             row.className = "table-link-row";
-            const tableUrl = `${baseUrl}/cafe/?cafe=${encodeURIComponent(slug)}&table=${t}`;
+            const tableUrl = `${baseUrl}/cafe/${encodeURIComponent(slug)}/${t}`;
             row.innerHTML = `
                 <span class="table-link-title">Table ${t}</span>
                 <div class="table-link-actions">
@@ -875,8 +880,11 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Floor Staff Portal Link
-        openStaffPortalBtn.href = `{{ '/cafe/staff.html' | relative_url }}?cafe=${slug}`;
+        // Floor Staff Portal Notice (Milestone C8)
+        openStaffPortalBtn.onclick = function (e) {
+            e.preventDefault();
+            showAlert("ℹ️ The Floor Staff Portal (live game availability toggles & shelf location editor) is scheduled for Milestone C8 and is currently in active development.", "info");
+        };
     }
 
     // ── Form Input Change Event ──
@@ -992,7 +1000,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let cardsHtml = '';
         for (let t = 1; t <= tableCount; t++) {
-            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}?table=${t}`;
+            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}/${t}`;
             const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(tableUrl)}`;
             
             cardsHtml += `

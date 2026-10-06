@@ -834,7 +834,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function checkSlugAvailability() {
         const slug = venueSlugInput.value.trim();
-        slugPreviewText.textContent = `https://meeplemanifesto.com/cafe/${slug || '...'}`;
+        slugPreviewText.textContent = `https://meeplemanifesto.com/cafe/${slug || '...'}/1`;
         
         if (!slug || slug.length < 3) {
             slugStatusBadge.textContent = "Slug too short (min 3 chars)";
@@ -1062,7 +1062,7 @@ document.addEventListener("DOMContentLoaded", function () {
         postLaunchView.style.display = "block";
 
         const slug = venue.cafe_id || venue.slug;
-        const targetUrl = `https://meeplemanifesto.com/cafe/${slug}?table=1`;
+        const targetUrl = `https://meeplemanifesto.com/cafe/${slug}/1`;
 
         document.getElementById("preview-cafe-name").textContent = venue.name;
         document.getElementById("preview-table-badge").textContent = `TABLE 1`;
@@ -1078,7 +1078,7 @@ document.addEventListener("DOMContentLoaded", function () {
         qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
 
         const openLink = document.getElementById("open-table-one-link");
-        openLink.href = `/cafe/${slug}?table=1`;
+        openLink.href = `/cafe/${slug}/1`;
 
         // Wire up printable table tent sheet
         document.getElementById("print-tents-action-btn").addEventListener("click", function () {
@@ -1098,7 +1098,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let cardsHtml = '';
         for (let t = 1; t <= tableCount; t++) {
-            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}?table=${t}`;
+            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}/${t}`;
             const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(tableUrl)}`;
             
             cardsHtml += `

@@ -34,16 +34,24 @@
     function parseVenueContext() {
         const urlParams = new URLSearchParams(window.location.search);
         
-        // 1. Extract cafe ID
+        // 1. Extract cafe ID & table from path segments
         let cafeId = urlParams.get("cafe") || urlParams.get("cafe_id") || urlParams.get("id");
-        if (!cafeId) {
-            // Check path segments: e.g. /cafe/the-malt-and-meeple
-            const pathParts = window.location.pathname.split("/").filter(Boolean);
-            const cafeIdx = pathParts.indexOf("cafe");
-            if (cafeIdx !== -1 && pathParts.length > cafeIdx + 1) {
-                const seg = pathParts[cafeIdx + 1];
-                if (seg !== "index.html" && seg !== "manage" && seg !== "onboard") {
-                    cafeId = seg;
+        let tableFromPath = "";
+
+        const pathParts = window.location.pathname.split("/").filter(Boolean);
+        const cafeIdx = pathParts.indexOf("cafe");
+        if (cafeIdx !== -1 && pathParts.length > cafeIdx + 1) {
+            const seg = pathParts[cafeIdx + 1];
+            if (seg !== "index.html" && seg !== "manage" && seg !== "onboard") {
+                if (!cafeId) cafeId = seg;
+                
+                // Check if table is in the path: e.g. /cafe/malt-and-meeple/5 or /cafe/malt-and-meeple/table/5
+                if (pathParts.length > cafeIdx + 2) {
+                    if (pathParts[cafeIdx + 2] === "table" && pathParts.length > cafeIdx + 3) {
+                        tableFromPath = pathParts[cafeIdx + 3];
+                    } else if (pathParts[cafeIdx + 2] !== "table" && pathParts[cafeIdx + 2] !== "index.html") {
+                        tableFromPath = pathParts[cafeIdx + 2];
+                    }
                 }
             }
         }
@@ -56,7 +64,7 @@
         }
 
         // 2. Extract table (optional)
-        let table = urlParams.get("table");
+        let table = tableFromPath || urlParams.get("table") || urlParams.get("t");
 
         state.cafeId = cafeId.trim().toLowerCase();
         state.table = table ? table.trim() : (sessionStorage.getItem("cafe_patron_table") || "");
@@ -66,6 +74,27 @@
             sessionStorage.setItem("cafe_patron_cafe_id", state.cafeId);
             if (state.table) sessionStorage.setItem("cafe_patron_table", state.table);
         } catch (e) {}
+
+        // Ensure browser address bar displays clean RESTful path: /cafe/:cafeId/:table or /cafe/:cafeId
+        if (window.history && window.history.replaceState) {
+            try {
+                const targetPath = state.table 
+                    ? `/cafe/${encodeURIComponent(state.cafeId)}/${encodeURIComponent(state.table)}`
+                    : `/cafe/${encodeURIComponent(state.cafeId)}`;
+                const remainingParams = new URLSearchParams(window.location.search);
+                remainingParams.delete("cafe");
+                remainingParams.delete("cafe_id");
+                remainingParams.delete("id");
+                remainingParams.delete("table");
+                remainingParams.delete("t");
+                const qs = remainingParams.toString();
+                const targetUrl = targetPath + (qs ? `?${qs}` : "");
+
+                if (window.location.pathname !== targetPath || (window.location.search && !qs)) {
+                    window.history.replaceState(null, document.title, targetUrl);
+                }
+            } catch (e) {}
+        }
 
         return true;
     }
@@ -247,6 +276,8 @@
                     if (resTitle) resTitle.textContent = state.table;
                     const ctaTableEl = document.getElementById("cta-table-num");
                     if (ctaTableEl) ctaTableEl.textContent = state.table;
+                    state.activeVoteSession = null;
+                    checkActiveTableVoteSession();
                 }
             });
         }
@@ -360,6 +391,7 @@
             } else {
                 renderCafeCards(resultsContainer, recs);
             }
+            await checkActiveTableVoteSession();
         } catch (err) {
             state.isLoading = false;
             if (submitBtn) {
@@ -660,6 +692,7 @@
             }
             if (collectionView) collectionView.style.display = "none";
             if (recommenderView) recommenderView.style.display = "block";
+            checkActiveTableVoteSession();
             const quizCard = document.getElementById("vibe-quiz-card");
             if (quizCard && typeof quizCard.scrollIntoView === "function") {
                 quizCard.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1106,7 +1139,7 @@
             cafe_name: cafeName,
             table: state.table || "1",
             candidates: topCandidates,
-            duration_hours: 3.0,
+            duration_hours: 0.25,
             creator_name: `Table ${state.table || "1"}`
         };
 
@@ -1140,7 +1173,7 @@
                         creator_id: `cafe_${state.cafeId}_table_${state.table}`,
                         creator_name: `Table ${state.table}`,
                         candidates: topCandidates,
-                        duration_hours: 3.0
+                        duration_hours: 0.25
                     })
                 });
             }
@@ -1175,14 +1208,25 @@
 
             renderBallotCandidates(topCandidates);
 
+            try {
+                localStorage.setItem(`cafe_active_vote_${state.cafeId}_${state.table}`, JSON.stringify(session));
+            } catch (e) {}
+            scheduleVoteTtlTimer(session);
+            updateTableVoteUI();
+
         } catch (err) {
             console.error("Error creating table vote session:", err);
             // Fallback mock session for offline/mock test environments
             const mockSessId = "mock" + Math.random().toString(36).substring(2, 6);
+            const now = new Date();
+            const closesAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
             const fallbackSession = {
                 session_id: mockSessId,
                 group_name: `${cafeName} - Table ${state.table}`,
                 candidates: topCandidates,
+                created_at: now.toISOString(),
+                closes_at: closesAt,
+                duration_hours: 0.25,
                 votes: {},
                 consensus: {
                     total_voters: 0,
@@ -1208,6 +1252,12 @@
             if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(voteUrl)}`;
             if (extLink) extLink.href = voteUrl;
             renderBallotCandidates(topCandidates);
+
+            try {
+                localStorage.setItem(`cafe_active_vote_${state.cafeId}_${state.table}`, JSON.stringify(fallbackSession));
+            } catch (e) {}
+            scheduleVoteTtlTimer(fallbackSession);
+            updateTableVoteUI();
         }
     }
 
@@ -1286,6 +1336,10 @@
             if (resp && resp.ok) {
                 const updated = await resp.json();
                 state.activeVoteSession = updated;
+                try {
+                    localStorage.setItem(`cafe_active_vote_${state.cafeId}_${state.table}`, JSON.stringify(updated));
+                } catch (e) {}
+                updateTableVoteUI();
                 renderConsensusStandings(updated.consensus);
             } else {
                 throw new Error("Vote submission failed");
@@ -1332,6 +1386,10 @@
                 vetoed_games: rankings.filter(r => r.is_vetoed).map(r => r.candidate.id)
             };
             state.activeVoteSession.consensus = consensus;
+            try {
+                localStorage.setItem(`cafe_active_vote_${state.cafeId}_${state.table}`, JSON.stringify(state.activeVoteSession));
+            } catch (e) {}
+            updateTableVoteUI();
             renderConsensusStandings(consensus);
         } finally {
             if (submitBtn) {
@@ -1385,6 +1443,172 @@
         }
     }
 
+    let voteTtlTimer = null;
+
+    function scheduleVoteTtlTimer(session) {
+        if (voteTtlTimer) {
+            clearTimeout(voteTtlTimer);
+            voteTtlTimer = null;
+        }
+        if (!session || !session.closes_at) return;
+        const remainingMs = new Date(session.closes_at).getTime() - Date.now();
+        if (remainingMs > 0) {
+            voteTtlTimer = setTimeout(() => {
+                checkActiveTableVoteSession();
+            }, remainingMs + 500);
+        }
+    }
+
+    function updateTableVoteUI() {
+        const startVoteBtn = document.getElementById("btn-start-table-vote");
+        const voteCtaCard = document.getElementById("table-vote-cta-card");
+
+        const now = new Date();
+        const hasActiveVote = !!(
+            state.activeVoteSession &&
+            !state.activeVoteSession.is_closed &&
+            (!state.activeVoteSession.closes_at || now < new Date(state.activeVoteSession.closes_at))
+        );
+
+        if (hasActiveVote) {
+            // A vote has started: show "Vote with Table" button, take option to start new vote away
+            if (startVoteBtn) startVoteBtn.style.display = "inline-flex";
+            if (voteCtaCard) voteCtaCard.style.display = "none";
+        } else {
+            // No active vote: hide "Vote with Table" button, show option to start table vote
+            if (startVoteBtn) startVoteBtn.style.display = "none";
+            if (voteCtaCard) voteCtaCard.style.display = "flex";
+        }
+    }
+
+    function openActiveTableVoteModal() {
+        if (!state.activeVoteSession) {
+            startTableVote();
+            return;
+        }
+
+        const cafeName = (state.venueMeta && state.venueMeta.name) 
+            ? state.venueMeta.name 
+            : (state.cafeId ? state.cafeId.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()) : "Cafe");
+
+        const modal = document.getElementById("cafe-table-vote-modal");
+        const modalTitle = document.getElementById("vote-modal-title");
+        const qrImg = document.getElementById("vote-modal-qr-img");
+        const extLink = document.getElementById("btn-vote-open-external");
+        const ballotSection = document.getElementById("vote-ballot-section");
+        const consensusSection = document.getElementById("vote-consensus-section");
+        const nameInput = document.getElementById("vote-voter-name-input");
+
+        if (modalTitle) modalTitle.textContent = `${cafeName} - Table ${state.table} Vote`;
+        if (modal) modal.style.display = "flex";
+
+        if (nameInput) {
+            const savedName = localStorage.getItem("bgg_cafe_voter_name") || `Table ${state.table} Patron`;
+            nameInput.value = savedName;
+        }
+
+        const voteUrl = `${window.location.origin}/vote/?session_id=${state.activeVoteSession.session_id}&cafe=${encodeURIComponent(state.cafeId)}&table=${encodeURIComponent(state.table)}`;
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(voteUrl)}`;
+        }
+        if (extLink) {
+            extLink.href = voteUrl;
+        }
+
+        const voterName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : `Table ${state.table || "1"} Patron`;
+        const hasVoted = state.activeVoteSession.votes && state.activeVoteSession.votes[voterName];
+
+        if (hasVoted && state.activeVoteSession.consensus) {
+            if (ballotSection) ballotSection.style.display = "none";
+            if (consensusSection) consensusSection.style.display = "flex";
+            renderConsensusStandings(state.activeVoteSession.consensus);
+        } else {
+            if (ballotSection) ballotSection.style.display = "flex";
+            if (consensusSection) consensusSection.style.display = "none";
+            if (state.activeVoteSession.candidates) {
+                renderBallotCandidates(state.activeVoteSession.candidates);
+            }
+        }
+    }
+
+    async function checkActiveTableVoteSession() {
+        if (!state.cafeId || !state.table) {
+            updateTableVoteUI();
+            return null;
+        }
+
+        const tableNum = String(state.table).trim();
+        const creatorId = `cafe_${state.cafeId}_table_${tableNum}`;
+        const now = new Date();
+
+        // 1. Check in-memory state
+        if (state.activeVoteSession) {
+            const closesAt = state.activeVoteSession.closes_at ? new Date(state.activeVoteSession.closes_at) : null;
+            if (state.activeVoteSession.is_closed || (closesAt && now >= closesAt)) {
+                state.activeVoteSession = null;
+                try {
+                    localStorage.removeItem(`cafe_active_vote_${state.cafeId}_${tableNum}`);
+                } catch (e) {}
+            } else {
+                scheduleVoteTtlTimer(state.activeVoteSession);
+                updateTableVoteUI();
+                return state.activeVoteSession;
+            }
+        }
+
+        // 2. Check localStorage cache
+        try {
+            const cachedStr = localStorage.getItem(`cafe_active_vote_${state.cafeId}_${tableNum}`);
+            if (cachedStr) {
+                const cached = JSON.parse(cachedStr);
+                const closesAt = cached.closes_at ? new Date(cached.closes_at) : null;
+                if (cached && !cached.is_closed && (!closesAt || now < closesAt)) {
+                    state.activeVoteSession = cached;
+                    scheduleVoteTtlTimer(cached);
+                    updateTableVoteUI();
+                } else {
+                    localStorage.removeItem(`cafe_active_vote_${state.cafeId}_${tableNum}`);
+                }
+            }
+        } catch (e) {}
+
+        // 3. Query API for live active sessions
+        try {
+            const resp = await window.fetchApi(`/sessions?creator_id=${encodeURIComponent(creatorId)}`);
+            if (resp && resp.ok) {
+                const data = await resp.json();
+                const sessionsList = data.sessions || (Array.isArray(data) ? data : []);
+                const currTime = new Date();
+                const active = sessionsList.find(s => {
+                    if (s.is_closed) return false;
+                    const closesAt = s.closes_at ? new Date(s.closes_at) : null;
+                    return !closesAt || currTime < closesAt;
+                });
+
+                if (active) {
+                    state.activeVoteSession = active;
+                    try {
+                        localStorage.setItem(`cafe_active_vote_${state.cafeId}_${tableNum}`, JSON.stringify(active));
+                    } catch (e) {}
+                    scheduleVoteTtlTimer(active);
+                } else if (state.activeVoteSession) {
+                    const closesAt = state.activeVoteSession.closes_at ? new Date(state.activeVoteSession.closes_at) : null;
+                    if (!closesAt || currTime >= closesAt) {
+                        state.activeVoteSession = null;
+                        try {
+                            localStorage.removeItem(`cafe_active_vote_${state.cafeId}_${tableNum}`);
+                        } catch (e) {}
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Could not check active table vote sessions:", e);
+        }
+
+        updateTableVoteUI();
+        return state.activeVoteSession;
+    }
+
     function setupTableVotingControls() {
         const startBtn = document.getElementById("btn-start-table-vote");
         const launchBtn = document.getElementById("btn-launch-table-vote");
@@ -1396,7 +1620,21 @@
         const copyBtn = document.getElementById("btn-vote-copy-link");
         const shareBtn = document.getElementById("btn-vote-share-link");
 
-        if (startBtn) startBtn.addEventListener("click", startTableVote);
+        if (startBtn) {
+            startBtn.addEventListener("click", () => {
+                const now = new Date();
+                const hasActive = !!(
+                    state.activeVoteSession &&
+                    !state.activeVoteSession.is_closed &&
+                    (!state.activeVoteSession.closes_at || now < new Date(state.activeVoteSession.closes_at))
+                );
+                if (hasActive) {
+                    openActiveTableVoteModal();
+                } else {
+                    startTableVote();
+                }
+            });
+        }
         if (launchBtn) launchBtn.addEventListener("click", startTableVote);
 
         if (closeBtn && modal) {
@@ -1497,7 +1735,11 @@
             renderBallotCandidates,
             submitTableVoteBallot,
             renderConsensusStandings,
-            setupTableVotingControls
+            setupTableVotingControls,
+            openActiveTableVoteModal,
+            updateTableVoteUI,
+            checkActiveTableVoteSession,
+            scheduleVoteTtlTimer
         };
     }
 
@@ -1523,6 +1765,7 @@
             setupVideoModalControls();
             setupTableVotingControls();
             loadCafeCollection();
+            checkActiveTableVoteSession();
 
             // Default view: Collection Browser!
             const urlParams = new URLSearchParams(window.location.search);

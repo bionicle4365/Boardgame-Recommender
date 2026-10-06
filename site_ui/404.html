@@ -129,9 +129,20 @@ description: "The page you are looking for does not exist on Boardgame Recommend
             if (cafeIdx !== -1 && parts.length > cafeIdx + 1) {
                 var slug = parts[cafeIdx + 1];
                 if (slug !== 'manage' && slug !== 'onboard' && slug !== 'index.html') {
+                    var table = '';
+                    if (parts.length > cafeIdx + 2) {
+                        if (parts[cafeIdx + 2] === 'table' && parts.length > cafeIdx + 3) {
+                            table = parts[cafeIdx + 3];
+                        } else if (parts[cafeIdx + 2] !== 'table' && parts[cafeIdx + 2] !== 'index.html') {
+                            table = parts[cafeIdx + 2];
+                        }
+                    }
                     var search = window.location.search;
                     var sep = search ? search + '&' : '?';
-                    var target = '/cafe/' + sep + 'cafe=' + encodeURIComponent(slug);
+                    var target = '{{ "/cafe/" | relative_url }}' + sep + 'cafe=' + encodeURIComponent(slug);
+                    if (table) {
+                        target += '&table=' + encodeURIComponent(table);
+                    }
                     window.location.replace(target);
                 }
             }

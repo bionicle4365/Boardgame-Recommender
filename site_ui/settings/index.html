@@ -366,6 +366,194 @@ description: "Manage your Boardgame Recommender settings, configure your account
             gap: 10px;
         }
     }
+
+    /* ── Cafe Edition Styles ── */
+    .section-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1.5px solid var(--border);
+    }
+
+    .section-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cafe-card {
+        background: var(--section-bg);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .cafe-card:hover {
+        border-color: rgba(79, 70, 229, 0.4);
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+        transform: translateY(-1px);
+    }
+
+    .cafe-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .cafe-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+
+    .cafe-card-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .cafe-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 6px;
+        background: var(--badge-bg);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+    }
+
+    .cafe-badge.badge-slug {
+        font-family: monospace;
+        color: var(--primary);
+        background: rgba(79, 70, 229, 0.08);
+        border-color: rgba(79, 70, 229, 0.2);
+    }
+
+    .cafe-card-tagline {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        line-height: 1.45;
+    }
+
+    .cafe-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .cafe-meta-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        background: var(--badge-bg);
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+    }
+
+    .cafe-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--border);
+        padding-top: 14px;
+    }
+
+    .btn-cafe-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        cursor: pointer;
+    }
+
+    .btn-cafe-manage {
+        background-color: var(--primary);
+        color: #ffffff !important;
+        border: none;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-cafe-manage:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+    }
+
+    .btn-cafe-portal {
+        background-color: var(--badge-bg);
+        color: var(--text-main) !important;
+        border: 1px solid var(--border);
+    }
+
+    .btn-cafe-portal:hover {
+        background-color: var(--badge-hover-bg);
+        border-color: rgba(79, 70, 229, 0.3);
+        transform: translateY(-1px);
+    }
+
+    .cafe-register-btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        background: transparent;
+        color: var(--primary) !important;
+        border: 1.5px dashed var(--primary);
+        transition: all 0.15s ease;
+    }
+
+    .cafe-register-btn-outline:hover {
+        background: rgba(79, 70, 229, 0.08);
+        transform: translateY(-1px);
+    }
+
+    .cafe-empty-state {
+        background: var(--section-bg);
+        border: 1.5px dashed var(--border);
+        border-radius: 12px;
+        padding: 32px 24px;
+        text-align: center;
+    }
+
+    .cafe-skeleton-card {
+        background: var(--section-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 16px;
+        animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+    }
 </style>
 
 <div class="settings-container">
@@ -440,25 +628,59 @@ description: "Manage your Boardgame Recommender settings, configure your account
 
         <!-- Board Game Cafe & Bar Edition Section -->
         <div class="settings-section">
-            <div class="section-header">
-                <div class="section-icon">☕</div>
-                <div class="section-header-text">
-                    <h2>Board Game Cafe &amp; Bar Edition</h2>
-                    <p>Turn your venue's board game collection into an interactive digital sommelier for tables</p>
+            <div class="section-header-row">
+                <div class="section-header-left">
+                    <div class="section-icon">☕</div>
+                    <div class="section-header-text">
+                        <h2>Board Game Cafe &amp; Bar Edition</h2>
+                        <p>Turn your venue's board game collection into an interactive digital sommelier for tables</p>
+                    </div>
+                </div>
+                <a href="{{ '/cafe/onboard.html' | relative_url }}" class="cafe-register-btn-outline" id="settings-register-cafe-top-btn" title="Register a new venue">
+                    <span>➕</span>
+                    <span>Register New Cafe</span>
+                </a>
+            </div>
+
+            <!-- Loading Skeleton -->
+            <div id="settings-cafes-loading" class="cafe-skeleton-card">
+                <div style="height: 18px; width: 45%; background: var(--border); border-radius: 4px; margin-bottom: 12px;"></div>
+                <div style="height: 14px; width: 80%; background: var(--border); border-radius: 4px; margin-bottom: 18px;"></div>
+                <div style="height: 36px; width: 140px; background: var(--border); border-radius: 8px;"></div>
+            </div>
+
+            <!-- Empty State (No venues registered yet) -->
+            <div id="settings-cafes-empty" class="cafe-empty-state" style="display: none;">
+                <div style="font-size: 2.2rem; margin-bottom: 12px;">☕🎲</div>
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main);">No Venues Registered Yet</h3>
+                <p style="font-size: 0.88rem; color: var(--text-muted); max-width: 460px; margin: 0 auto 20px auto; line-height: 1.45;">
+                    Register your cafe or bar to sync your BGG library, customize table counts, and download ready-to-print QR table tents for patrons.
+                </p>
+                <a href="{{ '/cafe/onboard.html' | relative_url }}" class="save-btn" id="settings-register-first-cafe-btn" style="text-decoration: none; display: inline-flex; margin: 0 auto;">
+                    <span>☕ Register Your First Cafe</span>
+                </a>
+            </div>
+
+            <!-- Manageable Cafes List -->
+            <div id="settings-cafes-list" style="display: none;">
+                <div id="settings-cafes-cards-container">
+                    <!-- Populated dynamically via loadManagedCafes() -->
+                </div>
+                <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                    <a href="{{ '/cafe/onboard.html' | relative_url }}" class="cafe-register-btn-outline">
+                        <span>➕ Register Another Venue</span>
+                    </a>
                 </div>
             </div>
 
-            <div style="background: var(--section-bg); border: 1px solid var(--border); border-radius: 12px; padding: 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-                <div>
-                    <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; color: var(--text-main);">Venue Management &amp; Table QR Tents</div>
-                    <div style="font-size: 0.88rem; color: var(--text-muted); max-width: 440px; line-height: 1.4;">
-                        Register your cafe, link your BGG collection with shelf locations, configure table counts, and download ready-to-print table tent QR kits.
-                    </div>
-                </div>
-                <a href="{{ '/cafe/onboard.html' | relative_url }}" class="save-btn" id="settings-register-cafe-btn" style="text-decoration: none; padding: 12px 20px; height: auto; display: inline-flex; align-items: center; gap: 8px;">
-                    <span>☕</span>
-                    <span>Register a Cafe</span>
-                </a>
+            <!-- Error State -->
+            <div id="settings-cafes-error" class="cafe-empty-state" style="display: none; border-color: var(--danger-border); background: var(--danger-bg);">
+                <div style="font-size: 1.5rem; margin-bottom: 8px;">⚠️</div>
+                <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; color: var(--danger);">Unable to load registered venues</h3>
+                <p id="settings-cafes-error-msg" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;"></p>
+                <button type="button" class="btn-cafe-action btn-cafe-portal" onclick="window.loadManagedCafes()">
+                    <span>🔄 Retry</span>
+                </button>
             </div>
         </div>
 
@@ -488,6 +710,7 @@ description: "Manage your Boardgame Recommender settings, configure your account
                 settingsContent.style.display = "block";
                 renderAccountInfo();
                 loadSettings();
+                loadManagedCafes();
             }
         }
 
@@ -602,6 +825,93 @@ description: "Manage your Boardgame Recommender settings, configure your account
         function hideToast(el) {
             el.classList.remove("visible", "success", "error");
         }
+
+        // ── Load Managed Cafes ────────────────────────────────────────────────────
+        async function loadManagedCafes() {
+            const loadingEl = document.getElementById("settings-cafes-loading");
+            const emptyEl   = document.getElementById("settings-cafes-empty");
+            const listEl    = document.getElementById("settings-cafes-list");
+            const cardsContainer = document.getElementById("settings-cafes-cards-container");
+            const errorEl   = document.getElementById("settings-cafes-error");
+            const errorMsg  = document.getElementById("settings-cafes-error-msg");
+
+            if (!loadingEl || !emptyEl || !listEl || !cardsContainer) return;
+
+            loadingEl.style.display = "block";
+            emptyEl.style.display = "none";
+            listEl.style.display = "none";
+            if (errorEl) errorEl.style.display = "none";
+
+            const escape = window.escapeHTML || (s => s ? String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) : "");
+
+            try {
+                const res = await fetchApi('/cafe/my-cafes');
+                const data = await res.json().catch(() => ({}));
+                loadingEl.style.display = "none";
+
+                if (!res.ok) {
+                    if (errorEl) {
+                        errorEl.style.display = "block";
+                        if (errorMsg) errorMsg.textContent = data.error || `Server responded with ${res.status}`;
+                    }
+                    return;
+                }
+
+                const cafes = data.cafes || [];
+                if (cafes.length === 0) {
+                    emptyEl.style.display = "block";
+                } else {
+                    cardsContainer.innerHTML = "";
+                    cafes.forEach(cafe => {
+                        const slug = cafe.slug || cafe.cafe_id;
+                        const name = cafe.name || "Untitled Venue";
+                        const tables = cafe.table_count || 0;
+                        const bggUser = cafe.bgg_username || "None";
+                        const tagline = cafe.tagline || "";
+                        const manageUrl = `{{ '/cafe/manage.html' | relative_url }}?cafe=${encodeURIComponent(slug)}`;
+                        const portalUrl = `{{ '/cafe/' | relative_url }}${encodeURIComponent(slug)}/1`;
+
+                        const card = document.createElement("div");
+                        card.className = "cafe-card";
+                        card.innerHTML = `
+                            <div class="cafe-card-top">
+                                <div class="cafe-card-title">
+                                    <span>☕</span>
+                                    <span>${escape(name)}</span>
+                                    <span class="cafe-badge badge-slug">/${escape(slug)}</span>
+                                </div>
+                            </div>
+                            ${tagline ? `<div class="cafe-card-tagline">${escape(tagline)}</div>` : ''}
+                            <div class="cafe-card-meta">
+                                <span class="cafe-meta-pill">🪑 ${tables} ${tables === 1 ? 'Table' : 'Tables'}</span>
+                                <span class="cafe-meta-pill">🎲 BGG: ${escape(bggUser)}</span>
+                                ${cafe.wifi_ssid ? `<span class="cafe-meta-pill">📶 Wi-Fi: ${escape(cafe.wifi_ssid)}</span>` : ''}
+                            </div>
+                            <div class="cafe-card-actions">
+                                <a href="${manageUrl}" class="btn-cafe-action btn-cafe-manage">
+                                    <span>⚙️</span>
+                                    <span>Manage Venue</span>
+                                </a>
+                                <a href="${portalUrl}" target="_blank" rel="noopener noreferrer" class="btn-cafe-action btn-cafe-portal" title="Open patron recommendation portal for Table 1">
+                                    <span>📱</span>
+                                    <span>Patron Portal (Table 1)</span>
+                                </a>
+                            </div>
+                        `;
+                        cardsContainer.appendChild(card);
+                    });
+                    listEl.style.display = "block";
+                }
+            } catch (err) {
+                console.error("Failed to load managed cafes:", err);
+                loadingEl.style.display = "none";
+                if (errorEl) {
+                    errorEl.style.display = "block";
+                    if (errorMsg) errorMsg.textContent = "Network error retrieving registered venues.";
+                }
+            }
+        }
+        window.loadManagedCafes = loadManagedCafes;
 
         // ── Init ─────────────────────────────────────────────────────────────────
         initPage();

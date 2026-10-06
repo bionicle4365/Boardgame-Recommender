@@ -80,8 +80,10 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
                 <a id="modal-bgg-link" href="#"></a>
             </div>
             <!-- Table Voting Modal (Milestone C7) -->
-            <button id="btn-start-table-vote"></button>
-            <button id="btn-launch-table-vote"></button>
+            <button id="btn-start-table-vote" style="display: none;"></button>
+            <div class="table-vote-cta-card" id="table-vote-cta-card">
+                <button id="btn-launch-table-vote"></button>
+            </div>
             <div id="cafe-table-vote-modal" style="display: none;">
                 <h3 id="vote-modal-title"></h3>
                 <button id="btn-close-vote-modal">✕</button>
@@ -127,6 +129,28 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(hasVenue).toBe(true);
         expect(window.CafePortal.state.cafeId).toBe('the-dice-box-cafe');
         expect(window.CafePortal.state.table).toBe('12');
+    });
+
+    test('parseVenueContext extracts cafe and table from RESTful path /cafe/:slug/:table', () => {
+        delete window.location;
+        window.location = new URL('https://meeplemanifesto.com/cafe/pawtucket-library/1');
+
+        const hasVenue = window.CafePortal.parseVenueContext();
+        expect(hasVenue).toBe(true);
+        expect(window.CafePortal.state.cafeId).toBe('pawtucket-library');
+        expect(window.CafePortal.state.table).toBe('1');
+        expect(sessionStorage.getItem('cafe_patron_cafe_id')).toBe('pawtucket-library');
+        expect(sessionStorage.getItem('cafe_patron_table')).toBe('1');
+    });
+
+    test('parseVenueContext extracts cafe and table from /cafe/:slug/table/:table', () => {
+        delete window.location;
+        window.location = new URL('https://meeplemanifesto.com/cafe/maltandmeeple/table/7');
+
+        const hasVenue = window.CafePortal.parseVenueContext();
+        expect(hasVenue).toBe(true);
+        expect(window.CafePortal.state.cafeId).toBe('maltandmeeple');
+        expect(window.CafePortal.state.table).toBe('7');
     });
 
     test('parseVenueContext returns false and leaves state empty when visiting /cafe/ with no params', () => {
@@ -506,6 +530,7 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(apiCalledWith.url).toBe('/cafe/vote/start');
         expect(apiCalledWith.options.table).toBe('5');
         expect(apiCalledWith.options.candidates.length).toBe(3);
+        expect(apiCalledWith.options.duration_hours).toBe(0.25);
 
         const modal = document.getElementById('cafe-table-vote-modal');
         const modalTitle = document.getElementById('vote-modal-title');
@@ -584,6 +609,59 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         revoteBtn.click();
         expect(ballotSection.style.display).toBe('flex');
         expect(consensusSection.style.display).toBe('none');
+    });
+
+    test('updateTableVoteUI displays Vote with Table button and hides Start Table Vote card when vote is active', () => {
+        const startBtn = document.getElementById('btn-start-table-vote');
+        const ctaCard = document.getElementById('table-vote-cta-card');
+
+        // Initially no active vote
+        window.CafePortal.state.activeVoteSession = null;
+        window.CafePortal.updateTableVoteUI();
+        expect(startBtn.style.display).toBe('none');
+        expect(ctaCard.style.display).toBe('flex');
+
+        // With active vote session within 15 mins TTL
+        const future = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        window.CafePortal.state.activeVoteSession = {
+            session_id: 'active_123',
+            closes_at: future,
+            is_closed: false,
+            candidates: [{ id: '13', name: 'Catan' }]
+        };
+        window.CafePortal.updateTableVoteUI();
+        expect(startBtn.style.display).toBe('inline-flex');
+        expect(ctaCard.style.display).toBe('none');
+
+        // When session expired
+        const past = new Date(Date.now() - 1000).toISOString();
+        window.CafePortal.state.activeVoteSession = {
+            session_id: 'expired_123',
+            closes_at: past,
+            is_closed: false
+        };
+        window.CafePortal.updateTableVoteUI();
+        expect(startBtn.style.display).toBe('none');
+        expect(ctaCard.style.display).toBe('flex');
+    });
+
+    test('clicking Vote with Table button opens active vote modal instead of starting a new vote', () => {
+        const startBtn = document.getElementById('btn-start-table-vote');
+        const modal = document.getElementById('cafe-table-vote-modal');
+        const future = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+        window.CafePortal.state.activeVoteSession = {
+            session_id: 'active_123',
+            closes_at: future,
+            is_closed: false,
+            candidates: [{ id: '13', name: 'Catan' }]
+        };
+
+        window.CafePortal.setupTableVotingControls();
+        modal.style.display = 'none';
+
+        startBtn.click();
+        expect(modal.style.display).toBe('flex');
     });
 });
 

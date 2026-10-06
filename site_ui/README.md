@@ -44,7 +44,7 @@ site_ui/
 ## Key Pages & Features
 
 ### 1. Board Game Cafe & Bar Edition (`/cafe`)
-- **Mobile-First Patron Portal (`/cafe?cafe=...&table=...`):**
+- **Mobile-First Patron Portal (`/cafe/:slug/:table`):**
   - **Venue Collection Browser:** Default landing view with instant live title search, player count/playtime filters, and sort options.
   - **3-Tap Vibe Quiz:** Tactile chip selectors for player count (2 to 6+), playtime (<30m, 45-60m, 90m+), and vibe cards (*Party*, *Casual Strategy*, *Deep Strategy*, *Cooperative*, *Direct Conflict*).
   - **Physical Shelf Coordinates:** Prominent badges (e.g. `📍 Shelf B-3`) extracted from BGG comments; strictly omitted when not configured.

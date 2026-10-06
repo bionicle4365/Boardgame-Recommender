@@ -466,8 +466,7 @@ def test_cafe_vote_start_endpoint_creates_session(sample_candidates, monkeypatch
             'cafe_id': 'the-malt-and-meeple',
             'cafe_name': 'The Malt & Meeple',
             'table': '3',
-            'candidates': sample_candidates,
-            'duration_hours': 3.0
+            'candidates': sample_candidates
         })
     }
 
@@ -477,10 +476,13 @@ def test_cafe_vote_start_endpoint_creates_session(sample_candidates, monkeypatch
     assert body['group_name'] == 'The Malt & Meeple - Table 3'
     assert body['table_number'] == '3'
     assert body['cafe_id'] == 'the-malt-and-meeple'
+    assert body['duration_hours'] == 0.25
     assert 'session_id' in body
     assert body['vote_url'] == f"/vote/?session_id={body['session_id']}"
     assert len(body['candidates']) == len(sample_candidates)
     assert mock_table.put_item.called
+    saved_item = mock_table.put_item.call_args[1]['Item']
+    assert 'expires_at' in saved_item
 
 
 def test_cafe_vote_start_validation_empty_candidates():
