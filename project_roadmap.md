@@ -12,7 +12,8 @@ For comprehensive milestones, user journeys, and technical architecture specific
 - **Milestone C2: Cafe Inventory Ingestion & On-Demand Sync** (Completed)
 - **Milestone C3: Self-Service Cafe Management Portal & Venue Dashboard** (Completed)
 - **Milestone C4: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine** (Completed)
-- **Next Up: Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L134-L162))
+- **Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI** (Completed)
+- **Next Up: Milestone C6: "Watch It Played" Rules Video & Media Integration** (See [cafe_roadmap.md](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md#L164-L185))
 
 ---
 
@@ -144,5 +145,7 @@ The following milestones have been evaluated and archived/deferred based on arch
 * **Milestone C1: Self-Service Cafe Onboarding & Dynamic Venue Registry** (DynamoDB `bgg-cafes` table, BGG collection validation endpoint, multi-step onboarding wizard at `site_ui/cafe/onboard.html`, and automated printable QR table tent generation)
 * **Milestone C2: Cafe Inventory Ingestion & On-Demand Sync** (Scraper cafe mode handler for `own=1`, on-demand `POST /cafe/sync` SQS dispatch with recommendation cache invalidation, EventBridge weekly automated sync rule, and unit test coverage)
 * **Milestone C3: Self-Service Cafe Management Portal & Venue Dashboard** (Dedicated venue management portal at `site_ui/cafe/manage.html`, `GET /cafe/my-cafes` GSI query handler, `POST /cafe/update` venue editor with DynamoDB and S3 synchronization, API Gateway Cognito authorizer routes, printable double-sided folded table tent batch generator, and profile/header navigation integration)
+* **Milestone C4: Cafe-Scoped Candidate Pool & 30-Second Table Vibe Engine** (Hard cafe inventory candidate masking by cafe BGG username, Gaussian complexity and normalized vibe profile weighting vectors, Nova Micro sommelier prompt with rules teach time and shelf location, S3 recommendation caching with 7-day TTL, and unit test coverage)
+* **Milestone C5: Mobile-First Cafe Patron Portal & Vibe Check UI** (Mobile-first responsive glassmorphic patron interface at `site_ui/cafe/index.html` with `cafe.css` and `cafe.js`, co-branded venue header with table badge and Wi-Fi credential copy, tactile 3-tap vibe quiz for player count, session duration, and vibe cards, collapsible BGG hobbyist bypass, mobile game cards with shelf location, teach time, AI sommelier quote, rules video links, empty state relaxation chips, and Vitest suite)
 
 

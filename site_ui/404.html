@@ -119,3 +119,22 @@ description: "The page you are looking for does not exist on Boardgame Recommend
         <a href="{{ '/' | relative_url }}" class="home-button" id="back-to-home-btn">Go to Homepage</a>
     </div>
 </div>
+
+<script>
+    (function () {
+        var path = window.location.pathname;
+        if (path.indexOf('/cafe/') !== -1) {
+            var parts = path.split('/').filter(Boolean);
+            var cafeIdx = parts.indexOf('cafe');
+            if (cafeIdx !== -1 && parts.length > cafeIdx + 1) {
+                var slug = parts[cafeIdx + 1];
+                if (slug !== 'manage' && slug !== 'onboard' && slug !== 'index.html') {
+                    var search = window.location.search;
+                    var sep = search ? search + '&' : '?';
+                    var target = '/cafe/' + sep + 'cafe=' + encodeURIComponent(slug);
+                    window.location.replace(target);
+                }
+            }
+        }
+    })();
+</script>

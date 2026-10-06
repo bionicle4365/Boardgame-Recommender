@@ -1,0 +1,200 @@
+---
+layout: default
+title: Table Recommendations | Meeple Manifesto Cafe Portal
+description: "Instant 3-tap board game recommendations tailored for your cafe table, group size, and vibe."
+---
+
+<link rel="stylesheet" href="{{ 'assets/css/cafe.css' | relative_url }}">
+
+<div class="cafe-portal-container">
+
+    <!-- Venue Co-Branded Header Card -->
+    <header class="venue-header-card" id="venue-header-card">
+        <div class="venue-header-top">
+            <div class="venue-brand-group">
+                <div class="venue-avatar" id="venue-avatar-wrap">
+                    <span>☕</span>
+                </div>
+                <div class="venue-brand-text">
+                    <h1 class="venue-name-title" id="venue-name-title">Loading Venue...</h1>
+                    <p class="venue-tagline" id="venue-tagline">Connecting to cafe collection...</p>
+                </div>
+            </div>
+
+            <!-- Table Badge -->
+            <div class="table-badge-pill" id="header-table-badge">
+                🪑 Table 1
+            </div>
+        </div>
+
+        <!-- Venue Meta Bar (Wi-Fi & Table Switcher) -->
+        <div class="venue-meta-bar">
+            <div class="wifi-chip" id="header-wifi-chip" title="Click to copy Wi-Fi password">
+                <span>📶 Wi-Fi:</span>
+                <strong id="wifi-ssid-label">MaltMeeple-Guest</strong>
+                <span id="wifi-pass-label" style="opacity: 0.85;">(rollforinitiative)</span>
+                <button type="button" class="wifi-copy-btn" aria-label="Copy Wi-Fi password">📋</button>
+            </div>
+
+            <button type="button" class="table-selector-trigger" id="switch-table-trigger">
+                Wrong table? Switch
+            </button>
+        </div>
+    </header>
+
+    <!-- Interactive 3-Tap Vibe Quiz Card -->
+    <section class="vibe-quiz-card" id="vibe-quiz-card">
+        <h2 class="quiz-headline">
+            <span>🎲</span> Find Your Table's Next Game
+        </h2>
+        <p class="quiz-subheadline">
+            Answer 3 quick taps to find the perfect board game on our shelves right now.
+        </p>
+
+        <form id="vibe-quiz-form">
+
+            <!-- Step 1: Player Count -->
+            <div class="quiz-step-section">
+                <div class="quiz-step-title">
+                    <span><span class="quiz-step-num">1</span> How many players?</span>
+                </div>
+                <div class="pills-selector-row" id="player-pills-row">
+                    <button type="button" class="quiz-pill-btn" data-player-count="2" id="pill-players-2">
+                        <span>2</span>
+                        <span class="quiz-pill-sub">Duo</span>
+                    </button>
+                    <button type="button" class="quiz-pill-btn" data-player-count="3" id="pill-players-3">
+                        <span>3</span>
+                        <span class="quiz-pill-sub">Trio</span>
+                    </button>
+                    <button type="button" class="quiz-pill-btn active" data-player-count="4" id="pill-players-4">
+                        <span>4</span>
+                        <span class="quiz-pill-sub">Squad</span>
+                    </button>
+                    <button type="button" class="quiz-pill-btn" data-player-count="5" id="pill-players-5">
+                        <span>5</span>
+                        <span class="quiz-pill-sub">Group</span>
+                    </button>
+                    <button type="button" class="quiz-pill-btn" data-player-count="6+" id="pill-players-6">
+                        <span>6+</span>
+                        <span class="quiz-pill-sub">Party</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Time Window -->
+            <div class="quiz-step-section">
+                <div class="quiz-step-title">
+                    <span><span class="quiz-step-num">2</span> How much time?</span>
+                </div>
+                <div class="pills-selector-row time-row" id="time-pills-row">
+                    <button type="button" class="quiz-pill-btn" data-time-duration="short" id="pill-time-short">
+                        <span>⚡ Quick</span>
+                        <span class="quiz-pill-sub">&lt; 30 min</span>
+                    </button>
+                    <button type="button" class="quiz-pill-btn active" data-time-duration="medium" id="pill-time-medium">
+                        <span>⏱️ Medium</span>
+                        <span class="quiz-pill-sub">45 - 60 min</span>
+                    </button>
+                    <button type="button" class="quiz-pill-btn" data-time-duration="long" id="pill-time-long">
+                        <span>⏳ Deep</span>
+                        <span class="quiz-pill-sub">90+ min</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Mood & Vibe -->
+            <div class="quiz-step-section">
+                <div class="quiz-step-title">
+                    <span><span class="quiz-step-num">3</span> What's the table vibe?</span>
+                </div>
+                <div class="vibe-cards-grid" id="vibe-cards-grid">
+
+                    <div class="vibe-card-option" data-vibe-key="party" id="vibe-card-party">
+                        <div class="vibe-icon-title-row">
+                            <span class="vibe-card-icon">🍻</span>
+                            <span class="vibe-card-title">Party &amp; Social</span>
+                        </div>
+                        <p class="vibe-card-desc">Laughs, high interaction, simple rules</p>
+                    </div>
+
+                    <div class="vibe-card-option active" data-vibe-key="casual_strategy" id="vibe-card-casual">
+                        <div class="vibe-icon-title-row">
+                            <span class="vibe-card-icon">🏰</span>
+                            <span class="vibe-card-title">Casual Strategy</span>
+                        </div>
+                        <p class="vibe-card-desc">Engaging, accessible, satisfying decisions</p>
+                    </div>
+
+                    <div class="vibe-card-option" data-vibe-key="deep_strategy" id="vibe-card-deep">
+                        <div class="vibe-icon-title-row">
+                            <span class="vibe-card-icon">🧠</span>
+                            <span class="vibe-card-title">Deep Strategy</span>
+                        </div>
+                        <p class="vibe-card-desc">Thinky engine builders &amp; euro-games</p>
+                    </div>
+
+                    <div class="vibe-card-option" data-vibe-key="cooperative" id="vibe-card-coop">
+                        <div class="vibe-icon-title-row">
+                            <span class="vibe-card-icon">🤝</span>
+                            <span class="vibe-card-title">Cooperative</span>
+                        </div>
+                        <p class="vibe-card-desc">Team up to win or lose together</p>
+                    </div>
+
+                    <div class="vibe-card-option" data-vibe-key="direct_conflict" id="vibe-card-conflict" style="grid-column: span 2;">
+                        <div class="vibe-icon-title-row">
+                            <span class="vibe-card-icon">⚔️</span>
+                            <span class="vibe-card-title">Rivalry &amp; Conflict</span>
+                        </div>
+                        <p class="vibe-card-desc">Bluffing, head-to-head dueling, take-that</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Optional Hobbyist Bypass Accordion -->
+            <div class="hobbyist-accordion" id="hobbyist-accordion">
+                <button type="button" class="hobbyist-header-toggle" id="hobbyist-accordion-toggle">
+                    <span>🎯 Have BGG accounts? Enter usernames</span>
+                    <span class="hobbyist-toggle-icon">▼</span>
+                </button>
+                <div class="hobbyist-body">
+                    <input type="text" 
+                           id="hobbyist-usernames-input" 
+                           class="hobbyist-input-field" 
+                           placeholder="e.g. gamer123, boardgamemeeple" 
+                           autocomplete="off">
+                    <div class="hobbyist-hint">
+                        Enter 1–5 BoardGameGeek usernames separated by commas. We'll blend your group's taste with the cafe's library.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit CTA -->
+            <button type="submit" class="quiz-submit-btn" id="quiz-submit-btn">
+                <span>🎲 Find Our Table's Game</span>
+            </button>
+
+        </form>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section" id="results-section" style="display: none;">
+        <div class="results-header-bar">
+            <h2 class="results-title">
+                Picks for Table <span id="results-table-num">1</span>
+            </h2>
+            <button type="button" class="btn-reroll-quiz" id="btn-reroll-quiz">
+                🔄 Change Vibe
+            </button>
+        </div>
+
+        <div id="cafe-results-container">
+            <!-- Dynamic game cards or skeletons injected here -->
+        </div>
+    </section>
+
+</div>
+
+<script src="{{ 'assets/js/cafe.js' | relative_url }}"></script>

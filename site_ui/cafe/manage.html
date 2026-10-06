@@ -800,7 +800,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Populate Hero Card
         heroVenueName.textContent = currentCafe.name;
         const slug = currentCafe.slug || currentCafe.cafe_id;
-        const portalUrl = `https://meeplemanifesto.com/cafe/${slug}`;
+        const baseUrl = window.location.origin || 'https://meeplemanifesto.com';
+        const portalUrl = `${baseUrl}/cafe/?cafe=${encodeURIComponent(slug)}`;
         heroPortalLink.textContent = portalUrl;
         heroPortalLink.href = portalUrl;
         heroOpenPortalBtn.href = portalUrl;
@@ -834,6 +835,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function updateFloorTools() {
         if (!currentCafe) return;
         const slug = currentCafe.slug || currentCafe.cafe_id;
+        const baseUrl = window.location.origin || 'https://meeplemanifesto.com';
         const tables = parseInt(formTableCountInput.value, 10) || currentCafe.table_count || 20;
         const ssid = formWifiSsidInput.value || currentCafe.wifi_ssid;
         const pass = formWifiPassInput.value || currentCafe.wifi_password;
@@ -841,7 +843,7 @@ document.addEventListener("DOMContentLoaded", function () {
         previewVenueName.textContent = formNameInput.value || currentCafe.name;
         previewWifiLabel.textContent = ssid ? `📶 Wi-Fi: ${ssid}${pass ? ' (' + pass + ')' : ''}` : "📶 Wi-Fi: None";
         
-        const previewUrl = `https://meeplemanifesto.com/cafe/${slug}?table=1`;
+        const previewUrl = `${baseUrl}/cafe/?cafe=${encodeURIComponent(slug)}&table=1`;
         previewQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(previewUrl)}`;
 
         // Populate Table Links
@@ -850,7 +852,7 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let t = 1; t <= maxDisplay; t++) {
             const row = document.createElement("div");
             row.className = "table-link-row";
-            const tableUrl = `https://meeplemanifesto.com/cafe/${slug}?table=${t}`;
+            const tableUrl = `${baseUrl}/cafe/?cafe=${encodeURIComponent(slug)}&table=${t}`;
             row.innerHTML = `
                 <span class="table-link-title">Table ${t}</span>
                 <div class="table-link-actions">

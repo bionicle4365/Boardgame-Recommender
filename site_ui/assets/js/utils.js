@@ -192,6 +192,8 @@ window.fetchApi = async function(endpoint, options = {}) {
             ];
         } else if (endpoint.startsWith('/recommendations')) {
             const urlParams = new URLSearchParams(endpoint.split('?')[1]);
+            const cafeIdParam = urlParams.get('cafe_id') || urlParams.get('cafe_username');
+            const vibeParam = urlParams.get('vibe') || 'casual_strategy';
             const usernameParam = urlParams.get('username') || '';
             const users = usernameParam.split(',').filter(u => u.trim() !== '');
             let memberAffinities = null;
@@ -201,37 +203,212 @@ window.fetchApi = async function(endpoint, options = {}) {
                     memberAffinities[u] = parseFloat((0.4 + (i * 0.15) + (u.length % 5) * 0.08).toFixed(2));
                 });
             }
-            data = {
-                status: "ready",
-                recommendations: [
-                    {
-                        id: "224517",
-                        name: "Gloomhaven",
-                        thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/L-92966Zg7xS0F8B-UshZk1917A=/fit-in/200x150/filters:strip_icc()/pic2437871.jpg",
-                        rating: 8.7,
-                        complexity: 4.4,
-                        min_players: 1,
-                        max_players: 4,
-                        playing_time: 120,
-                        year_published: 2017,
-                        reason: "Matches your taste for highly strategic tactical play and rich campaign elements.",
-                        member_affinities: memberAffinities
-                    },
-                    {
-                        id: "266192",
-                        name: "Wingspan",
-                        thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/4nOFLn4e75E7v9gN8GgdFj8z1v0=/fit-in/200x150/filters:strip_icc()/pic4458123.jpg",
-                        rating: 8.1,
-                        complexity: 2.4,
-                        min_players: 1,
-                        max_players: 5,
-                        playing_time: 60,
-                        year_published: 2019,
-                        reason: "Excellent match for your preference of engine-building card games with smooth turns.",
-                        member_affinities: memberAffinities
-                    }
-                ]
-            };
+
+            if (cafeIdParam) {
+                let cafeRecs = [];
+                if (vibeParam === 'party') {
+                    cafeRecs = [
+                        {
+                            id: "178900",
+                            name: "Codenames",
+                            thumbnail: "https://cf.geekdo-images.com/F_KDEu0GjdUtMW-M5RDePg__thumb/img/6P8eD6_s17m3x5kK.jpg",
+                            rating: 7.6,
+                            complexity: 1.3,
+                            min_players: 2,
+                            max_players: 8,
+                            playing_time: 15,
+                            year_published: 2015,
+                            shelf_location: "Shelf A-1",
+                            teach_time: "3-5 min teach",
+                            reason: "High-energy word association that gets your table laughing and bantering right away.",
+                            member_affinities: memberAffinities
+                        },
+                        {
+                            id: "254640",
+                            name: "Just One",
+                            thumbnail: "https://cf.geekdo-images.com/ocwvx4_jL3e8q5p.jpg",
+                            rating: 7.5,
+                            complexity: 1.1,
+                            min_players: 3,
+                            max_players: 7,
+                            playing_time: 20,
+                            year_published: 2018,
+                            shelf_location: "Shelf A-2",
+                            teach_time: "2-3 min teach",
+                            reason: "Effortless cooperative clue-giving that breaks the ice instantly for groups.",
+                            member_affinities: memberAffinities
+                        }
+                    ];
+                } else if (vibeParam === 'deep_strategy') {
+                    cafeRecs = [
+                        {
+                            id: "28720",
+                            name: "Brass: Birmingham",
+                            thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/L-92966Zg7xS0F8B-UshZk1917A=/fit-in/200x150/filters:strip_icc()/pic2437871.jpg",
+                            rating: 8.6,
+                            complexity: 3.9,
+                            min_players: 2,
+                            max_players: 4,
+                            playing_time: 120,
+                            year_published: 2018,
+                            shelf_location: "Shelf D-2",
+                            teach_time: "20 min teach",
+                            reason: "Deep industrial network economics with satisfyingly tight tactical decisions.",
+                            member_affinities: memberAffinities
+                        },
+                        {
+                            id: "316554",
+                            name: "Dune: Imperium",
+                            thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/pic5666597.jpg",
+                            rating: 8.4,
+                            complexity: 3.0,
+                            min_players: 1,
+                            max_players: 4,
+                            playing_time: 90,
+                            year_published: 2020,
+                            shelf_location: "Shelf D-4",
+                            teach_time: "15 min teach",
+                            reason: "Tense deck-building and worker placement that keeps all players engaged until the final combat.",
+                            member_affinities: memberAffinities
+                        }
+                    ];
+                } else if (vibeParam === 'cooperative') {
+                    cafeRecs = [
+                        {
+                            id: "324856",
+                            name: "The Crew: Mission Deep Sea",
+                            thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/pic5758253.jpg",
+                            rating: 8.2,
+                            complexity: 2.0,
+                            min_players: 2,
+                            max_players: 5,
+                            playing_time: 20,
+                            year_published: 2021,
+                            shelf_location: "Shelf C-1",
+                            teach_time: "5 min teach",
+                            reason: "Brilliant cooperative trick-taking with silent communication that bonds your table together.",
+                            member_affinities: memberAffinities
+                        },
+                        {
+                            id: "30549",
+                            name: "Pandemic",
+                            thumbnail: "https://cf.geekdo-images.com/S3ybV1_xDY4BEID4.jpg",
+                            rating: 7.6,
+                            complexity: 2.4,
+                            min_players: 2,
+                            max_players: 4,
+                            playing_time: 45,
+                            year_published: 2008,
+                            shelf_location: "Shelf C-3",
+                            teach_time: "8 min teach",
+                            reason: "Classic cooperative tension where everyone coordinates specialist roles to contain global outbreaks.",
+                            member_affinities: memberAffinities
+                        }
+                    ];
+                } else if (vibeParam === 'direct_conflict') {
+                    cafeRecs = [
+                        {
+                            id: "274637",
+                            name: "Unmatched: Battle of Legends",
+                            thumbnail: "https://cf.geekdo-images.com/pic4747471.jpg",
+                            rating: 7.9,
+                            complexity: 2.1,
+                            min_players: 2,
+                            max_players: 4,
+                            playing_time: 30,
+                            year_published: 2019,
+                            shelf_location: "Shelf E-1",
+                            teach_time: "5 min teach",
+                            reason: "Fast, punchy card-driven skirmish duels with dynamic movement and clever bluffing.",
+                            member_affinities: memberAffinities
+                        }
+                    ];
+                } else {
+                    cafeRecs = [
+                        {
+                            id: "295947",
+                            name: "Cascadia",
+                            thumbnail: "https://cf.geekdo-images.com/MJE673qOvyIfPkTviqUKGg__thumb/img/pic5100791.jpg",
+                            rating: 8.0,
+                            complexity: 2.0,
+                            min_players: 1,
+                            max_players: 4,
+                            playing_time: 45,
+                            year_published: 2021,
+                            shelf_location: "Shelf B-1",
+                            teach_time: "5 min teach",
+                            reason: "Accessible spatial tile-laying puzzle that is effortless to learn and relaxing to play.",
+                            member_affinities: memberAffinities
+                        },
+                        {
+                            id: "266192",
+                            name: "Wingspan",
+                            thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/4nOFLn4e75E7v9gN8GgdFj8z1v0=/fit-in/200x150/filters:strip_icc()/pic4458123.jpg",
+                            rating: 8.1,
+                            complexity: 2.4,
+                            min_players: 1,
+                            max_players: 5,
+                            playing_time: 60,
+                            year_published: 2019,
+                            shelf_location: "Shelf B-3",
+                            teach_time: "10 min teach",
+                            reason: "Rewarding bird habitat engine building with smooth turns and gorgeous components.",
+                            member_affinities: memberAffinities
+                        },
+                        {
+                            id: "230802",
+                            name: "Azul",
+                            thumbnail: "https://cf.geekdo-images.com/tz19Pf9klD_5.jpg",
+                            rating: 7.8,
+                            complexity: 1.8,
+                            min_players: 2,
+                            max_players: 4,
+                            playing_time: 30,
+                            year_published: 2017,
+                            shelf_location: "Shelf B-4",
+                            teach_time: "5 min teach",
+                            reason: "Tactile tile-drafting masterpiece with crisp turns and satisfying pattern completion.",
+                            member_affinities: memberAffinities
+                        }
+                    ];
+                }
+                data = {
+                    status: "ready",
+                    recommendations: cafeRecs
+                };
+            } else {
+                data = {
+                    status: "ready",
+                    recommendations: [
+                        {
+                            id: "224517",
+                            name: "Gloomhaven",
+                            thumbnail: "https://cf.geekdo-images.com/sZYp_3BTjrc47t9tM9vBvg__thumb/img/L-92966Zg7xS0F8B-UshZk1917A=/fit-in/200x150/filters:strip_icc()/pic2437871.jpg",
+                            rating: 8.7,
+                            complexity: 4.4,
+                            min_players: 1,
+                            max_players: 4,
+                            playing_time: 120,
+                            year_published: 2017,
+                            reason: "Matches your taste for highly strategic tactical play and rich campaign elements.",
+                            member_affinities: memberAffinities
+                        },
+                        {
+                            id: "266192",
+                            name: "Wingspan",
+                            thumbnail: "https://cf.geekdo-images.com/yLZ_RQQH7OJeY0ZTO25y5A__thumb/img/4nOFLn4e75E7v9gN8GgdFj8z1v0=/fit-in/200x150/filters:strip_icc()/pic4458123.jpg",
+                            rating: 8.1,
+                            complexity: 2.4,
+                            min_players: 1,
+                            max_players: 5,
+                            playing_time: 60,
+                            year_published: 2019,
+                            reason: "Excellent match for your preference of engine-building card games with smooth turns.",
+                            member_affinities: memberAffinities
+                        }
+                    ]
+                };
+            }
         } else if (endpoint.startsWith('/preferences')) {
             if (options.method === 'POST' && options.body) {
                 try {

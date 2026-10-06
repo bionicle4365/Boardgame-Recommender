@@ -152,12 +152,12 @@ Design and implement a mobile-first, glassmorphic patron web interface at `site_
 - **Client State:** Store table number and current filter selections in `sessionStorage` for smooth navigation between screens.
 
 ### Tasks
-- [ ] **Cafe Portal Layout:** Build `site_ui/cafe/index.html` using existing glassmorphic design tokens and responsive CSS grid.
-- [ ] **Interactive Vibe Quiz Component:** Build tactile single-select chips with smooth CSS transitions for player count, time, and vibe.
-- [ ] **Recommendation Results View:** Design mobile-first game cards featuring shelf location pill, teach time badge, and Bedrock sommelier quote.
-- [ ] **Hobbyist BGG Input:** Add collapsible input field allowing 1–5 BGG usernames with group scoring integration.
-- [ ] **Error & Empty States:** Friendly empty states if no cafe games match strict filters with one-tap filter relaxation buttons.
-- [ ] **Visual Testing:** Verify responsive rendering across mobile screen sizes (iPhone Safari, Android Chrome).
+- [x] **Cafe Portal Layout:** Build `site_ui/cafe/index.html` using existing glassmorphic design tokens and responsive CSS grid.
+- [x] **Interactive Vibe Quiz Component:** Build tactile single-select chips with smooth CSS transitions for player count, time, and vibe.
+- [x] **Recommendation Results View:** Design mobile-first game cards featuring shelf location pill, teach time badge, and Bedrock sommelier quote.
+- [x] **Hobbyist BGG Input:** Add collapsible input field allowing 1–5 BGG usernames with group scoring integration.
+- [x] **Error & Empty States:** Friendly empty states if no cafe games match strict filters with one-tap filter relaxation buttons.
+- [x] **Visual Testing:** Verify responsive rendering across mobile screen sizes (iPhone Safari, Android Chrome).
 
 ---
 

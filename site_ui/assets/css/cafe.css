@@ -1,0 +1,900 @@
+/* ==========================================================================
+   Cafe Patron Portal & Vibe Check UI - Stylesheet (cafe.css)
+   Mobile-First, Responsive Glassmorphic Design for Dim Cafe & Bar Lighting
+   ========================================================================== */
+
+:root {
+    --cafe-bg-accent: rgba(79, 70, 229, 0.08);
+    --cafe-shelf-badge: #d97706;
+    --cafe-shelf-bg: rgba(245, 158, 11, 0.15);
+    --cafe-shelf-border: rgba(245, 158, 11, 0.4);
+    --cafe-teach-badge: #0284c7;
+    --cafe-teach-bg: rgba(2, 132, 199, 0.15);
+    --cafe-teach-border: rgba(2, 132, 199, 0.4);
+    --sommelier-bubble-bg: rgba(248, 250, 252, 0.95);
+    --sommelier-bubble-border: rgba(203, 213, 225, 0.7);
+    --sommelier-text: #1e293b;
+    --vibe-selected-ring: #4f46e5;
+}
+
+[data-theme="dark"] {
+    --cafe-bg-accent: rgba(99, 102, 241, 0.15);
+    --cafe-shelf-badge: #fbbf24;
+    --cafe-shelf-bg: rgba(251, 191, 36, 0.18);
+    --cafe-shelf-border: rgba(251, 191, 36, 0.45);
+    --cafe-teach-badge: #38bdf8;
+    --cafe-teach-bg: rgba(56, 189, 248, 0.18);
+    --cafe-teach-border: rgba(56, 189, 248, 0.45);
+    --sommelier-bubble-bg: rgba(15, 23, 42, 0.85);
+    --sommelier-bubble-border: rgba(51, 65, 85, 0.8);
+    --sommelier-text: #f1f5f9;
+    --vibe-selected-ring: #818cf8;
+}
+
+/* ── Container Layout ── */
+.cafe-portal-container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px 14px 80px 14px;
+    font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-main);
+    box-sizing: border-box;
+}
+
+/* ── Venue Co-Branded Header Card ── */
+.venue-header-card {
+    background: var(--glass-bg, rgba(255, 255, 255, 0.85));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border, rgba(226, 232, 240, 0.8));
+    border-radius: var(--radius-lg, 16px);
+    padding: 20px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.venue-header-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4f46e5, #ec4899, #f59e0b);
+}
+
+.venue-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.venue-brand-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.venue-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.venue-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.venue-brand-text {
+    min-width: 0;
+}
+
+.venue-name-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.01em;
+}
+
+.venue-tagline {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 3px 0 0 0;
+    line-height: 1.3;
+}
+
+/* Table Badge in Header */
+.table-badge-pill {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+    flex-shrink: 0;
+}
+
+/* Header Meta Bar (Wi-Fi & Table switcher) */
+.venue-meta-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border, rgba(226, 232, 240, 0.8));
+    font-size: 0.82rem;
+}
+
+.wifi-chip {
+    background: var(--badge-bg, rgba(241, 245, 249, 0.9));
+    border: 1px solid var(--border, rgba(226, 232, 240, 0.8));
+    border-radius: 8px;
+    padding: 5px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.wifi-chip:hover {
+    border-color: var(--primary);
+    background: var(--cafe-bg-accent);
+}
+
+.wifi-copy-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 4px;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.wifi-chip:hover .wifi-copy-btn {
+    opacity: 1;
+}
+
+.table-selector-trigger {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 4px;
+}
+
+.table-selector-trigger:hover {
+    color: var(--primary);
+}
+
+/* ── Interactive Vibe Quiz Card ── */
+.vibe-quiz-card {
+    background: var(--glass-bg, rgba(255, 255, 255, 0.85));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border, rgba(226, 232, 240, 0.8));
+    border-radius: var(--radius-lg, 16px);
+    padding: 22px 18px;
+    margin-bottom: 22px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.quiz-headline {
+    margin: 0 0 4px 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quiz-subheadline {
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    margin: 0 0 20px 0;
+    line-height: 1.4;
+}
+
+/* Quiz Steps */
+.quiz-step-section {
+    margin-bottom: 22px;
+}
+
+.quiz-step-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quiz-step-num {
+    background: var(--primary);
+    color: #ffffff;
+    width: 20px;
+    height: 20px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-right: 6px;
+}
+
+/* Tactile Pill Row (Single-Select) */
+.pills-selector-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+}
+
+.pills-selector-row.time-row {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.quiz-pill-btn {
+    background: var(--card-bg, #ffffff);
+    border: 1.5px solid var(--border, rgba(226, 232, 240, 0.9));
+    color: var(--text-main);
+    padding: 12px 6px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-align: center;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.quiz-pill-btn:hover:not(.active) {
+    border-color: var(--primary);
+    background: var(--cafe-bg-accent);
+    transform: translateY(-1px);
+}
+
+.quiz-pill-btn:active {
+    transform: scale(0.96);
+}
+
+.quiz-pill-btn.active {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+    transform: translateY(-2px);
+}
+
+.quiz-pill-sub {
+    font-size: 0.68rem;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* ── Vibe Cards Grid ── */
+.vibe-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.vibe-card-option {
+    background: var(--card-bg, #ffffff);
+    border: 1.5px solid var(--border, rgba(226, 232, 240, 0.9));
+    border-radius: 14px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.vibe-card-option:hover:not(.active) {
+    border-color: var(--primary);
+    background: var(--cafe-bg-accent);
+    transform: translateY(-1px);
+}
+
+.vibe-card-option:active {
+    transform: scale(0.97);
+}
+
+.vibe-card-option.active {
+    border-color: var(--vibe-selected-ring);
+    background: var(--cafe-bg-accent);
+    box-shadow: 0 0 0 2px var(--vibe-selected-ring), 0 6px 18px rgba(79, 70, 229, 0.2);
+    transform: translateY(-2px);
+}
+
+.vibe-card-option.active::after {
+    content: "✓";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--primary);
+    color: #ffffff;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.vibe-icon-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vibe-card-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.vibe-card-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+    color: var(--text-main);
+}
+
+.vibe-card-desc {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    margin: 2px 0 0 0;
+    line-height: 1.3;
+}
+
+/* ── Hobbyist Accordion Toggle ── */
+.hobbyist-accordion {
+    border: 1px dashed var(--border, rgba(226, 232, 240, 0.9));
+    border-radius: 12px;
+    margin-top: 16px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.hobbyist-header-toggle {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: color 0.2s;
+}
+
+.hobbyist-header-toggle:hover {
+    color: var(--text-main);
+}
+
+.hobbyist-toggle-icon {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.hobbyist-accordion.open .hobbyist-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.hobbyist-body {
+    padding: 0 14px 14px 14px;
+    display: none;
+}
+
+.hobbyist-accordion.open .hobbyist-body {
+    display: block;
+}
+
+.hobbyist-input-field {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--input-bg, #ffffff);
+    color: var(--text-main);
+    font-size: 0.86rem;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.hobbyist-input-field:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+.hobbyist-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.3;
+}
+
+/* ── Primary Submit Button ── */
+.quiz-submit-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+    transition: all 0.22s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.quiz-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(79, 70, 229, 0.45);
+}
+
+.quiz-submit-btn:active {
+    transform: translateY(0);
+}
+
+/* ── Results Container & Game Cards ── */
+.results-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 0 4px;
+}
+
+.results-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.btn-reroll-quiz {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.btn-reroll-quiz:hover {
+    color: var(--text-main);
+    border-color: var(--primary);
+    background: var(--cafe-bg-accent);
+}
+
+/* ── Mobile-First Game Card ── */
+.cafe-game-card {
+    background: var(--glass-bg, rgba(255, 255, 255, 0.85));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border, rgba(226, 232, 240, 0.8));
+    border-radius: var(--radius-lg, 16px);
+    padding: 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: fadeCardIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeCardIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cafe-game-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+}
+
+/* Card Top Row: Thumbnail + Info */
+.cafe-card-top {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.cafe-card-thumb-wrap {
+    width: 82px;
+    height: 82px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--border);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.cafe-card-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.cafe-card-info {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.cafe-card-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cafe-card-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-main);
+    text-decoration: none;
+    line-height: 1.2;
+}
+
+.cafe-card-title:hover {
+    color: var(--primary);
+}
+
+.cafe-card-year {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Prominent Badges Row (Shelf & Teach Time) */
+.cafe-prominent-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.shelf-location-badge {
+    background: var(--cafe-shelf-bg);
+    color: var(--cafe-shelf-badge);
+    border: 1px solid var(--cafe-shelf-border);
+    border-radius: 8px;
+    padding: 4px 9px;
+    font-weight: 800;
+    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    letter-spacing: 0.01em;
+}
+
+.teach-time-badge {
+    background: var(--cafe-teach-bg);
+    color: var(--cafe-teach-badge);
+    border: 1px solid var(--cafe-teach-border);
+    border-radius: 8px;
+    padding: 4px 9px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Secondary Stats Row */
+.cafe-stats-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+}
+
+.cafe-stat-pill {
+    background: var(--badge-bg, rgba(241, 245, 249, 0.9));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cafe-stat-pill.complexity-light {
+    color: #16a34a;
+}
+
+.cafe-stat-pill.complexity-med {
+    color: #d97706;
+}
+
+.cafe-stat-pill.complexity-heavy {
+    color: #dc2626;
+}
+
+/* Sommelier Guru Quote Bubble */
+.sommelier-quote-bubble {
+    background: var(--sommelier-bubble-bg);
+    border: 1px solid var(--sommelier-bubble-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    position: relative;
+    font-size: 0.86rem;
+    line-height: 1.45;
+    color: var(--sommelier-text);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.sommelier-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary);
+    margin-bottom: 6px;
+}
+
+.sommelier-quote-text {
+    margin: 0;
+    font-style: italic;
+}
+
+/* Drink Pairing Hint */
+.drink-pairing-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .drink-pairing-tag {
+    color: #fbbf24;
+}
+
+/* Card Action Buttons */
+.cafe-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+}
+
+.btn-card-action {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-family: inherit;
+    text-decoration: none;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-card-action:hover {
+    background: var(--cafe-bg-accent);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-card-action.primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+}
+
+.btn-card-action.primary:hover {
+    background: var(--primary-hover);
+}
+
+/* ── Empty & Error States with Filter Relaxation ── */
+.empty-results-card {
+    background: var(--glass-bg, rgba(255, 255, 255, 0.85));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border, rgba(226, 232, 240, 0.8));
+    border-radius: var(--radius-lg, 16px);
+    padding: 36px 20px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    display: inline-block;
+}
+
+.empty-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+}
+
+.empty-desc {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    max-width: 440px;
+    margin: 0 auto 20px auto;
+    line-height: 1.45;
+}
+
+.relaxation-chips-wrap {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.btn-relax-filter {
+    background: var(--card-bg);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 9999px;
+    padding: 8px 16px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-relax-filter:hover {
+    background: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+/* ── Mobile Responsive Adjustments ── */
+@media (max-width: 480px) {
+    .cafe-portal-container {
+        padding: 12px 10px 70px 10px;
+    }
+    
+    .venue-name-title {
+        font-size: 1.2rem;
+    }
+    
+    .table-badge-pill {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+
+    .vibe-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pills-selector-row {
+        gap: 6px;
+    }
+
+    .quiz-pill-btn {
+        padding: 10px 4px;
+        font-size: 0.88rem;
+    }
+
+    .cafe-card-thumb-wrap {
+        width: 72px;
+        height: 72px;
+    }
+    
+    .cafe-card-actions {
+        flex-direction: column;
+    }
+    
+    .btn-card-action {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
