@@ -38,6 +38,27 @@ describe('escapeHTML', () => {
   });
 });
 
+describe('safeDecode', () => {
+  test('decodes standard URL encoded strings with spaces', () => {
+    expect(window.safeDecode('The%20Den')).toBe('The Den');
+    expect(window.safeDecode('The%20Vault')).toBe('The Vault');
+  });
+
+  test('decodes nested/double-encoded URL strings (%2520 -> space)', () => {
+    expect(window.safeDecode('The%2520Den')).toBe('The Den');
+    expect(window.safeDecode('The%252520Den')).toBe('The Den');
+  });
+
+  test('preserves already clean strings and handles edge cases', () => {
+    expect(window.safeDecode('The Den')).toBe('The Den');
+    expect(window.safeDecode('')).toBe('');
+    expect(window.safeDecode(null)).toBe('');
+    expect(window.safeDecode(undefined)).toBe('');
+    expect(window.safeDecode('5')).toBe('5');
+    expect(window.safeDecode('50% Off')).toBe('50% Off');
+  });
+});
+
 describe('renderRecommendationCard', () => {
   test('renders full stats correctly', () => {
     const rec = {

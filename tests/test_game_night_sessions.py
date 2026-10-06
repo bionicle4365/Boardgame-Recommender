@@ -485,6 +485,32 @@ def test_cafe_vote_start_endpoint_creates_session(sample_candidates, monkeypatch
     assert 'expires_at' in saved_item
 
 
+def test_cafe_vote_start_named_room_with_spaces_and_encoding(sample_candidates, monkeypatch):
+    import bgg_recommender
+    import sessions
+
+    mock_table = MagicMock()
+    monkeypatch.setattr(sessions, 'get_dynamodb_table', lambda: mock_table)
+
+    event = {
+        'rawPath': '/cafe/vote/start',
+        'httpMethod': 'POST',
+        'body': json.dumps({
+            'cafe_id': 'pawtucket-library',
+            'cafe_name': 'Pawtucket Library',
+            'table': 'The%20Den',
+            'candidates': sample_candidates
+        })
+    }
+
+    resp = bgg_recommender.lambda_handler(event, None)
+    assert resp['statusCode'] == 201
+    body = json.loads(resp['body'])
+    assert body['table_number'] == 'The Den'
+    assert body['group_name'] == 'Pawtucket Library - The Den'
+    assert body['creator_name'] == 'The Den'
+
+
 def test_cafe_vote_start_validation_empty_candidates():
     import bgg_recommender
 

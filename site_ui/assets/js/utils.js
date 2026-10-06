@@ -650,11 +650,14 @@ window.fetchApi = async function(endpoint, options = {}) {
             const durationHours = parseFloat(payload.duration_hours || 0.25);
             const closesAt = new Date(now.getTime() + durationHours * 3600 * 1000).toISOString();
             const sessId = Math.random().toString(36).substring(2, 10);
+            const rawTable = payload.table || '1';
+            const tableVal = window.safeDecode ? window.safeDecode(rawTable) : String(rawTable);
+            const tableLabel = /^\d+$/.test(tableVal) ? `Table ${tableVal}` : tableVal;
             const newSession = {
                 session_id: sessId,
-                creator_id: payload.creator_id || `cafe_${payload.cafe_id || 'cafe'}_table_${payload.table || '1'}`,
-                creator_name: payload.creator_name || `Table ${payload.table || '1'}`,
-                group_name: payload.cafe_name ? `${payload.cafe_name} - Table ${payload.table || '1'}` : `Table ${payload.table || '1'} Vote`,
+                creator_id: payload.creator_id || `cafe_${payload.cafe_id || 'cafe'}_table_${tableVal}`,
+                creator_name: payload.creator_name || tableLabel,
+                group_name: payload.cafe_name ? `${payload.cafe_name} - ${tableLabel}` : `${tableLabel} Vote`,
                 created_at: now.toISOString(),
                 closes_at: closesAt,
                 duration_hours: durationHours,
@@ -1054,6 +1057,20 @@ window.escapeHTML = function(str) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+};
+
+// Safe URL Decoder (handles single and nested percent-encoding without throwing)
+window.safeDecode = function(str) {
+    if (!str) return "";
+    let decoded = String(str);
+    try {
+        while (decoded.includes("%") && /%[0-9a-fA-F]{2}/.test(decoded)) {
+            const next = decodeURIComponent(decoded);
+            if (next === decoded) break;
+            decoded = next;
+        }
+    } catch (e) {}
+    return decoded;
 };
 
 // Recommendation Card HTML Generator

@@ -33,6 +33,21 @@
         userBallot: {}
     };
 
+    // Helper: Safe URI decode that handles repeated encoding (e.g. %2520 -> %20 -> space)
+    function safeDecode(val) {
+        if (window.safeDecode) return window.safeDecode(val);
+        if (!val) return "";
+        let decoded = String(val);
+        try {
+            while (decoded.includes("%") && /%[0-9a-fA-F]{2}/.test(decoded)) {
+                const next = decodeURIComponent(decoded);
+                if (next === decoded) break;
+                decoded = next;
+            }
+        } catch (e) {}
+        return decoded;
+    }
+
     // Helper: Parse URL parameters or fallback to path/storage
     function parseVenueContext() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -56,7 +71,7 @@
                         tableFromPath = pathParts[cafeIdx + 2];
                     }
                     if (tableFromPath) {
-                        try { tableFromPath = decodeURIComponent(tableFromPath); } catch (e) {}
+                        tableFromPath = safeDecode(tableFromPath);
                     }
                 }
             }
@@ -72,8 +87,8 @@
         // 2. Extract table (optional)
         let table = tableFromPath || urlParams.get("table") || urlParams.get("t");
 
-        state.cafeId = cafeId.trim().toLowerCase();
-        state.table = table ? table.trim() : "";
+        state.cafeId = safeDecode(cafeId).trim().toLowerCase();
+        state.table = table ? safeDecode(table).trim() : "";
 
         // Persist in session
         try {
@@ -201,13 +216,16 @@
         const ctaSub = document.getElementById("recommender-cta-sub");
 
         if (state.table) {
+            const formattedLabel = /^\d+$/.test(state.table) ? `Table ${state.table}` : state.table;
             if (tableBadge) {
                 tableBadge.textContent = /^\d+$/.test(state.table) ? `🪑 Table ${state.table}` : `🪑 ${state.table}`;
                 tableBadge.style.display = "inline-flex";
             }
-            if (ctaTableNum) ctaTableNum.textContent = state.table;
+            if (ctaTableNum) ctaTableNum.textContent = formattedLabel;
+            const voteCtaTableEl = document.getElementById("vote-cta-table-num");
+            if (voteCtaTableEl) voteCtaTableEl.textContent = formattedLabel;
             if (ctaSub) {
-                ctaSub.innerHTML = `Answer 3 quick taps to find recommendations tailored for Table <span class="cta-table-num">${window.escapeHTML ? window.escapeHTML(state.table) : state.table}</span>.`;
+                ctaSub.innerHTML = `Answer 3 quick taps to find recommendations tailored for <span class="cta-table-num" id="cta-table-num">${window.escapeHTML ? window.escapeHTML(formattedLabel) : formattedLabel}</span>.`;
             }
         } else {
             if (tableBadge) {
@@ -328,7 +346,7 @@
             switchTableBtn.addEventListener("click", () => {
                 const newTable = prompt("Enter your table number or room name (e.g. 5 or The Vault):", state.table || "");
                 if (newTable && newTable.trim()) {
-                    state.table = newTable.trim();
+                    state.table = safeDecode(newTable).trim();
                     try {
                         sessionStorage.setItem("cafe_patron_table", state.table);
                     } catch (e) {}
@@ -409,7 +427,7 @@
         const submitBtn = document.getElementById("quiz-submit-btn");
         const resTableNum = document.getElementById("results-table-num");
 
-        if (resTableNum) resTableNum.textContent = state.table ? state.table : "Your Table";
+        if (resTableNum) resTableNum.textContent = state.table ? (/^\d+$/.test(state.table) ? `Table ${state.table}` : state.table) : "Your Table";
         if (resultsSection) resultsSection.style.display = "block";
 
         if (submitBtn) {
@@ -546,7 +564,7 @@
             // Sommelier Quote (in recommendation view or if explicitly included)
             let quoteHtml = "";
             if (isRecView) {
-                const reasonText = rec.reason || `Perfect for Table ${state.table}! High engagement with clean rules and satisfying decisions.`;
+                const reasonText = rec.reason || `Perfect for ${/^\d+$/.test(state.table) ? 'Table ' + state.table : state.table}! High engagement with clean rules and satisfying decisions.`;
                 quoteHtml = `
                     <div class="sommelier-quote-bubble">
                         <div class="sommelier-header">
@@ -1496,7 +1514,7 @@
         // Prompt for table if not set
         if (!state.table) {
             const entered = prompt("Enter your table number or room name (e.g. 5 or The Vault):", "1");
-            state.table = (entered && entered.trim()) ? entered.trim() : "1";
+            state.table = (entered && entered.trim()) ? safeDecode(entered).trim() : "1";
             try { sessionStorage.setItem("cafe_patron_table", state.table); } catch (e) {}
             const tableBadge = document.getElementById("header-table-badge");
             if (tableBadge) {
@@ -1910,7 +1928,7 @@
         if (activeSection) activeSection.style.display = "block";
 
         if (nameInput) {
-            const savedName = localStorage.getItem("bgg_cafe_voter_name") || `Table ${state.table} Patron`;
+            const savedName = localStorage.getItem("bgg_cafe_voter_name") || `${/^\d+$/.test(state.table) ? 'Table ' + state.table : state.table} Patron`;
             nameInput.value = savedName;
         }
 
@@ -1922,7 +1940,7 @@
             extLink.href = voteUrl;
         }
 
-        const voterName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : `Table ${state.table || "1"} Patron`;
+        const voterName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : `${/^\d+$/.test(state.table) ? 'Table ' + state.table : (state.table || "1")} Patron`;
         const hasVoted = state.activeVoteSession.votes && state.activeVoteSession.votes[voterName];
 
         if (hasVoted && state.activeVoteSession.consensus) {

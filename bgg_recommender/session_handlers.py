@@ -11,6 +11,7 @@ Handles voting session CRUD operations:
 """
 import json
 import base64
+import urllib.parse
 from datetime import datetime, timezone, timedelta
 from cache_utils import logger
 import sessions
@@ -71,12 +72,13 @@ def _handle_cafe_vote_start(body_params, event):
     
     cafe_id = body_params.get('cafe_id') or 'cafe'
     raw_table = body_params.get('table') or body_params.get('table_number') or '1'
-    table_num = str(raw_table).strip()
+    table_num = urllib.parse.unquote(str(raw_table).strip())
     
     raw_name = body_params.get('cafe_name') or body_params.get('name') or cafe_id.replace('-', ' ').title()
     cafe_name = str(raw_name).strip()
     
-    group_name = f"{cafe_name} - Table {table_num}"
+    table_display = f"Table {table_num}" if table_num.isdigit() else table_num
+    group_name = f"{cafe_name} - {table_display}"
     
     candidates = body_params.get('candidates', [])
     if not candidates:
@@ -108,7 +110,7 @@ def _handle_cafe_vote_start(body_params, event):
 
     duration_hours = float(body_params.get('duration_hours', 0.25))
     creator_id = claims.get('sub') or body_params.get('creator_id') or f"cafe_{cafe_id}_table_{table_num}"
-    creator_name = body_params.get('creator_name') or f"Table {table_num}"
+    creator_name = body_params.get('creator_name') or table_display
 
     try:
         session = sessions.create_session(

@@ -585,9 +585,11 @@ description: "Vote on candidate board games for tonight's session. Real-time vet
 
         const urlParams = new URLSearchParams(window.location.search);
         const cafeParam = urlParams.get('cafe') || (currentSession && currentSession.cafe_id);
-        const tableParam = urlParams.get('table') || (currentSession && currentSession.table_number);
+        const rawTable = urlParams.get('table') || (currentSession && currentSession.table_number);
+        const tableParam = rawTable ? (window.safeDecode ? window.safeDecode(rawTable) : decodeURIComponent(String(rawTable))) : '';
+        const tableLabel = tableParam ? (/^\d+$/.test(tableParam) ? `Table ${tableParam}` : tableParam) : 'Vote';
         const cafeBadge = (cafeParam || tableParam)
-            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(79, 70, 229, 0.15); color: #818cf8; border: 1px solid rgba(79, 70, 229, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">☕ Table ${window.escapeHTML(tableParam || 'Vote')}</span>`
+            ? `<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(79, 70, 229, 0.15); color: #818cf8; border: 1px solid rgba(79, 70, 229, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; margin-left: 6px;">☕ ${window.escapeHTML(tableLabel)}</span>`
             : '';
 
         document.getElementById('poll-creator-text').innerHTML = `Created by <strong>${window.escapeHTML(creatorDisplay)}</strong> • ${currentSession.candidates ? currentSession.candidates.length : 0} Candidates • ${voterBadge} ${cafeBadge}`;

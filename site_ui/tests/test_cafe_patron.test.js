@@ -726,6 +726,68 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(badge.textContent).toBe('🪑 The Vault');
     });
 
+    test('table badge pill and state cleanly decode double-encoded table names (e.g. The%2520Den -> The Den)', async () => {
+        delete window.location;
+        window.location = new URL('https://meeplemanifesto.com/cafe/pawtucket-library/The%2520Den');
+
+        window.CafePortal.parseVenueContext();
+        expect(window.CafePortal.state.table).toBe('The Den');
+
+        await window.CafePortal.loadVenueMetadata();
+        const badge = document.getElementById('header-table-badge');
+        expect(badge.style.display).toBe('inline-flex');
+        expect(badge.textContent).toBe('🪑 The Den');
+        expect(badge.textContent).not.toContain('%20');
+        expect(badge.textContent).not.toContain('%2520');
+
+        const ctaTableNum = document.getElementById('cta-table-num');
+        if (ctaTableNum) {
+            expect(ctaTableNum.textContent).toBe('The Den');
+        }
+    });
+
+    test('table badge pill and state cleanly decode table query params with %20 or %2520', async () => {
+        delete window.location;
+        window.location = new URL('https://meeplemanifesto.com/cafe/?cafe=pawtucket-library&table=The%2520Den');
+
+        window.CafePortal.parseVenueContext();
+        expect(window.CafePortal.state.table).toBe('The Den');
+
+        await window.CafePortal.loadVenueMetadata();
+        const badge = document.getElementById('header-table-badge');
+        expect(badge.textContent).toBe('🪑 The Den');
+    });
+
+    test('404 redirection logic preserves table names with spaces without double-encoding to %2520', () => {
+        // Simulate 404.html redirection logic with pathname containing /cafe/pawtucket-library/The%20Den
+        function safeDecode(val) {
+            if (!val) return '';
+            var decoded = String(val);
+            try {
+                while (decoded.indexOf('%') !== -1 && /%[0-9a-fA-F]{2}/.test(decoded)) {
+                    var next = decodeURIComponent(decoded);
+                    if (next === decoded) break;
+                    decoded = next;
+                }
+            } catch (e) {}
+            return decoded;
+        }
+
+        const path = '/cafe/pawtucket-library/The%20Den';
+        const parts = path.split('/').filter(Boolean);
+        const cafeIdx = parts.indexOf('cafe');
+        const slug = safeDecode(parts[cafeIdx + 1]);
+        const table = safeDecode(parts[cafeIdx + 2]);
+
+        const searchParams = new URLSearchParams('');
+        searchParams.set('cafe', slug);
+        searchParams.set('table', table);
+
+        const target = '/cafe/?' + searchParams.toString();
+        expect(target).not.toContain('%2520');
+        expect(searchParams.get('table')).toBe('The Den');
+    });
+
     test('openPollCreationModal shows all cafe games with recommended pre-selected at top and text search filtering', async () => {
         const fullLibrary = [
             { id: '101', name: '7 Wonders', rating: 7.7, complexity: 2.3, playing_time: 30, mechanics: ['Card Drafting'] },
