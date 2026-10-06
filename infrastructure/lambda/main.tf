@@ -4,7 +4,7 @@ resource "aws_lambda_function" "bgg_game_data_scraper" {
   package_type                   = "Image"
   image_uri                      = "${var.bgg_game_data_scraper_ecr_url}:latest"
   timeout                        = 180
-  memory_size                    = 256
+  memory_size                    = 1024
   reserved_concurrent_executions = var.data_lambda_concurrency_limit
 
   environment {

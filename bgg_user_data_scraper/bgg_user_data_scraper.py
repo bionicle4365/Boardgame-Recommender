@@ -110,25 +110,6 @@ def get_user_data(username, is_cafe=False):
                     own = _get_element_value(item, ".//status", attribute='own') == '1'
                     if not own:
                         continue
-                    name_elem = item.find('name')
-                    name = name_elem.text.strip() if (name_elem is not None and name_elem.text) else ''
-                    year_elem = item.find('yearpublished')
-                    year_published = safe_int(year_elem.text) if (year_elem is not None and year_elem.text) else None
-                    image_elem = item.find('image')
-                    image = image_elem.text.strip() if (image_elem is not None and image_elem.text) else ''
-                    thumb_elem = item.find('thumbnail')
-                    thumbnail = thumb_elem.text.strip() if (thumb_elem is not None and thumb_elem.text) else ''
-
-                    min_players = safe_int(_get_element_value(item, ".//stats", attribute='minplayers'))
-                    max_players = safe_int(_get_element_value(item, ".//stats", attribute='maxplayers'))
-                    playing_time = safe_int(_get_element_value(item, ".//stats", attribute='playingtime'))
-                    min_playtime = safe_int(_get_element_value(item, ".//stats", attribute='minplaytime'))
-                    max_playtime = safe_int(_get_element_value(item, ".//stats", attribute='maxplaytime'))
-
-                    rating = safe_float(_get_element_value(item, ".//stats/rating", attribute='value'))
-                    avg_rating = safe_float(_get_element_value(item, ".//stats/rating/average", attribute='value'))
-                    users_rated = safe_int(_get_element_value(item, ".//stats/rating/usersrated", attribute='value'))
-                    num_owned = safe_int(_get_element_value(item, ".//stats", attribute='numowned'))
 
                     comment_elem = item.find('comment')
                     comment_text = comment_elem.text.strip() if (comment_elem is not None and comment_elem.text) else None
@@ -138,24 +119,13 @@ def get_user_data(username, is_cafe=False):
                         if m:
                             shelf_location = m.group(1).strip() if m.groups() else m.group(0).strip()
 
-                    cafe_data.append({
+                    entry = {
                         'id': str(item.get('objectid')),
-                        'name': name,
-                        'year_published': year_published,
-                        'min_players': min_players,
-                        'max_players': max_players,
-                        'playing_time': playing_time,
-                        'min_playtime': min_playtime,
-                        'max_playtime': max_playtime,
-                        'thumbnail': thumbnail,
-                        'image': image,
-                        'rating': rating,
-                        'average_rating': avg_rating,
-                        'users_rated': users_rated,
-                        'num_owned': num_owned,
-                        'shelf_location': shelf_location,
                         'own': True
-                    })
+                    }
+                    if shelf_location:
+                        entry['shelf_location'] = shelf_location
+                    cafe_data.append(entry)
                 return cafe_data
 
             user_data = []
@@ -228,11 +198,8 @@ def lambda_handler(event, context):
                 logger.info(f"Successfully retrieved data for {user_id} (is_cafe={is_cafe}). Collection size: {len(collection_data)}")
 
                 if is_cafe:
-                    cols = [
-                        'id', 'name', 'year_published', 'min_players', 'max_players',
-                        'playing_time', 'min_playtime', 'max_playtime', 'thumbnail',
-                        'image', 'rating', 'average_rating', 'users_rated', 'num_owned', 'own'
-                    ]
+                    has_shelf = any('shelf_location' in r for r in collection_data)
+                    cols = ['id', 'shelf_location', 'own'] if has_shelf else ['id', 'own']
                     df = pd.DataFrame(collection_data, columns=cols)
                     s3_output_key = f"cafes/{cafe_id}/collection.parquet"
                 else:

@@ -373,6 +373,72 @@ def test_cafe_collection_success(mock_cafes_table, mock_s3):
     assert 'shelf_location' not in body['collection'][1]
 
 
+@patch('bgg_preferences_handler._get_catalog_df')
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_collection_id_only_links_to_catalog(mock_cafes_table, mock_s3, mock_get_catalog_df):
+    import io
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    import pandas as pd
+
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'the-dice-box',
+            'bgg_username': 'diceboxcafe'
+        }
+    }
+    # Normalized cafe collection: ONLY id, shelf_location, own
+    cafe_data = {
+        'id': ['13', '266192'],
+        'shelf_location': ['A-3', None],
+        'own': [True, True]
+    }
+    table = pa.Table.from_pydict(cafe_data)
+    sink = io.BytesIO()
+    pq.write_table(table, sink)
+    parquet_bytes = sink.getvalue()
+
+    mock_s3.get_object.return_value = {
+        'Body': io.BytesIO(parquet_bytes)
+    }
+
+    # Master catalog DataFrame
+    catalog_df = pd.DataFrame({
+        'id': ['13', '266192', '999999'],
+        'name': ['Catan', 'Wingspan', 'Other Game'],
+        'thumbnail': ['thumb1.jpg', 'thumb2.jpg', 'thumb3.jpg'],
+        'year_published': [1995, 2019, 2020],
+        'rating': [7.1, 8.1, 6.5],
+        'complexity': [2.3, 2.4, 3.0],
+        'min_players': [3, 1, 2],
+        'max_players': [4, 5, 4],
+        'playing_time': [75, 60, 90],
+        'rules_video_url': ['https://youtube.com/watch?v=catan123', None, None],
+        'rules_video_id': ['catan123', None, None]
+    })
+    mock_get_catalog_df.return_value = catalog_df
+
+    event = {
+        'rawPath': '/cafe/collection',
+        'queryStringParameters': {'cafe_id': 'the-dice-box'}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert body['status'] == 'ready'
+    assert body['total'] == 2
+    assert body['collection'][0]['id'] == '13'
+    assert body['collection'][0]['name'] == 'Catan'
+    assert body['collection'][0]['shelf_location'] == 'A-3'
+    assert body['collection'][0]['rules_video_url'] == 'https://youtube.com/watch?v=catan123'
+    assert body['collection'][0]['rules_video_id'] == 'catan123'
+    assert body['collection'][1]['id'] == '266192'
+    assert body['collection'][1]['name'] == 'Wingspan'
+    assert 'shelf_location' not in body['collection'][1]
+
+
+
 @patch('bgg_preferences_handler.cafes_table')
 def test_cafe_meta_not_found(mock_cafes_table):
     mock_cafes_table.get_item.return_value = {}

@@ -29,6 +29,37 @@ cafes_table = dynamodb.Table(cafes_table_name)
 s3 = boto3.client('s3', region_name='us-east-1')
 s3_bucket = os.environ.get('S3_OUTPUT_BUCKET_NAME', 'boardgame-app')
 
+_CATALOG_CACHE = None
+
+def _get_catalog_df():
+    """
+    Loads and caches the master game catalog (catalog.parquet) from S3.
+    Caches in Lambda /tmp and memory for fast ID-linking queries.
+    """
+    global _CATALOG_CACHE
+    if _CATALOG_CACHE is not None:
+        return _CATALOG_CACHE
+
+    local_path = "/tmp/catalog.parquet"
+    if not os.path.exists(local_path):
+        key = "data/boardgames_combined/catalog.parquet"
+        try:
+            s3.download_file(s3_bucket, key, local_path)
+        except Exception as e:
+            print(f"Error downloading {key} from S3: {e}")
+            return None
+
+    import pandas as pd
+    try:
+        df = pd.read_parquet(local_path)
+        if 'id' in df.columns:
+            df['id'] = df['id'].astype(str)
+        _CATALOG_CACHE = df
+        return _CATALOG_CACHE
+    except Exception as e:
+        print(f"Error reading {local_path}: {e}")
+        return None
+
 
 def _handle_validate_bgg(query_params):
     """
@@ -523,30 +554,71 @@ def _handle_cafe_collection(query_params):
         table = pq.read_table(buffer)
         df = table.to_pandas()
 
+        if df.empty or 'id' not in df.columns:
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({
+                    'status': 'ready',
+                    'cafe_id': cafe_id,
+                    'bgg_username': bgg_username,
+                    'total': 0,
+                    'collection': []
+                })
+            }
+
+        df['id'] = df['id'].astype(str)
+
+        # Shelf location mapping from cafe_df
+        shelf_map = {}
+        for shelf_col in ['shelf_location', 'shelf']:
+            if shelf_col in df.columns:
+                for gid, sval in zip(df['id'], df[shelf_col]):
+                    if pd.notna(sval) and str(sval).strip():
+                        shelf_map[str(gid)] = str(sval).strip()
+                break
+
+        # Check if cafe collection is normalized (ID-only) or legacy
+        # Link against master catalog (catalog.parquet) on IDs to get all game information
+        catalog_lookup = {}
+        if 'name' not in df.columns or len(df.columns) <= 3:
+            try:
+                catalog_df = _get_catalog_df()
+                if catalog_df is not None:
+                    ids_set = set(str(gid) for gid in df['id'].dropna())
+                    matched = catalog_df[catalog_df['id'].astype(str).isin(ids_set)]
+                    catalog_lookup = {str(r['id']): r for _, r in matched.iterrows()}
+            except Exception as cat_err:
+                print(f"Warning: Failed to link with master catalog: {cat_err}")
+
         records = []
         for _, row in df.iterrows():
+            gid = str(row.get('id', ''))
+            cat_row = catalog_lookup.get(gid)
+            src = cat_row if cat_row is not None else row
+
             rec = {
-                'id': str(row.get('id', '')),
-                'name': str(row.get('name', '')),
-                'thumbnail': str(row.get('thumbnail', '')) if pd.notna(row.get('thumbnail')) else '',
-                'year_published': int(row.get('year_published', 0)) if pd.notna(row.get('year_published')) else None,
-                'rating': float(row.get('rating', 0.0)) if pd.notna(row.get('rating')) else None,
-                'complexity': float(row.get('complexity', 0.0)) if pd.notna(row.get('complexity')) else None,
-                'min_players': int(row.get('min_players', 1)) if pd.notna(row.get('min_players')) else 1,
-                'max_players': int(row.get('max_players', 1)) if pd.notna(row.get('max_players')) else 1,
-                'playing_time': int(row.get('playing_time', 0)) if pd.notna(row.get('playing_time')) else 0,
+                'id': gid,
+                'name': str(src.get('name', '')) if pd.notna(src.get('name')) else '',
+                'thumbnail': str(src.get('thumbnail', '')) if pd.notna(src.get('thumbnail')) else '',
+                'year_published': int(src.get('year_published', 0)) if pd.notna(src.get('year_published')) and src.get('year_published') != 0 else None,
+                'rating': float(src.get('rating', 0.0)) if pd.notna(src.get('rating')) else None,
+                'complexity': float(src.get('complexity', 0.0)) if pd.notna(src.get('complexity')) else None,
+                'min_players': int(src.get('min_players', 1)) if pd.notna(src.get('min_players')) else 1,
+                'max_players': int(src.get('max_players', 1)) if pd.notna(src.get('max_players')) else 1,
+                'playing_time': int(src.get('playing_time', 0)) if pd.notna(src.get('playing_time')) else 0,
             }
-            shelf = row.get('shelf_location') or row.get('shelf')
+            shelf = shelf_map.get(gid) or row.get('shelf_location') or row.get('shelf')
             if pd.notna(shelf) and str(shelf).strip():
                 rec['shelf_location'] = str(shelf).strip()
-            if pd.notna(row.get('rules_video_url')) and str(row.get('rules_video_url')).strip():
-                rec['rules_video_url'] = str(row['rules_video_url']).strip()
-            if pd.notna(row.get('rules_video_id')) and str(row.get('rules_video_id')).strip():
-                rec['rules_video_id'] = str(row['rules_video_id']).strip()
-            if pd.notna(row.get('rules_video_title')) and str(row.get('rules_video_title')).strip():
-                rec['rules_video_title'] = str(row['rules_video_title']).strip()
-            if pd.notna(row.get('teach_time')) and str(row.get('teach_time')).strip():
-                rec['teach_time'] = str(row['teach_time']).strip()
+            if pd.notna(src.get('rules_video_url')) and str(src.get('rules_video_url')).strip():
+                rec['rules_video_url'] = str(src['rules_video_url']).strip()
+            if pd.notna(src.get('rules_video_id')) and str(src.get('rules_video_id')).strip():
+                rec['rules_video_id'] = str(src['rules_video_id']).strip()
+            if pd.notna(src.get('rules_video_title')) and str(src.get('rules_video_title')).strip():
+                rec['rules_video_title'] = str(src['rules_video_title']).strip()
+            if pd.notna(src.get('teach_time')) and str(src.get('teach_time')).strip():
+                rec['teach_time'] = str(src['teach_time']).strip()
             records.append(rec)
 
         return {

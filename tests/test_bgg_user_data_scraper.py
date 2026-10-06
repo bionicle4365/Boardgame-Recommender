@@ -165,19 +165,6 @@ def test_get_user_data_cafe_mode(mock_get):
     assert len(data) == 1
     game = data[0]
     assert game['id'] == '100'
-    assert game['name'] == 'Azul'
-    assert game['year_published'] == 2017
-    assert game['min_players'] == 2
-    assert game['max_players'] == 4
-    assert game['playing_time'] == 45
-    assert game['min_playtime'] == 30
-    assert game['max_playtime'] == 45
-    assert game['thumbnail'] == 'https://example.com/azul_thumb.jpg'
-    assert game['image'] == 'https://example.com/azul.jpg'
-    assert game['rating'] == 8.5
-    assert game['average_rating'] == 7.8
-    assert game['users_rated'] == 45000
-    assert game['num_owned'] == 50000
     assert game['shelf_location'] == 'B-3'
     assert game['own'] is True
 
@@ -188,19 +175,6 @@ def test_lambda_handler_cafe_mode_saves_cafe_parquet(mock_to_parquet, mock_get_u
     mock_get_user_data.return_value = [
         {
             'id': '100',
-            'name': 'Azul',
-            'year_published': 2017,
-            'min_players': 2,
-            'max_players': 4,
-            'playing_time': 45,
-            'min_playtime': 30,
-            'max_playtime': 45,
-            'thumbnail': 'https://example.com/azul_thumb.jpg',
-            'image': 'https://example.com/azul.jpg',
-            'rating': 8.5,
-            'average_rating': 7.8,
-            'users_rated': 45000,
-            'num_owned': 50000,
             'own': True
         }
     ]
