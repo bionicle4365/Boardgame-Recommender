@@ -405,6 +405,77 @@ def get_vibe_weights(vibe_key):
     }
 
 
+def calculate_bucket_complexity_affinity(cand_complexity, complexity_weights):
+    """
+    Computes complexity affinity using smooth piecewise linear interpolation
+    across the four BGG complexity bucket centers:
+    - Light: 1.5
+    - Medium-Light: 2.4
+    - Medium-Heavy: 3.15
+    - Heavy: 4.0
+
+    If complexity_weights is a dictionary containing any standard bucket keys,
+    interpolates the user's affinity based on candidate complexity.
+    Falls back gracefully to continuous Gaussian decay if only a scalar mean is provided.
+    """
+    if not isinstance(complexity_weights, dict):
+        try:
+            mu = float(complexity_weights)
+            diff = (cand_complexity - mu) / 0.75
+            return max(0.0, min(1.0, math.exp(-0.5 * (diff ** 2))))
+        except (ValueError, TypeError):
+            return 0.0
+
+    bucket_keys = ["Light", "Medium-Light", "Medium-Heavy", "Heavy"]
+    has_buckets = any(b in complexity_weights for b in bucket_keys)
+
+    if not has_buckets:
+        mu = complexity_weights.get('user_mean_complexity') or complexity_weights.get('mean')
+        if mu is not None:
+            try:
+                mu = float(mu)
+                sigma = float(complexity_weights.get('sigma', 0.75))
+                diff = (cand_complexity - mu) / sigma
+                return max(0.0, min(1.0, math.exp(-0.5 * (diff ** 2))))
+            except (ValueError, TypeError):
+                return 0.0
+        return 0.0
+
+    centers = [
+        (1.5, float(complexity_weights.get("Light", 0.0))),
+        (2.4, float(complexity_weights.get("Medium-Light", 0.0))),
+        (3.15, float(complexity_weights.get("Medium-Heavy", 0.0))),
+        (4.0, float(complexity_weights.get("Heavy", 0.0)))
+    ]
+    max_val = max(v for _, v in centers)
+    if max_val <= 0.0:
+        mu = complexity_weights.get('user_mean_complexity') or complexity_weights.get('mean')
+        if mu is not None:
+            try:
+                mu = float(mu)
+                sigma = float(complexity_weights.get('sigma', 0.75))
+                diff = (cand_complexity - mu) / sigma
+                return max(0.0, min(1.0, math.exp(-0.5 * (diff ** 2))))
+            except (ValueError, TypeError):
+                pass
+        return 0.5
+
+    if cand_complexity <= centers[0][0]:
+        return max(0.0, min(1.0, centers[0][1] / max_val))
+    if cand_complexity >= centers[-1][0]:
+        return max(0.0, min(1.0, centers[-1][1] / max_val))
+
+    for i in range(len(centers) - 1):
+        c1, v1 = centers[i]
+        c2, v2 = centers[i + 1]
+        if c1 <= cand_complexity <= c2:
+            t = (cand_complexity - c1) / (c2 - c1)
+            interp = (1.0 - t) * v1 + t * v2
+            return max(0.0, min(1.0, interp / max_val))
+
+    return 0.0
+
+
 def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_publishers,
                          complexity_weights, hotness_scores, query_params, weights,
                          total_mech_weight, total_cat_weight, total_complexity_weight,
@@ -475,33 +546,7 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
                 else:
                     comp_sim = max(0.0, 1.0 - ((cand_complexity - 3.5) / 1.5))
         elif has_complexity:
-            # Continuous Gaussian distance decay centered on user mean complexity
-            mu = None
-            if isinstance(complexity_weights, (int, float)):
-                mu = float(complexity_weights)
-            elif isinstance(complexity_weights, dict):
-                if 'user_mean_complexity' in complexity_weights:
-                    mu = float(complexity_weights['user_mean_complexity'])
-                elif 'mean' in complexity_weights:
-                    mu = float(complexity_weights['mean'])
-                else:
-                    bucket_centers = {"Light": 1.5, "Medium-Light": 2.4, "Medium-Heavy": 3.15, "Heavy": 4.0}
-                    tot_w = sum(complexity_weights.get(b, 0.0) for b in bucket_centers)
-                    if tot_w > 0:
-                        mu = sum(complexity_weights.get(b, 0.0) * center for b, center in bucket_centers.items()) / tot_w
-
-            if mu is not None:
-                sigma = 0.75
-                if isinstance(complexity_weights, dict) and 'sigma' in complexity_weights:
-                    try:
-                        sigma = float(complexity_weights['sigma'])
-                    except (ValueError, TypeError):
-                        sigma = 0.75
-                diff = (cand_complexity - mu) / sigma
-                comp_sim = math.exp(-0.5 * (diff ** 2))
-                comp_sim = max(0.0, min(1.0, comp_sim))
-            else:
-                comp_sim = 0.0
+            comp_sim = calculate_bucket_complexity_affinity(cand_complexity, complexity_weights)
 
     # Compute cosine similarity for designers (projected into same weighted space)
     des_sim = 0.0

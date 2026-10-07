@@ -2603,6 +2603,118 @@ def test_candidate_filtering_complexity_pref_strict(mock_bedrock, mock_hotness, 
     assert "Light Game" not in med_prompt
 
 
+def test_bimodal_bucket_complexity_scoring():
+    import scoring
+
+    # Bimodal gamer: High affinity for Light and Heavy, low for Medium-Light
+    complexity_weights = {
+        "Light": 8.0,
+        "Medium-Light": 2.0,
+        "Medium-Heavy": 3.0,
+        "Heavy": 8.0,
+        "user_mean_complexity": 2.45
+    }
+
+    # 1. Light game (1.3) should score near maximum
+    aff_light = scoring.calculate_bucket_complexity_affinity(1.3, complexity_weights)
+    assert aff_light >= 0.99
+
+    # 2. Heavy game (3.9) should score near maximum
+    aff_heavy = scoring.calculate_bucket_complexity_affinity(3.9, complexity_weights)
+    assert aff_heavy >= 0.90
+
+    # 3. Medium-Light game (2.4) should score low (2.0 / 8.0 = 0.25)
+    aff_med_light = scoring.calculate_bucket_complexity_affinity(2.4, complexity_weights)
+    assert abs(aff_med_light - 0.25) < 0.01
+
+    # 4. Smooth interpolation between 2.4 and 3.15 (e.g. at 2.80)
+    aff_interp = scoring.calculate_bucket_complexity_affinity(2.80, complexity_weights)
+    assert 0.25 < aff_interp < 0.375
+
+
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+def test_group_member_affinities_bucket_interpolation(mock_bedrock, mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status):
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+
+    def mock_download(bucket, key, local_path):
+        if "heavy_lover_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Engine Building": 5.0},
+                    "cat_weights": {"Strategy": 5.0},
+                    "complexity_weights": {"Light": 1.0, "Medium-Light": 2.0, "Medium-Heavy": 5.0, "Heavy": 10.0},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+        elif "party_lover_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Engine Building": 5.0},
+                    "cat_weights": {"Strategy": 5.0},
+                    "complexity_weights": {"Light": 10.0, "Medium-Light": 3.0, "Medium-Heavy": 1.0, "Heavy": 0.5},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+
+    mock_s3.download_file.side_effect = mock_download
+    mock_s3.head_object.return_value = {}
+
+    user_df = pd.DataFrame([
+        {"id": "789", "username": "heavy_lover", "rating": 8.0, "own": True},
+        {"id": "789", "username": "party_lover", "rating": 8.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "100", "name": "Heavy Game", "categories": ["Strategy"], "mechanics": ["Engine Building"], "rating": 8.5, "year_published": 2020, "complexity": 3.9, "designers": [], "publishers": [], "min_players": 1, "max_players": 5}
+    ])
+
+    def mock_read(path, *args, **kwargs):
+        if "catalog" in str(path):
+            return catalog_df
+        else:
+            username = "heavy_lover"
+            if "party_lover" in str(path):
+                username = "party_lover"
+            return user_df[user_df['username'] == username].copy()
+
+    mock_read_parquet.side_effect = mock_read
+    mock_hotness.return_value = []
+
+    mock_bedrock.converse.return_value = {
+        'output': {
+            'message': {
+                'content': [
+                    {'text': '{"recommendations": [{"id": "100", "name": "Heavy Game", "reason": "Strategic weight match."}]}'}
+                ]
+            }
+        }
+    }
+
+    event = {
+        'queryStringParameters': {
+            'username': 'heavy_lover,party_lover',
+            'own_status': 'any'
+        }
+    }
+    res = bgg_recommender.lambda_handler(event, None)
+    assert res['statusCode'] == 200
+    recs = json.loads(res['body'])['recommendations']
+    affinities = recs[0]['member_affinities']
+
+    # For a 3.9 complexity game, heavy_lover must score significantly higher than party_lover
+    assert affinities['heavy_lover'] > affinities['party_lover']
+    assert affinities['heavy_lover'] >= 0.40
+
+
+
 
 
 

@@ -136,9 +136,9 @@ describe('renderRecommendationCard', () => {
       name: 'Gloomhaven',
       reason: 'Great cooperative game.',
       member_affinities: {
-        alice: 0.57,
-        bob: 0.21,
-        charlie: 0.66
+        alice: 0.45,
+        bob: 0.18,
+        charlie: 0.52
       }
     };
 
@@ -152,8 +152,8 @@ describe('renderRecommendationCard', () => {
     expect(container.textContent).toContain('bob');
     expect(container.textContent).toContain('charlie');
     
-    expect(container.textContent).toContain('95%');
-    expect(container.textContent).toContain('35%');
+    expect(container.textContent).toContain('90%');
+    expect(container.textContent).toContain('36%');
     expect(container.textContent).toContain('100%');
     
     expect(html).toContain('linear-gradient(90deg, #10b981, #34d399)');

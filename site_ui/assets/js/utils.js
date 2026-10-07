@@ -1123,8 +1123,8 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
         html += `<div class="member-affinities-list">`;
         
         Object.entries(rec.member_affinities).forEach(([user, val]) => {
-            // Scale cosine similarity (which maxes around 0.60 due to dimensionality differences) to a 0-100% display scale
-            const displayPct = Math.min(100, Math.max(0, Math.round((val / 0.60) * 100)));
+            // Scale composite taste score (which tops around 0.50 due to high-dimensional feature spaces) to a 0-100% display scale
+            const displayPct = Math.min(100, Math.max(0, Math.round((val / 0.50) * 100)));
             
             // Dynamic color determination based on percentage thresholds
             let barColor = "linear-gradient(90deg, #ef4444, #f87171)"; // Crimson/Red for <40%
