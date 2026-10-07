@@ -635,8 +635,11 @@ def _handle_recommendations(query_params):
     # 8. Apply diversity guard to candidates
     top_candidates = diversify_candidates(top_candidates)
 
-    # 9. Deduplicate candidate variants and attach linkages
-    top_candidates = deduplicate_candidate_variants(top_candidates, target_count=12)
+    # 9. Deduplicate candidate variants (bypassed if convention filter is active) and attach linkages
+    if not convention_id:
+        top_candidates = deduplicate_candidate_variants(top_candidates, target_count=12)
+    else:
+        top_candidates = top_candidates[:12]
     top_candidates = attach_candidate_linkages(top_candidates, liked_joined)
 
     # 10. Call Bedrock for personalized narration

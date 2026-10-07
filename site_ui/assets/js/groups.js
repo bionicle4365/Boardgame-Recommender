@@ -1196,9 +1196,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Restore and bind duration/complexity preferences
         const durationPref = localStorage.getItem("bgg_rec_duration_pref") || "any";
-        const complexityPref = localStorage.getItem("bgg_rec_complexity_pref") || "any";
-        document.getElementById("duration_pref").value = durationPref;
-        document.getElementById("complexity_pref").value = complexityPref;
+        let complexityPref = localStorage.getItem("bgg_rec_complexity_pref") || "any";
+
+        // Normalize aliases between pages (e.g. low/high to light/heavy)
+        if (complexityPref === "low") complexityPref = "light";
+        if (complexityPref === "high") complexityPref = "heavy";
+
+        const durationEl = document.getElementById("duration_pref");
+        if (durationEl) {
+            durationEl.value = durationPref;
+            if (durationEl.selectedIndex === -1 || !durationEl.value) {
+                durationEl.value = "any";
+            }
+        }
+
+        const complexityEl = document.getElementById("complexity_pref");
+        if (complexityEl) {
+            complexityEl.value = complexityPref;
+            if (complexityEl.selectedIndex === -1 || !complexityEl.value) {
+                complexityEl.value = "any";
+            }
+        }
 
         document.getElementById("duration_pref").addEventListener("change", function () {
             localStorage.setItem("bgg_rec_duration_pref", this.value);

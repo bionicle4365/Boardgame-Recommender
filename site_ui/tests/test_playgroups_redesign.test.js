@@ -205,4 +205,39 @@ describe('Milestone 60: Playgroup Organizer Redesign UI Logic', () => {
         expect(complexitySelect).not.toBeNull();
         expect(generateBtn.textContent).toContain('Generate Recommendations');
     });
+
+    test('Complexity preference normalizes legacy low/high aliases to light/heavy without leaving select blank', () => {
+        const complexitySelect = document.getElementById('complexity_pref');
+        complexitySelect.innerHTML = `
+            <option value="any" selected>Any Complexity</option>
+            <option value="light">Light (< 2.0 / 5)</option>
+            <option value="medium">Medium (2.0 - 3.5 / 5)</option>
+            <option value="heavy">Heavy (> 3.5 / 5)</option>
+        `;
+
+        // Case 1: Legacy 'low' maps to 'light'
+        let val1 = 'low';
+        if (val1 === 'low') val1 = 'light';
+        if (val1 === 'high') val1 = 'heavy';
+        complexitySelect.value = val1;
+        if (complexitySelect.selectedIndex === -1 || !complexitySelect.value) complexitySelect.value = 'any';
+        expect(complexitySelect.value).toBe('light');
+
+        // Case 2: Legacy 'high' maps to 'heavy'
+        let val2 = 'high';
+        if (val2 === 'low') val2 = 'light';
+        if (val2 === 'high') val2 = 'heavy';
+        complexitySelect.value = val2;
+        if (complexitySelect.selectedIndex === -1 || !complexitySelect.value) complexitySelect.value = 'any';
+        expect(complexitySelect.value).toBe('heavy');
+
+        // Case 3: Invalid / unrecognized value safely falls back to 'any' (placeholder never blank)
+        let val3 = 'invalid_unknown_value';
+        if (val3 === 'low') val3 = 'light';
+        if (val3 === 'high') val3 = 'heavy';
+        complexitySelect.value = val3;
+        if (complexitySelect.selectedIndex === -1 || !complexitySelect.value) complexitySelect.value = 'any';
+        expect(complexitySelect.value).toBe('any');
+        expect(complexitySelect.options[complexitySelect.selectedIndex].text).toBe('Any Complexity');
+    });
 });

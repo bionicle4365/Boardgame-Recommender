@@ -871,6 +871,113 @@ def test_convention_id_filtering(mock_get_active_previews_games, mock_get_active
     assert recs[0]['name'] == 'Catan'
 
 
+@patch('bgg_recommender.get_user_profile_status')
+@patch('bgg_recommender.get_cached_recommendations')
+@patch('bgg_recommender.s3')
+@patch('pandas.read_parquet')
+@patch('bgg_recommender.get_bgg_hotness')
+@patch('bgg_recommender.bedrock')
+@patch('bgg_recommender.get_active_previews')
+@patch('bgg_recommender.get_active_previews_games')
+def test_convention_bypasses_candidate_variant_deduplication(
+    mock_get_active_previews_games, mock_get_active_previews, mock_bedrock,
+    mock_hotness, mock_read_parquet, mock_s3, mock_cache, mock_status
+):
+    mock_get_active_previews.return_value = [
+        {
+            "convention_id": "gencon2026",
+            "name": "Gen Con 2026 Preview",
+            "date": "2026-08-01",
+            "previewid": 92
+        }
+    ]
+    mock_get_active_previews_games.return_value = {
+        "gencon2026": ["101", "102"]
+    }
+
+    now = datetime.now(timezone.utc)
+    mock_status.return_value = (True, False, now)
+    mock_cache.return_value = None
+
+    def mock_download(bucket, key, local_path):
+        if "_taste_profile.json" in key:
+            with open(local_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "mech_weights": {"Dice Rolling": 5.0},
+                    "cat_weights": {"Strategy": 5.0},
+                    "complexity_weights": {"Light": 0.0, "Medium-Light": 0.0, "Medium-Heavy": 5.0, "Heavy": 0.0},
+                    "designer_weights": {},
+                    "publisher_weights": {},
+                    "generated_at": now.isoformat()
+                }, f)
+        elif ".parquet" in key:
+            pass
+
+    mock_s3.download_file.side_effect = mock_download
+    mock_s3.head_object.return_value = {}
+
+    user_df = pd.DataFrame([
+        {"id": "999", "username": "testuser", "rating": 8.0, "own": True}
+    ])
+    catalog_df = pd.DataFrame([
+        {"id": "101", "name": "The Castles of Burgundy", "categories": ["Strategy"], "mechanics": ["Dice Rolling"], "rating": 8.1, "year_published": 2011, "complexity": 3.0},
+        {"id": "102", "name": "The Castles of Burgundy (Special Edition)", "categories": ["Strategy"], "mechanics": ["Dice Rolling"], "rating": 8.6, "year_published": 2023, "complexity": 3.0}
+    ])
+    mock_read_parquet.side_effect = [user_df, catalog_df, user_df, catalog_df]
+    mock_hotness.return_value = []
+
+    mock_bedrock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': '{"recommendations": [{"name": "The Castles of Burgundy", "reason": "Base match."}, {"name": "The Castles of Burgundy (Special Edition)", "reason": "Deluxe match."}]}'
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_bedrock_response
+
+    # 1. With convention filter active: variant deduplication is bypassed
+    event_with_conv = {
+        'queryStringParameters': {
+            'username': 'testuser',
+            'own_status': 'any',
+            'convention_id': 'gencon2026'
+        }
+    }
+    response_conv = bgg_recommender.lambda_handler(event_with_conv, None)
+    assert response_conv['statusCode'] == 200
+    res_body_conv = json.loads(response_conv['body'])
+    recs_conv = res_body_conv['recommendations']
+    rec_names_conv = [r['name'] for r in recs_conv]
+    assert 'The Castles of Burgundy' in rec_names_conv
+    assert 'The Castles of Burgundy (Special Edition)' in rec_names_conv
+
+    # Both variants must be passed in prompt to Bedrock
+    converse_call_conv = mock_bedrock.converse.call_args
+    prompt_text_conv = converse_call_conv[1]['messages'][0]['content'][0]['text']
+    assert '- The Castles of Burgundy (Year: 2011' in prompt_text_conv
+    assert '- The Castles of Burgundy (Special Edition) (Year: 2023' in prompt_text_conv
+
+    # 2. Without convention filter: standard candidate variant deduplication drops the duplicate
+    mock_cache.return_value = None
+    event_no_conv = {
+        'queryStringParameters': {
+            'username': 'testuser',
+            'own_status': 'any'
+        }
+    }
+    response_no_conv = bgg_recommender.lambda_handler(event_no_conv, None)
+    assert response_no_conv['statusCode'] == 200
+    converse_call_no_conv = mock_bedrock.converse.call_args
+    prompt_text_no_conv = converse_call_no_conv[1]['messages'][0]['content'][0]['text']
+    # In standard mode, only 1 of the 2 variants is retained (the duplicate variant is dropped)
+    assert '- The Castles of Burgundy (Year: 2011' not in prompt_text_no_conv
+    assert '- The Castles of Burgundy (Special Edition) (Year: 2023' in prompt_text_no_conv
+
+
 def test_primary_publisher_only():
     import scoring
     

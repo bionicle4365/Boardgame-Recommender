@@ -112,9 +112,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Load and restore duration and complexity preferences
         const durationPref = localStorage.getItem("bgg_rec_duration_pref") || "any";
-        const complexityPref = localStorage.getItem("bgg_rec_complexity_pref") || "any";
-        document.getElementById("duration_pref").value = durationPref;
-        document.getElementById("complexity_pref").value = complexityPref;
+        let complexityPref = localStorage.getItem("bgg_rec_complexity_pref") || "any";
+
+        // Normalize aliases between pages (e.g. low/high from groups page to light/heavy)
+        if (complexityPref === "low") complexityPref = "light";
+        if (complexityPref === "high") complexityPref = "heavy";
+
+        const durationEl = document.getElementById("duration_pref");
+        if (durationEl) {
+            durationEl.value = durationPref;
+            if (durationEl.selectedIndex === -1 || !durationEl.value) {
+                durationEl.value = "any";
+            }
+        }
+
+        const complexityEl = document.getElementById("complexity_pref");
+        if (complexityEl) {
+            complexityEl.value = complexityPref;
+            // Guard: If setting .value failed because it was unrecognized/invalid, fallback to "any"
+            if (complexityEl.selectedIndex === -1 || !complexityEl.value) {
+                complexityEl.value = "any";
+            }
+        }
 
         // Sync visual text badges
         wMechVal.textContent = `${wMechInput.value}%`;
