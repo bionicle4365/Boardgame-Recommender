@@ -200,4 +200,86 @@ describe('Cafe Management Client Logic & Mock API', () => {
         expect(metaData.announcement_banner).toBe('🎉 Trivia Night tonight at 7:30 PM! $5 craft pints on tap');
         expect(metaData.featured_game_ids).toEqual(['13', '266192', '178900']);
     });
+
+    test('manage.html contains featured games library search input, dropdown, and selected chips list', () => {
+        const manageHtml = fs.readFileSync(path.resolve(__dirname, '../cafe/manage.html'), 'utf8');
+        expect(manageHtml).toContain('id="featured-game-search-input"');
+        expect(manageHtml).toContain('id="featured-games-dropdown"');
+        expect(manageHtml).toContain('id="featured-dropdown-results"');
+        expect(manageHtml).toContain('id="featured-games-selected-list"');
+        expect(manageHtml).toContain('id="featured-games-count-badge"');
+        expect(manageHtml).toContain('id="featured-search-clear-btn"');
+        expect(manageHtml).toContain('id="manage-featured-games-input"');
+        expect(manageHtml).toContain('Search your library by game name');
+    });
+
+    test('featured games library filtering matches game names case-insensitively', () => {
+        const mockLibrary = [
+            { id: '295947', name: 'Cascadia', rating: 8.0 },
+            { id: '178900', name: 'Codenames', rating: 7.6 },
+            { id: '266192', name: 'Wingspan', rating: 8.1 },
+            { id: '230802', name: 'Azul', rating: 7.8 },
+            { id: '13', name: 'Catan', rating: 7.1 }
+        ];
+
+        function filterGames(query, library) {
+            const cleanQuery = (query || '').trim().toLowerCase();
+            if (!cleanQuery) return library.slice(0, 20);
+            return library.filter(g => {
+                const name = (g.name || '').toLowerCase();
+                const idStr = String(g.id || '');
+                return name.includes(cleanQuery) || idStr === cleanQuery;
+            });
+        }
+
+        expect(filterGames('wing', mockLibrary)).toEqual([{ id: '266192', name: 'Wingspan', rating: 8.1 }]);
+        expect(filterGames('CATAN', mockLibrary)).toEqual([{ id: '13', name: 'Catan', rating: 7.1 }]);
+        expect(filterGames('code', mockLibrary)).toEqual([{ id: '178900', name: 'Codenames', rating: 7.6 }]);
+        expect(filterGames('178900', mockLibrary)).toEqual([{ id: '178900', name: 'Codenames', rating: 7.6 }]);
+        expect(filterGames('xyz_nomatch', mockLibrary)).toEqual([]);
+        expect(filterGames('', mockLibrary).length).toBe(5);
+    });
+
+    test('featured games selection supports adding, removing, and enforcing max 5 games', () => {
+        let selectedFeatured = [];
+
+        function addFeatured(game) {
+            if (!game || !game.id) return false;
+            const idStr = String(game.id).trim();
+            if (selectedFeatured.some(g => String(g.id) === idStr)) return false;
+            if (selectedFeatured.length >= 5) return false;
+            selectedFeatured.push({ id: idStr, name: game.name || `Game #${idStr}` });
+            return true;
+        }
+
+        function removeFeatured(id) {
+            const idStr = String(id).trim();
+            selectedFeatured = selectedFeatured.filter(g => String(g.id) !== idStr);
+        }
+
+        // Add 5 games successfully
+        expect(addFeatured({ id: '13', name: 'Catan' })).toBe(true);
+        expect(addFeatured({ id: '266192', name: 'Wingspan' })).toBe(true);
+        expect(addFeatured({ id: '178900', name: 'Codenames' })).toBe(true);
+        expect(addFeatured({ id: '230802', name: 'Azul' })).toBe(true);
+        expect(addFeatured({ id: '295947', name: 'Cascadia' })).toBe(true);
+        expect(selectedFeatured.length).toBe(5);
+
+        // Duplicate rejection
+        expect(addFeatured({ id: '13', name: 'Catan' })).toBe(false);
+
+        // Max 5 limit rejection
+        expect(addFeatured({ id: '254640', name: 'Just One' })).toBe(false);
+        expect(selectedFeatured.length).toBe(5);
+
+        // Remove one game
+        removeFeatured('178900');
+        expect(selectedFeatured.length).toBe(4);
+        expect(selectedFeatured.some(g => g.id === '178900')).toBe(false);
+
+        // Now can add another game
+        expect(addFeatured({ id: '254640', name: 'Just One' })).toBe(true);
+        expect(selectedFeatured.length).toBe(5);
+        expect(selectedFeatured.map(g => g.id)).toEqual(['13', '266192', '230802', '295947', '254640']);
+    });
 });

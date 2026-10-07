@@ -396,6 +396,291 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
         margin-bottom: 0;
     }
 
+    /* ── Featured Games Search & Dropdown (Library Search) ── */
+    .featured-selected-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .featured-selected-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 12px;
+        background: var(--card-bg, #ffffff);
+        border: 1px solid var(--manage-border);
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        box-sizing: border-box;
+    }
+
+    .featured-selected-chip:hover {
+        border-color: var(--primary);
+    }
+
+    .featured-chip-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .featured-chip-thumb {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: #f1f5f9;
+        flex-shrink: 0;
+        border: 1px solid var(--manage-border);
+    }
+
+    .featured-chip-thumb-fallback {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        background: var(--badge-bg, #f1f5f9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        border: 1px solid var(--manage-border);
+    }
+
+    .featured-chip-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .featured-chip-title {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .featured-chip-meta {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .featured-chip-remove-btn {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 8px;
+        padding: 5px 10px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .featured-chip-remove-btn:hover {
+        background: #ef4444;
+        color: #ffffff;
+        border-color: #ef4444;
+    }
+
+    .featured-empty-placeholder {
+        padding: 14px 16px;
+        border: 1px dashed var(--manage-border);
+        border-radius: 10px;
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.01);
+    }
+
+    .featured-search-box {
+        position: relative;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .featured-search-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+
+    .featured-search-icon {
+        position: absolute;
+        left: 12px;
+        pointer-events: none;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        z-index: 2;
+    }
+
+    .featured-search-input {
+        padding-left: 38px !important;
+        padding-right: 36px !important;
+    }
+
+    .featured-search-clear-btn {
+        position: absolute;
+        right: 10px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 6px;
+        line-height: 1;
+        transition: color 0.15s ease;
+        z-index: 2;
+    }
+
+    .featured-search-clear-btn:hover {
+        color: var(--text-main);
+    }
+
+    .featured-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: var(--manage-card-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--manage-border);
+        border-radius: 12px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+        max-height: 280px;
+        overflow-y: auto;
+        z-index: 100;
+        display: none;
+    }
+
+    .featured-dropdown-menu.active {
+        display: block;
+        animation: fadeIn 0.15s ease;
+    }
+
+    .featured-dropdown-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--manage-border);
+        transition: background 0.15s ease;
+    }
+
+    .featured-dropdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .featured-dropdown-item:hover,
+    .featured-dropdown-item.focused {
+        background: rgba(79, 70, 229, 0.08);
+    }
+
+    .featured-dropdown-item.disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        background: transparent !important;
+    }
+
+    .featured-item-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .featured-item-thumb {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        object-fit: cover;
+        background: #f1f5f9;
+        flex-shrink: 0;
+        border: 1px solid var(--manage-border);
+    }
+
+    .featured-item-thumb-fallback {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        background: var(--badge-bg, #f1f5f9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+        border: 1px solid var(--manage-border);
+    }
+
+    .featured-item-text {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .featured-item-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .featured-item-sub {
+        font-size: 0.76rem;
+        color: var(--text-muted);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .featured-item-badge {
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: var(--badge-bg);
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+
+    .featured-item-badge.selected {
+        background: rgba(16, 185, 129, 0.12);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .featured-dropdown-empty {
+        padding: 18px;
+        text-align: center;
+        font-size: 0.88rem;
+        color: var(--text-muted);
+    }
 
     .form-submit-row {
         margin-top: 24px;
@@ -941,10 +1226,48 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
                             <div class="field-hint">Broadcast live announcements, drink specials, or tonight's event across all patron phones (Max 160 characters). Patrons can dismiss it once read.</div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="manage-featured-games-input">Featured Games</label>
-                            <input type="text" id="manage-featured-games-input" class="form-input" placeholder="e.g. 13, 266192, 178900">
-                            <div class="field-hint">Comma-separated BGG Game IDs (up to 5) to spotlight in a dedicated "Featured Games" carousel above your collection browser. Perfect for staff favorites or new arrivals.</div>
+                        <div class="form-group" id="manage-featured-games-group">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                                <label for="featured-game-search-input" style="margin-bottom: 0;">Featured Games</label>
+                                <span class="meta-badge" id="featured-games-count-badge" style="font-size: 0.78rem;">0 / 5 Selected</span>
+                            </div>
+                            <div class="field-hint" style="margin-top: 0; margin-bottom: 12px;">
+                                Select up to 5 games from your cafe library to spotlight in the featured carousel on patron phones.
+                            </div>
+
+                            <!-- Selected Games List / Chips -->
+                            <div id="featured-games-selected-list" class="featured-selected-list" style="margin-bottom: 10px;">
+                                <!-- Dynamically rendered chips -->
+                            </div>
+
+                            <!-- Search & Dropdown Input -->
+                            <div class="featured-search-box" id="featured-search-wrapper">
+                                <div class="featured-search-input-wrapper">
+                                    <span class="featured-search-icon">🔍</span>
+                                    <input type="text"
+                                           id="featured-game-search-input"
+                                           class="form-input featured-search-input"
+                                           placeholder="Search your library by game name (e.g. Wingspan, Azul)..."
+                                           autocomplete="off">
+                                    <button type="button"
+                                            id="featured-search-clear-btn"
+                                            class="featured-search-clear-btn"
+                                            style="display: none;"
+                                            aria-label="Clear search">✕</button>
+                                </div>
+
+                                <!-- Dropdown Menu -->
+                                <div id="featured-games-dropdown" class="featured-dropdown-menu">
+                                    <div id="featured-dropdown-results">
+                                        <!-- Dynamically populated options -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="featured-library-status" class="field-hint" style="margin-top: 6px;"></div>
+
+                            <!-- Hidden input maintaining backwards compatibility and storing comma-separated IDs -->
+                            <input type="hidden" id="manage-featured-games-input" name="featured_game_ids" value="">
                         </div>
 
                         <div class="form-submit-row">
@@ -1069,6 +1392,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const formMenuUrlInput    = document.getElementById("manage-menu-url-input");
     const formAnnouncementInput = document.getElementById("manage-announcement-input");
     const formFeaturedGamesInput = document.getElementById("manage-featured-games-input");
+    const featuredSearchInput    = document.getElementById("featured-game-search-input");
+    const featuredSearchClearBtn = document.getElementById("featured-search-clear-btn");
+    const featuredDropdown       = document.getElementById("featured-games-dropdown");
+    const featuredDropdownResults= document.getElementById("featured-dropdown-results");
+    const featuredSelectedList   = document.getElementById("featured-games-selected-list");
+    const featuredCountBadge     = document.getElementById("featured-games-count-badge");
+    const featuredLibraryStatus  = document.getElementById("featured-library-status");
+    const featuredSearchWrapper  = document.getElementById("featured-search-wrapper");
     const saveVenueBtn        = document.getElementById("save-venue-btn");
     const saveBtnIcon         = document.getElementById("save-btn-icon");
     const saveBtnText         = document.getElementById("save-btn-text");
@@ -1089,6 +1420,450 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let allCafes = [];
     let currentCafe = null;
+    let currentCafeLibrary = [];
+    let selectedFeaturedGames = [];
+    const cafeLibraryCache = {};
+    let isLibraryLoading = false;
+    let focusedDropdownIndex = -1;
+
+    // ── Featured Games Library Helpers ──
+    function syncFeaturedGamesHiddenInput() {
+        if (formFeaturedGamesInput) {
+            formFeaturedGamesInput.value = selectedFeaturedGames.map(g => g.id).join(", ");
+        }
+        if (featuredCountBadge) {
+            const count = selectedFeaturedGames.length;
+            featuredCountBadge.textContent = `${count} / 5 Selected`;
+            if (count >= 5) {
+                featuredCountBadge.className = "meta-badge sync-ready";
+            } else {
+                featuredCountBadge.className = "meta-badge";
+            }
+        }
+        if (featuredSearchInput) {
+            if (selectedFeaturedGames.length >= 5) {
+                featuredSearchInput.placeholder = "Maximum 5 featured games selected (remove one to add another)";
+            } else {
+                featuredSearchInput.placeholder = "Search your library by game name (e.g. Wingspan, Azul)...";
+            }
+        }
+    }
+
+    function renderSelectedFeaturedGames() {
+        if (!featuredSelectedList) return;
+        featuredSelectedList.innerHTML = "";
+
+        if (selectedFeaturedGames.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "featured-empty-placeholder";
+            empty.textContent = "No featured games selected yet. Search below to add games to your spotlight carousel.";
+            featuredSelectedList.appendChild(empty);
+            syncFeaturedGamesHiddenInput();
+            return;
+        }
+
+        selectedFeaturedGames.forEach(game => {
+            const chip = document.createElement("div");
+            chip.className = "featured-selected-chip";
+
+            const left = document.createElement("div");
+            left.className = "featured-chip-left";
+
+            if (game.thumbnail) {
+                const img = document.createElement("img");
+                img.className = "featured-chip-thumb";
+                img.src = game.thumbnail;
+                img.alt = game.name || "Game thumbnail";
+                img.onerror = function () {
+                    this.style.display = "none";
+                    const fallback = document.createElement("div");
+                    fallback.className = "featured-chip-thumb-fallback";
+                    fallback.textContent = "🎲";
+                    left.insertBefore(fallback, this);
+                };
+                left.appendChild(img);
+            } else {
+                const fallback = document.createElement("div");
+                fallback.className = "featured-chip-thumb-fallback";
+                fallback.textContent = "🎲";
+                left.appendChild(fallback);
+            }
+
+            const info = document.createElement("div");
+            info.className = "featured-chip-info";
+
+            const title = document.createElement("div");
+            title.className = "featured-chip-title";
+            title.textContent = game.name || `Game #${game.id}`;
+            title.title = game.name || `Game #${game.id}`;
+            info.appendChild(title);
+
+            const meta = document.createElement("div");
+            meta.className = "featured-chip-meta";
+            const metaParts = [];
+            if (game.year) metaParts.push(`📅 ${game.year}`);
+            if (game.shelf) metaParts.push(`📍 ${game.shelf}`);
+            if (game.id) metaParts.push(`ID: ${game.id}`);
+            meta.textContent = metaParts.join(" • ");
+            info.appendChild(meta);
+
+            left.appendChild(info);
+            chip.appendChild(left);
+
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "featured-chip-remove-btn";
+            removeBtn.innerHTML = "<span>✕</span><span>Remove</span>";
+            removeBtn.setAttribute("aria-label", `Remove ${game.name || game.id} from featured games`);
+            removeBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                removeFeaturedGame(game.id);
+            });
+            chip.appendChild(removeBtn);
+
+            featuredSelectedList.appendChild(chip);
+        });
+
+        syncFeaturedGamesHiddenInput();
+    }
+
+    function addFeaturedGame(game) {
+        if (!game || !game.id) return;
+        const idStr = String(game.id).trim();
+        if (selectedFeaturedGames.some(g => String(g.id) === idStr)) {
+            return;
+        }
+        if (selectedFeaturedGames.length >= 5) {
+            showAlert("You can feature up to 5 games in your spotlight carousel.", "info");
+            return;
+        }
+
+        selectedFeaturedGames.push({
+            id: idStr,
+            name: game.name || `Game #${idStr}`,
+            thumbnail: game.thumbnail || "",
+            year: game.year_published || game.year || null,
+            shelf: game.shelf_location || ""
+        });
+
+        renderSelectedFeaturedGames();
+        if (featuredSearchInput) featuredSearchInput.value = "";
+        if (featuredSearchClearBtn) featuredSearchClearBtn.style.display = "none";
+        closeFeaturedDropdown();
+    }
+
+    function removeFeaturedGame(id) {
+        const idStr = String(id).trim();
+        selectedFeaturedGames = selectedFeaturedGames.filter(g => String(g.id) !== idStr);
+        renderSelectedFeaturedGames();
+        if (featuredDropdown && featuredDropdown.classList.contains("active")) {
+            renderDropdownResults(featuredSearchInput ? featuredSearchInput.value : "");
+        }
+    }
+
+    async function loadCafeLibrary(cafe) {
+        if (!cafe || !cafe.cafe_id) return;
+        const cafeId = cafe.cafe_id;
+
+        if (cafeLibraryCache[cafeId]) {
+            currentCafeLibrary = cafeLibraryCache[cafeId];
+            if (featuredLibraryStatus) {
+                featuredLibraryStatus.textContent = `📚 ${currentCafeLibrary.length} games available in cafe library`;
+            }
+            resolveSelectedGameDetails();
+            return;
+        }
+
+        isLibraryLoading = true;
+        if (featuredLibraryStatus) {
+            featuredLibraryStatus.textContent = "🔄 Loading cafe library games...";
+        }
+
+        let games = [];
+        try {
+            const resp = await window.fetchApi(`/cafe/collection?cafe_id=${encodeURIComponent(cafeId)}`);
+            if (resp && resp.ok) {
+                const data = await resp.json();
+                if (Array.isArray(data.collection) && data.collection.length > 0) {
+                    games = data.collection;
+                }
+            }
+        } catch (err) {
+            console.warn("Could not fetch /cafe/collection, trying recommendations fallback:", err);
+        }
+
+        if (!games.length) {
+            try {
+                const resp = await window.fetchApi(`/recommendations?cafe_id=${encodeURIComponent(cafeId)}&vibe=any`);
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    if (Array.isArray(data.recommendations) && data.recommendations.length > 0) {
+                        games = data.recommendations;
+                    }
+                }
+            } catch (fallbackErr) {
+                console.warn("Fallback recommendations fetch failed:", fallbackErr);
+            }
+        }
+
+        isLibraryLoading = false;
+        cafeLibraryCache[cafeId] = games;
+        currentCafeLibrary = games;
+
+        if (featuredLibraryStatus) {
+            if (games.length > 0) {
+                featuredLibraryStatus.textContent = `📚 ${games.length} games available in cafe library`;
+            } else {
+                featuredLibraryStatus.textContent = "ℹ️ Library has no cataloged games yet. Use 'Sync from BGG' above to import your collection.";
+            }
+        }
+
+        resolveSelectedGameDetails();
+    }
+
+    function resolveSelectedGameDetails() {
+        let updated = false;
+        selectedFeaturedGames.forEach(item => {
+            const match = currentCafeLibrary.find(g => String(g.id) === String(item.id));
+            if (match) {
+                if (!item.name || item.name.startsWith("Game #")) {
+                    item.name = match.name;
+                    updated = true;
+                }
+                if (!item.thumbnail && match.thumbnail) {
+                    item.thumbnail = match.thumbnail;
+                    updated = true;
+                }
+                if (!item.year && (match.year_published || match.year)) {
+                    item.year = match.year_published || match.year;
+                    updated = true;
+                }
+                if (!item.shelf && match.shelf_location) {
+                    item.shelf = match.shelf_location;
+                    updated = true;
+                }
+            }
+        });
+        if (updated) {
+            renderSelectedFeaturedGames();
+        }
+    }
+
+    function renderDropdownResults(query = "") {
+        if (!featuredDropdownResults) return;
+        featuredDropdownResults.innerHTML = "";
+        focusedDropdownIndex = -1;
+
+        if (isLibraryLoading) {
+            const loadingItem = document.createElement("div");
+            loadingItem.className = "featured-dropdown-empty";
+            loadingItem.textContent = "🔄 Loading cafe library games...";
+            featuredDropdownResults.appendChild(loadingItem);
+            return;
+        }
+
+        if (!currentCafeLibrary || currentCafeLibrary.length === 0) {
+            const emptyItem = document.createElement("div");
+            emptyItem.className = "featured-dropdown-empty";
+            emptyItem.textContent = "No games found in your cafe library. Try syncing from BGG above.";
+            featuredDropdownResults.appendChild(emptyItem);
+            return;
+        }
+
+        const cleanQuery = (query || "").trim().toLowerCase();
+        let matches = [];
+        if (!cleanQuery) {
+            matches = currentCafeLibrary.slice(0, 20);
+        } else {
+            matches = currentCafeLibrary.filter(g => {
+                const name = (g.name || "").toLowerCase();
+                const idStr = String(g.id || "");
+                return name.includes(cleanQuery) || idStr === cleanQuery;
+            }).slice(0, 25);
+        }
+
+        if (matches.length === 0) {
+            const noMatches = document.createElement("div");
+            noMatches.className = "featured-dropdown-empty";
+            noMatches.textContent = `No games found matching "${query}".`;
+            featuredDropdownResults.appendChild(noMatches);
+            return;
+        }
+
+        matches.forEach((game, idx) => {
+            const isSelected = selectedFeaturedGames.some(s => String(s.id) === String(game.id));
+            const isMaxReached = !isSelected && selectedFeaturedGames.length >= 5;
+
+            const itemEl = document.createElement("div");
+            itemEl.className = `featured-dropdown-item ${isSelected || isMaxReached ? 'disabled' : ''}`;
+            itemEl.setAttribute("data-index", idx);
+            itemEl.setAttribute("data-game-id", game.id);
+
+            const info = document.createElement("div");
+            info.className = "featured-item-info";
+
+            if (game.thumbnail) {
+                const img = document.createElement("img");
+                img.className = "featured-item-thumb";
+                img.src = game.thumbnail;
+                img.alt = game.name || "";
+                img.onerror = function () {
+                    this.style.display = "none";
+                    const fallback = document.createElement("div");
+                    fallback.className = "featured-item-thumb-fallback";
+                    fallback.textContent = "🎲";
+                    info.insertBefore(fallback, this);
+                };
+                info.appendChild(img);
+            } else {
+                const fallback = document.createElement("div");
+                fallback.className = "featured-item-thumb-fallback";
+                fallback.textContent = "🎲";
+                info.appendChild(fallback);
+            }
+
+            const text = document.createElement("div");
+            text.className = "featured-item-text";
+
+            const name = document.createElement("div");
+            name.className = "featured-item-name";
+            name.textContent = game.name || `Game #${game.id}`;
+            text.appendChild(name);
+
+            const sub = document.createElement("div");
+            sub.className = "featured-item-sub";
+            const metaParts = [];
+            if (game.year_published || game.year) metaParts.push(`📅 ${game.year_published || game.year}`);
+            if (game.rating) metaParts.push(`⭐ ${Number(game.rating).toFixed(1)}`);
+            if (game.shelf_location) metaParts.push(`📍 ${game.shelf_location}`);
+            sub.textContent = metaParts.join(" • ") || `ID: ${game.id}`;
+            text.appendChild(sub);
+
+            info.appendChild(text);
+            itemEl.appendChild(info);
+
+            const badge = document.createElement("span");
+            if (isSelected) {
+                badge.className = "featured-item-badge selected";
+                badge.textContent = "✓ Added";
+            } else if (isMaxReached) {
+                badge.className = "featured-item-badge";
+                badge.textContent = "Max 5";
+            } else {
+                badge.className = "featured-item-badge";
+                badge.textContent = "+ Feature";
+            }
+            itemEl.appendChild(badge);
+
+            if (!isSelected && !isMaxReached) {
+                itemEl.addEventListener("click", function () {
+                    addFeaturedGame(game);
+                });
+            }
+
+            featuredDropdownResults.appendChild(itemEl);
+        });
+    }
+
+    function openFeaturedDropdown() {
+        if (!featuredDropdown) return;
+        renderDropdownResults(featuredSearchInput ? featuredSearchInput.value : "");
+        featuredDropdown.classList.add("active");
+    }
+
+    function closeFeaturedDropdown() {
+        if (!featuredDropdown) return;
+        featuredDropdown.classList.remove("active");
+        focusedDropdownIndex = -1;
+    }
+
+    function updateDropdownHighlight(items) {
+        if (!featuredDropdownResults) return;
+        featuredDropdownResults.querySelectorAll(".featured-dropdown-item").forEach(el => el.classList.remove("focused"));
+        if (focusedDropdownIndex >= 0 && items[focusedDropdownIndex]) {
+            items[focusedDropdownIndex].classList.add("focused");
+            items[focusedDropdownIndex].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    // Bind Featured Games Search Events
+    if (featuredSearchInput) {
+        featuredSearchInput.addEventListener("focus", openFeaturedDropdown);
+        featuredSearchInput.addEventListener("click", openFeaturedDropdown);
+        featuredSearchInput.addEventListener("input", function () {
+            const val = this.value;
+            if (featuredSearchClearBtn) featuredSearchClearBtn.style.display = val ? "block" : "none";
+            openFeaturedDropdown();
+        });
+        featuredSearchInput.addEventListener("keydown", function (e) {
+            if (!featuredDropdown || !featuredDropdown.classList.contains("active")) {
+                if (e.key === "ArrowDown" || e.key === "Enter") {
+                    openFeaturedDropdown();
+                    e.preventDefault();
+                }
+                return;
+            }
+            const items = featuredDropdownResults.querySelectorAll(".featured-dropdown-item:not(.disabled)");
+            if (!items.length) return;
+
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                focusedDropdownIndex = (focusedDropdownIndex + 1) % items.length;
+                updateDropdownHighlight(items);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                focusedDropdownIndex = (focusedDropdownIndex - 1 + items.length) % items.length;
+                updateDropdownHighlight(items);
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (focusedDropdownIndex >= 0 && items[focusedDropdownIndex]) {
+                    items[focusedDropdownIndex].click();
+                }
+            } else if (e.key === "Escape") {
+                closeFeaturedDropdown();
+            }
+        });
+    }
+
+    if (featuredSearchClearBtn) {
+        featuredSearchClearBtn.addEventListener("click", function () {
+            featuredSearchInput.value = "";
+            this.style.display = "none";
+            renderDropdownResults("");
+            featuredSearchInput.focus();
+        });
+    }
+
+    document.addEventListener("click", function (e) {
+        if (featuredSearchWrapper && !featuredSearchWrapper.contains(e.target)) {
+            closeFeaturedDropdown();
+        }
+    });
+
+    function initCafeFeaturedGames(cafe) {
+        selectedFeaturedGames = [];
+        let initialIds = [];
+        if (Array.isArray(cafe.featured_game_ids)) {
+            initialIds = cafe.featured_game_ids.map(String).filter(Boolean);
+        } else if (typeof cafe.featured_game_ids === "string" && cafe.featured_game_ids.trim()) {
+            initialIds = cafe.featured_game_ids.split(",").map(id => id.trim()).filter(Boolean);
+        }
+
+        selectedFeaturedGames = initialIds.slice(0, 5).map(id => ({
+            id: id,
+            name: `Game #${id}`,
+            thumbnail: "",
+            year: null,
+            shelf: ""
+        }));
+
+        renderSelectedFeaturedGames();
+        if (featuredSearchInput) featuredSearchInput.value = "";
+        if (featuredSearchClearBtn) featuredSearchClearBtn.style.display = "none";
+        closeFeaturedDropdown();
+
+        loadCafeLibrary(cafe);
+    }
 
     // ── Toast Alert Helper ──
     function showAlert(msg, type = "error") {
@@ -1236,12 +2011,7 @@ document.addEventListener("DOMContentLoaded", function () {
         formShelfRegexInput.value = currentCafe.shelf_regex || "(?:Shelf|Location|Bin):?\\s*([A-Za-z0-9\\-]+)";
         if (formMenuUrlInput) formMenuUrlInput.value = currentCafe.menu_url || "";
         if (formAnnouncementInput) formAnnouncementInput.value = currentCafe.announcement_banner || "";
-        if (formFeaturedGamesInput) {
-            const fGames = Array.isArray(currentCafe.featured_game_ids)
-                ? currentCafe.featured_game_ids.join(", ")
-                : (currentCafe.featured_game_ids || "");
-            formFeaturedGamesInput.value = fGames;
-        }
+        initCafeFeaturedGames(currentCafe);
 
         // Populate Floor Tools
         updateFloorTools();
@@ -1341,9 +2111,9 @@ document.addEventListener("DOMContentLoaded", function () {
             ? formRoomNamesInput.value.split(",").map(r => (window.safeDecode ? window.safeDecode(r) : decodeURIComponent(String(r))).trim()).filter(Boolean)
             : [];
 
-        const featuredIds = formFeaturedGamesInput
-            ? formFeaturedGamesInput.value.split(",").map(id => id.trim()).filter(Boolean).slice(0, 5)
-            : [];
+        const featuredIds = (selectedFeaturedGames && selectedFeaturedGames.length > 0)
+            ? selectedFeaturedGames.map(g => String(g.id).trim()).filter(Boolean).slice(0, 5)
+            : (formFeaturedGamesInput ? formFeaturedGamesInput.value.split(",").map(id => id.trim()).filter(Boolean).slice(0, 5) : []);
 
         const payload = {
             cafe_id: currentCafe.cafe_id,
@@ -1413,6 +2183,12 @@ document.addEventListener("DOMContentLoaded", function () {
             currentCafe.last_sync_timestamp = data.last_sync_timestamp || new Date().toISOString();
             badgeLastSync.textContent = "✅ Synced Just Now";
             badgeLastSync.className = "meta-badge sync-ready";
+
+            // Refresh cafe collection for featured game search
+            if (currentCafe.cafe_id) {
+                delete cafeLibraryCache[currentCafe.cafe_id];
+                loadCafeLibrary(currentCafe);
+            }
         } catch (err) {
             showAlert("Network error triggering BGG sync.", "error");
         } finally {
