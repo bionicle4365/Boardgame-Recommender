@@ -282,4 +282,13 @@ describe('Cafe Management Client Logic & Mock API', () => {
         expect(selectedFeatured.length).toBe(5);
         expect(selectedFeatured.map(g => g.id)).toEqual(['13', '266192', '230802', '295947', '254640']);
     });
+
+    test('manage.html configures in-flow dropdown, scrollbar-width, and progressive library loading', () => {
+        const manageHtml = fs.readFileSync(path.resolve(__dirname, '../cafe/manage.html'), 'utf8');
+        expect(manageHtml).toContain('scrollbar-width: thin');
+        expect(manageHtml).toContain('FEATURED_BATCH_SIZE');
+        expect(manageHtml).toContain('appendMoreDropdownResults');
+        expect(manageHtml).toContain('featuredDropdown.addEventListener("scroll"');
+        expect(manageHtml).toContain('position: relative;');
+    });
 });

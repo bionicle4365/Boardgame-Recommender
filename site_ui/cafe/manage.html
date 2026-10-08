@@ -303,7 +303,8 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
         max-width: 100%;
         min-width: 0;
         box-sizing: border-box;
-        overflow: hidden;
+        overflow: visible;
+        position: relative;
     }
 
     .section-card-title {
@@ -558,20 +559,51 @@ description: "Manage your registered board game cafes, tables, Wi-Fi credentials
     }
 
     .featured-dropdown-menu {
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 0;
-        right: 0;
-        background: var(--manage-card-bg);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        position: relative;
+        margin-top: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        background: var(--card-bg, #ffffff);
         border: 1px solid var(--manage-border);
         border-radius: 12px;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
-        max-height: 280px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+        max-height: 340px;
         overflow-y: auto;
-        z-index: 100;
         display: none;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+    }
+
+    [data-theme="dark"] .featured-dropdown-menu {
+        background: #1e293b;
+        border-color: rgba(51, 65, 85, 0.8);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .featured-dropdown-menu::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .featured-dropdown-menu::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 6px 0;
+    }
+
+    .featured-dropdown-menu::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.45);
+        border-radius: 999px;
+    }
+
+    .featured-dropdown-menu::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.75);
+    }
+
+    [data-theme="dark"] .featured-dropdown-menu::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.35);
+    }
+
+    [data-theme="dark"] .featured-dropdown-menu::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.65);
     }
 
     .featured-dropdown-menu.active {
@@ -1606,6 +1638,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        if (Array.isArray(games)) {
+            games.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        }
+
         isLibraryLoading = false;
         cafeLibraryCache[cafeId] = games;
         currentCafeLibrary = games;
@@ -1619,6 +1655,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         resolveSelectedGameDetails();
+
+        if (featuredDropdown && featuredDropdown.classList.contains("active")) {
+            renderDropdownResults(featuredSearchInput ? featuredSearchInput.value : "");
+        }
     }
 
     function resolveSelectedGameDetails() {
@@ -1649,10 +1689,102 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    let currentRenderedMatches = [];
+    let currentRenderedCount = 0;
+    const FEATURED_BATCH_SIZE = 50;
+
+    function renderItemElement(game, idx) {
+        const isSelected = selectedFeaturedGames.some(s => String(s.id) === String(game.id));
+        const isMaxReached = !isSelected && selectedFeaturedGames.length >= 5;
+
+        const itemEl = document.createElement("div");
+        itemEl.className = `featured-dropdown-item ${isSelected || isMaxReached ? 'disabled' : ''}`;
+        itemEl.setAttribute("data-index", idx);
+        itemEl.setAttribute("data-game-id", game.id);
+
+        const info = document.createElement("div");
+        info.className = "featured-item-info";
+
+        if (game.thumbnail) {
+            const img = document.createElement("img");
+            img.className = "featured-item-thumb";
+            img.src = game.thumbnail;
+            img.alt = game.name || "";
+            img.loading = "lazy";
+            img.onerror = function () {
+                this.style.display = "none";
+                const fallback = document.createElement("div");
+                fallback.className = "featured-item-thumb-fallback";
+                fallback.textContent = "🎲";
+                info.insertBefore(fallback, this);
+            };
+            info.appendChild(img);
+        } else {
+            const fallback = document.createElement("div");
+            fallback.className = "featured-item-thumb-fallback";
+            fallback.textContent = "🎲";
+            info.appendChild(fallback);
+        }
+
+        const text = document.createElement("div");
+        text.className = "featured-item-text";
+
+        const name = document.createElement("div");
+        name.className = "featured-item-name";
+        name.textContent = game.name || `Game #${game.id}`;
+        text.appendChild(name);
+
+        const sub = document.createElement("div");
+        sub.className = "featured-item-sub";
+        const metaParts = [];
+        if (game.year_published || game.year) metaParts.push(`📅 ${game.year_published || game.year}`);
+        if (game.rating) metaParts.push(`⭐ ${Number(game.rating).toFixed(1)}`);
+        if (game.shelf_location) metaParts.push(`📍 ${game.shelf_location}`);
+        sub.textContent = metaParts.join(" • ") || `ID: ${game.id}`;
+        text.appendChild(sub);
+
+        info.appendChild(text);
+        itemEl.appendChild(info);
+
+        const badge = document.createElement("span");
+        if (isSelected) {
+            badge.className = "featured-item-badge selected";
+            badge.textContent = "✓ Added";
+        } else if (isMaxReached) {
+            badge.className = "featured-item-badge";
+            badge.textContent = "Max 5";
+        } else {
+            badge.className = "featured-item-badge";
+            badge.textContent = "+ Feature";
+        }
+        itemEl.appendChild(badge);
+
+        if (!isSelected && !isMaxReached) {
+            itemEl.addEventListener("click", function () {
+                addFeaturedGame(game);
+            });
+        }
+
+        return itemEl;
+    }
+
+    function appendMoreDropdownResults() {
+        if (!featuredDropdownResults || currentRenderedCount >= currentRenderedMatches.length) return;
+        const nextBatch = currentRenderedMatches.slice(currentRenderedCount, currentRenderedCount + FEATURED_BATCH_SIZE);
+        const frag = document.createDocumentFragment();
+        nextBatch.forEach((game, offset) => {
+            frag.appendChild(renderItemElement(game, currentRenderedCount + offset));
+        });
+        currentRenderedCount += nextBatch.length;
+        featuredDropdownResults.appendChild(frag);
+    }
+
     function renderDropdownResults(query = "") {
         if (!featuredDropdownResults) return;
         featuredDropdownResults.innerHTML = "";
         focusedDropdownIndex = -1;
+        currentRenderedMatches = [];
+        currentRenderedCount = 0;
 
         if (isLibraryLoading) {
             const loadingItem = document.createElement("div");
@@ -1673,13 +1805,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const cleanQuery = (query || "").trim().toLowerCase();
         let matches = [];
         if (!cleanQuery) {
-            matches = currentCafeLibrary.slice(0, 20);
+            matches = currentCafeLibrary;
         } else {
             matches = currentCafeLibrary.filter(g => {
                 const name = (g.name || "").toLowerCase();
                 const idStr = String(g.id || "");
                 return name.includes(cleanQuery) || idStr === cleanQuery;
-            }).slice(0, 25);
+            });
         }
 
         if (matches.length === 0) {
@@ -1690,79 +1822,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        matches.forEach((game, idx) => {
-            const isSelected = selectedFeaturedGames.some(s => String(s.id) === String(game.id));
-            const isMaxReached = !isSelected && selectedFeaturedGames.length >= 5;
-
-            const itemEl = document.createElement("div");
-            itemEl.className = `featured-dropdown-item ${isSelected || isMaxReached ? 'disabled' : ''}`;
-            itemEl.setAttribute("data-index", idx);
-            itemEl.setAttribute("data-game-id", game.id);
-
-            const info = document.createElement("div");
-            info.className = "featured-item-info";
-
-            if (game.thumbnail) {
-                const img = document.createElement("img");
-                img.className = "featured-item-thumb";
-                img.src = game.thumbnail;
-                img.alt = game.name || "";
-                img.onerror = function () {
-                    this.style.display = "none";
-                    const fallback = document.createElement("div");
-                    fallback.className = "featured-item-thumb-fallback";
-                    fallback.textContent = "🎲";
-                    info.insertBefore(fallback, this);
-                };
-                info.appendChild(img);
-            } else {
-                const fallback = document.createElement("div");
-                fallback.className = "featured-item-thumb-fallback";
-                fallback.textContent = "🎲";
-                info.appendChild(fallback);
-            }
-
-            const text = document.createElement("div");
-            text.className = "featured-item-text";
-
-            const name = document.createElement("div");
-            name.className = "featured-item-name";
-            name.textContent = game.name || `Game #${game.id}`;
-            text.appendChild(name);
-
-            const sub = document.createElement("div");
-            sub.className = "featured-item-sub";
-            const metaParts = [];
-            if (game.year_published || game.year) metaParts.push(`📅 ${game.year_published || game.year}`);
-            if (game.rating) metaParts.push(`⭐ ${Number(game.rating).toFixed(1)}`);
-            if (game.shelf_location) metaParts.push(`📍 ${game.shelf_location}`);
-            sub.textContent = metaParts.join(" • ") || `ID: ${game.id}`;
-            text.appendChild(sub);
-
-            info.appendChild(text);
-            itemEl.appendChild(info);
-
-            const badge = document.createElement("span");
-            if (isSelected) {
-                badge.className = "featured-item-badge selected";
-                badge.textContent = "✓ Added";
-            } else if (isMaxReached) {
-                badge.className = "featured-item-badge";
-                badge.textContent = "Max 5";
-            } else {
-                badge.className = "featured-item-badge";
-                badge.textContent = "+ Feature";
-            }
-            itemEl.appendChild(badge);
-
-            if (!isSelected && !isMaxReached) {
-                itemEl.addEventListener("click", function () {
-                    addFeaturedGame(game);
-                });
-            }
-
-            featuredDropdownResults.appendChild(itemEl);
-        });
+        currentRenderedMatches = matches;
+        appendMoreDropdownResults();
     }
 
     function openFeaturedDropdown() {
@@ -1808,8 +1869,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                focusedDropdownIndex = (focusedDropdownIndex + 1) % items.length;
-                updateDropdownHighlight(items);
+                if (focusedDropdownIndex >= items.length - 3 && currentRenderedCount < currentRenderedMatches.length) {
+                    appendMoreDropdownResults();
+                }
+                const refreshedItems = featuredDropdownResults.querySelectorAll(".featured-dropdown-item:not(.disabled)");
+                focusedDropdownIndex = (focusedDropdownIndex + 1) % refreshedItems.length;
+                updateDropdownHighlight(refreshedItems);
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 focusedDropdownIndex = (focusedDropdownIndex - 1 + items.length) % items.length;
@@ -1821,6 +1886,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             } else if (e.key === "Escape") {
                 closeFeaturedDropdown();
+            }
+        });
+    }
+
+    if (featuredDropdown) {
+        featuredDropdown.addEventListener("scroll", function () {
+            if (this.scrollTop + this.clientHeight >= this.scrollHeight - 100) {
+                appendMoreDropdownResults();
             }
         });
     }
