@@ -678,4 +678,130 @@ def test_cafe_sync_invalidates_prerendered_json(mock_cafes_table, mock_s3, mock_
     assert 'data/cafes/sync_bgg/collection.json' in deleted_keys
 
 
+@patch('bgg_preferences_handler._get_catalog_df')
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_collection_with_rich_parquet_links_catalog_videos(mock_cafes_table, mock_s3, mock_get_catalog_df):
+    """Verifies that rich cafe collections with > 3 columns and 'name' link with catalog to get video metadata."""
+    import io
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    import pandas as pd
+
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'rich-dice-box',
+            'bgg_username': 'richdicebox'
+        }
+    }
+    # Rich cafe collection (10+ columns including name and rating)
+    cafe_data = {
+        'id': ['13', '266192'],
+        'name': ['Catan Scraped', 'Wingspan Scraped'],
+        'thumbnail': ['thumb_catan.jpg', 'thumb_wing.jpg'],
+        'year_published': [1995, 2019],
+        'min_players': [3, 1],
+        'max_players': [4, 5],
+        'playing_time': [75, 60],
+        'rating': [7.1, 8.1],
+        'complexity': [2.3, 2.4],
+        'shelf_location': ['Shelf A-1', 'Shelf B-2'],
+        'own': [True, True]
+    }
+    table = pa.Table.from_pydict(cafe_data)
+    sink = io.BytesIO()
+    pq.write_table(table, sink)
+    parquet_bytes = sink.getvalue()
+
+    def mock_get_object(Bucket, Key):
+        if Key.endswith('.json'):
+            raise Exception("No pre-rendered json")
+        return {'Body': io.BytesIO(parquet_bytes)}
+
+    mock_s3.get_object.side_effect = mock_get_object
+
+    catalog_df = pd.DataFrame({
+        'id': ['13', '266192'],
+        'name': ['Catan', 'Wingspan'],
+        'thumbnail': ['thumb1.jpg', 'thumb2.jpg'],
+        'year_published': [1995, 2019],
+        'rating': [7.1, 8.1],
+        'complexity': [2.3, 2.4],
+        'min_players': [3, 1],
+        'max_players': [4, 5],
+        'playing_time': [75, 60],
+        'rules_video_url': ['https://youtube.com/watch?v=catan123', 'https://youtube.com/watch?v=wingspan456'],
+        'rules_video_id': ['catan123', 'wingspan456'],
+        'rules_video_title': ['How to Play Catan', 'How to Play Wingspan'],
+        'teach_time': ['10 min teach', '15 min teach']
+    })
+    mock_get_catalog_df.return_value = catalog_df
+
+    event = {
+        'rawPath': '/cafe/collection',
+        'queryStringParameters': {'cafe_id': 'rich-dice-box'}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert body['status'] == 'ready'
+    assert len(body['collection']) == 2
+    assert body['collection'][0]['rules_video_url'] == 'https://youtube.com/watch?v=catan123'
+    assert body['collection'][0]['rules_video_id'] == 'catan123'
+    assert body['collection'][1]['rules_video_url'] == 'https://youtube.com/watch?v=wingspan456'
+    assert body['collection'][1]['rules_video_id'] == 'wingspan456'
+
+
+@patch('bgg_preferences_handler._get_catalog_df')
+@patch('bgg_preferences_handler.s3')
+@patch('bgg_preferences_handler.cafes_table')
+def test_cafe_collection_fast_path_enriches_cached_json_without_videos(mock_cafes_table, mock_s3, mock_get_catalog_df):
+    """Verifies that fast-path pre-rendered collection.json missing video fields gets enriched from catalog."""
+    import io
+    import pandas as pd
+
+    mock_cafes_table.get_item.return_value = {
+        'Item': {
+            'cafe_id': 'fast-cafe',
+            'bgg_username': 'fastbgg'
+        }
+    }
+    cached_payload = {
+        'status': 'ready',
+        'cafe_id': 'fast-cafe',
+        'total': 1,
+        'collection': [
+            {
+                'id': '13',
+                'name': 'Catan',
+                'rating': 7.1,
+                'complexity': 2.3
+            }
+        ]
+    }
+    mock_s3.get_object.return_value = {
+        'Body': io.BytesIO(json.dumps(cached_payload).encode('utf-8'))
+    }
+
+    catalog_df = pd.DataFrame({
+        'id': ['13'],
+        'rules_video_url': ['https://youtube.com/watch?v=catan123'],
+        'rules_video_id': ['catan123'],
+        'rules_video_title': ['How to Play Catan'],
+        'teach_time': ['10 min teach']
+    })
+    mock_get_catalog_df.return_value = catalog_df
+
+    event = {
+        'rawPath': '/cafe/collection',
+        'queryStringParameters': {'cafe_id': 'fast-cafe'}
+    }
+    response = bgg_preferences_handler.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert body['collection'][0]['rules_video_url'] == 'https://youtube.com/watch?v=catan123'
+    assert body['collection'][0]['rules_video_id'] == 'catan123'
+
+
+
 

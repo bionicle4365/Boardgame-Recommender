@@ -543,4 +543,78 @@ def test_recommendations_rules_video_url_propagation():
     assert recs[0]['teach_time'] == '5-10 mins'
 
 
+def test_recommendations_rules_video_id_and_title_propagation():
+    candidates = [
+        {
+            'id': '266192',
+            'name': 'Wingspan',
+            'rating': 8.1,
+            'complexity': 2.4,
+            'mechanics': ['Engine Building'],
+            'shelf_location': 'B-1',
+            'rules_video_url': 'https://www.youtube.com/watch?v=lgDgcLI2B0U',
+            'rules_video_id': 'lgDgcLI2B0U',
+            'rules_video_title': 'Watch It Played - Wingspan'
+        }
+    ]
+    recs = narration.build_fallback_recommendations(candidates, is_cafe=True)
+    assert len(recs) == 1
+    assert recs[0]['rules_video_url'] == 'https://www.youtube.com/watch?v=lgDgcLI2B0U'
+    assert recs[0]['rules_video_id'] == 'lgDgcLI2B0U'
+    assert recs[0]['rules_video_title'] == 'Watch It Played - Wingspan'
+
+
+def test_scoring_retains_rules_video_fields():
+    from scoring import score_candidates
+    import pandas as pd
+
+    candidates_df = pd.DataFrame([
+        {
+            'id': '178900',
+            'name': 'Codenames',
+            'rating': 7.6,
+            'complexity': 1.3,
+            'categories': ['Party Game'],
+            'mechanics': ['Word Play'],
+            'min_players': 2,
+            'max_players': 8,
+            'playing_time': 15,
+            'min_playtime': 15,
+            'max_playtime': 15,
+            'year_published': 2015,
+            'min_age': 14,
+            'thumbnail': 'thumb.jpg',
+            'image': 'img.jpg',
+            'designers': ['Vlaada Chvatil'],
+            'publishers': ['Czech Games Edition'],
+            'suggested_players_best': ['6', '8'],
+            'suggested_players_recommended': ['4', '5'],
+            'shelf_location': 'Shelf A-1',
+            'rules_video_url': 'https://www.youtube.com/watch?v=zQVHkl8oQEU',
+            'rules_video_id': 'zQVHkl8oQEU',
+            'rules_video_title': 'How to Play Codenames'
+        }
+    ])
+
+    top = score_candidates(
+        candidates=candidates_df,
+        mech_weights={'Word Play': 1.0},
+        cat_weights={'Party Game': 1.0},
+        user_designers={},
+        user_publishers={},
+        complexity_weights={'Light': 1.0},
+        hotness_scores={},
+        catalog_df=candidates_df,
+        query_params={'complexity_pref': 'any', 'duration_pref': 'any', 'player_count': '4'},
+        weights={'w_mech': 0.5, 'w_cat': 0.5}
+    )
+
+    assert len(top) == 1
+    cand = top[0]
+    assert cand['rules_video_url'] == 'https://www.youtube.com/watch?v=zQVHkl8oQEU'
+    assert cand['rules_video_id'] == 'zQVHkl8oQEU'
+    assert cand['rules_video_title'] == 'How to Play Codenames'
+
+
+
 

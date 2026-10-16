@@ -641,7 +641,7 @@ def score_candidates(candidates, mech_weights, cat_weights, user_designers, user
         'min_players', 'max_players', 'playing_time', 'min_playtime', 'max_playtime',
         'complexity', 'min_age', 'thumbnail', 'image', 'designers', 'publishers',
         'suggested_players_best', 'suggested_players_recommended',
-        'shelf_location'
+        'shelf_location', 'rules_video_url', 'rules_video_id', 'rules_video_title'
     ]
     columns_to_keep = [col for col in possible_columns if col in candidates.columns]
     candidate_records = candidates[columns_to_keep].to_dict('records')
