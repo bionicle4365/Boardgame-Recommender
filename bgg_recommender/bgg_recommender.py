@@ -510,6 +510,14 @@ def _handle_recommendations(query_params):
         if 'shelf_location' not in candidates.columns:
             candidates['shelf_location'] = None
 
+        for vid_col in ['rules_video_url', 'rules_video_id', 'rules_video_title']:
+            if vid_col in cafe_df.columns:
+                vid_map = dict(zip(cafe_df['id'].astype(str), cafe_df[vid_col]))
+                if vid_col in candidates.columns:
+                    candidates[vid_col] = candidates['id'].map(vid_map).combine_first(candidates[vid_col])
+                else:
+                    candidates[vid_col] = candidates['id'].map(vid_map)
+
     # Convention filter
     convention_id = query_params.get('convention_id')
     if convention_id:

@@ -509,6 +509,58 @@ describe('Cafe Patron Portal & Vibe Check Client Logic', () => {
         expect(iframe.src).toContain('yflGY5bW_1g');
     });
 
+    test('findGameById merges collection and recommendations metadata preserving video fields', () => {
+        window.CafePortal.state.collection = [
+            { id: '13', name: 'Catan', shelf_location: 'Shelf B-1' }
+        ];
+        window.CafePortal.state.recommendations = [
+            { id: '13', name: 'Catan', rules_video_url: 'https://www.youtube.com/watch?v=ZfFw_i0bM18', rules_video_id: 'ZfFw_i0bM18' }
+        ];
+
+        const merged = window.CafePortal.findGameById('13');
+        expect(merged).not.toBeNull();
+        expect(merged.shelf_location).toBe('Shelf B-1');
+        expect(merged.rules_video_id).toBe('ZfFw_i0bM18');
+        expect(merged.rules_video_url).toBe('https://www.youtube.com/watch?v=ZfFw_i0bM18');
+    });
+
+    test('loadCafeCollection bypasses sessionStorage cache when cached games lack video metadata', async () => {
+        // Populate sessionStorage with legacy video-less games
+        const sessionKey = 'cafe_collection_the-malt-and-meeple';
+        sessionStorage.setItem(sessionKey, JSON.stringify({
+            collection: [{ id: '13', name: 'Catan', rules_video_url: null, rules_video_id: null }]
+        }));
+
+        let networkCalled = false;
+        window.fetchApi = vi.fn().mockImplementation(async (endpoint) => {
+            if (endpoint.startsWith('/cafe/collection')) {
+                networkCalled = true;
+                return {
+                    ok: true,
+                    json: async () => ({
+                        status: 'ready',
+                        collection: [
+                            {
+                                id: '13',
+                                name: 'Catan',
+                                rules_video_url: 'https://www.youtube.com/watch?v=ZfFw_i0bM18',
+                                rules_video_id: 'ZfFw_i0bM18'
+                            }
+                        ]
+                    })
+                };
+            }
+            return { ok: false };
+        });
+
+        window.CafePortal.state.isCollectionLoading = false;
+        window.CafePortal.state.venueMeta = { bgg_username: 'the-malt-and-meeple' };
+        await window.CafePortal.loadCafeCollection();
+
+        expect(networkCalled).toBe(true);
+        expect(window.CafePortal.state.collection[0].rules_video_id).toBe('ZfFw_i0bM18');
+    });
+
     test('venue-header-card is structured as a div to avoid header tag collisions and toolbar is sticky', () => {
         const cafeHtmlPath = path.resolve(__dirname, '../cafe/index.html');
         const cafeHtml = fs.readFileSync(cafeHtmlPath, 'utf8');

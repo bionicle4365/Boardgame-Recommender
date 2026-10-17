@@ -79,6 +79,9 @@ def _build_prerender_record(r):
     }
     if r.get('shelf_location'):
         rec['shelf_location'] = str(r['shelf_location'])
+    for f in ['rules_video_url', 'rules_video_id', 'rules_video_title', 'teach_time']:
+        if r.get(f):
+            rec[f] = str(r[f])
     return rec
 
 

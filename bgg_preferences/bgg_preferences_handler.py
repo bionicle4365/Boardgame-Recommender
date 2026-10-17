@@ -588,6 +588,35 @@ def _handle_cafe_collection(query_params):
                 try:
                     data_obj = json.loads(raw_bytes.decode('utf-8'))
                     if isinstance(data_obj, dict) and ('collection' in data_obj or data_obj.get('status') == 'ready'):
+                        col_games = data_obj.get('collection', [])
+                        has_vids = any((g.get('rules_video_url') or g.get('rules_video_id')) for g in col_games if isinstance(g, dict))
+                        if col_games and not has_vids:
+                            try:
+                                import pandas as pd
+                                catalog_df = _get_catalog_df()
+                                if catalog_df is not None:
+                                    ids_set = set(str(g.get('id')) for g in col_games if isinstance(g, dict) and g.get('id'))
+                                    display_cols = ['id', 'rules_video_url', 'rules_video_id', 'rules_video_title', 'teach_time']
+                                    avail_cols = [c for c in display_cols if c in catalog_df.columns]
+                                    matched = catalog_df[catalog_df['id'].astype(str).isin(ids_set)][avail_cols]
+                                    cat_lookup = matched.set_index('id').to_dict(orient='index')
+                                    enriched = False
+                                    for g in col_games:
+                                        if not isinstance(g, dict):
+                                            continue
+                                        cat_item = cat_lookup.get(str(g.get('id', '')))
+                                        if cat_item:
+                                            for f in ['rules_video_url', 'rules_video_id', 'rules_video_title', 'teach_time']:
+                                                v = cat_item.get(f)
+                                                if v is not None and pd.notna(v) and str(v).strip() and not g.get(f):
+                                                    g[f] = str(v).strip()
+                                                    enriched = True
+                                    if enriched:
+                                        data_obj['collection'] = col_games
+                                        raw_bytes = json.dumps(data_obj).encode('utf-8')
+                            except Exception as cat_enrich_err:
+                                print(f"Warning: Failed to enrich cached collection.json: {cat_enrich_err}")
+
                         return {
                             'statusCode': 200,
                             'headers': {
@@ -659,24 +688,22 @@ def _handle_cafe_collection(query_params):
                         shelf_map[str(gid)] = str(sval).strip()
                 break
 
-        # Check if cafe collection is normalized (ID-only) or legacy
         # Link against master catalog (catalog.parquet) on IDs to get all game information
         catalog_lookup = {}
-        if 'name' not in df.columns or len(df.columns) <= 3:
-            try:
-                catalog_df = _get_catalog_df()
-                if catalog_df is not None:
-                    ids_set = set(str(gid) for gid in df['id'].dropna())
-                    display_cols = [
-                        'id', 'name', 'thumbnail', 'year_published', 'rating', 'complexity',
-                        'min_players', 'max_players', 'playing_time', 'rules_video_url',
-                        'rules_video_id', 'rules_video_title', 'teach_time'
-                    ]
-                    avail_cols = [c for c in display_cols if c in catalog_df.columns]
-                    matched = catalog_df[catalog_df['id'].astype(str).isin(ids_set)][avail_cols]
-                    catalog_lookup = matched.set_index('id').to_dict(orient='index')
-            except Exception as cat_err:
-                print(f"Warning: Failed to link with master catalog: {cat_err}")
+        try:
+            catalog_df = _get_catalog_df()
+            if catalog_df is not None:
+                ids_set = set(str(gid) for gid in df['id'].dropna())
+                display_cols = [
+                    'id', 'name', 'thumbnail', 'year_published', 'rating', 'complexity',
+                    'min_players', 'max_players', 'playing_time', 'rules_video_url',
+                    'rules_video_id', 'rules_video_title', 'teach_time'
+                ]
+                avail_cols = [c for c in display_cols if c in catalog_df.columns]
+                matched = catalog_df[catalog_df['id'].astype(str).isin(ids_set)][avail_cols]
+                catalog_lookup = matched.set_index('id').to_dict(orient='index')
+        except Exception as cat_err:
+            print(f"Warning: Failed to link with master catalog: {cat_err}")
 
         records = []
         for row in df.to_dict(orient='records'):

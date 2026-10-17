@@ -813,13 +813,18 @@
             if (cachedRaw) {
                 const cachedData = JSON.parse(cachedRaw);
                 if (hasValidGames(cachedData)) {
-                    state.isCollectionLoading = false;
-                    state.collection = (Array.isArray(cachedData.collection) && cachedData.collection.length > 0)
+                    const games = (Array.isArray(cachedData.collection) && cachedData.collection.length > 0)
                         ? cachedData.collection 
                         : (cachedData.recommendations || []);
-                    if (countBadge) countBadge.textContent = state.collection.length;
-                    filterAndSortCollection();
-                    return;
+                    const hasVideos = games.some(g => g.rules_video_url || g.rules_video_id);
+                    if (hasVideos) {
+                        state.isCollectionLoading = false;
+                        state.collection = games;
+                        if (countBadge) countBadge.textContent = state.collection.length;
+                        filterAndSortCollection();
+                        renderGuruPicks();
+                        return;
+                    }
                 }
             }
         } catch (storageErr) {
@@ -1199,15 +1204,19 @@
     function findGameById(id) {
         if (!id) return null;
         const strId = String(id);
-        if (state.collection && state.collection.length) {
-            const found = state.collection.find(g => String(g.id) === strId);
-            if (found) return found;
+        const fromCol = state.collection ? state.collection.find(g => String(g.id) === strId) : null;
+        const fromRec = state.recommendations ? state.recommendations.find(g => String(g.id) === strId) : null;
+        if (fromCol && fromRec) {
+            return {
+                ...fromCol,
+                ...fromRec,
+                rules_video_id: fromCol.rules_video_id || fromRec.rules_video_id,
+                rules_video_url: fromCol.rules_video_url || fromRec.rules_video_url,
+                rules_video_title: fromCol.rules_video_title || fromRec.rules_video_title,
+                shelf_location: fromCol.shelf_location || fromRec.shelf_location
+            };
         }
-        if (state.recommendations && state.recommendations.length) {
-            const found = state.recommendations.find(g => String(g.id) === strId);
-            if (found) return found;
-        }
-        return null;
+        return fromCol || fromRec || null;
     }
 
     // Open In-App Rules Video Modal
