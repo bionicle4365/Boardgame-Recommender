@@ -13,6 +13,8 @@ An end-to-end cloud-native serverless system that scrapes board game catalogs an
 - 🗺️ **[Core Project Roadmap](file:///d:/Git/Boardgame-Recommender/project_roadmap.md)**: Active and completed engineering milestones for the platform.
 - 🍻 **[Cafe & Bar Edition Roadmap](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md)**: Dedicated roadmap for turnkey board game cafe onboarding and table recommendations.
 - 📐 **[Cafe Edition Design Specification](file:///d:/Git/Boardgame-Recommender/docs/cafe_edition_design.md)**: Full architecture, self-service onboarding flow, and UI specs for board game cafe venues.
+- 📊 **[Market Analysis & Strategic Opportunities](file:///c:/Git/Boardgame-Recommender/docs/market_analysis.md)**: In-depth competitive landscape comparison, feature matrix, and growth opportunities across tabletop discovery tools.
+
 
 ---
 

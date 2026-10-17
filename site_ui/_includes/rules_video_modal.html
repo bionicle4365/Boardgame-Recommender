@@ -1,0 +1,37 @@
+<!-- Rules Video In-App Modal -->
+<div class="rules-video-modal-overlay cafe-video-modal-overlay" id="rules-video-modal" role="dialog" aria-modal="true" aria-labelledby="modal-game-title" style="display: none;">
+    <div class="rules-video-modal-dialog cafe-video-modal-dialog">
+        <div class="rules-video-modal-header cafe-video-modal-header">
+            <div class="rules-video-modal-title-group cafe-video-modal-title-group">
+                <span class="rules-video-modal-badge cafe-video-modal-badge">🎬 How to Play</span>
+                <h3 class="rules-video-modal-title cafe-video-modal-title" id="modal-game-title">Game Title</h3>
+            </div>
+            <button type="button" class="rules-video-modal-close cafe-video-modal-close" id="btn-close-video-modal" aria-label="Close rules video modal">✕</button>
+        </div>
+        <div class="rules-video-modal-body cafe-video-modal-body">
+            <div class="video-player-container" id="video-player-container">
+                <iframe id="rules-video-iframe" 
+                        src="" 
+                        title="Board Game Rules Tutorial" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        allowfullscreen>
+                </iframe>
+            </div>
+            <div class="video-fallback-notice" id="video-fallback-notice" style="display: none;">
+                <p class="video-fallback-msg">No direct video tutorial embed available for this game.</p>
+                <a href="#" id="video-external-search-link" target="_blank" rel="noopener noreferrer" class="btn-external-video">
+                    🔍 Search YouTube for Rules Tutorials
+                </a>
+            </div>
+            <div class="video-modal-footer">
+                <div class="video-meta-pills">
+                    <span class="teach-time-badge" id="modal-teach-time">⏱️ 5-10 min teach</span>
+                    <span class="stat-badge complexity" id="modal-complexity">⚙️ 2.1 / 5</span>
+                </div>
+                <a href="#" id="modal-bgg-link" target="_blank" rel="noopener noreferrer" class="btn-modal-bgg">
+                    📖 View on BGG
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

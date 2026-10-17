@@ -543,4 +543,32 @@ def test_recommendations_rules_video_url_propagation():
     assert recs[0]['teach_time'] == '5-10 mins'
 
 
+def test_standard_recommendations_rules_video_url_propagation():
+    candidates = [
+        {
+            'id': '13',
+            'name': 'Catan',
+            'rating': 7.2,
+            'complexity': 2.3,
+            'mechanics': ['Trading'],
+            'rules_video_url': 'https://www.youtube.com/watch?v=wip12345678'
+        },
+        {
+            'id': '230802',
+            'name': 'Azul',
+            'rating': 7.8,
+            'complexity': 1.76,
+            'mechanics': ['Pattern Building'],
+            'rules_video_url': 'https://www.youtube.com/watch?v=yflGY5bW_1g'
+        }
+    ]
+    recs = narration.build_fallback_recommendations(candidates, is_cafe=False)
+    assert len(recs) == 2
+    assert recs[0]['rules_video_url'] == 'https://www.youtube.com/watch?v=wip12345678'
+    assert recs[0]['teach_time'] == '5-10 mins'
+    assert recs[1]['rules_video_url'] == 'https://www.youtube.com/watch?v=yflGY5bW_1g'
+    assert recs[1]['teach_time'] == '3-5 mins'
+
+
+
 

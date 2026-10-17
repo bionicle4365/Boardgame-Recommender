@@ -1113,6 +1113,14 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
     const thumbUrl = rec.thumbnail || "https://cf.geekdo-images.com/images/placeholder_thumb.png";
     const loadingClass = isPending ? "loading" : "";
     const yearHtml = rec.year_published ? `<span class="badge year-badge" title="Year Published">${rec.year_published}</span>` : "";
+
+    const teachTime = rec.teach_time || (rec.complexity ? window.estimateTeachTime(rec.complexity) : null);
+    if (teachTime) {
+        statsHtml += `
+            <span class="stat-badge teach-time" title="Estimated Rules Teach Time">
+                <span style="color: #6366f1; font-weight: bold; margin-right: 2px;">⏱</span> ${window.escapeHTML(teachTime)}
+            </span>`;
+    }
     
     const affinitiesHtml = (function() {
         if (!rec.member_affinities || Object.keys(rec.member_affinities).length === 0) {
@@ -1149,6 +1157,26 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
         return html;
     })();
 
+    const compVal = rec.complexity != null ? rec.complexity : "";
+    const cardActionsHtml = `
+        <div class="rec-card-actions">
+            <button type="button" class="btn-rec-action btn-watch-rules" 
+                data-game-id="${window.escapeHTML(rec.id || '')}" 
+                data-game-name="${window.escapeHTML(rec.name || '')}" 
+                data-video-url="${window.escapeHTML(rec.rules_video_url || '')}" 
+                data-video-id="${window.escapeHTML(rec.rules_video_id || '')}" 
+                data-teach-time="${window.escapeHTML(teachTime || '')}" 
+                data-complexity="${window.escapeHTML(compVal)}" 
+                data-game-link="${window.escapeHTML(gameLink)}" 
+                title="Watch video rules tutorial in-app">
+                🎬 How to Play
+            </button>
+            <a href="${gameLink}" target="_blank" class="btn-rec-action btn-bgg-link" rel="noopener noreferrer" title="View details on BoardGameGeek">
+                📖 BGG Info
+            </a>
+        </div>
+    `;
+
     return `
         <div class="rec-card" style="animation-delay: ${index * 0.05}s;">
             <div class="rec-card-body">
@@ -1167,9 +1195,228 @@ window.renderRecommendationCard = function(rec, index, isPending = false) {
             </div>
             <p class="rec-reason ${loadingClass}" data-game-id="${rec.id || ''}">${window.escapeHTML(rec.reason)}</p>
             ${affinitiesHtml}
+            ${cardActionsHtml}
         </div>
     `;
 };
+
+// Estimate rules teach time from complexity (in minutes)
+window.estimateTeachTime = function(complexity) {
+    const c = parseFloat(complexity);
+    if (isNaN(c)) return "5-10 min teach";
+    if (c < 1.8) return "3-5 min teach";
+    if (c < 2.5) return "5-10 min teach";
+    if (c < 3.3) return "10-15 min teach";
+    if (c < 4.0) return "15-20 min teach";
+    return "20-30 min teach";
+};
+
+// Extract YouTube 11-char video ID from various URL formats
+window.extractYouTubeId = function(url) {
+    if (!url || typeof url !== "string") return null;
+    const patterns = [
+        /(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/live\/)([a-zA-Z0-9_-]{11})/,
+        /[?&]v=([a-zA-Z0-9_-]{11})/
+    ];
+    for (const p of patterns) {
+        const match = url.match(p);
+        if (match && match[1]) return match[1];
+    }
+    return null;
+};
+
+// Ensure the rules video modal exists in the DOM
+window.ensureRulesVideoModal = function() {
+    let modal = document.getElementById("rules-video-modal");
+    if (!modal && typeof document !== "undefined" && document.body) {
+        modal = document.createElement("div");
+        modal.className = "rules-video-modal-overlay cafe-video-modal-overlay";
+        modal.id = "rules-video-modal";
+        modal.setAttribute("role", "dialog");
+        modal.setAttribute("aria-modal", "true");
+        modal.setAttribute("aria-labelledby", "modal-game-title");
+        modal.style.display = "none";
+        modal.innerHTML = `
+            <div class="rules-video-modal-dialog cafe-video-modal-dialog">
+                <div class="rules-video-modal-header cafe-video-modal-header">
+                    <div class="rules-video-modal-title-group cafe-video-modal-title-group">
+                        <span class="rules-video-modal-badge cafe-video-modal-badge">🎬 How to Play</span>
+                        <h3 class="rules-video-modal-title cafe-video-modal-title" id="modal-game-title">Game Title</h3>
+                    </div>
+                    <button type="button" class="rules-video-modal-close cafe-video-modal-close" id="btn-close-video-modal" aria-label="Close rules video modal">✕</button>
+                </div>
+                <div class="rules-video-modal-body cafe-video-modal-body">
+                    <div class="video-player-container" id="video-player-container">
+                        <iframe id="rules-video-iframe" 
+                                src="" 
+                                title="Board Game Rules Tutorial" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                allowfullscreen>
+                        </iframe>
+                    </div>
+                    <div class="video-fallback-notice" id="video-fallback-notice" style="display: none;">
+                        <p class="video-fallback-msg">No direct video tutorial embed available for this game.</p>
+                        <a href="#" id="video-external-search-link" target="_blank" rel="noopener noreferrer" class="btn-external-video">
+                            🔍 Search YouTube for Rules Tutorials
+                        </a>
+                    </div>
+                    <div class="video-modal-footer">
+                        <div class="video-meta-pills">
+                            <span class="teach-time-badge" id="modal-teach-time">⏱️ 5-10 min teach</span>
+                            <span class="stat-badge complexity" id="modal-complexity">⚙️ 2.1 / 5</span>
+                        </div>
+                        <a href="#" id="modal-bgg-link" target="_blank" rel="noopener noreferrer" class="btn-modal-bgg">
+                            📖 View on BGG
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        window.setupVideoModalControls();
+    }
+    return modal;
+};
+
+// Open the in-app rules video modal
+window.openRulesVideoModal = function(game) {
+    if (!game) return;
+    const modal = window.ensureRulesVideoModal();
+    if (!modal) return;
+
+    const titleEl = document.getElementById("modal-game-title");
+    const iframe = document.getElementById("rules-video-iframe");
+    const videoContainer = document.getElementById("video-player-container");
+    const fallbackNotice = document.getElementById("video-fallback-notice");
+    const fallbackLink = document.getElementById("video-external-search-link");
+    const teachTimeEl = document.getElementById("modal-teach-time");
+    const compEl = document.getElementById("modal-complexity");
+    const bggLink = document.getElementById("modal-bgg-link");
+
+    if (titleEl) titleEl.textContent = game.name || "Game Rules";
+
+    const teach = game.teach_time || window.estimateTeachTime(game.complexity);
+    if (teachTimeEl) teachTimeEl.textContent = `⏱️ ${teach}`;
+
+    if (compEl) {
+        const c = parseFloat(game.complexity);
+        compEl.textContent = !isNaN(c) ? `⚙️ ${c.toFixed(1)} / 5` : "Accessible";
+    }
+
+    if (bggLink) {
+        bggLink.href = game.game_link || (game.id
+            ? `https://boardgamegeek.com/boardgame/${game.id}`
+            : `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(game.name || "")}`);
+    }
+
+    const ytId = game.rules_video_id || window.extractYouTubeId(game.rules_video_url);
+
+    if (ytId && iframe && videoContainer && fallbackNotice) {
+        iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0`;
+        videoContainer.style.display = "block";
+        fallbackNotice.style.display = "none";
+    } else {
+        if (iframe) iframe.src = "";
+        if (videoContainer) videoContainer.style.display = "none";
+        if (fallbackNotice) fallbackNotice.style.display = "block";
+        if (fallbackLink) {
+            fallbackLink.href = `https://www.youtube.com/results?search_query=${encodeURIComponent((game.name || "") + " board game how to play rules")}`;
+        }
+    }
+
+    modal.style.display = "flex";
+    if (typeof document !== "undefined" && document.body) {
+        document.body.style.overflow = "hidden";
+    }
+
+    const closeBtn = document.getElementById("btn-close-video-modal");
+    if (closeBtn && typeof closeBtn.focus === "function") {
+        closeBtn.focus();
+    }
+};
+
+// Close the rules video modal and stop audio/video playback
+window.closeRulesVideoModal = function() {
+    const modal = document.getElementById("rules-video-modal");
+    const iframe = document.getElementById("rules-video-iframe");
+    if (modal) modal.style.display = "none";
+    if (iframe) {
+        iframe.src = "about:blank";
+        iframe.removeAttribute("src");
+    }
+    if (typeof document !== "undefined" && document.body) {
+        document.body.style.overflow = "";
+    }
+};
+
+// Wire up close button, backdrop click, and Escape key for the video modal
+window.setupVideoModalControls = function() {
+    const modal = document.getElementById("rules-video-modal");
+    const closeBtn = document.getElementById("btn-close-video-modal");
+
+    if (closeBtn && !closeBtn._videoModalBound) {
+        closeBtn.addEventListener("click", () => window.closeRulesVideoModal());
+        closeBtn._videoModalBound = true;
+    }
+
+    if (modal && !modal._videoModalBound) {
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) {
+                window.closeRulesVideoModal();
+            }
+        });
+        modal._videoModalBound = true;
+    }
+
+    if (typeof document !== "undefined" && !document._videoModalBound) {
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                const activeModal = document.getElementById("rules-video-modal");
+                if (activeModal && activeModal.style.display !== "none") {
+                    window.closeRulesVideoModal();
+                }
+            }
+        });
+        document._videoModalBound = true;
+    }
+};
+
+// Global delegation for .btn-watch-rules
+if (typeof document !== "undefined") {
+    document.addEventListener("click", function(e) {
+        const watchBtn = e.target.closest && e.target.closest(".btn-watch-rules");
+        if (watchBtn) {
+            e.preventDefault();
+            const gameId = watchBtn.getAttribute("data-game-id");
+            let game = null;
+            if (window.CafePortal && typeof window.CafePortal.findGameById === "function") {
+                game = window.CafePortal.findGameById(gameId);
+            }
+            if (!game) {
+                game = {
+                    id: gameId,
+                    name: watchBtn.getAttribute("data-game-name"),
+                    rules_video_url: watchBtn.getAttribute("data-video-url"),
+                    rules_video_id: watchBtn.getAttribute("data-video-id"),
+                    teach_time: watchBtn.getAttribute("data-teach-time"),
+                    complexity: watchBtn.getAttribute("data-complexity"),
+                    game_link: watchBtn.getAttribute("data-game-link")
+                };
+            }
+            if (game && (game.name || game.id)) {
+                window.openRulesVideoModal(game);
+            }
+        }
+    });
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => {
+            window.setupVideoModalControls();
+        });
+    } else {
+        window.setupVideoModalControls();
+    }
+}
 
 // Render Skeleton Cards placeholder
 window.renderSkeletonCards = function(container, count = 4) {
@@ -1192,6 +1439,10 @@ window.renderSkeletonCards = function(container, count = 4) {
                     </div>
                 </div>
                 <div class="skeleton skeleton-text paragraph" style="width: 100%; height: 42px; border-radius: 6px; margin-top: 10px;"></div>
+                <div class="rec-card-actions" style="display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);">
+                    <div class="skeleton skeleton-text" style="width: 105px; height: 30px; border-radius: 8px; margin: 0;"></div>
+                    <div class="skeleton skeleton-text" style="width: 85px; height: 30px; border-radius: 8px; margin: 0;"></div>
+                </div>
             </div>
         `;
     }

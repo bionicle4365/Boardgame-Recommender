@@ -427,3 +427,149 @@ describe('friendlyResetError mapping', () => {
   });
 });
 
+describe('Rules Video Tutorial & Teach Time Integration', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  test('renderRecommendationCard renders How to Play button and teach time badge', () => {
+    const rec = {
+      id: '13',
+      name: 'Catan',
+      rating: 7.2,
+      complexity: 2.3,
+      rules_video_url: 'https://www.youtube.com/watch?v=wip12345678',
+      teach_time: '10 min teach'
+    };
+
+    const html = window.renderRecommendationCard(rec, 0);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    expect(html).toContain('btn-watch-rules');
+    expect(html).toContain('🎬 How to Play');
+    expect(html).toContain('data-game-id="13"');
+    expect(html).toContain('data-game-name="Catan"');
+    expect(html).toContain('data-video-url="https://www.youtube.com/watch?v=wip12345678"');
+    expect(container.textContent).toContain('⏱ 10 min teach');
+    expect(html).toContain('teach-time');
+    expect(html).toContain('btn-bgg-link');
+  });
+
+  test('extractYouTubeId extracts valid 11-char video IDs from multiple formats', () => {
+    expect(window.extractYouTubeId('https://www.youtube.com/watch?v=lgDgcLI2B0U')).toBe('lgDgcLI2B0U');
+    expect(window.extractYouTubeId('https://youtu.be/zQVHkl8oQEU')).toBe('zQVHkl8oQEU');
+    expect(window.extractYouTubeId('https://www.youtube.com/embed/yflGY5bW_1g')).toBe('yflGY5bW_1g');
+    expect(window.extractYouTubeId('https://www.youtube.com/watch?feature=shared&v=68E6G9vP_xM')).toBe('68E6G9vP_xM');
+    expect(window.extractYouTubeId('https://vimeo.com/12345678')).toBeNull();
+    expect(window.extractYouTubeId('')).toBeNull();
+    expect(window.extractYouTubeId(null)).toBeNull();
+  });
+
+  test('estimateTeachTime maps complexity ranges to friendly duration descriptions', () => {
+    expect(window.estimateTeachTime(1.2)).toBe('3-5 min teach');
+    expect(window.estimateTeachTime(2.1)).toBe('5-10 min teach');
+    expect(window.estimateTeachTime(2.8)).toBe('10-15 min teach');
+    expect(window.estimateTeachTime(3.6)).toBe('15-20 min teach');
+    expect(window.estimateTeachTime(4.4)).toBe('20-30 min teach');
+    expect(window.estimateTeachTime('invalid')).toBe('5-10 min teach');
+  });
+
+  test('openRulesVideoModal opens modal and populates YouTube iframe for valid video URL', () => {
+    const game = {
+      id: '230802',
+      name: 'Azul',
+      complexity: 1.8,
+      teach_time: '5 min teach',
+      rules_video_url: 'https://www.youtube.com/watch?v=yflGY5bW_1g'
+    };
+
+    window.openRulesVideoModal(game);
+
+    const modal = document.getElementById('rules-video-modal');
+    const title = document.getElementById('modal-game-title');
+    const iframe = document.getElementById('rules-video-iframe');
+    const videoContainer = document.getElementById('video-player-container');
+    const fallbackNotice = document.getElementById('video-fallback-notice');
+    const teachTime = document.getElementById('modal-teach-time');
+
+    expect(modal).not.toBeNull();
+    expect(modal.style.display).toBe('flex');
+    expect(title.textContent).toBe('Azul');
+    expect(teachTime.textContent).toContain('5 min teach');
+    expect(videoContainer.style.display).toBe('block');
+    expect(fallbackNotice.style.display).toBe('none');
+    expect(iframe.src).toContain('https://www.youtube-nocookie.com/embed/yflGY5bW_1g');
+  });
+
+  test('openRulesVideoModal falls back gracefully to YouTube search when no video URL exists', () => {
+    const game = {
+      id: '99999',
+      name: 'Obscure Game',
+      complexity: 2.5,
+      rules_video_url: null
+    };
+
+    window.openRulesVideoModal(game);
+
+    const modal = document.getElementById('rules-video-modal');
+    const iframe = document.getElementById('rules-video-iframe');
+    const videoContainer = document.getElementById('video-player-container');
+    const fallbackNotice = document.getElementById('video-fallback-notice');
+    const searchLink = document.getElementById('video-external-search-link');
+
+    expect(modal.style.display).toBe('flex');
+    expect(videoContainer.style.display).toBe('none');
+    expect(fallbackNotice.style.display).toBe('block');
+    expect(searchLink.href).toContain('youtube.com/results?search_query=');
+    expect(searchLink.href).toContain('Obscure%20Game');
+    expect(iframe.src).toBe('');
+  });
+
+  test('closeRulesVideoModal hides modal and resets iframe src', () => {
+    const game = {
+      id: '13',
+      name: 'Catan',
+      rules_video_url: 'https://www.youtube.com/watch?v=wip12345678'
+    };
+
+    window.openRulesVideoModal(game);
+    const modal = document.getElementById('rules-video-modal');
+    const iframe = document.getElementById('rules-video-iframe');
+
+    expect(modal.style.display).toBe('flex');
+    expect(iframe.src).toContain('wip12345678');
+
+    window.closeRulesVideoModal();
+
+    expect(modal.style.display).toBe('none');
+    expect(iframe.src).not.toContain('wip12345678');
+  });
+
+  test('clicking .btn-watch-rules opens the video modal via event delegation', () => {
+    const rec = {
+      id: '266192',
+      name: 'Wingspan',
+      complexity: 2.4,
+      rules_video_url: 'https://www.youtube.com/watch?v=lgDgcLI2B0U'
+    };
+
+    const container = document.createElement('div');
+    container.innerHTML = window.renderRecommendationCard(rec, 0);
+    document.body.appendChild(container);
+
+    const watchBtn = container.querySelector('.btn-watch-rules');
+    expect(watchBtn).not.toBeNull();
+
+    watchBtn.click();
+
+    const modal = document.getElementById('rules-video-modal');
+    const title = document.getElementById('modal-game-title');
+    const iframe = document.getElementById('rules-video-iframe');
+
+    expect(modal.style.display).toBe('flex');
+    expect(title.textContent).toBe('Wingspan');
+    expect(iframe.src).toContain('lgDgcLI2B0U');
+  });
+});
+
