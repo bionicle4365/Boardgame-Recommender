@@ -29,12 +29,16 @@ graph TD
 
 ### Module Directory Breakdown
 
-* **`bgg_recommender.py`**: Main AWS Lambda handler entry point. Routes `/recommendations`, `/profile`, `/conventions`, and session paths (`/session`, `/sessions`, `/cafe/vote/start`). Manages SQS scrape dispatch on cache misses.
-* **`scoring.py`**: Core deterministic scoring pipeline:
+* **`bgg_recommender.py`**: Main AWS Lambda handler entry point and recommendation pipeline coordinator. Routes requests to specialized modules and coordinates end-to-end recommendation flow.
+* **`route_handlers.py`**: Route handlers for `/profile` and `/conventions` endpoints, plus HTTP response and gzip compression utilities.
+* **`profile_loader.py`**: Concurrent S3 Parquet downloader for user profiles, cold-start detection, and prompt context extraction (`liked_games_str`).
+* **`scoring.py`**: Core deterministic scoring & candidate filtering pipeline:
+  - **Candidate Filtering (`filter_candidates`):** Cafe inventory boundaries, convention filtering, ownership/rated exclusions, player count, year range, and complexity tiers.
   - **Tag Affinity (TF-IDF & Cosine Similarity):** True cosine similarity dividing tag dot products by candidate vector norms $\sqrt{|\text{cand\_tags}|}$.
   - **Continuous Gaussian Complexity Decay:** Replaces hard buckets with distance decay centered on target/user mean complexity ($\sigma = 0.75$).
   - **Cafe Vibe Weight Vectors:** Pre-configured Gaussian curves and mechanic affinity matrices for table vibes (`party`, `casual_strategy`, `deep_strategy`, `cooperative`, `direct_conflict`).
-  - **Candidate Diversification:** Deterministic multi-tag post-scoring pass to prevent category and mechanic clustering in shortlists.
+  - **Candidate Diversification & Linkages:** Deterministic multi-tag post-scoring pass to prevent clustering and attach user taste linkage badges.
+  - **Group Member Affinities (`compute_member_affinities`):** Calculates per-attendee taste affinities on shortlisted games for group game nights.
 * **`narration.py`**: Bedrock LLM grounding and narration engine:
   - Employs Amazon Nova Micro with high-temperature conversational grounding.
   - Dedicated **Cafe Sommelier Persona** prompt emphasizing rules teach times, table atmosphere over drinks, group banter, and shelf locations.

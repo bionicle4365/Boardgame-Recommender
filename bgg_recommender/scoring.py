@@ -966,3 +966,188 @@ def attach_candidate_linkages(candidates, liked_games_df, max_favorites=2):
     return candidates
 
 
+def _get_helper(name):
+    import sys
+    rec_mod = sys.modules.get('bgg_recommender')
+    if rec_mod and hasattr(rec_mod, name):
+        return getattr(rec_mod, name)
+    import cache_utils
+    return getattr(cache_utils, name)
+
+
+def filter_candidates(catalog_df, query_params, cafe_id=None, own_status='unowned', owned_ids=None, user_df=None):
+    """
+    Applies candidate filtering constraints against catalog_df:
+    - Cafe inventory restriction (if cafe_id)
+    - Convention active previews restriction (if convention_id)
+    - User ownership and rated-game exclusions
+    - Year published range
+    - Player count
+    - Complexity preference tiers (with zero-result fallback)
+    - Pre-filter rating >= 5.0 for large unowned candidate pools
+    
+    Returns (filtered_candidates, warning_message)
+    """
+    candidates = catalog_df
+    owned_ids = owned_ids or set()
+
+    # Cafe inventory filter (Hard Candidate Boundary)
+    if cafe_id:
+        get_cafe_inv = _get_helper('get_cafe_inventory')
+        cafe_df = get_cafe_inv(cafe_id)
+        if cafe_df is None or cafe_df.empty:
+            logger.warning(f"Cafe inventory for '{cafe_id}' is empty or unavailable.")
+            return candidates.iloc[0:0], f"No games found in {cafe_id}'s library."
+
+        cafe_owned_ids = set(cafe_df['id'].astype(str).tolist())
+        candidates = candidates[candidates['id'].isin(cafe_owned_ids)].copy()
+        logger.info(f"Restricted candidate pool to {len(candidates)} games from cafe '{cafe_id}'.")
+        for shelf_col in ['shelf_location', 'shelf']:
+            if shelf_col in cafe_df.columns:
+                shelf_map = dict(zip(cafe_df['id'].astype(str), cafe_df[shelf_col]))
+                candidates['shelf_location'] = candidates['id'].map(shelf_map)
+                break
+        if 'shelf_location' not in candidates.columns:
+            candidates['shelf_location'] = None
+
+        for vid_col in ['rules_video_url', 'rules_video_id', 'rules_video_title']:
+            if vid_col in cafe_df.columns:
+                vid_map = dict(zip(cafe_df['id'].astype(str), cafe_df[vid_col]))
+                if vid_col in candidates.columns:
+                    candidates[vid_col] = candidates['id'].map(vid_map).combine_first(candidates[vid_col])
+                else:
+                    candidates[vid_col] = candidates['id'].map(vid_map)
+
+    # Convention filter
+    convention_id = query_params.get('convention_id')
+    if convention_id:
+        get_active_prevs = _get_helper('get_active_previews')
+        active_previews = get_active_prevs()
+        matched_conv = next((c for c in active_previews if c.get('convention_id') == convention_id), None)
+        if matched_conv:
+            get_active_games = _get_helper('get_active_previews_games')
+            active_games = get_active_games()
+            conv_game_ids = {str(g_id) for g_id in active_games.get(convention_id, []) if g_id}
+            logger.info(f"Filtering candidates by convention '{convention_id}' ({len(conv_game_ids)} games)")
+            candidates = candidates[candidates['id'].isin(conv_game_ids)]
+        else:
+            logger.warning(f"Convention '{convention_id}' not found in active previews config. Fetching full catalog instead.")
+
+    # Ownership filter (inverted in cafe mode: patrons play from cafe shelves)
+    if not cafe_id:
+        if own_status == 'owned':
+            candidates = candidates[candidates['id'].isin(owned_ids)]
+        elif own_status == 'unowned':
+            candidates = candidates[~candidates['id'].isin(owned_ids)]
+
+        # Filter out already rated games
+        if own_status != 'owned' and user_df is not None and not user_df.empty:
+            rated_ids = set(user_df['id'].tolist())
+            candidates = candidates[~candidates['id'].isin(rated_ids)]
+
+    # Year range filter
+    year_start = query_params.get('year_start')
+    year_end = query_params.get('year_end')
+    if year_start:
+        try:
+            candidates = candidates[candidates['year_published'] >= int(year_start)]
+        except ValueError:
+            pass
+    if year_end:
+        try:
+            candidates = candidates[candidates['year_published'] <= int(year_end)]
+        except ValueError:
+            pass
+
+    # Player count filter
+    player_count = query_params.get('player_count')
+    if player_count:
+        try:
+            p_count = int(player_count)
+            if 'min_players' in candidates.columns:
+                candidates = candidates[(candidates['min_players'] <= p_count) & (candidates['max_players'] >= p_count)]
+            else:
+                candidates = candidates[candidates['max_players'] >= p_count]
+            logger.info(f"Filtered catalog by player_count {p_count}. Candidates left: {len(candidates)}")
+        except ValueError:
+            pass
+
+    # Complexity level filter
+    complexity_pref = query_params.get('complexity_pref', 'any')
+    if complexity_pref and complexity_pref != 'any' and 'complexity' in candidates.columns:
+        filtered_candidates = candidates
+        if complexity_pref in ('low', 'light'):
+            filtered_candidates = candidates[candidates['complexity'].notna() & (candidates['complexity'] <= 2.0)]
+        elif complexity_pref in ('high', 'heavy'):
+            filtered_candidates = candidates[candidates['complexity'].notna() & (candidates['complexity'] >= 3.5)]
+        elif complexity_pref == 'medium':
+            filtered_candidates = candidates[candidates['complexity'].notna() & (candidates['complexity'] >= 2.0) & (candidates['complexity'] <= 3.5)]
+
+        if not filtered_candidates.empty:
+            candidates = filtered_candidates
+            logger.info(f"Filtered catalog by complexity_pref '{complexity_pref}'. Candidates left: {len(candidates)}")
+        else:
+            logger.warning(
+                f"Complexity filter '{complexity_pref}' matched 0 games in candidate pool; "
+                f"falling back to full candidate pool ({len(candidates)} games) so scoring can rank nearest matches."
+            )
+
+    # Pre-filter by rating for unowned recommendations
+    if not cafe_id and own_status != 'owned' and len(candidates) > 100:
+        candidates = candidates[candidates['rating'] >= 5.0]
+        logger.info(f"Pre-filtered candidates by rating >= 5.0. Candidates left: {len(candidates)}")
+
+    return candidates, None
+
+
+def compute_member_affinities(recs_list, usernames, individual_profiles, catalog_df, hotness_scores, weights):
+    """
+    Computes individual playgroup member affinities for multi-user requests.
+    Evaluates pure intrinsic taste against each game, invariant to session/situational
+    query filters (complexity, duration, player count).
+    """
+    if len(usernames) <= 1 or not recs_list:
+        return recs_list
+
+    logger.info(f"Computing individual playgroup member affinities for {len(usernames)} attendees.")
+    has_complexity = 'complexity' in catalog_df.columns
+    has_publishers = 'publishers' in catalog_df.columns
+
+    member_query_params = {
+        'complexity_pref': 'any',
+        'duration_pref': 'any',
+        'player_count': None
+    }
+
+    for rec in recs_list:
+        game_id = str(rec['id'])
+        matching_rows = catalog_df[catalog_df['id'] == game_id]
+        if matching_rows.empty:
+            continue
+        game_row = matching_rows.iloc[0].to_dict()
+
+        affinities = {}
+        for u in usernames:
+            u_prof = individual_profiles.get(u)
+            if u_prof:
+                u_mech, u_cat, u_des, u_pub, u_comp = u_prof
+
+                u_total_mech = sum(u_mech.values()) or 1.0
+                u_total_cat = sum(u_cat.values()) or 1.0
+                u_total_comp = sum(v for k, v in u_comp.items() if k != 'user_mean_complexity') or 1.0
+                u_total_des = sum(u_des.values()) or 1.0
+                u_total_pub = sum(u_pub.values()) or 1.0
+
+                u_score = calculate_game_score(
+                    game_row, u_mech, u_cat, u_des, u_pub, u_comp,
+                    hotness_scores, member_query_params, weights,
+                    u_total_mech, u_total_cat, u_total_comp, u_total_des, u_total_pub,
+                    has_complexity, has_publishers
+                )
+                affinities[u] = round(u_score, 3)
+        rec['member_affinities'] = affinities
+
+    return recs_list
+
+
+
