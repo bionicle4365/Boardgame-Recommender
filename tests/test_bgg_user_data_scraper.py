@@ -103,6 +103,21 @@ def test_get_user_data_invalid_user(mock_get):
     data = bgg_user_data_scraper.get_user_data("tester1")
     assert data == [] # Should return an empty list gracefully
 
+@patch('requests.get')
+def test_get_user_data_empty_collection(mock_get):
+    xml_str = """
+    <items totalitems="0" termsofuse="https://boardgamegeek.com/xmlapi/termsofuse" pubdate="Tue, 20 Oct 2026 00:00:00 +0000">
+    </items>
+    """
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.content = xml_str.encode('utf-8')
+    mock_get.return_value = mock_resp
+
+    data = bgg_user_data_scraper.get_user_data("tester_empty")
+    assert data == [] # Must return empty list so empty parquet is saved, preventing infinite scraping loops
+
+
 @patch('bgg_user_data_scraper.get_user_data')
 @patch('pandas.DataFrame.to_parquet')
 def test_lambda_handler_invalid_user_saves_empty_parquet(mock_to_parquet, mock_get_user_data):

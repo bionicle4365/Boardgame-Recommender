@@ -363,6 +363,109 @@ def test_narrate_recommendations_taste_test_user(mock_bedrock_func):
 
 
 @patch('narration._bedrock')
+def test_narrate_recommendations_personality_test_user_with_write_ins(mock_bedrock_func):
+    mock_bedrock = MagicMock()
+    mock_bedrock_func.return_value = mock_bedrock
+
+    mock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': json.dumps({
+                            'recommendations': [
+                                {'name': 'Spirit Island', 'reason': 'Cooperative power growth matches your love for Terraforming Mars.'}
+                            ]
+                        })
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_response
+
+    candidates = [
+        {'id': '161936', 'name': 'Spirit Island', 'rating': 8.3, 'complexity': 4.0, 'mechanics': ['Cooperative Game']}
+    ]
+
+    inline_weights = {
+        'mech_weights': {'Cooperative Game': 10.0},
+        'personality_answers': {
+            'format': 'cooperative',
+            'complexity': 'heavy',
+            'duration': 'long',
+            'theme': 'nature',
+            'luck': 'low',
+            'style': 'engine',
+            'interaction': 'solitaire'
+        }
+    }
+    liked_str = "- Terraforming Mars (User Rating: 9.0, Categories: Economic, Mechanics: Engine Building)"
+
+    recs = narration.narrate_recommendations(
+        candidates, liked_str, "Weight context", {},
+        is_inline=True, inline_weights=inline_weights, inline_profile=[{'id': '167791', 'rating': 9.0}]
+    )
+
+    assert recs is not None
+    assert len(recs) == 1
+    assert recs[0]['name'] == 'Spirit Island'
+
+    mock_bedrock.converse.assert_called_once()
+    call_kwargs = mock_bedrock.converse.call_args[1]
+    prompt_text = call_kwargs['messages'][0]['content'][0]['text']
+
+    # Both personality preferences and write-in favorite games must be retained in the prompt
+    assert "The user is a new board game player who completed a playstyle preference quiz" in prompt_text
+    assert "Cooperative gameplay" in prompt_text
+    assert "They also indicated they enjoy the following favorite board games:" in prompt_text
+    assert "Terraforming Mars" in prompt_text
+
+
+@patch('narration._bedrock')
+def test_narrate_recommendations_taste_test_user_no_likes(mock_bedrock_func):
+    mock_bedrock = MagicMock()
+    mock_bedrock_func.return_value = mock_bedrock
+
+    mock_response = {
+        'output': {
+            'message': {
+                'content': [
+                    {
+                        'text': json.dumps({
+                            'recommendations': [
+                                {'name': 'Cascadia', 'reason': 'Breezy spatial puzzle with approachable modern drafting.'}
+                            ]
+                        })
+                    }
+                ]
+            }
+        }
+    }
+    mock_bedrock.converse.return_value = mock_response
+
+    candidates = [
+        {'id': '295947', 'name': 'Cascadia', 'rating': 8.0, 'complexity': 1.8, 'mechanics': ['Tile Placement']}
+    ]
+
+    recs = narration.narrate_recommendations(
+        candidates, "", "Weight context", {},
+        is_inline=True, inline_weights=None, inline_profile=[{'id': '13', 'rating': 3.0}]
+    )
+
+    assert recs is not None
+    assert len(recs) == 1
+    assert recs[0]['name'] == 'Cascadia'
+
+    mock_bedrock.converse.assert_called_once()
+    call_kwargs = mock_bedrock.converse.call_args[1]
+    prompt_text = call_kwargs['messages'][0]['content'][0]['text']
+
+    assert "The user completed a Quick Taste Test and did not indicate any specific favorite titles." in prompt_text
+    assert "Please recommend 10 approachable, highly-rated modern board games" in prompt_text
+
+
+@patch('narration._bedrock')
 def test_narrate_recommendations_with_candidate_linkages(mock_bedrock_func):
     mock_bedrock = MagicMock()
     mock_bedrock_func.return_value = mock_bedrock

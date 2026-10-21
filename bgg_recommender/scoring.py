@@ -141,7 +141,7 @@ def compute_taste_profile_inline(user_df, catalog_df, usernames, user_parquet_mo
             if u_liked.empty:
                 u_liked = u_df[u_df['own']]
             if u_liked.empty:
-                u_liked = u_df.sort_values(by='rating', ascending=False).head(10)
+                u_liked = u_df[u_df['rating'] >= 6.5].sort_values(by='rating', ascending=False).head(10)
 
             u_joined = u_liked.merge(catalog_df, on='id', how='inner', suffixes=('_user', '_catalog'))
 
@@ -568,7 +568,13 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
             pub_sim = pub_dot / (pub_user_norm * pub_game_norm) if (pub_user_norm * pub_game_norm) > 0 else 0.0
 
     # Compute composite score
-    denominator = w_mech + w_cat + w_pop + w_hot + w_comp + w_des + w_pub
+    has_user_designers = bool(user_designers and any(v > 0 for v in user_designers.values())) if isinstance(user_designers, dict) else False
+    has_user_publishers = bool(user_publishers and any(v > 0 for v in user_publishers.values())) if isinstance(user_publishers, dict) else False
+
+    effective_w_des = w_des if has_user_designers else 0.0
+    effective_w_pub = w_pub if has_user_publishers else 0.0
+
+    denominator = w_mech + w_cat + w_pop + w_hot + w_comp + effective_w_des + effective_w_pub
     if denominator > 0:
         comp_score = (
             w_mech * mech_sim +
@@ -576,8 +582,8 @@ def calculate_game_score(row, mech_weights, cat_weights, user_designers, user_pu
             w_pop * pop_score +
             w_hot * hot_score +
             w_comp * comp_sim +
-            w_des * des_sim +
-            w_pub * pub_sim
+            effective_w_des * des_sim +
+            effective_w_pub * pub_sim
         ) / denominator
     else:
         comp_score = 0.0

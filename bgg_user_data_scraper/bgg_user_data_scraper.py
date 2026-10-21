@@ -124,7 +124,7 @@ def get_user_data(username, is_cafe=False):
 
             if not items:
                 logger.warning(f"No collection items found for user {username}.")
-                return None
+                return [] # Gracefully return empty list so empty parquet is saved
 
             if is_cafe:
                 cafe_data = []

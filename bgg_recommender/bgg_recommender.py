@@ -466,7 +466,7 @@ def _handle_recommendations(query_params):
     if liked_games.empty:
         liked_games = user_df[user_df['own']]
     if liked_games.empty:
-        liked_games = user_df.sort_values(by='rating', ascending=False).head(10)
+        liked_games = user_df[user_df['rating'] >= 6.5].sort_values(by='rating', ascending=False).head(10)
 
     liked_joined = liked_games.merge(catalog_df, on='id', how='inner', suffixes=('_user', '_catalog'))
     if 'rating_user' in liked_joined.columns:

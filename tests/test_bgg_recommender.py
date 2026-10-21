@@ -2714,6 +2714,87 @@ def test_group_member_affinities_bucket_interpolation(mock_bedrock, mock_hotness
     assert affinities['heavy_lover'] >= 0.40
 
 
+@patch('bgg_recommender.narrate_recommendations')
+@patch('bgg_recommender.get_catalog')
+def test_disliked_games_not_in_liked_games(mock_catalog, mock_narrate):
+    mock_catalog.return_value = pd.DataFrame([
+        {'id': '10', 'name': 'Catan', 'categories': ['Strategy'], 'mechanics': ['Trading'], 'rating': 7.5, 'complexity': 2.3, 'min_players': 3, 'max_players': 4},
+        {'id': '20', 'name': 'Azul', 'categories': ['Abstract'], 'mechanics': ['Tile Placement'], 'rating': 7.8, 'complexity': 1.8, 'min_players': 2, 'max_players': 4}
+    ])
+    mock_narrate.return_value = [{'id': '20', 'name': 'Azul', 'reason': 'Test'}]
+
+    # Only disliked games (3.0)
+    event = {
+        'body': json.dumps({
+            'inline_profile': [
+                {'id': '10', 'rating': 3.0}
+            ],
+            'narrate': True
+        })
+    }
+    response = bgg_recommender.lambda_handler(event, None)
+    assert response['statusCode'] == 200
+
+    # Verify liked_games_str passed to narrate_recommendations did not include Catan (disliked)
+    call_args = mock_narrate.call_args[0]
+    liked_games_str = call_args[1]
+    assert "Catan" not in liked_games_str
+    assert liked_games_str == ""
+
+
+def test_dynamic_denominator_normalization():
+    import scoring
+    mech_weights = {"Hand Management": 10.0}
+    cat_weights = {"Card Game": 10.0}
+    complexity_weights = {"Light": 1.0}
+    hotness_scores = {}
+    query_params = {}
+    weights = {
+        'w_mech': 0.60,
+        'w_cat': 0.40,
+        'w_pop': 0.20,
+        'w_hot': 0.00,
+        'w_comp': 0.35,
+        'w_des': 0.35,
+        'w_pub': 0.10
+    }
+
+    # Perfect match game: rating 9.0 -> pop_score = (9-5)/4 = 1.0; complexity 1.5 -> comp_sim = 1.0
+    cand = {
+        "id": "1",
+        "mechanics": ["Hand Management"],
+        "categories": ["Card Game"],
+        "rating": 9.0,
+        "complexity": 1.5,
+        "designers": ["Unknown Designer"],
+        "publishers": ["Unknown Pub"]
+    }
+
+    # Case 1: Quiz user with no designers or publishers ({}, {})
+    score_no_des_pub = scoring.calculate_game_score(
+        cand, mech_weights, cat_weights, {}, {}, complexity_weights,
+        hotness_scores, query_params, weights,
+        10.0, 10.0, 1.0, 0.0, 0.0, True, True
+    )
+    # Denominator should exclude w_des (0.35) and w_pub (0.10):
+    # Denom = 0.60 + 0.40 + 0.20 + 0.00 + 0.35 = 1.55
+    # Numerator = 0.60(1.0) + 0.40(1.0) + 0.20(1.0) + 0.35(1.0) = 1.55 -> Score = 1.0!
+    assert abs(score_no_des_pub - 1.0) < 0.001
+
+    # Case 2: User with designer & publisher preferences
+    score_with_des_pub = scoring.calculate_game_score(
+        cand, mech_weights, cat_weights, {"Favorite Designer": 5.0}, {"Favorite Pub": 5.0},
+        complexity_weights, hotness_scores, query_params, weights,
+        10.0, 10.0, 1.0, 5.0, 5.0, True, True
+    )
+    # Denominator includes w_des and w_pub: 1.55 + 0.35 + 0.10 = 2.0
+    # Cand has non-matching designer/pub: des_sim=0, pub_sim=0 -> Numerator = 1.55
+    # Score = 1.55 / 2.0 = 0.775
+    assert abs(score_with_des_pub - 0.775) < 0.001
+
+
+
+
 
 
 

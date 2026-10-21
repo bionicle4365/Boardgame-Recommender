@@ -873,7 +873,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     ];
 
+    let currentInlineProfile = null;
+    let currentInlineWeights = null;
+
     function getRecommendations(forceRefresh = false, inlineProfile = null, inlineWeights = null) {
+        if (inlineProfile !== null || inlineWeights !== null) {
+            currentInlineProfile = inlineProfile;
+            currentInlineWeights = inlineWeights;
+        }
+
         // Clear existing states and cancel active polling
         isPollingActive = false;
         if (pollingTimeout) {
@@ -1076,12 +1084,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     form.addEventListener("submit", function (e) {
         e.preventDefault();
-        getRecommendations(false);
+        const usernameVal = document.getElementById("username").value.trim();
+        if (!usernameVal && (currentInlineProfile || currentInlineWeights)) {
+            getRecommendations(false, currentInlineProfile, currentInlineWeights);
+        } else {
+            if (usernameVal) {
+                currentInlineProfile = null;
+                currentInlineWeights = null;
+            }
+            getRecommendations(false);
+        }
     });
 
     if (refreshBtn) {
         refreshBtn.addEventListener("click", function () {
-            getRecommendations(true);
+            const usernameVal = document.getElementById("username").value.trim();
+            if (!usernameVal && (currentInlineProfile || currentInlineWeights)) {
+                getRecommendations(true, currentInlineProfile, currentInlineWeights);
+            } else {
+                getRecommendations(true);
+            }
         });
     }
 
@@ -1799,6 +1821,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+        const profileToSend = inlineProfile.length > 0 ? inlineProfile : null;
         if (inlineWeights) {
             syncManualPreferencesToBackend(inlineWeights);
         }

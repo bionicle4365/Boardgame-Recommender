@@ -248,15 +248,16 @@ def narrate_recommendations(top_candidates, liked_games_str, weight_context, que
             top_candidates, vibe=vibe, query_params=query_params, cafe_name=cafe_name or cafe_id
         )
     # Determine prompt mode: Personality Test, Quick Taste Test, or Collection Profile
-    elif is_inline and inline_weights and not liked_games_str:
-        # Casual Personality Test user (no rated games, purely quiz answers)
-        personality_answers = inline_weights.get('personality_answers') if isinstance(inline_weights, dict) else None
+    elif is_inline and inline_weights and isinstance(inline_weights, dict) and inline_weights.get('personality_answers'):
+        # Casual Personality Test user (quiz answers, optionally with write-in liked games)
+        personality_answers = inline_weights.get('personality_answers')
         personality_desc = format_personality_context(personality_answers)
+        liked_section = f"\nThey also indicated they enjoy the following favorite board games:\n{liked_games_str}\n" if liked_games_str else ""
         user_prompt = f"""You are a board game recommendation expert.
      
 The user is a new board game player who completed a playstyle preference quiz with the following declared preferences:
 {personality_desc}
-{weight_context}
+{liked_section}{weight_context}
 Please recommend 10 board games for the user.
 """
         explanation_instructions = """For each recommended game:
@@ -275,6 +276,18 @@ Please recommend 10 board games for the user.
         explanation_instructions = """For each recommended game:
 1. Provide the exact name of the game.
 2. Provide an engaging 1–2 sentence recommendation in a knowledgeable sommelier voice (aim for 20–28 words, maximum 32 words). Directly connect the recommended game to 1 or 2 specific titles they liked above (using the provided similarity linkages), highlighting shared mechanics (e.g. tile drafting, card combos, resource management), pacing, or tactical feel. Use active verbs and direct comparisons. Vary your sentence structures across recommendations and do not repeat the same opening phrase."""
+
+    elif is_inline:
+        # Quick Taste Test user with no liked games (e.g. disliked or skipped all seeds)
+        user_prompt = f"""You are a board game recommendation expert.
+     
+The user completed a Quick Taste Test and did not indicate any specific favorite titles.
+{weight_context}
+Please recommend 10 approachable, highly-rated modern board games across diverse mechanics and themes.
+"""
+        explanation_instructions = """For each recommended game:
+1. Provide the exact name of the game.
+2. Provide an engaging 1–2 sentence recommendation in a knowledgeable sommelier voice (aim for 20–28 words, maximum 32 words). Explain what makes the game exciting, accessible, and an outstanding modern game. Use active verbs and highlight concrete mechanics or gameplay dynamics. Vary your sentence structures across recommendations and do not repeat the same opening phrase."""
 
     else:
         # Standard BGG User Profile (collection games with ratings)
