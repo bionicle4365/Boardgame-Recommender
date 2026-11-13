@@ -109,7 +109,7 @@ flowchart LR
 ### Gap 2: Physical Venue Operations (Turnkey Cafe & Bar Edition)
 * **The Reality:** Board game cafes and hobby lounges have hundreds of games on shelves, but floor staff spend an unsustainable amount of time walking tables asking: *"How many players? How long do you have? What have you played before?"* Patrons often give up and play something familiar like *Connect 4* or *Jenga*.
 * **Competitor Blind Spot:** Not a single major recommendation platform offers a white-label or turnkey venue edition that maps to physical shelf coordinates (`Shelf: B-3`), filters by table surface area, links to rules videos, and connects to food/drink menus.
-* **Our Advantage:** Our completed **Cafe & Bar Edition** ([cafe_roadmap.md](file:///c:/Git/Boardgame-Recommender/cafe_roadmap.md)) is uniquely positioned to dominate this B2B / B2B2C space.
+* **Our Advantage:** Our completed **Cafe & Bar Edition** ([docs/cafe_edition_design.md](file:///d:/Git/Boardgame-Recommender/docs/cafe_edition_design.md)) is uniquely positioned to dominate this B2B / B2B2C space.
 
 ### Gap 3: Conversational Explainability & "The Sommelier Effect"
 * **The Reality:** A cold recommendation that says *"Recommended: Concordia (Score: 84.2%)"* fails to build anticipation or trust. Players want to know: *"Why should we play this tonight?"*
@@ -142,10 +142,10 @@ To capitalize on these market openings, here are concrete, prioritized recommend
      - *Dessert / Wind-down:* 20-min push-your-luck / laughter game (e.g. *Camel Up*)
   2. **Affiliate / Local Retailer Bridge ("Buy This Game"):** When a patron finishes playing a game at a cafe or loves a recommendation, provide a 1-tap price comparison link powered by Board Game Oracle or local store inventory.
 
-### Opportunity D: Milestone 31 (Similar Games / "More Like This") & Milestone 46 (Score Inspector)
-* **Next Implementation Steps:** The roadmap already details two highly impactful features waiting for implementation:
-  - [Milestone 31: Similar Games API Endpoint](file:///c:/Git/Boardgame-Recommender/project_roadmap.md#L24-L46): Provides an instant, profile-free content lookup (`GET /similar?game_id=...`) based on Jaccard mechanics/categories overlap. Directly competes with TryTheseGames without the cold-start barrier.
-  - [Milestone 46: Game Score Inspector](file:///c:/Git/Boardgame-Recommender/project_roadmap.md#L49-L73): Solves algorithmic transparency ("Why wasn't Gloomhaven recommended?") by breaking down per-dimension scores and filter exclusion reasons.
+### Opportunity D: Similar Games ("More Like This") & Game Score Inspector
+* **Next Implementation Steps:** Two high-impact backlog features are tracked in GitHub Issues for implementation:
+  - [Similar Games API Endpoint (Issue #1)](https://github.com/bionicle4365/Boardgame-Recommender/issues/1): Provides an instant, profile-free content lookup (`GET /similar?game_id=...`) based on Jaccard mechanics/categories overlap. Directly competes with TryTheseGames without the cold-start barrier.
+  - [Game Score Inspector (Issue #2)](https://github.com/bionicle4365/Boardgame-Recommender/issues/2): Solves algorithmic transparency ("Why wasn't Gloomhaven recommended?") by breaking down per-dimension scores and filter exclusion reasons.
 
 ---
 

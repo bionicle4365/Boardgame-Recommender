@@ -10,8 +10,7 @@ An end-to-end cloud-native serverless system that scrapes board game catalogs an
 
 - 🏛️ **[System Architecture & High-Level Design](file:///d:/Git/Boardgame-Recommender/docs/ARCHITECTURE.md)**: Deep dive into the serverless architecture, data lake hierarchy, TF-IDF cosine scoring algorithms, and security model.
 - 💻 **[Local Development Guide](file:///d:/Git/Boardgame-Recommender/LOCAL_DEVELOPMENT.md)**: Comprehensive instructions for running Jekyll locally, offline mock APIs, and running unit test suites.
-- 🗺️ **[Core Project Roadmap](file:///d:/Git/Boardgame-Recommender/project_roadmap.md)**: Active and completed engineering milestones for the platform.
-- 🍻 **[Cafe & Bar Edition Roadmap](file:///d:/Git/Boardgame-Recommender/cafe_roadmap.md)**: Dedicated roadmap for turnkey board game cafe onboarding and table recommendations.
+- 📋 **[GitHub Issues Task Queue](https://github.com/bionicle4365/Boardgame-Recommender/issues)**: Active engineering backlog and autonomous agent task specifications (proposed issues carry `agent:proposed` and require human approval via `agent:ready` or `python scripts/agent_backlog.py approve <issue_number>` before autonomous execution).
 - 📐 **[Cafe Edition Design Specification](file:///d:/Git/Boardgame-Recommender/docs/cafe_edition_design.md)**: Full architecture, self-service onboarding flow, and UI specs for board game cafe venues.
 - 📊 **[Market Analysis & Strategic Opportunities](file:///c:/Git/Boardgame-Recommender/docs/market_analysis.md)**: In-depth competitive landscape comparison, feature matrix, and growth opportunities across tabletop discovery tools.
 

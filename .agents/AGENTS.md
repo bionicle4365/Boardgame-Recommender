@@ -2,19 +2,16 @@
 
 - **Infrastructure Deployment**: Never execute `terraform apply` directly. Wait for the user to execute it or use alternative CI/CD workflows as preferred by the user.
 
-- **Milestone Tracking**: When user requests an update to a roadmap, the agent must:
-    1. Identify and read the relevant roadmap file (`project_roadmap.md` or `cafe_roadmap.md`).
-    2. Update the document to add the new milestone with the objective, design notes, architecture decisions and task list.
-    3. Save the changes to the file.
-    4. Confirm with the user that the roadmap has been updated.
-    5. The agent should not execute any code or deploy any changes when updating the roadmap.
+- **Task & Milestone Planning**: When the user requests planning or adding a new feature/milestone without immediate execution, create a structured GitHub Issue via `python scripts/agent_backlog.py create ...` with `owned_paths`, `forbidden_paths`, `acceptance_criteria`, and `verification_commands`, and confirm the created issue URL with the user without executing code changes.
 
 - **Artifact Storage**: When you need to save a working script (e.g. `format_mechanics.py`) or the results of an experiment (`mechanic_frequencies.json`), save it to the `scratch/` directory. Do not save generated artifacts to your workspace or working folders.
 
 - **Testing**: Run automated unit tests (`pytest` for backend, `npm test` / `npm --prefix site_ui test` for frontend) before deploying any changes. Browser or visual UI verification is not necessary; UI verification will be performed manually by the user.
 
-- **Agentic Orchestration**: For all complex workspace tasks, reference the `agentic-orchestrator` skill. Identify the appropriate specialized domains (BGG API, AWS Architecture, Site UI, Recommender System, or Data Engineering) required for the task, load their rules, and coordinate implementation sequentially. 
+- **Agentic Orchestration**: For all complex workspace tasks, reference the `agentic-orchestrator` skill. Identify the appropriate specialized domains (BGG API, AWS Architecture, Site UI, Recommender System, or Data Engineering) required for the task, load their rules, and coordinate implementation sequentially (Single-Domain Plan -> Execute) or in parallel (Multi-Domain Swarm).
 
 - **Docker Images**: Never build or push Docker images directly. Deployment processes and image builds should only be run via designated CI/CD pipelines (e.g. GitHub Actions).
 
-- **Milestone Completion**: When a milestone is completed, update the relevant roadmap file (`project_roadmap.md` or `cafe_roadmap.md`) to mark the milestone as completed and remove the milestone and its tasks from the active tasks section.
+- **GitHub Issues Task Queue & Completion**: Track all active and autonomous tasks as GitHub Issues via `scripts/agent_backlog.py` (`list`, `get`, `approve`, `next`, `claim`, `complete`). Newly generated/created issues start as `agent:proposed` and require human approval (`approve <issue_number>` or relabeling to `agent:ready` on GitHub) before an autonomous agent may claim them (`agent:ready` -> `agent:in-progress` -> `agent:review`). Before marking any task complete (`python scripts/agent_backlog.py complete <issue_number> --pr agent/issue-<issue_number> --push --open-pr --summary "..."`), run `python scripts/verify_task.py --issue <issue_number>` (or `--owned-paths ...`) to validate branch isolation, file ownership boundaries, and required unit tests (`pytest`, `npm --prefix site_ui test`, and `terraform validate` when applicable).
+
+- **Branch & Pull Request Isolation**: Autonomous task executors must **never** commit directly to, push to, or merge into `main` (or `master`), and must never merge Pull Requests. All autonomous task work must happen on an isolated `agent/issue-<issue_number>` branch and be submitted as a Pull Request to `main` via `python scripts/agent_backlog.py complete <issue_number> --pr agent/issue-<issue_number> --push --open-pr --summary "..."` so the human reviewer performs the final merge.

@@ -1,0 +1,92 @@
+{
+  "version": "1.0.0",
+  "source_of_truth_files": {
+    "catalog_parquet": "bgg_compactor/combine_raw_to_single_file.py",
+    "collections_parquet": "bgg_user_data_scraper/bgg_user_data_scraper.py",
+    "apigateway_routes": "infrastructure/apigateway/main.tf",
+    "recommender_handler": "bgg_recommender/bgg_recommender.py",
+    "preferences_handler": "bgg_preferences/bgg_preferences_handler.py",
+    "api_proxy_handler": "bgg_api_proxy/bgg_api_proxy.py"
+  },
+  "parquet_schemas": {
+    "catalog": {
+      "s3_key": "data/boardgames_combined/catalog.parquet",
+      "columns": [
+        {"name": "id", "type": "string"},
+        {"name": "type", "type": "string"},
+        {"name": "name", "type": "string"},
+        {"name": "year_published", "type": "int32"},
+        {"name": "min_players", "type": "int32"},
+        {"name": "max_players", "type": "int32"},
+        {"name": "playing_time", "type": "int32"},
+        {"name": "min_playtime", "type": "int32"},
+        {"name": "max_playtime", "type": "int32"},
+        {"name": "min_age", "type": "int32"},
+        {"name": "rating", "type": "float64"},
+        {"name": "complexity", "type": "float64"},
+        {"name": "thumbnail", "type": "string"},
+        {"name": "image", "type": "string"},
+        {"name": "categories", "type": "list<string>"},
+        {"name": "mechanics", "type": "list<string>"},
+        {"name": "designers", "type": "list<string>"},
+        {"name": "publishers", "type": "list<string>"},
+        {"name": "suggested_players_best", "type": "list<string>"},
+        {"name": "suggested_players_recommended", "type": "list<string>"},
+        {"name": "rules_video_url", "type": "string"},
+        {"name": "rules_video_id", "type": "string"},
+        {"name": "rules_video_title", "type": "string"}
+      ]
+    },
+    "user_collection": {
+      "s3_key_pattern": "data/users/{username}.parquet",
+      "columns": [
+        {"name": "id", "type": "string"},
+        {"name": "username", "type": "string"},
+        {"name": "rating", "type": "float64"},
+        {"name": "own", "type": "bool"}
+      ]
+    },
+    "cafe_collection": {
+      "s3_key_pattern": "data/cafes/{cafe_id}/collection.parquet",
+      "columns": [
+        {"name": "id", "type": "string"},
+        {"name": "name", "type": "string"},
+        {"name": "thumbnail", "type": "string"},
+        {"name": "year_published", "type": "int32"},
+        {"name": "min_players", "type": "int32"},
+        {"name": "max_players", "type": "int32"},
+        {"name": "playing_time", "type": "int32"},
+        {"name": "rating", "type": "float64"},
+        {"name": "complexity", "type": "float64"},
+        {"name": "own", "type": "bool"},
+        {"name": "shelf_location", "type": "string", "optional": true}
+      ]
+    }
+  },
+  "api_routes": [
+    {"method": "GET", "path": "/collection", "lambda": "bgg_api_proxy", "auth": "public"},
+    {"method": "GET", "path": "/recommendations", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "POST", "path": "/recommendations", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "GET", "path": "/profile", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "GET", "path": "/conventions", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "POST", "path": "/session", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "GET", "path": "/session", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "DELETE", "path": "/session", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "POST", "path": "/session/vote", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "POST", "path": "/session/close", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "POST", "path": "/session/cancel", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "GET", "path": "/sessions", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "POST", "path": "/cafe/vote/start", "lambda": "bgg_recommender", "auth": "public"},
+    {"method": "GET", "path": "/preferences", "lambda": "bgg_preferences", "auth": "cognito_jwt"},
+    {"method": "POST", "path": "/preferences", "lambda": "bgg_preferences", "auth": "cognito_jwt"},
+    {"method": "GET", "path": "/cafe/validate-bgg", "lambda": "bgg_preferences", "auth": "public"},
+    {"method": "GET", "path": "/cafe/check-slug", "lambda": "bgg_preferences", "auth": "public"},
+    {"method": "GET", "path": "/cafe/meta", "lambda": "bgg_preferences", "auth": "public"},
+    {"method": "GET", "path": "/cafe/collection", "lambda": "bgg_preferences", "auth": "public"},
+    {"method": "POST", "path": "/cafe/onboard", "lambda": "bgg_preferences", "auth": "cognito_jwt"},
+    {"method": "POST", "path": "/cafe/sync", "lambda": "bgg_preferences", "auth": "cognito_jwt"},
+    {"method": "GET", "path": "/cafe/my-cafes", "lambda": "bgg_preferences", "auth": "cognito_jwt"},
+    {"method": "POST", "path": "/cafe/update", "lambda": "bgg_preferences", "auth": "cognito_jwt"},
+    {"method": "POST", "path": "/cafe/delete", "lambda": "bgg_preferences", "auth": "cognito_jwt"}
+  ]
+}

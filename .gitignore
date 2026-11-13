@@ -19,4 +19,5 @@ node_modules/
 **/*_config.local.yml
 *.local.yml
 **/catalog_feature_frequencies.json
-
+fetch_convention_geeklists.py
+client_secret*.json

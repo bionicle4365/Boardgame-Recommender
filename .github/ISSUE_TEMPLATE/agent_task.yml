@@ -1,0 +1,53 @@
+name: Autonomous Agent Task
+description: Create a structured task specification ready for autonomous agent orchestration or swarm execution.
+title: "[Agent Task]: "
+labels: ["agent:proposed"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: Clear, single-PR objective and why this task matters.
+      placeholder: Implement GET /similar endpoint in bgg_recommender using Jaccard similarity.
+    validations:
+      required: true
+  - type: textarea
+    id: owned_paths
+    attributes:
+      label: Owned Paths
+      description: One file path, directory prefix (ending in /), or glob per line that the agent is allowed to edit.
+      placeholder: |
+        bgg_recommender/scoring.py
+        bgg_recommender/bgg_recommender.py
+        tests/test_bgg_recommender.py
+    validations:
+      required: true
+  - type: textarea
+    id: forbidden_paths
+    attributes:
+      label: Forbidden Paths
+      description: One path/prefix per line that the agent must NOT edit.
+      value: |
+        infrastructure/
+        site_ui/
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Concrete behavioral requirements (one per line).
+      placeholder: |
+        Returns top 10 similar games sorted by weighted Jaccard score.
+        Returns HTTP 404 when game_id is missing from catalog.
+    validations:
+      required: true
+  - type: textarea
+    id: verification_commands
+    attributes:
+      label: Verification Commands
+      description: Deterministic commands (one per line) that must exit 0 before marking complete.
+      placeholder: |
+        python -m pytest tests/test_bgg_recommender.py -v
+    validations:
+      required: true
