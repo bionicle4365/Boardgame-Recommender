@@ -121,6 +121,83 @@ def push_task_branch(branch: Optional[str] = None) -> str:
     return target
 
 
+def _resolve_base_ref(base_branch: str = "main") -> str:
+    """Fetch `origin/<base_branch>` when available and return the cleanest base ref."""
+    subprocess.run(
+        ["git", "fetch", "origin", base_branch],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    remote_ref = f"origin/{base_branch}"
+    probe = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", remote_ref],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return remote_ref if probe.returncode == 0 else base_branch
+
+
+def prepare_task_branch(branch: str, base_branch: str = "main") -> str:
+    """Create/reset `branch` from fresh `origin/main` after verifying the working tree is clean."""
+    target = validate_agent_branch(branch)
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if status.returncode == 0 and status.stdout.strip():
+        raise RuntimeError(
+            "Working tree has uncommitted changes. Commit/stash them or pass '--worktree' "
+            "to isolate the task branch from local edits."
+        )
+    resolved_base = _resolve_base_ref(base_branch=base_branch)
+    subprocess.run(["git", "checkout", "-B", target, resolved_base], check=True)
+    return target
+
+
+def prepare_task_worktree(
+    branch: str,
+    worktree_path: Optional[str] = None,
+    base_branch: str = "main",
+) -> str:
+    """Create an isolated `scratch/worktrees/...` checkout on `branch` rooted at `origin/main`."""
+    target = validate_agent_branch(branch)
+    top_proc = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    repo_root = top_proc.stdout.strip() if top_proc.returncode == 0 and top_proc.stdout.strip() else os.getcwd()
+    wt_path = worktree_path or os.path.join(repo_root, "scratch", "worktrees", target.replace("/", "-"))
+    resolved_base = _resolve_base_ref(base_branch=base_branch)
+
+    if os.path.exists(wt_path):
+        subprocess.run(
+            ["git", "worktree", "remove", "--force", wt_path],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    subprocess.run(["git", "worktree", "prune"], text=True, capture_output=True, check=False)
+    os.makedirs(os.path.dirname(wt_path), exist_ok=True)
+    subprocess.run(["git", "worktree", "add", "-B", target, wt_path, resolved_base], check=True)
+
+    src_nm = os.path.join(repo_root, "site_ui", "node_modules")
+    dst_nm = os.path.join(wt_path, "site_ui", "node_modules")
+    if os.path.isdir(src_nm) and not os.path.exists(dst_nm):
+        os.makedirs(os.path.dirname(dst_nm), exist_ok=True)
+        if os.name == "nt":
+            subprocess.run(["cmd", "/c", "mklink", "/J", dst_nm, src_nm], check=False, capture_output=True)
+        else:
+            os.symlink(src_nm, dst_nm)
+
+    return wt_path.replace("\\", "/")
+
+
 def detect_repo_slug(fallback: str = DEFAULT_REPO) -> str:
     """Detect the GitHub `owner/repo` slug from `git remote get-url origin`."""
     try:
@@ -727,6 +804,38 @@ def complete_task_issue(
     return updated
 
 
+def block_task_issue(
+    issue_number: int,
+    reason: str = "",
+    repo: Optional[str] = None,
+    token: Optional[str] = None,
+) -> dict:
+    """Transition an issue to `agent:blocked` and post the failure/blocker reason."""
+    target_repo = repo or detect_repo_slug()
+    auth_token = token or get_github_token()
+
+    issue = github_request("GET", f"/issues/{issue_number}", repo=target_repo, token=auth_token)
+    current_labels = [lbl.get("name", "") for lbl in issue.get("labels", [])]
+    new_labels = _replace_status_label(current_labels, "agent:blocked")
+
+    updated = github_request(
+        "PATCH",
+        f"/issues/{issue_number}",
+        payload={"labels": new_labels},
+        repo=target_repo,
+        token=auth_token,
+    )
+    reason_text = reason.strip() or "Autonomous execution failed or requires human intervention."
+    github_request(
+        "POST",
+        f"/issues/{issue_number}/comments",
+        payload={"body": f"Blocked during autonomous execution (`agent:blocked`).\n\nReason:\n{reason_text}"},
+        repo=target_repo,
+        token=auth_token,
+    )
+    return updated
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="GitHub Issues-backed autonomous task backlog CLI")
     parser.add_argument("--repo", default=None, help="GitHub repo slug owner/name (defaults to git origin)")
@@ -766,6 +875,7 @@ def _build_parser() -> argparse.ArgumentParser:
     next_p.add_argument("--claim", action="store_true")
     next_p.add_argument("--agent", default="autonomous-executor")
     next_p.add_argument("--checkout", action="store_true")
+    next_p.add_argument("--worktree", action="store_true", help="Create an isolated git worktree from origin/main")
     next_p.add_argument("--json", action="store_true")
 
     approve_p = subparsers.add_parser("approve", help="Approve a proposed issue (transition agent:proposed -> agent:ready)")
@@ -775,6 +885,10 @@ def _build_parser() -> argparse.ArgumentParser:
     claim_p.add_argument("issue_number", type=int)
     claim_p.add_argument("--agent", required=True)
     claim_p.add_argument("--branch", default=None)
+
+    block_p = subparsers.add_parser("block", help="Mark an issue agent:blocked with a diagnostic reason")
+    block_p.add_argument("issue_number", type=int)
+    block_p.add_argument("--reason", required=True)
 
     complete_p = subparsers.add_parser("complete", help="Mark an issue agent:review or close it")
     complete_p.add_argument("issue_number", type=int)
@@ -860,8 +974,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             else:
                 print("No approved (agent:ready) issues queued.")
             return 0
-        if args.checkout:
-            subprocess.run(["git", "checkout", "-B", task["branch"]], check=True)
+        if args.worktree:
+            task["worktree_path"] = prepare_task_worktree(task["branch"])
+        elif args.checkout:
+            prepare_task_branch(task["branch"])
         if args.claim:
             claim_task_issue(
                 int(task["number"]),
@@ -873,7 +989,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.json:
             print(json.dumps(task, indent=2))
         else:
-            print(f"#{task['number']} {task['title']} -> branch {task['branch']} ({task['html_url']})")
+            wt_note = f" in {task['worktree_path']}" if task.get("worktree_path") else ""
+            print(f"#{task['number']} {task['title']} -> branch {task['branch']}{wt_note} ({task['html_url']})")
         return 0
 
     if args.command == "approve":
@@ -889,6 +1006,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             repo=args.repo,
         )
         print(f"Claimed #{updated['number']} ({updated['html_url']}) as agent:in-progress.")
+        return 0
+
+    if args.command == "block":
+        updated = block_task_issue(
+            args.issue_number,
+            reason=args.reason,
+            repo=args.repo,
+        )
+        print(f"Marked #{updated['number']} ({updated['html_url']}) as agent:blocked.")
         return 0
 
     if args.command == "complete":

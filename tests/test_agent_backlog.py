@@ -368,3 +368,48 @@ def test_validate_and_push_agent_branch_blocks_main():
             ["git", "push", "-u", "origin", "agent/issue-7:agent/issue-7"],
             check=True,
         )
+
+
+def test_block_task_issue_and_prepare_task_branch_guard():
+    # Dirty working tree blocks in-place checkout
+    with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout=" M scripts/agent_backlog.py\n")):
+        with pytest.raises(RuntimeError, match="uncommitted changes"):
+            agent_backlog.prepare_task_branch("agent/issue-19")
+
+    # Clean tree fetches origin/main and checks out branch from origin/main
+    with patch("subprocess.run") as mock_run:
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout=""),  # git status --porcelain
+            MagicMock(returncode=0, stdout=""),  # git fetch origin main
+            MagicMock(returncode=0, stdout="abc123\n"),  # git rev-parse origin/main
+            MagicMock(returncode=0, stdout=""),  # git checkout -B agent/issue-19 origin/main
+        ]
+        branch = agent_backlog.prepare_task_branch("agent/issue-19")
+        assert branch == "agent/issue-19"
+        assert mock_run.call_args_list[-1].args[0] == [
+            "git",
+            "checkout",
+            "-B",
+            "agent/issue-19",
+            "origin/main",
+        ]
+
+    # block_task_issue sets agent:blocked and posts reason comment
+    calls = []
+
+    def fake_gh(method, path, payload=None, repo=None, token=None):
+        calls.append((method, path, payload))
+        if method == "GET":
+            return {"number": 19, "labels": [{"name": "agent:in-progress"}, {"name": "priority:p2"}]}
+        if method == "PATCH":
+            return {"number": 19, "labels": [{"name": lbl} for lbl in payload["labels"]]}
+        return {"id": 99}
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh):
+        updated = agent_backlog.block_task_issue(19, reason="Tests failed after 3 attempts", repo="o/r", token="tok")
+
+    assert [lbl["name"] for lbl in updated["labels"]] == ["priority:p2", "agent:blocked"]
+    assert calls[1][0] == "PATCH"
+    assert calls[2][0] == "POST"
+    assert calls[2][1] == "/issues/19/comments"
+    assert "Tests failed after 3 attempts" in calls[2][2]["body"]

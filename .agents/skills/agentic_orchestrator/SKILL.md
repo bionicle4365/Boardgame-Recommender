@@ -11,9 +11,10 @@ Autonomous tasks are discovered via [task-generator](file:///d:/Git/Boardgame-Re
 - **List proposed issues**: `python scripts/agent_backlog.py list --status proposed`
 - **Approve issue**: `python scripts/agent_backlog.py approve <issue_number>` (transitions `agent:proposed` -> `agent:ready`)
 - **Discover approved work**: `python scripts/agent_backlog.py list --status ready` (or `python scripts/agent_backlog.py next --json`; agents must only claim `agent:ready` issues)
-- **Claim next task & branch**: `python scripts/agent_backlog.py next --claim --agent <agent_name> --checkout` (creates/checks out `agent/issue-<issue_number>`; never work on, push to, or merge into `main`)
-- **Verify task**: `python scripts/verify_task.py --issue <issue_number>` (enforces active `agent/...` branch, path boundaries, and domain tests)
+- **Claim next task & worktree/branch**: `python scripts/agent_backlog.py next --claim --worktree --agent <agent_name>` (creates an isolated worktree under `scratch/worktrees/...` on `agent/issue-<issue_number>` from fresh `origin/main`, or `--checkout` for an in-place clean branch; never work on, push to, or merge into `main`)
+- **Verify task**: `python scripts/verify_task.py --issue <issue_number>` (enforces active `agent/...` branch, committed + uncommitted path boundaries vs `origin/main...HEAD`, and domain tests)
 - **Complete task & open PR**: `python scripts/agent_backlog.py complete <issue_number> --pr agent/issue-<issue_number> --push --open-pr --summary "..."` (pushes only `agent/issue-<issue_number>` and opens a PR to `main` without merging)
+- **Block stuck task**: `python scripts/agent_backlog.py block <issue_number> --reason "..."` (marks unrecoverable or repeatedly failing tasks `agent:blocked` with diagnostics instead of leaving them `agent:in-progress`)
 
 ### Domain Identification
 When a request or issue is received, identify which domains (`BGG API`, `AWS Architecture`, `Site UI`, `Recommender System`, `Data Engineering`) are involved:

@@ -71,6 +71,7 @@ def test_verify_task_with_issue_spec_passes_and_fails():
 
     with patch.object(verify_task.agent_backlog, "get_task_issue", return_value=issue_payload), \
          patch.object(verify_task, "get_current_branch", return_value="agent/issue-42"), \
+         patch.object(verify_task, "resolve_default_base_ref", return_value="origin/main...HEAD"), \
          patch.object(verify_task, "get_modified_files", return_value=["bgg_recommender/scoring.py"]), \
          patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run:
         exit_code = verify_task.verify_task(issue_number=42)
@@ -80,6 +81,7 @@ def test_verify_task_with_issue_spec_passes_and_fails():
     # Failing boundary check aborts before executing test commands
     with patch.object(verify_task.agent_backlog, "get_task_issue", return_value=issue_payload), \
          patch.object(verify_task, "get_current_branch", return_value="agent/issue-42"), \
+         patch.object(verify_task, "resolve_default_base_ref", return_value="origin/main...HEAD"), \
          patch.object(verify_task, "get_modified_files", return_value=["infrastructure/apigateway/main.tf"]), \
          patch("subprocess.run") as mock_run:
         exit_code = verify_task.verify_task(issue_number=42)
@@ -89,6 +91,7 @@ def test_verify_task_with_issue_spec_passes_and_fails():
     # Failing command returns non-zero
     with patch.object(verify_task.agent_backlog, "get_task_issue", return_value=issue_payload), \
          patch.object(verify_task, "get_current_branch", return_value="agent/issue-42"), \
+         patch.object(verify_task, "resolve_default_base_ref", return_value="origin/main...HEAD"), \
          patch.object(verify_task, "get_modified_files", return_value=["bgg_recommender/scoring.py"]), \
          patch("subprocess.run", return_value=MagicMock(returncode=1)):
         exit_code = verify_task.verify_task(issue_number=42)
@@ -114,4 +117,37 @@ def test_verify_task_rejects_main_branch():
         exit_code = verify_task.verify_task(issue_number=42)
         assert exit_code == 1
         mock_files.assert_not_called()
+        mock_run.assert_not_called()
+
+
+def test_resolve_default_base_ref_and_committed_diff():
+    # origin/main available -> returns "origin/main...HEAD"
+    with patch("subprocess.run", return_value=MagicMock(returncode=0)) as mock_run:
+        assert verify_task.resolve_default_base_ref() == "origin/main...HEAD"
+        mock_run.assert_called_once()
+
+    # Fallback to main when origin/main missing
+    with patch("subprocess.run", side_effect=[MagicMock(returncode=1), MagicMock(returncode=0)]):
+        assert verify_task.resolve_default_base_ref() == "main...HEAD"
+
+    # verify_task uses resolve_default_base_ref() when base_ref is omitted and checks committed branch diffs
+    issue_payload = {
+        "number": 42,
+        "title": "Add /similar endpoint",
+        "spec_error": None,
+        "spec": {
+            "owned_paths": ["bgg_recommender/scoring.py"],
+            "forbidden_paths": ["infrastructure/"],
+            "acceptance_criteria": ["Works"],
+            "verification_commands": [],
+        },
+    }
+    with patch.object(verify_task.agent_backlog, "get_task_issue", return_value=issue_payload), \
+         patch.object(verify_task, "get_current_branch", return_value="agent/issue-42"), \
+         patch.object(verify_task, "resolve_default_base_ref", return_value="origin/main...HEAD"), \
+         patch.object(verify_task, "get_modified_files", return_value=["infrastructure/apigateway/main.tf"]) as mock_files, \
+         patch("subprocess.run") as mock_run:
+        exit_code = verify_task.verify_task(issue_number=42)
+        assert exit_code == 1
+        mock_files.assert_called_once_with(base_ref="origin/main...HEAD")
         mock_run.assert_not_called()

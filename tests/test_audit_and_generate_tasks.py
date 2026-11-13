@@ -138,3 +138,104 @@ def test_publish_discovered_tasks_calls_backlog_create():
     assert len(results) == 1
     assert results[0]["issue"]["number"] == 3
     mock_create.assert_called_once()
+
+
+def test_audit_frontend_and_handler_gaps_detects_undeclared_fetch_route(tmp_path):
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    real_tasks = audit_and_generate_tasks.audit_frontend_and_handler_gaps(repo_root=repo_root)
+    assert all(t["source"] != "data-drift" for t in real_tasks)
+
+    (tmp_path / "docs" / "contracts").mkdir(parents=True)
+    (tmp_path / "site_ui" / "assets" / "js").mkdir(parents=True)
+    (tmp_path / "docs" / "contracts" / "schemas_and_routes.json").write_text(
+        json.dumps({"api_routes": [{"method": "GET", "path": "/recommendations"}]}),
+        encoding="utf-8",
+    )
+    (tmp_path / "site_ui" / "assets" / "js" / "app.js").write_text(
+        "fetch(`${API_BASE}/undeclared-route?foo=bar`);\n",
+        encoding="utf-8",
+    )
+
+    tasks = audit_and_generate_tasks.audit_frontend_and_handler_gaps(repo_root=str(tmp_path))
+    assert len(tasks) == 1
+    task = tasks[0]
+    assert task["source"] == "data-drift"
+    assert task["priority"] == "p1"
+    assert "/undeclared-route" in task["objective"]
+    agent_backlog.validate_task_spec(task)
+
+
+def test_audit_github_actions_failures_emits_ci_task():
+    payload = {
+        "workflow_runs": [
+            {
+                "workflow_id": 101,
+                "name": "Python Unit Tests",
+                "status": "completed",
+                "conclusion": "failure",
+                "created_at": "2026-11-13T12:00:00Z",
+                "html_url": "https://github.com/owner/repo/actions/runs/555",
+            }
+        ]
+    }
+    with patch.object(audit_and_generate_tasks.agent_backlog, "github_request", return_value=payload):
+        tasks = audit_and_generate_tasks.audit_github_actions_failures(repo="owner/repo")
+
+    assert len(tasks) == 1
+    task = tasks[0]
+    assert task["source"] == "test-gap"
+    assert task["priority"] == "p1"
+    assert "Python Unit Tests" in task["objective"]
+    agent_backlog.validate_task_spec(task)
+
+
+def test_audit_cloudwatch_lambda_errors_emits_telemetry_task():
+    fake_logs = MagicMock()
+
+    def fake_filter(logGroupName, **kwargs):
+        if logGroupName == "/aws/lambda/bgg_recommender":
+            return {"events": [{"message": "Traceback (most recent call last): KeyError: 'id'"}]}
+        return {"events": []}
+
+    fake_logs.filter_log_events.side_effect = fake_filter
+    with patch("boto3.client", return_value=fake_logs):
+        tasks = audit_and_generate_tasks.audit_cloudwatch_lambda_errors(hours=24)
+
+    assert len(tasks) == 1
+    task = tasks[0]
+    assert task["source"] == "telemetry"
+    assert task["priority"] == "p1"
+    assert "bgg_recommender" in task["title"]
+    assert "bgg_recommender/" in task["owned_paths"]
+    agent_backlog.validate_task_spec(task)
+
+
+def test_publish_discovered_tasks_enforces_max_new_issues_cap():
+    sample_tasks = [
+        {
+            "title": f"Task {idx}",
+            "objective": f"Obj {idx}",
+            "owned_paths": ["bgg_recommender/scoring.py"],
+            "forbidden_paths": ["infrastructure/"],
+            "acceptance_criteria": ["Passes tests"],
+            "verification_commands": ["python -m pytest"],
+            "priority": "p2",
+            "source": "telemetry",
+            "domains": ["recommender"],
+        }
+        for idx in range(3)
+    ]
+
+    with patch.object(
+        audit_and_generate_tasks.agent_backlog,
+        "create_task_issue",
+        side_effect=[
+            {"deduplicated": False, "issue": {"number": 1, "title": "Task 0", "html_url": "https://example.com/1"}},
+            {"deduplicated": False, "issue": {"number": 2, "title": "Task 1", "html_url": "https://example.com/2"}},
+            {"deduplicated": False, "issue": {"number": 3, "title": "Task 2", "html_url": "https://example.com/3"}},
+        ],
+    ) as mock_create:
+        results = audit_and_generate_tasks.publish_discovered_tasks(sample_tasks, max_new_issues=2)
+
+    assert len(results) == 2
+    assert mock_create.call_count == 2

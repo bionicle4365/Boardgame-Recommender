@@ -161,6 +161,125 @@ def audit_contract_drift(repo_root: str = ".") -> List[Dict[str, Any]]:
     ]
 
 
+def audit_frontend_and_handler_gaps(repo_root: str = ".") -> List[Dict[str, Any]]:
+    """Audit frontend fetch/API routes against the contract and check backend handler test coverage."""
+    tasks: List[Dict[str, Any]] = []
+    contract_path = os.path.join(repo_root, "docs", "contracts", "schemas_and_routes.json")
+    site_ui_dir = os.path.join(repo_root, "site_ui")
+
+    if os.path.exists(contract_path) and os.path.isdir(site_ui_dir):
+        with open(contract_path, "r", encoding="utf-8") as f:
+            contract = json.load(f)
+        contract_paths = {
+            str(r.get("path", "")).strip()
+            for r in contract.get("api_routes", [])
+            if str(r.get("path", "")).strip()
+        }
+
+        undeclared_calls: List[str] = []
+        route_pattern = re.compile(
+            r"(?:fetchApi\s*\(\s*[\'\"`]|\$\{API_BASE\})(/[A-Za-z0-9_/-]+)"
+        )
+        for dirpath, dirnames, filenames in os.walk(site_ui_dir):
+            dirnames[:] = [d for d in dirnames if d not in ("node_modules", "_site", ".git", "tests")]
+            for fname in sorted(filenames):
+                if not fname.endswith((".html", ".js")):
+                    continue
+                fpath = os.path.join(dirpath, fname)
+                rel_path = os.path.relpath(fpath, repo_root).replace("\\", "/")
+                with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                for match in route_pattern.finditer(content):
+                    route_path = match.group(1).rstrip("/") or "/"
+                    if route_path not in contract_paths:
+                        entry = f"{route_path} (in {rel_path})"
+                        if entry not in undeclared_calls:
+                            undeclared_calls.append(entry)
+
+        if undeclared_calls:
+            tasks.append(
+                _make_task(
+                    title="Align undeclared frontend API route calls with docs/contracts/schemas_and_routes.json",
+                    objective=(
+                        "Frontend files in `site_ui/` call API path(s) missing from `docs/contracts/schemas_and_routes.json`:\n- "
+                        + "\n- ".join(undeclared_calls)
+                    ),
+                    owned_paths=["docs/contracts/schemas_and_routes.json", "site_ui/"],
+                    forbidden_paths=["infrastructure/"],
+                    acceptance_criteria=[
+                        "All frontend fetch/API calls reference routes declared in docs/contracts/schemas_and_routes.json",
+                        "Contract audit exits cleanly with no undeclared frontend routes",
+                    ],
+                    verification_commands=[
+                        "npm --prefix site_ui test",
+                        "python -m pytest tests/test_audit_and_generate_tasks.py -v",
+                    ],
+                    priority="p1",
+                    source="data-drift",
+                    domains=["site-ui", "aws-infra"],
+                )
+            )
+
+    tests_dir = os.path.join(repo_root, "tests")
+    if os.path.isdir(tests_dir):
+        tests_chunks: List[str] = []
+        for fname in sorted(os.listdir(tests_dir)):
+            if fname.endswith(".py"):
+                with open(os.path.join(tests_dir, fname), "r", encoding="utf-8", errors="ignore") as f:
+                    tests_chunks.append(f.read())
+        tests_text = "\n".join(tests_chunks)
+
+        handler_files = [
+            (
+                os.path.join(repo_root, "bgg_preferences", "bgg_preferences_handler.py"),
+                "bgg_preferences/bgg_preferences_handler.py",
+                "tests/test_bgg_preferences_handler.py",
+                ["recommender"],
+            ),
+            (
+                os.path.join(repo_root, "bgg_recommender", "bgg_recommender.py"),
+                "bgg_recommender/bgg_recommender.py",
+                "tests/test_bgg_recommender.py",
+                ["recommender"],
+            ),
+        ]
+        untested: List[Tuple[str, str, str, List[str]]] = []
+        for abs_path, rel_handler, target_test, domains in handler_files:
+            if not os.path.exists(abs_path):
+                continue
+            with open(abs_path, "r", encoding="utf-8", errors="ignore") as f:
+                src_text = f.read()
+            for match in re.finditer(r"def\s+(_handle_[A-Za-z0-9_]+)\s*\(", src_text):
+                fn_name = match.group(1)
+                suffix = fn_name[len("_handle_") :]
+                if fn_name not in tests_text and suffix not in tests_text:
+                    untested.append((fn_name, rel_handler, target_test, domains))
+
+        if untested:
+            first_fn, _, target_test, domains = untested[0]
+            summary = ", ".join(item[0] for item in untested)
+            tasks.append(
+                _make_task(
+                    title=f"Add unit test coverage for untested backend handler `{first_fn}`",
+                    objective=(
+                        f"Detected backend route handler(s) without direct references in `tests/`: {summary}."
+                    ),
+                    owned_paths=[target_test],
+                    forbidden_paths=["infrastructure/", "site_ui/"],
+                    acceptance_criteria=[
+                        f"Add deterministic unit tests covering `{first_fn}` in `{target_test}`",
+                        f"python -m pytest {target_test} -v exits 0",
+                    ],
+                    verification_commands=[f"python -m pytest {target_test} -v"],
+                    priority="p2",
+                    source="test-gap",
+                    domains=domains,
+                )
+            )
+
+    return tasks
+
+
 def _extract_failing_vitest_files(output: str) -> List[str]:
     """Parse failing Vitest test file names from Vitest CLI output."""
     matches = re.findall(r"(tests/[A-Za-z0-9_.-]+\.test\.js)", output or "")
@@ -297,8 +416,9 @@ def audit_test_suites(repo_root: str = ".", run_tests: bool = False) -> List[Dic
 def audit_s3_preview_coverage(
     bucket: str = "boardgame-app",
     max_catalog_age_days: int = 14,
+    min_preview_video_coverage: float = 0.20,
 ) -> List[Dict[str, Any]]:
-    """Inspect S3 `catalog.parquet` freshness and active convention preview ID coverage."""
+    """Inspect S3 `catalog.parquet` freshness, preview/video coverage, and cafe sync registry."""
     import boto3
     import pyarrow.parquet as pq
 
@@ -340,10 +460,25 @@ def audit_s3_preview_coverage(
 
     catalog_obj = s3.get_object(Bucket=bucket, Key="data/boardgames_combined/catalog.parquet")
     catalog_bytes = catalog_obj["Body"].read()
-    table = pq.read_table(io.BytesIO(catalog_bytes), columns=["id"])
+    has_video_col = False
+    try:
+        table = pq.read_table(io.BytesIO(catalog_bytes), columns=["id", "rules_video_url"])
+        has_video_col = True
+    except Exception:
+        table = pq.read_table(io.BytesIO(catalog_bytes), columns=["id"])
+
     catalog_ids = {str(gid).strip() for gid in table.column("id").to_pylist() if gid is not None}
+    catalog_video_ids: Set[str] = set()
+    if has_video_col:
+        for gid, vid_url in zip(
+            table.column("id").to_pylist(),
+            table.column("rules_video_url").to_pylist(),
+        ):
+            if gid is not None and vid_url and str(vid_url).strip():
+                catalog_video_ids.add(str(gid).strip())
 
     missing_summary: List[str] = []
+    low_video_previews: List[str] = []
     total_missing = 0
     for conv_id, game_ids in sorted(preview_games.items()):
         missing_ids = [str(gid) for gid in game_ids if str(gid).strip() not in catalog_ids]
@@ -352,6 +487,15 @@ def audit_s3_preview_coverage(
             missing_summary.append(
                 f"{conv_id}: {len(missing_ids)}/{len(game_ids)} missing (sample: {missing_ids[:5]})"
             )
+        if has_video_col:
+            present_ids = [str(gid).strip() for gid in game_ids if str(gid).strip() in catalog_ids]
+            if len(present_ids) >= 10:
+                with_video = sum(1 for gid in present_ids if gid in catalog_video_ids)
+                coverage = with_video / len(present_ids)
+                if coverage < min_preview_video_coverage:
+                    low_video_previews.append(
+                        f"{conv_id}: {with_video}/{len(present_ids)} ({coverage:.0%}) rules_video_url coverage"
+                    )
 
     if total_missing > 0:
         tasks.append(
@@ -380,32 +524,222 @@ def audit_s3_preview_coverage(
             )
         )
 
+    if low_video_previews:
+        tasks.append(
+            _make_task(
+                title="Improve rules_video_url extraction heuristics for low-coverage convention previews",
+                objective=(
+                    "Active convention preview(s) fall below the "
+                    f"{min_preview_video_coverage:.0%} `rules_video_url` coverage threshold:\n- "
+                    + "\n- ".join(low_video_previews)
+                ),
+                owned_paths=[
+                    "bgg_game_data_scraper/bgg_game_data_scraper.py",
+                    "tests/test_bgg_game_data_scraper.py",
+                ],
+                forbidden_paths=["infrastructure/", "site_ui/"],
+                acceptance_criteria=[
+                    "Broaden safe rules-video title/category selection heuristics in bgg_game_data_scraper.py",
+                    "All unit tests in tests/test_bgg_game_data_scraper.py pass",
+                ],
+                verification_commands=["python -m pytest tests/test_bgg_game_data_scraper.py -v"],
+                priority="p2",
+                source="telemetry",
+                domains=["bgg-api", "data"],
+            )
+        )
+
+    try:
+        reg_obj = s3.get_object(Bucket=bucket, Key="data/cafes_registry.json")
+        cafes_payload = json.loads(reg_obj["Body"].read().decode("utf-8"))
+        venues = (
+            list(cafes_payload.values())
+            if isinstance(cafes_payload, dict)
+            else (cafes_payload if isinstance(cafes_payload, list) else [])
+        )
+        failed_cafes = [
+            str(v.get("cafe_id") or v.get("slug") or "unknown")
+            for v in venues
+            if isinstance(v, dict) and v.get("sync_status") == "failed"
+        ]
+        if failed_cafes:
+            tasks.append(
+                _make_task(
+                    title="Investigate failed cafe inventory sync in bgg_preferences / bgg_user_data_scraper",
+                    objective=(
+                        "Detected cafe venue(s) with `sync_status == 'failed'` in "
+                        f"s3://{bucket}/data/cafes_registry.json: {', '.join(failed_cafes)}"
+                    ),
+                    owned_paths=[
+                        "bgg_preferences/bgg_preferences_handler.py",
+                        "bgg_user_data_scraper/bgg_user_data_scraper.py",
+                        "tests/test_cafe_sync.py",
+                    ],
+                    forbidden_paths=["infrastructure/"],
+                    acceptance_criteria=[
+                        "Identify and handle failure causes during cafe BGG collection sync",
+                        "python -m pytest tests/test_cafe_sync.py -v exits 0",
+                    ],
+                    verification_commands=["python -m pytest tests/test_cafe_sync.py -v"],
+                    priority="p2",
+                    source="telemetry",
+                    domains=["data", "bgg-api"],
+                )
+            )
+    except Exception:
+        pass
+
     return tasks
+
+
+def audit_cloudwatch_lambda_errors(hours: int = 24) -> List[Dict[str, Any]]:
+    """Inspect recent CloudWatch Lambda logs across known `bgg_*` functions for runtime errors."""
+    import boto3
+
+    tasks: List[Dict[str, Any]] = []
+    try:
+        logs = boto3.client("logs", region_name="us-east-1")
+    except Exception:
+        return tasks
+
+    start_ms = int((datetime.now(timezone.utc).timestamp() - hours * 3600) * 1000)
+    for pkg, test_files in LAMBDA_PACKAGES.items():
+        log_group = f"/aws/lambda/{pkg}"
+        try:
+            resp = logs.filter_log_events(
+                logGroupName=log_group,
+                startTime=start_ms,
+                filterPattern='?"Traceback" ?"Task timed out" ?"ThrottlingException"',
+                limit=5,
+            )
+        except Exception:
+            continue
+
+        events = resp.get("events") or []
+        if not events:
+            continue
+
+        samples = [str(ev.get("message", "")).strip()[:240] for ev in events[:3]]
+        target_test = test_files[0]
+        tasks.append(
+            _make_task(
+                title=f"Investigate CloudWatch Lambda runtime error(s) in {pkg}",
+                objective=(
+                    f"Detected {len(events)} recent error event(s) in `{log_group}` over the last "
+                    f"{hours}h:\n- " + "\n- ".join(samples)
+                ),
+                owned_paths=[f"{pkg}/", f"tests/{target_test}"],
+                forbidden_paths=["infrastructure/", "site_ui/"],
+                acceptance_criteria=[
+                    f"Add regression test reproducing the error condition in tests/{target_test}",
+                    f"Fix the root cause in {pkg}/ so `python -m pytest tests/{target_test} -v` exits 0",
+                ],
+                verification_commands=[f"python -m pytest tests/{target_test} -v"],
+                priority="p1",
+                source="telemetry",
+                domains=["recommender" if "recommender" in pkg else "data"],
+            )
+        )
+
+    return tasks
+
+
+def audit_github_actions_failures(
+    repo: Optional[str] = None,
+    token: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Check the latest completed GitHub Actions workflow runs on `main` for CI failures."""
+    try:
+        data = agent_backlog.github_request(
+            "GET",
+            "/actions/runs?branch=main&per_page=10",
+            repo=repo,
+            token=token,
+        )
+    except Exception:
+        return []
+
+    runs = data.get("workflow_runs") or [] if isinstance(data, dict) else []
+    latest_by_workflow: Dict[Any, dict] = {}
+    for run in sorted(runs, key=lambda r: str(r.get("created_at", "")), reverse=True):
+        if run.get("status") != "completed":
+            continue
+        wf_id = run.get("workflow_id") or run.get("name")
+        if wf_id not in latest_by_workflow:
+            latest_by_workflow[wf_id] = run
+
+    failed_workflows: List[str] = []
+    for run in latest_by_workflow.values():
+        if run.get("conclusion") == "failure":
+            failed_workflows.append(
+                f"{run.get('name', 'Workflow')}: {run.get('html_url', '')}".strip()
+            )
+
+    if not failed_workflows:
+        return []
+
+    return [
+        _make_task(
+            title="Fix failing GitHub Actions CI workflow on main",
+            objective=(
+                "Latest completed workflow run(s) on `main` failed:\n- "
+                + "\n- ".join(failed_workflows)
+            ),
+            owned_paths=[".github/workflows/", "tests/", "scripts/"],
+            forbidden_paths=["infrastructure/"],
+            acceptance_criteria=[
+                "Identify and fix the root cause of the failing CI workflow on main",
+                "Local unit test suites (`python -m pytest`) pass cleanly",
+            ],
+            verification_commands=["python -m pytest -v"],
+            priority="p1",
+            source="test-gap",
+            domains=["data"],
+        )
+    ]
 
 
 def collect_all_tasks(
     repo_root: str = ".",
     run_tests: bool = False,
     check_s3: bool = False,
+    check_cloudwatch: bool = False,
+    check_ci: bool = False,
     bucket: str = "boardgame-app",
     max_catalog_age_days: int = 14,
+    repo: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Run enabled audits and return all discovered structured task specs."""
     tasks: List[Dict[str, Any]] = []
     tasks.extend(audit_contract_drift(repo_root=repo_root))
+    tasks.extend(audit_frontend_and_handler_gaps(repo_root=repo_root))
     tasks.extend(audit_test_suites(repo_root=repo_root, run_tests=run_tests))
     if check_s3:
         tasks.extend(audit_s3_preview_coverage(bucket=bucket, max_catalog_age_days=max_catalog_age_days))
+    if check_cloudwatch:
+        tasks.extend(audit_cloudwatch_lambda_errors())
+    if check_ci:
+        tasks.extend(audit_github_actions_failures(repo=repo))
     return tasks
 
 
 def publish_discovered_tasks(
     tasks: List[Dict[str, Any]],
     repo: Optional[str] = None,
+    max_new_issues: Optional[int] = 3,
 ) -> List[Dict[str, Any]]:
     """Publish discovered tasks as deduplicated GitHub Issues via `agent_backlog.create_task_issue`."""
+    prio_rank = {"p1": 1, "p2": 2, "p3": 3}
+    ordered_tasks = sorted(
+        tasks,
+        key=lambda t: prio_rank.get(str(t.get("priority", "p2")).lower(), 9),
+    )
+
     results: List[Dict[str, Any]] = []
-    for task in tasks:
+    created_count = 0
+    for task in ordered_tasks:
+        if max_new_issues is not None and created_count >= max_new_issues:
+            break
         res = agent_backlog.create_task_issue(
             title=task["title"],
             objective=task["objective"],
@@ -419,6 +753,8 @@ def publish_discovered_tasks(
             repo=repo,
         )
         results.append(res)
+        if not res.get("deduplicated"):
+            created_count += 1
     return results
 
 
@@ -428,8 +764,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--repo", default=None, help="GitHub repo slug owner/name")
     parser.add_argument("--bucket", default="boardgame-app", help="S3 data lake bucket name")
     parser.add_argument("--max-catalog-age-days", type=int, default=14)
+    parser.add_argument("--max-new-issues", type=int, default=3, help="Maximum net-new issues created per run")
     parser.add_argument("--run-tests", action="store_true", help="Run live pytest and Vitest suites")
     parser.add_argument("--s3", action="store_true", help="Audit S3 catalog freshness and preview coverage")
+    parser.add_argument("--cloudwatch", action="store_true", help="Scan CloudWatch Lambda logs for recent errors")
+    parser.add_argument("--ci", action="store_true", help="Check GitHub Actions CI runs on main for failures")
     parser.add_argument("--publish", action="store_true", help="Create deduplicated GitHub Issues for discovered tasks")
     parser.add_argument("--json", action="store_true", help="Print output as JSON")
     return parser
@@ -443,13 +782,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         repo_root=args.repo_root,
         run_tests=args.run_tests,
         check_s3=args.s3,
+        check_cloudwatch=args.cloudwatch,
+        check_ci=args.ci,
         bucket=args.bucket,
         max_catalog_age_days=args.max_catalog_age_days,
+        repo=args.repo,
     )
 
     published: List[Dict[str, Any]] = []
     if args.publish and tasks:
-        published = publish_discovered_tasks(tasks, repo=args.repo)
+        published = publish_discovered_tasks(
+            tasks,
+            repo=args.repo,
+            max_new_issues=args.max_new_issues,
+        )
 
     if args.json:
         print(json.dumps({"tasks": tasks, "published": published}, indent=2))

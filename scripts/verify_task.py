@@ -65,6 +65,20 @@ def check_branch_safety(branch: str) -> Tuple[bool, str]:
     return (True, "")
 
 
+def resolve_default_base_ref() -> Optional[str]:
+    """Return `origin/main...HEAD` (or `main...HEAD`) when available for committed-branch diffs."""
+    for candidate in ("origin/main", "main"):
+        proc = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", candidate],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if proc.returncode == 0:
+            return f"{candidate}...HEAD"
+    return None
+
+
 def get_modified_files(base_ref: Optional[str] = None) -> List[str]:
     """Return modified and untracked repository files, ignoring .git/ and scratch/."""
     files: List[str] = []
@@ -214,7 +228,10 @@ def verify_task(
             print(f"ERROR: {branch_err}")
             return 1
         print(f"Branch safety check: PASSED ({branch})")
-        modified_files = get_modified_files(base_ref=base_ref)
+        resolved_base = base_ref if base_ref is not None else resolve_default_base_ref()
+        if resolved_base:
+            print(f"Diff base: {resolved_base}")
+        modified_files = get_modified_files(base_ref=resolved_base)
         print(f"Modified files ({len(modified_files)}): {modified_files}")
         ok, violations = check_path_boundaries(modified_files, resolved_owned, resolved_forbidden)
         if not ok:
