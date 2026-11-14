@@ -33,11 +33,18 @@ jobs:
         echo "ECR_URL=$ECR_URL" >> $GITHUB_ENV
     - name: Log in to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Build, tag, and push image to Amazon ECR
       run: |
-        docker build . --file Dockerfile --tag $ECR_URL:${{ github.run_number }}
-        docker tag $ECR_URL:${{ github.run_number }} $ECR_URL:latest
-        docker push $ECR_URL:latest
+        docker buildx build \
+          --platform linux/amd64 \
+          --provenance=false \
+          --sbom=false \
+          --output type=image,oci-mediatypes=false,push=true \
+          --file Dockerfile \
+          --tag $ECR_URL:latest \
+          .
       working-directory: ./bgg_recommender
   deploy_lambda:
     needs: build_and_push_docker_image
