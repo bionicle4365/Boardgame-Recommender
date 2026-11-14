@@ -524,6 +524,26 @@ describe('Rules Video Tutorial & Teach Time Integration', () => {
     expect(searchLink.href).toContain('youtube.com/results?search_query=');
     expect(searchLink.href).toContain('Obscure%20Game');
     expect(iframe.src).toBe('');
+    expect(iframe.getAttribute('src')).toBeNull();
+  });
+
+  test('openRulesVideoModal clears prior iframe src when switching to a game without a video URL', () => {
+    window.openRulesVideoModal({
+      id: '13',
+      name: 'Catan',
+      rules_video_url: 'https://www.youtube.com/watch?v=wip12345678'
+    });
+
+    const iframe = document.getElementById('rules-video-iframe');
+    expect(iframe.src).toContain('wip12345678');
+
+    window.openRulesVideoModal({
+      id: '99999',
+      name: 'Obscure Game'
+    });
+
+    expect(iframe.src).toBe('');
+    expect(iframe.getAttribute('src')).toBeNull();
   });
 
   test('closeRulesVideoModal hides modal and resets iframe src', () => {
