@@ -1248,7 +1248,6 @@ window.ensureRulesVideoModal = function() {
                 <div class="rules-video-modal-body cafe-video-modal-body">
                     <div class="video-player-container" id="video-player-container">
                         <iframe id="rules-video-iframe" 
-                                src="" 
                                 title="Board Game Rules Tutorial" 
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                                 allowfullscreen>
@@ -1316,7 +1315,7 @@ window.openRulesVideoModal = function(game) {
         videoContainer.style.display = "block";
         fallbackNotice.style.display = "none";
     } else {
-        if (iframe) iframe.src = "";
+        window.clearRulesVideoIframe(iframe);
         if (videoContainer) videoContainer.style.display = "none";
         if (fallbackNotice) fallbackNotice.style.display = "block";
         if (fallbackLink) {
@@ -1335,15 +1334,21 @@ window.openRulesVideoModal = function(game) {
     }
 };
 
+/**
+ * Stop iframe playback and clear its src attribute cleanly so empty URLs do not resolve to the page origin.
+ */
+window.clearRulesVideoIframe = function(iframe) {
+    if (!iframe) return;
+    iframe.src = "about:blank";
+    iframe.removeAttribute("src");
+};
+
 // Close the rules video modal and stop audio/video playback
 window.closeRulesVideoModal = function() {
     const modal = document.getElementById("rules-video-modal");
     const iframe = document.getElementById("rules-video-iframe");
     if (modal) modal.style.display = "none";
-    if (iframe) {
-        iframe.src = "about:blank";
-        iframe.removeAttribute("src");
-    }
+    window.clearRulesVideoIframe(iframe);
     if (typeof document !== "undefined" && document.body) {
         document.body.style.overflow = "";
     }
