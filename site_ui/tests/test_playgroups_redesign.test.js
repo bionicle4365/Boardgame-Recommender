@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+// Uses Vitest globals (configured via vitest.config.js globals: true) to avoid Windows drive-letter ESM/runner split
 
 describe('Milestone 60: Playgroup Organizer Redesign UI Logic', () => {
     function getMemberAvatarColor(name) {

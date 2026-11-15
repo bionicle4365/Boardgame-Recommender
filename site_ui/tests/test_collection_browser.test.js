@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+// Uses Vitest globals (configured via vitest.config.js globals: true) to avoid Windows drive-letter ESM/runner split
 
 describe('BGG Collection Browser Filtering & Sorting Logic', () => {
     const mockGames = [
