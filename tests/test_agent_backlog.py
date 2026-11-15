@@ -906,6 +906,8 @@ def test_sync_pr_review_status_and_get_next_task_prioritizes_rework(capsys):
         raise AssertionError(f"Unexpected call: {method} {path}")
 
     with patch.object(agent_backlog, "github_request", side_effect=fake_gh_next), \
+         patch.object(agent_backlog, "get_github_token", return_value="tok"), \
+         patch.object(agent_backlog, "detect_repo_slug", return_value="owner/repo"), \
          patch.object(agent_backlog, "prepare_task_worktree", return_value="D:/repo/scratch/worktrees/agent-issue-31") as mock_wt:
         rc = agent_backlog.main(["next", "--claim", "--worktree", "--json"])
 
