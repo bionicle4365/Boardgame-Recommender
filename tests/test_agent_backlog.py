@@ -655,3 +655,323 @@ def test_worktree_cli_create_and_remove(capsys, tmp_path):
     payload2 = json.loads(capsys.readouterr().out)
     assert payload2["removed"] is True
     assert payload2["deleted_branch"] is True
+
+
+def test_prepare_worktree_and_branch_resume_existing_fetches_remote_branch(tmp_path):
+    repo_root_fwd = str(tmp_path).replace("\\", "/")
+    wt_dir = tmp_path / "scratch" / "worktrees" / "agent-issue-30"
+    recorded_cmds = []
+
+    def fake_run(cmd, **kwargs):
+        recorded_cmds.append(cmd)
+        if cmd[:3] == ["git", "rev-parse", "--show-toplevel"]:
+            return MagicMock(returncode=0, stdout=f"{repo_root_fwd}\n")
+        return MagicMock(returncode=0, stdout="")
+
+    with patch.object(agent_backlog, "_resolve_base_ref", return_value="origin/agent/issue-30") as mock_ref, \
+         patch("subprocess.run", side_effect=fake_run):
+        out = agent_backlog.prepare_task_worktree(
+            "agent/issue-30", worktree_path=str(wt_dir), resume_existing=True
+        )
+    mock_ref.assert_called_once_with(base_branch="agent/issue-30")
+    assert out == str(wt_dir).replace("\\", "/")
+    assert ["git", "worktree", "add", "-B", "agent/issue-30", str(wt_dir), "origin/agent/issue-30"] in recorded_cmds
+
+    with patch.object(agent_backlog, "_resolve_base_ref", return_value="origin/agent/issue-30") as mock_ref2, \
+         patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="")) as mock_run2:
+        branch = agent_backlog.prepare_task_branch("agent/issue-30", resume_existing=True)
+    assert branch == "agent/issue-30"
+    mock_ref2.assert_called_once_with(base_branch="agent/issue-30")
+    assert mock_run2.call_args_list[-1].args[0] == [
+        "git", "checkout", "-B", "agent/issue-30", "origin/agent/issue-30"
+    ]
+
+
+def test_list_review_queue_filters_pending_reviewed_and_in_progress():
+    prs = [
+        {
+            "number": 101,
+            "title": "PR pending CI",
+            "html_url": "https://example.com/pull/101",
+            "user": {"login": "bot"},
+            "head": {"ref": "agent/issue-11", "sha": "sha11"},
+            "base": {"ref": "main"},
+        },
+        {
+            "number": 102,
+            "title": "PR already reviewed at head",
+            "html_url": "https://example.com/pull/102",
+            "user": {"login": "bot"},
+            "head": {"ref": "agent/issue-12", "sha": "sha12"},
+            "base": {"ref": "main"},
+        },
+        {
+            "number": 103,
+            "title": "PR ready for review",
+            "html_url": "https://example.com/pull/103",
+            "user": {"login": "bot"},
+            "head": {"ref": "agent/issue-13", "sha": "sha13"},
+            "base": {"ref": "main"},
+        },
+        {
+            "number": 104,
+            "title": "Human branch PR",
+            "html_url": "https://example.com/pull/104",
+            "user": {"login": "human"},
+            "head": {"ref": "feature/manual", "sha": "sha14"},
+            "base": {"ref": "main"},
+        },
+    ]
+
+    def fake_gh(method, path, payload=None, repo=None, token=None, accept=None):
+        if path.startswith("/pulls?"):
+            return prs
+        if path == "/issues/11":
+            return {"number": 11, "title": "Issue 11", "state": "open", "labels": [{"name": "agent:review"}], "body": ""}
+        if path == "/issues/12":
+            return {"number": 12, "title": "Issue 12", "state": "open", "labels": [{"name": "agent:review"}], "body": ""}
+        if path == "/issues/13":
+            return {"number": 13, "title": "Issue 13", "state": "open", "labels": [{"name": "agent:review"}, {"name": "priority:p1"}], "body": ""}
+        if path.startswith("/pulls/101/reviews"):
+            return []
+        if path.startswith("/pulls/102/reviews"):
+            return [{"id": 1, "state": "COMMENTED", "commit_id": "sha12", "body": "<!-- agent-review:event=APPROVE sha=sha12 -->", "user": {"login": "bot"}}]
+        if path.startswith("/pulls/103/reviews"):
+            return []
+        if path.startswith("/commits/sha11/check-runs"):
+            return {"check_runs": [{"name": "PR Merge Gate", "status": "in_progress", "conclusion": None}]}
+        if path.startswith("/commits/sha13/check-runs"):
+            return {"check_runs": [{"name": "PR Merge Gate", "status": "completed", "conclusion": "success"}]}
+        if path.startswith("/pulls/103/files"):
+            return [{"filename": "scripts/agent_backlog.py", "status": "modified", "additions": 5, "deletions": 1, "patch": "@@ -1 +1 @@"}]
+        if path == "/pulls/103" and accept == "application/vnd.github.v3.diff":
+            return "diff --git a/scripts/agent_backlog.py b/scripts/agent_backlog.py\n"
+        raise AssertionError(f"Unexpected call: {method} {path} accept={accept}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh):
+        queue = agent_backlog.list_review_queue(include_diff=True, repo="owner/repo", token="tok")
+
+    assert [q["pr_number"] for q in queue] == [103]
+    assert queue[0]["issue_number"] == 13
+    assert queue[0]["ci_status"]["overall"] == "success"
+    assert "diff --git" in queue[0]["diff"]
+
+
+def test_submit_pr_review_transitions_issue_handles_self_review_422_and_circuit_breaker():
+    posted_reviews = []
+    issue_labels = ["agent:review", "priority:p1"]
+    issue_comments = []
+
+    # Case 1: Native REQUEST_CHANGES transitions issue to agent:changes-requested
+    def fake_gh_native(method, path, payload=None, repo=None, token=None, accept=None):
+        if method == "GET" and path == "/pulls/50":
+            return {"number": 50, "head": {"ref": "agent/issue-20", "sha": "sha20"}}
+        if method == "GET" and path.startswith("/pulls/50/reviews"):
+            return []
+        if method == "POST" and path == "/pulls/50/reviews":
+            posted_reviews.append(payload)
+            return {"id": 900, **payload}
+        if method == "GET" and path == "/issues/20":
+            return {"number": 20, "labels": [{"name": l} for l in issue_labels]}
+        if method == "PATCH" and path == "/issues/20":
+            issue_labels[:] = payload["labels"]
+            return {"number": 20, "labels": payload["labels"]}
+        if method == "POST" and path == "/issues/20/comments":
+            issue_comments.append(payload["body"])
+            return {"id": 1}
+        raise AssertionError(f"Unexpected call: {method} {path}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh_native):
+        res = agent_backlog.submit_pr_review(
+            50,
+            event="REQUEST_CHANGES",
+            body="Missing edge-case test.",
+            comments=[{"path": "bgg_recommender/scoring.py", "line": 12, "side": "RIGHT", "body": "Guard empty list"}],
+            repo="owner/repo",
+            token="reviewer-tok",
+        )
+    assert res["issue_status"] == "agent:changes-requested"
+    assert res["used_marker_fallback"] is False
+    assert "agent:changes-requested" in issue_labels
+    assert posted_reviews[0]["event"] == "REQUEST_CHANGES"
+
+    # Case 2: Single-PAT 422 self-review falls back to COMMENT with marker and sets agent:approved
+    posted_reviews.clear()
+    issue_labels[:] = ["agent:review", "priority:p1"]
+
+    def fake_gh_self_422(method, path, payload=None, repo=None, token=None, accept=None):
+        if method == "POST" and path == "/pulls/50/reviews" and payload["event"] == "APPROVE":
+            raise RuntimeError("GitHub API POST ... failed with HTTP 422: {\"errors\":[\"Can not approve your own pull request\"]}")
+        return fake_gh_native(method, path, payload=payload, repo=repo, token=token, accept=accept)
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh_self_422):
+        res2 = agent_backlog.submit_pr_review(
+            50,
+            event="APPROVE",
+            body="Looks clean!",
+            repo="owner/repo",
+            token="same-pat",
+        )
+    assert res2["used_marker_fallback"] is True
+    assert res2["issue_status"] == "agent:approved"
+    assert "agent:approved" in issue_labels
+    assert posted_reviews[0]["event"] == "COMMENT"
+    assert "<!-- agent-review:event=APPROVE sha=sha20 -->" in posted_reviews[0]["body"]
+
+    # Case 3: Circuit breaker blocks issue when exceeding max_rework_rounds
+    posted_reviews.clear()
+    issue_labels[:] = ["agent:review", "priority:p1"]
+
+    def fake_gh_breaker(method, path, payload=None, repo=None, token=None, accept=None):
+        if method == "GET" and path.startswith("/pulls/50/reviews"):
+            return [
+                {"id": 1, "state": "CHANGES_REQUESTED", "commit_id": "s1", "user": {"login": "rev"}},
+                {"id": 2, "state": "CHANGES_REQUESTED", "commit_id": "s2", "user": {"login": "rev"}},
+                {"id": 3, "state": "CHANGES_REQUESTED", "commit_id": "s3", "user": {"login": "rev"}},
+            ]
+        return fake_gh_native(method, path, payload=payload, repo=repo, token=token, accept=accept)
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh_breaker):
+        res3 = agent_backlog.submit_pr_review(
+            50,
+            event="REQUEST_CHANGES",
+            body="Still failing unit tests.",
+            max_rework_rounds=3,
+            repo="owner/repo",
+            token="rev-tok",
+        )
+    assert res3["circuit_breaker_tripped"] is True
+    assert res3["issue_status"] == "agent:blocked"
+    assert "agent:blocked" in issue_labels
+
+
+def test_sync_pr_review_status_and_get_next_task_prioritizes_rework(capsys):
+    issue_labels = ["agent:review", "priority:p2"]
+
+    def fake_gh_sync(method, path, payload=None, repo=None, token=None, accept=None):
+        if method == "GET" and path == "/pulls/77":
+            return {"number": 77, "head": {"ref": "agent/issue-31", "sha": "sha31"}}
+        if method == "GET" and path == "/issues/31":
+            return {"number": 31, "labels": [{"name": l} for l in issue_labels]}
+        if method == "GET" and path.startswith("/pulls/77/reviews"):
+            return [{"id": 1, "state": "CHANGES_REQUESTED", "commit_id": "sha31", "user": {"login": "human"}, "body": "Fix null check"}]
+        if method == "PATCH" and path == "/issues/31":
+            issue_labels[:] = payload["labels"]
+            return {"number": 31, "labels": payload["labels"]}
+        raise AssertionError(f"Unexpected call: {method} {path}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh_sync):
+        synced = agent_backlog.sync_pr_review_status(77, repo="owner/repo", token="tok")
+    assert synced["synced"] is True
+    assert synced["status"] == "agent:changes-requested"
+
+    spec_body = agent_backlog.format_task_body(
+        objective="Handle null rating",
+        spec={
+            "owned_paths": ["bgg_recommender/scoring.py"],
+            "acceptance_criteria": ["Handles None cleanly"],
+            "verification_commands": ["python -m pytest"],
+        },
+    )
+
+    def fake_gh_next(method, path, payload=None, repo=None, token=None, accept=None):
+        if method == "GET" and path.startswith("/pulls?"):
+            return [{"number": 77, "title": "Fix rating", "html_url": "https://example.com/pull/77", "head": {"ref": "agent/issue-31", "sha": "sha31"}, "base": {"ref": "main"}}]
+        if method == "GET" and path == "/issues/31":
+            return {
+                "number": 31,
+                "title": "Handle null rating",
+                "state": "open",
+                "html_url": "https://example.com/issues/31",
+                "labels": [{"name": l} for l in issue_labels],
+                "body": spec_body,
+            }
+        if method == "GET" and path == "/pulls/77":
+            return {"number": 77, "title": "Fix rating", "html_url": "https://example.com/pull/77", "head": {"ref": "agent/issue-31", "sha": "sha31"}, "base": {"ref": "main"}}
+        if method == "GET" and path.startswith("/pulls/77/reviews"):
+            return [{"id": 1, "state": "CHANGES_REQUESTED", "commit_id": "sha31", "user": {"login": "human"}, "body": "Please guard None"}]
+        if method == "GET" and path.startswith("/pulls/77/comments"):
+            return [{"id": 5, "user": {"login": "human"}, "path": "bgg_recommender/scoring.py", "line": 19, "body": "Use `or 0.0`", "diff_hunk": "@@", "in_reply_to_id": None}]
+        if method == "GET" and path.startswith("/issues/77/comments"):
+            return []
+        if method == "GET" and path.startswith("/pulls/77/files"):
+            return [{"filename": "bgg_recommender/scoring.py", "status": "modified", "additions": 2, "deletions": 1}]
+        if method == "GET" and path.startswith("/commits/sha31/check-runs"):
+            return {"check_runs": []}
+        if method == "PATCH" and path == "/issues/31":
+            issue_labels[:] = payload["labels"]
+            return {"number": 31, "labels": payload["labels"]}
+        if method == "POST" and path == "/issues/31/comments":
+            return {"id": 88}
+        raise AssertionError(f"Unexpected call: {method} {path}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh_next), \
+         patch.object(agent_backlog, "prepare_task_worktree", return_value="D:/repo/scratch/worktrees/agent-issue-31") as mock_wt:
+        rc = agent_backlog.main(["next", "--claim", "--worktree", "--json"])
+
+    assert rc == 0
+    mock_wt.assert_called_once_with("agent/issue-31", resume_existing=True)
+    out_payload = json.loads(capsys.readouterr().out)
+    assert out_payload["number"] == 31
+    assert out_payload["rework"] is True
+    assert out_payload["claimed"] is True
+    assert out_payload["pr_feedback"]["inline_comments"][0]["line"] == 19
+    assert "agent:in-progress" in issue_labels
+
+
+def test_complete_task_issue_posts_rework_comment_on_existing_pr():
+    pr_comments = []
+
+    def fake_gh(method, path, payload=None, repo=None, token=None, accept=None):
+        if method == "GET" and path == "/issues/31":
+            return {"number": 31, "title": "Fix rating", "labels": [{"name": "agent:in-progress"}]}
+        if method == "PATCH" and path == "/issues/31":
+            return {"number": 31, "html_url": "https://example.com/31", "state": "open", "labels": payload["labels"]}
+        if method == "GET" and path.startswith("/pulls?"):
+            return [{"number": 77, "html_url": "https://example.com/pull/77"}]
+        if method == "POST" and path == "/issues/77/comments":
+            pr_comments.append(payload["body"])
+            return {"id": 201}
+        if method == "POST" and path == "/issues/31/comments":
+            return {"id": 202}
+        raise AssertionError(f"Unexpected call: {method} {path}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh):
+        updated = agent_backlog.complete_task_issue(
+            31,
+            summary="Added None guard as requested.",
+            pr="agent/issue-31",
+            open_pr=True,
+            verification_results="| `pytest` | PASS |",
+            repo="owner/repo",
+            token="tok",
+        )
+    assert updated["labels"] == ["agent:review"]
+    assert len(pr_comments) == 1
+    assert "Added None guard as requested." in pr_comments[0]
+
+
+def test_submit_review_cli_parses_inline_comments(capsys):
+    with patch.object(
+        agent_backlog,
+        "submit_pr_review",
+        return_value={"pr_number": 9, "issue_number": 4, "event": "REQUEST_CHANGES", "issue_status": "agent:changes-requested"},
+    ) as mock_sub:
+        rc = agent_backlog.main([
+            "submit-review", "9",
+            "--event", "request_changes",
+            "--body", "Needs test",
+            "--comment", "scripts/agent_backlog.py:10:Add docstring",
+            "--json",
+        ])
+    assert rc == 0
+    mock_sub.assert_called_once()
+    call_kwargs = mock_sub.call_args.kwargs
+    assert call_kwargs["event"] == "request_changes"
+    assert call_kwargs["comments"] == [{
+        "path": "scripts/agent_backlog.py",
+        "line": 10,
+        "side": "RIGHT",
+        "body": "Add docstring",
+    }]
+    assert json.loads(capsys.readouterr().out)["issue_status"] == "agent:changes-requested"
