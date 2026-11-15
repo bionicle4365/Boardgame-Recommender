@@ -172,9 +172,51 @@ def infer_domain_checks(modified_files: Sequence[str]) -> List[str]:
     return checks
 
 
-def run_verification_commands(commands: Sequence[str]) -> List[Tuple[str, int]]:
+def format_verification_markdown(
+    results: Sequence[Tuple[str, int]],
+    modified_files: Optional[Sequence[str]] = None,
+    branch: Optional[str] = None,
+    snippets: Optional[Sequence[Tuple[str, str]]] = None,
+) -> str:
+    """Format verification results into a Markdown table and optional output excerpts for PR descriptions."""
+    lines: List[str] = []
+    if branch:
+        lines.append(f"- **Branch:** `{branch}`")
+    if modified_files is not None:
+        lines.append(f"- **Files Modified ({len(modified_files)}):** " + (
+            ", ".join(f"`{f}`" for f in modified_files) if modified_files else "_none_"
+        ))
+    if lines:
+        lines.append("")
+
+    lines.extend(["| Check / Command | Result |", "| --- | --- |"])
+    for cmd, code in results:
+        badge = "PASS" if code == 0 else f"FAIL ({code})"
+        lines.append(f"| `{cmd}` | {badge} |")
+
+    for cmd, excerpt in snippets or []:
+        if excerpt and excerpt.strip():
+            lines.extend(["", f"<details><summary>Output excerpt: <code>{cmd}</code></summary>", "", "```text", excerpt.strip(), "```", "</details>"])
+
+    return "\n".join(lines)
+
+
+def run_verification_commands(
+    commands: Sequence[str],
+    capture_output: bool = False,
+) -> List[Tuple[str, int]]:
     """Run verification commands sequentially and return `(command, exit_code)` results."""
+    results, _ = _run_verification_commands_with_logs(commands, capture_output=capture_output)
+    return results
+
+
+def _run_verification_commands_with_logs(
+    commands: Sequence[str],
+    capture_output: bool = False,
+) -> Tuple[List[Tuple[str, int]], List[Tuple[str, str]]]:
+    """Run verification commands sequentially and optionally capture tail output snippets."""
     results: List[Tuple[str, int]] = []
+    snippets: List[Tuple[str, str]] = []
     seen = set()
     for raw_cmd in commands:
         cmd = raw_cmd.strip()
@@ -182,13 +224,24 @@ def run_verification_commands(commands: Sequence[str]) -> List[Tuple[str, int]]:
             continue
         seen.add(cmd)
         print(f"\n>>> Running verification: {cmd}")
-        proc = subprocess.run(cmd, shell=True, check=False)
+        if capture_output:
+            proc = subprocess.run(cmd, shell=True, text=True, capture_output=True, check=False)
+            combined = "\n".join(
+                part for part in (getattr(proc, "stdout", ""), getattr(proc, "stderr", ""))
+                if isinstance(part, str) and part.strip()
+            )
+            if combined:
+                print(combined)
+                tail_lines = combined.strip().splitlines()[-15:]
+                snippets.append((cmd, "\n".join(tail_lines)))
+        else:
+            proc = subprocess.run(cmd, shell=True, check=False)
         results.append((cmd, proc.returncode))
         if proc.returncode != 0:
             print(f"!!! FAILED (exit {proc.returncode}): {cmd}")
         else:
             print(f"+++ PASSED: {cmd}")
-    return results
+    return results, snippets
 
 
 def verify_task(
@@ -199,8 +252,40 @@ def verify_task(
     verify_cmds: Optional[Sequence[str]] = None,
     skip_git_check: bool = False,
     repo: Optional[str] = None,
+    cwd: Optional[str] = None,
+    report_markdown: Optional[str] = None,
 ) -> int:
     """Execute full boundary + test verification for a task and return exit code (0=pass, 1=fail)."""
+    prev_cwd: Optional[str] = None
+    if cwd:
+        prev_cwd = os.getcwd()
+        os.chdir(cwd)
+    try:
+        return _verify_task_impl(
+            issue_number=issue_number,
+            base_ref=base_ref,
+            owned_paths=owned_paths,
+            forbidden_paths=forbidden_paths,
+            verify_cmds=verify_cmds,
+            skip_git_check=skip_git_check,
+            repo=repo,
+            report_markdown=report_markdown,
+        )
+    finally:
+        if prev_cwd is not None:
+            os.chdir(prev_cwd)
+
+
+def _verify_task_impl(
+    issue_number: Optional[int] = None,
+    base_ref: Optional[str] = None,
+    owned_paths: Optional[Sequence[str]] = None,
+    forbidden_paths: Optional[Sequence[str]] = None,
+    verify_cmds: Optional[Sequence[str]] = None,
+    skip_git_check: bool = False,
+    repo: Optional[str] = None,
+    report_markdown: Optional[str] = None,
+) -> int:
     resolved_owned: List[str] = list(owned_paths or [])
     resolved_forbidden: List[str] = list(forbidden_paths or [])
     resolved_cmds: List[str] = list(verify_cmds or [])
@@ -220,6 +305,7 @@ def verify_task(
                 resolved_cmds.append(cmd)
         print(f"Loaded task spec from GitHub Issue #{issue_number}: {issue_data.get('title')}")
 
+    branch: Optional[str] = None
     modified_files: List[str] = []
     if not skip_git_check:
         branch = get_current_branch()
@@ -245,15 +331,34 @@ def verify_task(
     all_commands = [*inferred, *resolved_cmds]
     if not all_commands:
         print("No verification commands specified or inferred. Exiting cleanly.")
+        if report_markdown:
+            os.makedirs(os.path.dirname(os.path.abspath(report_markdown)), exist_ok=True)
+            with open(report_markdown, "w", encoding="utf-8") as rf:
+                rf.write(format_verification_markdown([], modified_files=modified_files if not skip_git_check else None, branch=branch))
         return 0
 
-    results = run_verification_commands(all_commands)
+    results, snippets = _run_verification_commands_with_logs(
+        all_commands,
+        capture_output=bool(report_markdown),
+    )
     failed = [cmd for cmd, code in results if code != 0]
 
     print("\n=== VERIFICATION SUMMARY ===")
     for cmd, code in results:
         status = "PASS" if code == 0 else f"FAIL ({code})"
         print(f"  [{status}] {cmd}")
+
+    if report_markdown:
+        os.makedirs(os.path.dirname(os.path.abspath(report_markdown)), exist_ok=True)
+        with open(report_markdown, "w", encoding="utf-8") as rf:
+            rf.write(
+                format_verification_markdown(
+                    results,
+                    modified_files=modified_files if not skip_git_check else None,
+                    branch=branch,
+                    snippets=snippets,
+                )
+            )
 
     return 1 if failed else 0
 
@@ -262,11 +367,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Deterministic task verification runner")
     parser.add_argument("--issue", type=int, default=None, help="GitHub Issue number to load spec from")
     parser.add_argument("--repo", default=None, help="GitHub repo slug owner/name")
+    parser.add_argument("--cwd", default=None, help="Optional working directory (e.g. isolated git worktree path)")
     parser.add_argument("--base", default=None, help="Optional git base ref for diff file detection")
     parser.add_argument("--owned-paths", nargs="*", default=[], help="Allowed file/directory paths")
     parser.add_argument("--forbidden-paths", nargs="*", default=[], help="Disallowed file/directory paths")
     parser.add_argument("--verify-cmd", action="append", default=[], help="Verification command to execute")
     parser.add_argument("--skip-git-check", action="store_true", help="Skip git status boundary check")
+    parser.add_argument("--report-markdown", default=None, help="Write Markdown verification report to this file")
     return parser
 
 
@@ -281,6 +388,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         verify_cmds=args.verify_cmd,
         skip_git_check=args.skip_git_check,
         repo=args.repo,
+        cwd=args.cwd,
+        report_markdown=args.report_markdown,
     )
 
 

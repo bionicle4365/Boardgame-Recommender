@@ -151,3 +151,38 @@ def test_resolve_default_base_ref_and_committed_diff():
         assert exit_code == 1
         mock_files.assert_called_once_with(base_ref="origin/main...HEAD")
         mock_run.assert_not_called()
+
+
+def test_verify_task_cwd_restores_original_working_directory(tmp_path):
+    orig_cwd = os.getcwd()
+    exit_code = verify_task.verify_task(skip_git_check=True, cwd=str(tmp_path))
+    assert exit_code == 0
+    assert os.getcwd() == orig_cwd
+
+
+def test_verify_task_writes_markdown_report(tmp_path):
+    report_path = tmp_path / "verify-report.md"
+    issue_payload = {
+        "number": 42,
+        "title": "Add /similar endpoint",
+        "spec_error": None,
+        "spec": {
+            "owned_paths": ["bgg_recommender/scoring.py"],
+            "forbidden_paths": ["infrastructure/"],
+            "acceptance_criteria": ["Works"],
+            "verification_commands": ["python -m pytest tests/test_bgg_recommender.py"],
+        },
+    }
+
+    with patch.object(verify_task.agent_backlog, "get_task_issue", return_value=issue_payload), \
+         patch.object(verify_task, "get_current_branch", return_value="agent/issue-42"), \
+         patch.object(verify_task, "resolve_default_base_ref", return_value="origin/main...HEAD"), \
+         patch.object(verify_task, "get_modified_files", return_value=["bgg_recommender/scoring.py"]), \
+         patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="12 passed in 0.4s", stderr="")):
+        exit_code = verify_task.verify_task(issue_number=42, report_markdown=str(report_path))
+
+    assert exit_code == 0
+    content = report_path.read_text(encoding="utf-8")
+    assert "`agent/issue-42`" in content
+    assert "`python -m pytest tests/test_bgg_recommender.py` | PASS" in content
+    assert "12 passed in 0.4s" in content

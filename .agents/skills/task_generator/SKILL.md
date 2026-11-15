@@ -20,8 +20,9 @@ What the deterministic audit covers:
 Check open roadmap tasks via `python scripts/agent_backlog.py list --status all`:
 - **Replenishment Rule**: Only when **fewer than 3** open `source:roadmap` issues exist in `agent:proposed` or `agent:ready`, inspect [market_analysis.md](file:///d:/Git/Boardgame-Recommender/docs/market_analysis.md) and [cafe_edition_design.md](file:///d:/Git/Boardgame-Recommender/docs/cafe_edition_design.md) and propose **1** atomic, single-PR feature task (e.g., *Game Night Flight* 3-stage recommendations, *Teach vs. Play* complexity/weight split, or *Why Not?* exclusion reasons) via:
 ```powershell
-python scripts/agent_backlog.py create --title "..." --objective "..." --owned-paths ... --forbidden-paths ... --acceptance ... --verify ... --priority p2 --source roadmap --domain ...
+python scripts/agent_backlog.py create --title "..." --objective "..." --context "..." --example "..." --visual "..." --note "..." --owned-paths ... --forbidden-paths ... --acceptance ... --verify ... --priority p2 --source roadmap --domain ...
 ```
+Always include rich `--context` (why it matters), `--example` (sample API request/response JSON, CLI usage, or before/after behavior), and `--visual` (Mermaid diagram, ASCII layout, or screenshot URL on the `screenshots` orphan branch) so human reviewers can approve issues quickly.
 
 ### 3. Noise & Safety Guardrails
 - **Human Approval Gate**: All newly published or created issues start as `agent:proposed` and require human approval (`agent:ready`) before execution.

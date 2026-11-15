@@ -1,0 +1,194 @@
+name: PR CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-tests:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pandas numpy requests pyarrow boto3 botocore qrcode aws-lambda-powertools
+
+      - name: Syntax Check
+        run: |
+          python -m compileall -q \
+            bgg_api_proxy \
+            bgg_compactor \
+            bgg_game_data_scraper \
+            bgg_game_scraper \
+            bgg_preferences \
+            bgg_preview_refresh \
+            bgg_recommender \
+            bgg_taste_analytics \
+            bgg_user_data_scraper \
+            scripts \
+            tests
+
+      - name: Run Pytest
+        run: python -m pytest tests/ -v
+
+  frontend-tests:
+    name: Frontend Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: site_ui/package-lock.json
+
+      - name: Install Dependencies
+        run: npm --prefix site_ui ci
+
+      - name: Run Vitest
+        run: npm --prefix site_ui test
+
+  jekyll-build:
+    name: Jekyll Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: site_ui
+
+      - name: Build Jekyll Site
+        working-directory: site_ui
+        run: bundle exec jekyll build
+
+      - name: Upload Built Jekyll Site
+        uses: actions/upload-artifact@v4
+        with:
+          name: jekyll-site
+          path: site_ui/_site
+          retention-days: 1
+
+  ui-screenshots:
+    name: UI Screenshots
+    needs: [jekyll-build]
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect UI Changes
+        id: changed
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          CHANGED_UI=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- site_ui/ | grep -v '^site_ui/tests/' || true)
+          if [ -n "$CHANGED_UI" ]; then
+            echo "has_ui=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_ui=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download Built Jekyll Site
+        if: steps.changed.outputs.has_ui == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: jekyll-site
+          path: site_ui/_site
+
+      - name: Set up Python & Playwright
+        if: steps.changed.outputs.has_ui == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Playwright Chromium
+        if: steps.changed.outputs.has_ui == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install chromium --with-deps
+
+      - name: Capture & Publish PR Screenshots
+        if: steps.changed.outputs.has_ui == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/capture_ui_screenshots.py \
+            --site-dir site_ui/_site \
+            --base "origin/${{ github.base_ref }}" \
+            --mobile \
+            --upload \
+            --prefix "prs/pr-${{ github.event.pull_request.number }}" \
+            --post-pr-comment "${{ github.event.pull_request.number }}"
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init (No Backend)
+        working-directory: infrastructure
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform Validate
+        working-directory: infrastructure
+        run: terraform validate
+
+  ci-status:
+    name: PR Merge Gate
+    needs: [python-tests, frontend-tests, jekyll-build, terraform-validate, ui-screenshots]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify All CI Jobs Succeeded
+        run: |
+          if [ "${{ needs.python-tests.result }}" != "success" ] || \
+             [ "${{ needs.frontend-tests.result }}" != "success" ] || \
+             [ "${{ needs.jekyll-build.result }}" != "success" ] || \
+             [ "${{ needs.terraform-validate.result }}" != "success" ] || \
+             ( [ "${{ needs.ui-screenshots.result }}" != "success" ] && [ "${{ needs.ui-screenshots.result }}" != "skipped" ] ); then
+            echo "One or more CI jobs failed:"
+            echo "  python-tests:       ${{ needs.python-tests.result }}"
+            echo "  frontend-tests:     ${{ needs.frontend-tests.result }}"
+            echo "  jekyll-build:       ${{ needs.jekyll-build.result }}"
+            echo "  terraform-validate: ${{ needs.terraform-validate.result }}"
+            echo "  ui-screenshots:     ${{ needs.ui-screenshots.result }}"
+            exit 1
+          fi
+          echo "All PR CI checks passed."

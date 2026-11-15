@@ -228,6 +228,10 @@ def test_publish_discovered_tasks_enforces_max_new_issues_cap():
 
     with patch.object(
         audit_and_generate_tasks.agent_backlog,
+        "list_task_issues",
+        return_value=[],
+    ), patch.object(
+        audit_and_generate_tasks.agent_backlog,
         "create_task_issue",
         side_effect=[
             {"deduplicated": False, "issue": {"number": 1, "title": "Task 0", "html_url": "https://example.com/1"}},
@@ -239,3 +243,79 @@ def test_publish_discovered_tasks_enforces_max_new_issues_cap():
 
     assert len(results) == 2
     assert mock_create.call_count == 2
+
+    # When 3 issues were already created in the last 24h, publish_discovered_tasks creates 0 new issues
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    recent_open = [
+        {"number": i, "created_at": now_iso, "labels": [{"name": "agent:proposed"}]}
+        for i in range(1, 4)
+    ]
+    with patch.object(
+        audit_and_generate_tasks.agent_backlog,
+        "list_task_issues",
+        return_value=recent_open,
+    ), patch.object(
+        audit_and_generate_tasks.agent_backlog,
+        "create_task_issue",
+    ) as mock_create_24h:
+        results_capped = audit_and_generate_tasks.publish_discovered_tasks(
+            sample_tasks, max_new_issues=3, max_open_proposed=5
+        )
+    assert results_capped == []
+    mock_create_24h.assert_not_called()
+
+
+def test_collect_all_tasks_continues_when_s3_fails(tmp_path):
+    with patch.object(audit_and_generate_tasks, "audit_contract_drift", return_value=[]), \
+         patch.object(audit_and_generate_tasks, "audit_frontend_and_handler_gaps", return_value=[]), \
+         patch.object(audit_and_generate_tasks, "audit_test_suites", return_value=[]), \
+         patch.object(audit_and_generate_tasks, "audit_s3_preview_coverage", side_effect=RuntimeError("NoCredentialsError")), \
+         patch.object(audit_and_generate_tasks, "audit_cloudwatch_lambda_errors", return_value=[]), \
+         patch.object(
+             audit_and_generate_tasks,
+             "audit_github_actions_failures",
+             return_value=[{"title": "Fix CI"}],
+         ):
+        tasks = audit_and_generate_tasks.collect_all_tasks(
+            repo_root=str(tmp_path),
+            check_s3=True,
+            check_cloudwatch=True,
+            check_ci=True,
+        )
+
+    assert tasks == [{"title": "Fix CI"}]
+
+
+def test_audit_tasks_include_context_and_examples_and_forward_to_create():
+    sample_task = {
+        "title": "Sample Rich Task",
+        "objective": "Do work",
+        "context": "Why this matters",
+        "examples": ['```json\n{"ok": true}\n```'],
+        "visuals": ["```mermaid\nflowchart LR\nA-->B\n```"],
+        "implementation_notes": ["Check handler"],
+        "owned_paths": ["bgg_preview_refresh/bgg_preview_refresh.py"],
+        "forbidden_paths": ["site_ui/"],
+        "acceptance_criteria": ["Works"],
+        "verification_commands": ["python -m pytest tests/test_bgg_preview_refresh.py"],
+        "priority": "p2",
+        "source": "telemetry",
+        "domains": ["bgg-api"],
+    }
+
+    with patch.object(
+        audit_and_generate_tasks.agent_backlog,
+        "list_task_issues",
+        return_value=[],
+    ), patch.object(
+        audit_and_generate_tasks.agent_backlog,
+        "create_task_issue",
+        return_value={"deduplicated": False, "issue": {"number": 99, "title": "Sample Rich Task", "html_url": "https://example.com/99"}},
+    ) as mock_create:
+        audit_and_generate_tasks.publish_discovered_tasks([sample_task], repo="owner/repo")
+
+    kwargs = mock_create.call_args.kwargs
+    assert kwargs["context"] == "Why this matters"
+    assert kwargs["examples"] == ['```json\n{"ok": true}\n```']
+    assert kwargs["visuals"] == ["```mermaid\nflowchart LR\nA-->B\n```"]
+    assert kwargs["implementation_notes"] == ["Check handler"]

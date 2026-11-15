@@ -12,6 +12,37 @@ body:
     validations:
       required: true
   - type: textarea
+    id: context
+    attributes:
+      label: Context & Motivation
+      description: Background, user/venue impact, failing CI links, or telemetry metrics explaining why this matters.
+      placeholder: Users browsing a specific game page currently have no instant "games like this" discovery without a full profile load.
+    validations:
+      required: false
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Concrete API request/response JSON, CLI usage, failing test excerpts, or before/after behavior.
+      placeholder: |
+        ```json
+        GET /similar?game_id=266192&limit=5
+        ```
+    validations:
+      required: false
+  - type: textarea
+    id: visuals
+    attributes:
+      label: Visuals & Mockups
+      description: Mermaid diagrams, ASCII UI layouts, or screenshots (paste or link from the `screenshots` branch).
+      placeholder: |
+        ```mermaid
+        flowchart LR
+          Client -->|GET /similar| Recommender --> S3[(catalog.parquet)]
+        ```
+    validations:
+      required: false
+  - type: textarea
     id: owned_paths
     attributes:
       label: Owned Paths

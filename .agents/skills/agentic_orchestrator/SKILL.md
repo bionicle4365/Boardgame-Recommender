@@ -12,8 +12,9 @@ Autonomous tasks are discovered via [task-generator](file:///d:/Git/Boardgame-Re
 - **Approve issue**: `python scripts/agent_backlog.py approve <issue_number>` (transitions `agent:proposed` -> `agent:ready`)
 - **Discover approved work**: `python scripts/agent_backlog.py list --status ready` (or `python scripts/agent_backlog.py next --json`; agents must only claim `agent:ready` issues)
 - **Claim next task & worktree/branch**: `python scripts/agent_backlog.py next --claim --worktree --agent <agent_name>` (creates an isolated worktree under `scratch/worktrees/...` on `agent/issue-<issue_number>` from fresh `origin/main`, or `--checkout` for an in-place clean branch; never work on, push to, or merge into `main`)
-- **Verify task**: `python scripts/verify_task.py --issue <issue_number>` (enforces active `agent/...` branch, committed + uncommitted path boundaries vs `origin/main...HEAD`, and domain tests)
-- **Complete task & open PR**: `python scripts/agent_backlog.py complete <issue_number> --pr agent/issue-<issue_number> --push --open-pr --summary "..."` (pushes only `agent/issue-<issue_number>` and opens a PR to `main` without merging)
+- **Verify task**: `python scripts/verify_task.py --issue <issue_number> --report-markdown scratch/verify-<issue_number>.md` (enforces active `agent/...` branch, committed + uncommitted path boundaries vs `origin/main...HEAD`, domain tests, and exports a Markdown verification table)
+- **Capture UI screenshots (when `site_ui/` changes)**: `python scripts/capture_ui_screenshots.py --base origin/main --mobile` (renders built Jekyll pages via Playwright; `--upload` pushes PNGs to the orphan `screenshots` branch without bloating `main`)
+- **Complete task & open PR**: `python scripts/agent_backlog.py complete <issue_number> --pr agent/issue-<issue_number> --push --open-pr --summary "..." --verify-report scratch/verify-<issue_number>.md --example "..." --screenshot ...` (pushes only `agent/issue-<issue_number>` and opens a rich PR to `main` without merging)
 - **Block stuck task**: `python scripts/agent_backlog.py block <issue_number> --reason "..."` (marks unrecoverable or repeatedly failing tasks `agent:blocked` with diagnostics instead of leaving them `agent:in-progress`)
 
 ### Domain Identification

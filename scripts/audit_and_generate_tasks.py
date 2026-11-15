@@ -54,6 +54,10 @@ def _make_task(
     priority: str,
     source: str,
     domains: List[str],
+    context: Optional[str] = None,
+    examples: Optional[List[str]] = None,
+    visuals: Optional[List[str]] = None,
+    implementation_notes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Build and validate a structured task specification dictionary."""
     validated = agent_backlog.validate_task_spec(
@@ -62,9 +66,13 @@ def _make_task(
             "forbidden_paths": forbidden_paths,
             "acceptance_criteria": acceptance_criteria,
             "verification_commands": verification_commands,
+            "context": context,
+            "examples": examples,
+            "visuals": visuals,
+            "implementation_notes": implementation_notes,
         }
     )
-    return {
+    task: Dict[str, Any] = {
         "title": title,
         "objective": objective,
         "owned_paths": validated["owned_paths"],
@@ -75,6 +83,10 @@ def _make_task(
         "source": source,
         "domains": domains,
     }
+    for opt_key in ("context", "examples", "visuals", "implementation_notes"):
+        if opt_key in validated:
+            task[opt_key] = validated[opt_key]
+    return task
 
 
 def _parse_apigw_routes(apigw_tf_text: str) -> Set[Tuple[str, str]]:
@@ -147,6 +159,19 @@ def audit_contract_drift(repo_root: str = ".") -> List[Dict[str, Any]]:
                 "Contract drift detected between docs/contracts/schemas_and_routes.json and "
                 "source-of-truth definitions:\n- " + "\n- ".join(issues_found)
             ),
+            context=(
+                "`docs/contracts/schemas_and_routes.json` acts as the shared contract between Terraform API Gateway, "
+                "`bgg_compactor`, backend Lambdas, and `site_ui`. When it drifts, autonomous workers and auditors "
+                "cannot reliably validate endpoints or Parquet column names."
+            ),
+            examples=[
+                "```text\n" + "\n".join(issues_found) + "\n```",
+                '```json\n{\n  "method": "GET",\n  "path": "/example-route",\n  "lambda": "bgg_recommender",\n  "auth": "public"\n}\n```',
+            ],
+            implementation_notes=[
+                "Compare `route_key` declarations in `infrastructure/apigateway/main.tf` with `api_routes`.",
+                "Compare `TARGET_SCHEMA` in `bgg_compactor/combine_raw_to_single_file.py` with `parquet_schemas.catalog.columns`.",
+            ],
             owned_paths=["docs/contracts/schemas_and_routes.json"],
             forbidden_paths=["infrastructure/", "site_ui/"],
             acceptance_criteria=[
@@ -204,6 +229,16 @@ def audit_frontend_and_handler_gaps(repo_root: str = ".") -> List[Dict[str, Any]
                         "Frontend files in `site_ui/` call API path(s) missing from `docs/contracts/schemas_and_routes.json`:\n- "
                         + "\n- ".join(undeclared_calls)
                     ),
+                    context=(
+                        "Static audit of `fetchApi(...)` and `${API_BASE}/...` calls in `site_ui/` found routes "
+                        "not declared in `docs/contracts/schemas_and_routes.json`, risking 404s or contract drift."
+                    ),
+                    examples=[
+                        "```text\nUndeclared calls:\n" + "\n".join(f"  - {c}" for c in undeclared_calls) + "\n```",
+                    ],
+                    implementation_notes=[
+                        "Confirm whether the route exists in `infrastructure/apigateway/main.tf` or is a typo in `site_ui/`.",
+                    ],
                     owned_paths=["docs/contracts/schemas_and_routes.json", "site_ui/"],
                     forbidden_paths=["infrastructure/"],
                     acceptance_criteria=[
@@ -256,7 +291,7 @@ def audit_frontend_and_handler_gaps(repo_root: str = ".") -> List[Dict[str, Any]
                     untested.append((fn_name, rel_handler, target_test, domains))
 
         if untested:
-            first_fn, _, target_test, domains = untested[0]
+            first_fn, rel_handler, target_test, domains = untested[0]
             summary = ", ".join(item[0] for item in untested)
             tasks.append(
                 _make_task(
@@ -264,6 +299,13 @@ def audit_frontend_and_handler_gaps(repo_root: str = ".") -> List[Dict[str, Any]
                     objective=(
                         f"Detected backend route handler(s) without direct references in `tests/`: {summary}."
                     ),
+                    context=(
+                        f"`{first_fn}` in `{rel_handler}` has no direct test reference in `tests/`, leaving "
+                        "input validation, status codes, and edge-case responses unguarded by CI."
+                    ),
+                    examples=[
+                        f"```python\n# Example test skeleton in {target_test}\ndef test_{first_fn}_happy_path():\n    # Invoke handler with mocked S3/DynamoDB dependencies and assert HTTP 200 JSON\n    pass\n```",
+                    ],
                     owned_paths=[target_test],
                     forbidden_paths=["infrastructure/", "site_ui/"],
                     acceptance_criteria=[
@@ -343,6 +385,11 @@ def audit_test_suites(repo_root: str = ".", run_tests: bool = False) -> List[Dic
                     "Live `python -m pytest -q` failed with exit code "
                     f"{py_proc.returncode}.\n\nExcerpt:\n{combined[-1200:]}"
                 ),
+                context=(
+                    "Automated backend unit tests failed during the repository audit. Restoring green `pytest` "
+                    "prevents PR CI merge-gate failures across downstream tasks."
+                ),
+                examples=[f"```text\n{combined[-1200:].strip()}\n```"],
                 owned_paths=owned,
                 forbidden_paths=["infrastructure/", "site_ui/"],
                 acceptance_criteria=[
@@ -397,6 +444,10 @@ def audit_test_suites(repo_root: str = ".", run_tests: bool = False) -> List[Dic
                         f"Live `npm --prefix site_ui test` exited with {ui_proc.returncode}.\n\n"
                         f"Excerpt:\n{combined_ui[-1200:]}"
                     ),
+                    context=(
+                        "Frontend Vitest suite in `site_ui/tests/` is failing, blocking `frontend-tests` in PR CI."
+                    ),
+                    examples=[f"```text\n{combined_ui[-1200:].strip()}\n```"],
                     owned_paths=owned_ui,
                     forbidden_paths=["infrastructure/", "bgg_recommender/"],
                     acceptance_criteria=[
@@ -508,6 +559,19 @@ def audit_s3_preview_coverage(
                     + "\n\nUpdate bgg_preview_refresh/bgg_preview_refresh.py so newly discovered or "
                     "uncataloged preview game IDs can be enqueued to GAME_SQS_QUEUE_URL for ingestion."
                 ),
+                context=(
+                    "When `bgg_preview_refresh` discovers new convention preview titles, those game IDs appear in "
+                    "`data/active_previews_games.json` immediately, but remain absent from `catalog.parquet` until "
+                    "scraped by `bgg_game_data_scraper` and compacted. Enqueueing missing IDs to `GAME_SQS_QUEUE_URL` "
+                    "closes the ingestion loop automatically."
+                ),
+                examples=[
+                    "Missing preview coverage observed:\n```text\n" + "\n".join(missing_summary) + "\n```",
+                    'Expected SQS batch message format for `GAME_SQS_QUEUE_URL`:\n```json\n{"game_id": "418059"}\n```',
+                ],
+                visuals=[
+                    "```mermaid\nflowchart LR\n  BGG[\"BGG GeekPreview API\"] --> PR[\"bgg_preview_refresh\"]\n  PR -->|\"Write map\"| S3[\"S3 active_previews_games.json\"]\n  PR -->|\"Enqueue missing IDs\"| SQS[\"GAME_SQS_QUEUE_URL\"]\n  SQS --> Scraper[\"bgg_game_data_scraper\"] --> Catalog[\"catalog.parquet\"]\n```"
+                ],
                 owned_paths=[
                     "bgg_preview_refresh/bgg_preview_refresh.py",
                     "tests/test_bgg_preview_refresh.py",
@@ -533,6 +597,11 @@ def audit_s3_preview_coverage(
                     f"{min_preview_video_coverage:.0%} `rules_video_url` coverage threshold:\n- "
                     + "\n- ".join(low_video_previews)
                 ),
+                context=(
+                    "Convention preview users rely on embedded rules tutorial videos in the UI. Expanding "
+                    "safe category/title matching in `bgg_game_data_scraper.py` improves learn-to-play coverage."
+                ),
+                examples=["```text\n" + "\n".join(low_video_previews) + "\n```"],
                 owned_paths=[
                     "bgg_game_data_scraper/bgg_game_data_scraper.py",
                     "tests/test_bgg_game_data_scraper.py",
@@ -628,6 +697,8 @@ def audit_cloudwatch_lambda_errors(hours: int = 24) -> List[Dict[str, Any]]:
                     f"Detected {len(events)} recent error event(s) in `{log_group}` over the last "
                     f"{hours}h:\n- " + "\n- ".join(samples)
                 ),
+                context=f"Production error scan in `{log_group}` surfaced unhandled exceptions or timeouts.",
+                examples=["```text\n" + "\n".join(samples) + "\n```"],
                 owned_paths=[f"{pkg}/", f"tests/{target_test}"],
                 forbidden_paths=["infrastructure/", "site_ui/"],
                 acceptance_criteria=[
@@ -685,6 +756,8 @@ def audit_github_actions_failures(
                 "Latest completed workflow run(s) on `main` failed:\n- "
                 + "\n- ".join(failed_workflows)
             ),
+            context="One or more GitHub Actions workflows on `main` completed with `conclusion=failure`.",
+            examples=["```text\n" + "\n".join(failed_workflows) + "\n```"],
             owned_paths=[".github/workflows/", "tests/", "scripts/"],
             forbidden_paths=["infrastructure/"],
             acceptance_criteria=[
@@ -715,7 +788,10 @@ def collect_all_tasks(
     tasks.extend(audit_frontend_and_handler_gaps(repo_root=repo_root))
     tasks.extend(audit_test_suites(repo_root=repo_root, run_tests=run_tests))
     if check_s3:
-        tasks.extend(audit_s3_preview_coverage(bucket=bucket, max_catalog_age_days=max_catalog_age_days))
+        try:
+            tasks.extend(audit_s3_preview_coverage(bucket=bucket, max_catalog_age_days=max_catalog_age_days))
+        except Exception as exc:
+            print(f"WARNING: S3 telemetry audit skipped: {exc}", file=sys.stderr)
     if check_cloudwatch:
         tasks.extend(audit_cloudwatch_lambda_errors())
     if check_ci:
@@ -727,6 +803,8 @@ def publish_discovered_tasks(
     tasks: List[Dict[str, Any]],
     repo: Optional[str] = None,
     max_new_issues: Optional[int] = 3,
+    max_open_proposed: Optional[int] = 5,
+    daily_window_hours: Optional[float] = 24.0,
 ) -> List[Dict[str, Any]]:
     """Publish discovered tasks as deduplicated GitHub Issues via `agent_backlog.create_task_issue`."""
     prio_rank = {"p1": 1, "p2": 2, "p3": 3}
@@ -735,10 +813,39 @@ def publish_discovered_tasks(
         key=lambda t: prio_rank.get(str(t.get("priority", "p2")).lower(), 9),
     )
 
+    budget: Optional[int] = max_new_issues
+    if max_open_proposed is not None or (daily_window_hours is not None and daily_window_hours > 0):
+        try:
+            open_issues = agent_backlog.list_task_issues(status="all", state="open", repo=repo)
+            now = datetime.now(timezone.utc)
+            open_proposed_count = 0
+            recent_24h_count = 0
+            for item in open_issues:
+                lbls = {l.get("name", "") for l in item.get("labels", [])}
+                if "agent:proposed" in lbls:
+                    open_proposed_count += 1
+                if any(lbl in agent_backlog.STATUS_LABELS for lbl in lbls):
+                    created_dt = agent_backlog._parse_github_iso_timestamp(item.get("created_at"))
+                    if (
+                        created_dt is not None
+                        and daily_window_hours is not None
+                        and (now - created_dt).total_seconds() <= daily_window_hours * 3600.0
+                    ):
+                        recent_24h_count += 1
+
+            if max_open_proposed is not None:
+                rem_proposed = max(0, max_open_proposed - open_proposed_count)
+                budget = rem_proposed if budget is None else min(budget, rem_proposed)
+            if max_new_issues is not None and daily_window_hours is not None and daily_window_hours > 0:
+                rem_daily = max(0, max_new_issues - recent_24h_count)
+                budget = rem_daily if budget is None else min(budget, rem_daily)
+        except Exception:
+            pass
+
     results: List[Dict[str, Any]] = []
     created_count = 0
     for task in ordered_tasks:
-        if max_new_issues is not None and created_count >= max_new_issues:
+        if budget is not None and created_count >= budget:
             break
         res = agent_backlog.create_task_issue(
             title=task["title"],
@@ -747,6 +854,10 @@ def publish_discovered_tasks(
             forbidden_paths=task["forbidden_paths"],
             acceptance_criteria=task["acceptance_criteria"],
             verification_commands=task["verification_commands"],
+            context=task.get("context"),
+            examples=task.get("examples"),
+            visuals=task.get("visuals"),
+            implementation_notes=task.get("implementation_notes"),
             priority=task.get("priority", "p2"),
             source=task.get("source", "telemetry"),
             domains=task.get("domains", []),
@@ -764,7 +875,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--repo", default=None, help="GitHub repo slug owner/name")
     parser.add_argument("--bucket", default="boardgame-app", help="S3 data lake bucket name")
     parser.add_argument("--max-catalog-age-days", type=int, default=14)
-    parser.add_argument("--max-new-issues", type=int, default=3, help="Maximum net-new issues created per run")
+    parser.add_argument("--max-new-issues", type=int, default=3, help="Maximum net-new issues created per 24h window")
+    parser.add_argument("--max-open-proposed", type=int, default=5, help="Maximum open agent:proposed issues allowed before pausing new proposals")
     parser.add_argument("--run-tests", action="store_true", help="Run live pytest and Vitest suites")
     parser.add_argument("--s3", action="store_true", help="Audit S3 catalog freshness and preview coverage")
     parser.add_argument("--cloudwatch", action="store_true", help="Scan CloudWatch Lambda logs for recent errors")
@@ -795,6 +907,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             tasks,
             repo=args.repo,
             max_new_issues=args.max_new_issues,
+            max_open_proposed=args.max_open_proposed,
         )
 
     if args.json:

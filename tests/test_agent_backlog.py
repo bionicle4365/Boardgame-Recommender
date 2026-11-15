@@ -413,3 +413,167 @@ def test_block_task_issue_and_prepare_task_branch_guard():
     assert calls[2][0] == "POST"
     assert calls[2][1] == "/issues/19/comments"
     assert "Tests failed after 3 attempts" in calls[2][2]["body"]
+
+
+def test_prepare_task_worktree_normalizes_junction_paths(tmp_path):
+    repo_root_fwd = str(tmp_path).replace("\\", "/")
+    (tmp_path / "site_ui" / "node_modules").mkdir(parents=True)
+    wt_dir = tmp_path / "scratch" / "worktrees" / "agent-issue-21"
+
+    recorded_cmds = []
+
+    def fake_run(cmd, **kwargs):
+        recorded_cmds.append(cmd)
+        if cmd[:3] == ["git", "rev-parse", "--show-toplevel"]:
+            return MagicMock(returncode=0, stdout=f"{repo_root_fwd}\n")
+        return MagicMock(returncode=0, stdout="")
+
+    with patch.object(agent_backlog, "_resolve_base_ref", return_value="origin/main"), \
+         patch("subprocess.run", side_effect=fake_run):
+        returned = agent_backlog.prepare_task_worktree("agent/issue-21", worktree_path=str(wt_dir))
+
+    assert returned == str(wt_dir).replace("\\", "/")
+    assert ["git", "worktree", "add", "-B", "agent/issue-21", str(wt_dir), "origin/main"] in recorded_cmds
+    if agent_backlog.os.name == "nt":
+        mklink_cmds = [c for c in recorded_cmds if isinstance(c, list) and c[:3] == ["cmd", "/c", "mklink"]]
+        assert len(mklink_cmds) == 1
+        assert "/" not in mklink_cmds[0][4]
+        assert "/" not in mklink_cmds[0][5]
+
+
+def test_reclaim_stale_in_progress_issues_reclaims_or_marks_review():
+    stale_iso = "2026-11-10T00:00:00Z"
+    in_progress_items = [
+        {
+            "number": 11,
+            "title": "Stale without PR",
+            "updated_at": stale_iso,
+            "labels": [{"name": "agent:in-progress"}, {"name": "priority:p1"}],
+        },
+        {
+            "number": 12,
+            "title": "Stale with open PR",
+            "updated_at": stale_iso,
+            "labels": [{"name": "agent:in-progress"}, {"name": "priority:p2"}],
+        },
+    ]
+    patched = {}
+
+    def fake_gh(method, path, payload=None, repo=None, token=None):
+        if method == "GET" and path.startswith("/issues?"):
+            return in_progress_items
+        if method == "GET" and path.startswith("/pulls?"):
+            if "agent%2Fissue-12" in path:
+                return [{"number": 88, "html_url": "https://example.com/pull/88"}]
+            return []
+        if method == "PATCH" and path.startswith("/issues/"):
+            num = int(path.split("/")[-1])
+            patched[num] = payload["labels"]
+            return {"number": num, "labels": payload["labels"]}
+        if method == "POST" and path.endswith("/comments"):
+            return {"id": 1}
+        raise AssertionError(f"Unexpected call: {method} {path}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh):
+        reclaimed = agent_backlog.reclaim_stale_in_progress_issues(
+            max_age_hours=6.0, repo="owner/repo", token="tok"
+        )
+
+    assert len(reclaimed) == 2
+    assert patched[11] == ["priority:p1", "agent:ready"]
+    assert patched[12] == ["priority:p2", "agent:review"]
+
+
+def test_format_task_body_and_update_task_issue_preserve_rich_sections():
+    body = agent_backlog.format_task_body(
+        objective="Add flight recommendations",
+        spec={
+            "owned_paths": ["bgg_recommender/scoring.py"],
+            "acceptance_criteria": ["Returns 3 courses"],
+            "verification_commands": ["python -m pytest tests/test_bgg_recommender.py"],
+            "context": "Cafes want a 3-stage game night menu.",
+            "examples": ['```json\n{"flight": {"warmup": {}}}\n```'],
+            "visuals": ["![Cafe Baseline](https://raw.githubusercontent.com/o/r/screenshots/cafe.png)"],
+            "implementation_notes": ["Reuse score_candidates output"],
+        },
+    )
+    assert "## Context & Motivation" in body
+    assert "## Examples" in body
+    assert "## Visuals & Mockups" in body
+    assert "## Implementation Notes" in body
+    parsed = agent_backlog.parse_task_spec(body)
+    assert parsed["owned_paths"] == ["bgg_recommender/scoring.py"]
+
+    calls = []
+
+    def fake_gh(method, path, payload=None, repo=None, token=None):
+        calls.append((method, path, payload))
+        if method == "GET" and path == "/issues/11":
+            return {"number": 11, "title": "Game Night Flight", "body": body}
+        if method == "PATCH" and path == "/issues/11":
+            return {"number": 11, "title": "Game Night Flight", "html_url": "https://example.com/11", "body": payload["body"]}
+        raise AssertionError(f"Unexpected call: {method} {path}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh):
+        updated = agent_backlog.update_task_issue(
+            11,
+            context="Updated context with metrics",
+            examples=["GET /recommendations?flight=true"],
+            repo="owner/repo",
+            token="tok",
+        )
+    assert "Updated context with metrics" in updated["body"]
+    assert "GET /recommendations?flight=true" in updated["body"]
+
+
+def test_upload_screenshots_creates_orphan_branch_and_format_pr_body(tmp_path):
+    img = tmp_path / "cafe-desktop.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+    calls = []
+
+    def fake_gh(method, path, payload=None, repo=None, token=None):
+        calls.append((method, path, payload))
+        if method == "GET" and path == "/git/ref/heads/screenshots":
+            raise RuntimeError("GitHub API GET ... failed with HTTP 404: Not Found")
+        if method == "POST" and path == "/git/blobs":
+            return {"sha": f"blob-{len(calls)}"}
+        if method == "POST" and path == "/git/trees":
+            assert any(e["path"] == "README.md" for e in payload["tree"])
+            assert any(e["path"] == "prs/issue-11/cafe-desktop.png" for e in payload["tree"])
+            return {"sha": "tree-1"}
+        if method == "POST" and path == "/git/commits":
+            assert payload["parents"] == []
+            return {"sha": "commit-1"}
+        if method == "POST" and path == "/git/refs":
+            assert payload == {"ref": "refs/heads/screenshots", "sha": "commit-1"}
+            return {"ref": "refs/heads/screenshots"}
+        raise AssertionError(f"Unexpected call: {method} {path}")
+
+    with patch.object(agent_backlog, "github_request", side_effect=fake_gh):
+        uploaded = agent_backlog.upload_screenshots(
+            {str(img): "prs/issue-11/cafe-desktop.png"},
+            repo="owner/repo",
+            token="tok",
+        )
+
+    assert len(uploaded) == 1
+    assert uploaded[0]["raw_url"] == "https://raw.githubusercontent.com/owner/repo/screenshots/prs/issue-11/cafe-desktop.png"
+    assert uploaded[0]["markdown"].startswith("![Cafe Desktop](")
+
+    pr_body = agent_backlog.format_pr_body(
+        issue_number=11,
+        summary="Added Game Night Flight course builder and UI toggle.",
+        changed_files=["M\tbgg_recommender/scoring.py", "M\tsite_ui/cafe/index.html"],
+        diff_stat=" 2 files changed, 84 insertions(+)",
+        examples=['```json\n{"flight": {"warmup": {"name": "Scout"}}}\n```'],
+        verification_results="| `python -m pytest` | PASS |",
+        screenshots=[uploaded[0]["markdown"]],
+        acceptance_criteria=["Selects 3 distinct games"],
+    )
+    assert "Closes #11" in pr_body
+    assert "## Changes Made" in pr_body
+    assert "## Examples" in pr_body
+    assert "## Verification & Test Results" in pr_body
+    assert "## Screenshots" in pr_body
+    assert "https://raw.githubusercontent.com/owner/repo/screenshots/prs/issue-11/cafe-desktop.png" in pr_body
+    assert "- [x] Selects 3 distinct games" in pr_body
