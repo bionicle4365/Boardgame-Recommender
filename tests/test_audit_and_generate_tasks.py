@@ -319,3 +319,40 @@ def test_audit_tasks_include_context_and_examples_and_forward_to_create():
     assert kwargs["examples"] == ['```json\n{"ok": true}\n```']
     assert kwargs["visuals"] == ["```mermaid\nflowchart LR\nA-->B\n```"]
     assert kwargs["implementation_notes"] == ["Check handler"]
+
+
+def test_main_worktree_runs_audit_on_origin_main_worktree_and_cleans_up(tmp_path):
+    wt_dir = str(tmp_path / "scratch" / "worktrees" / "agent-audit-discovery")
+    seen_roots = []
+
+    def fake_collect(**kwargs):
+        seen_roots.append(kwargs["repo_root"])
+        return []
+
+    with patch.object(audit_and_generate_tasks.agent_backlog, "prepare_task_worktree", return_value=wt_dir) as mock_prep, \
+         patch.object(audit_and_generate_tasks.agent_backlog, "cleanup_task_worktree") as mock_clean, \
+         patch.object(audit_and_generate_tasks, "collect_all_tasks", side_effect=fake_collect):
+        rc = audit_and_generate_tasks.main(["--repo-root", str(tmp_path), "--worktree"])
+
+    assert rc == 0
+    mock_prep.assert_called_once_with("agent/audit-discovery", base_branch="main")
+    assert seen_roots == [wt_dir]
+    mock_clean.assert_called_once_with(
+        worktree_path=wt_dir,
+        branch="agent/audit-discovery",
+        delete_branch=True,
+    )
+
+    # Also verify cleanup happens when collect_all_tasks raises
+    with patch.object(audit_and_generate_tasks.agent_backlog, "prepare_task_worktree", return_value=wt_dir), \
+         patch.object(audit_and_generate_tasks.agent_backlog, "cleanup_task_worktree") as mock_clean_err, \
+         patch.object(audit_and_generate_tasks, "collect_all_tasks", side_effect=RuntimeError("boom")):
+        try:
+            audit_and_generate_tasks.main(["--repo-root", str(tmp_path), "--worktree"])
+        except RuntimeError:
+            pass
+    mock_clean_err.assert_called_once_with(
+        worktree_path=wt_dir,
+        branch="agent/audit-discovery",
+        delete_branch=True,
+    )

@@ -6,9 +6,9 @@ description: Discovers actionable engineering tasks from S3 telemetry, contract 
 ## Guidelines for Autonomous Task Generation
 
 ### 1. Live Telemetry, CI & Codebase Audits
-Run the deterministic audit script to inspect contract synchronization, frontend API calls, backend handler test coverage, live unit test suites, GitHub Actions CI, S3 data lake/video/cafe health, and CloudWatch Lambda errors:
+Run the deterministic audit script in an isolated worktree branched from the latest `origin/main` to inspect contract synchronization, frontend API calls, backend handler test coverage, live unit test suites, GitHub Actions CI, S3 data lake/video/cafe health, and CloudWatch Lambda errors:
 ```powershell
-python scripts/audit_and_generate_tasks.py --run-tests --s3 --cloudwatch --ci --publish --max-new-issues 3
+python scripts/audit_and_generate_tasks.py --worktree --run-tests --s3 --cloudwatch --ci --publish --max-new-issues 3
 ```
 What the deterministic audit covers:
 - **Contract & Frontend API Drift (`source:data-drift`)**: Diffs [schemas_and_routes.json](file:///d:/Git/Boardgame-Recommender/docs/contracts/schemas_and_routes.json) against Terraform API Gateway routes, `TARGET_SCHEMA` in `bgg_compactor`, and frontend `fetchApi` / `fetch` endpoints in [site_ui/](file:///d:/Git/Boardgame-Recommender/site_ui/).

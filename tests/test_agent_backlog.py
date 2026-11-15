@@ -577,3 +577,81 @@ def test_upload_screenshots_creates_orphan_branch_and_format_pr_body(tmp_path):
     assert "## Screenshots" in pr_body
     assert "https://raw.githubusercontent.com/owner/repo/screenshots/prs/issue-11/cafe-desktop.png" in pr_body
     assert "- [x] Selects 3 distinct games" in pr_body
+
+
+def test_resolve_base_ref_fails_loudly_when_origin_fetch_fails():
+    def fake_run(cmd, **kwargs):
+        if cmd[:2] == ["git", "fetch"]:
+            return MagicMock(returncode=1, stdout="", stderr="fatal: could not read from remote repository")
+        if cmd == ["git", "remote", "get-url", "origin"]:
+            return MagicMock(returncode=0, stdout="https://github.com/owner/repo.git\n")
+        raise AssertionError(f"Unexpected call: {cmd}")
+
+    with patch("subprocess.run", side_effect=fake_run):
+        with pytest.raises(RuntimeError, match="Failed to fetch latest 'origin/main'"):
+            agent_backlog._resolve_base_ref("main")
+
+
+def test_prepare_task_worktree_rejects_main_checkout_and_cleans_stale_worktree(tmp_path):
+    repo_root_fwd = str(tmp_path).replace("\\", "/")
+    stale_wt = str(tmp_path / "scratch" / "worktrees" / "old-wt").replace("\\", "/")
+    target_wt = str(tmp_path / "scratch" / "worktrees" / "agent-issue-25").replace("\\", "/")
+
+    # Case 1: branch is checked out in the main repo itself -> RuntimeError
+    def fake_run_main_conflict(cmd, **kwargs):
+        if cmd[:3] == ["git", "rev-parse", "--show-toplevel"]:
+            return MagicMock(returncode=0, stdout=f"{repo_root_fwd}\n")
+        if cmd[:3] == ["git", "worktree", "list"]:
+            return MagicMock(
+                returncode=0,
+                stdout=f"worktree {repo_root_fwd}\nHEAD abc\nbranch refs/heads/agent/issue-25\n\n",
+            )
+        return MagicMock(returncode=0, stdout="")
+
+    with patch.object(agent_backlog, "_resolve_base_ref", return_value="origin/main"), \
+         patch("subprocess.run", side_effect=fake_run_main_conflict):
+        with pytest.raises(RuntimeError, match="currently checked out in the main repository"):
+            agent_backlog.prepare_task_worktree("agent/issue-25", worktree_path=target_wt)
+
+    # Case 2: branch is checked out in another stale worktree -> removed before recreating
+    recorded_cmds = []
+
+    def fake_run_stale_wt(cmd, **kwargs):
+        recorded_cmds.append(cmd)
+        if cmd[:3] == ["git", "rev-parse", "--show-toplevel"]:
+            return MagicMock(returncode=0, stdout=f"{repo_root_fwd}\n")
+        if cmd[:3] == ["git", "worktree", "list"]:
+            return MagicMock(
+                returncode=0,
+                stdout=(
+                    f"worktree {repo_root_fwd}\nHEAD abc\nbranch refs/heads/main\n\n"
+                    f"worktree {stale_wt}\nHEAD def\nbranch refs/heads/agent/issue-25\n\n"
+                ),
+            )
+        return MagicMock(returncode=0, stdout="")
+
+    with patch.object(agent_backlog, "_resolve_base_ref", return_value="origin/main"), \
+         patch("subprocess.run", side_effect=fake_run_stale_wt):
+        out = agent_backlog.prepare_task_worktree("agent/issue-25", worktree_path=target_wt)
+
+    assert out == target_wt
+    assert ["git", "worktree", "remove", "--force", stale_wt] in recorded_cmds
+    assert ["git", "worktree", "add", "-B", "agent/issue-25", target_wt, "origin/main"] in recorded_cmds
+
+
+def test_worktree_cli_create_and_remove(capsys, tmp_path):
+    wt_path = str(tmp_path / "scratch" / "worktrees" / "agent-feature-proposer").replace("\\", "/")
+    with patch.object(agent_backlog, "prepare_task_worktree", return_value=wt_path) as mock_prep:
+        rc = agent_backlog.main(["worktree", "--branch", "agent/feature-proposer", "--json"])
+    assert rc == 0
+    mock_prep.assert_called_once_with("agent/feature-proposer", worktree_path=None, base_branch="main")
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["worktree_path"] == wt_path
+
+    with patch.object(agent_backlog, "cleanup_task_worktree", return_value=wt_path) as mock_clean:
+        rc2 = agent_backlog.main(["worktree", "--branch", "agent/feature-proposer", "--remove", "--delete-branch", "--json"])
+    assert rc2 == 0
+    mock_clean.assert_called_once_with(worktree_path=None, branch="agent/feature-proposer", delete_branch=True)
+    payload2 = json.loads(capsys.readouterr().out)
+    assert payload2["removed"] is True
+    assert payload2["deleted_branch"] is True

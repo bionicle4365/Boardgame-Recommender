@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+from datetime import datetime, timezone
 import json
 import os
 import re
@@ -12,7 +14,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 DEFAULT_REPO = "bionicle4365/Boardgame-Recommender"
 GITHUB_API_BASE = "https://api.github.com"
@@ -122,21 +124,118 @@ def push_task_branch(branch: Optional[str] = None) -> str:
 
 
 def _resolve_base_ref(base_branch: str = "main") -> str:
-    """Fetch `origin/<base_branch>` when available and return the cleanest base ref."""
-    subprocess.run(
-        ["git", "fetch", "origin", base_branch],
+    """Fetch latest `origin/<base_branch>` and fail loudly if `origin` exists but fetch fails."""
+    remote_ref = f"origin/{base_branch}"
+    fetch_proc = subprocess.run(
+        ["git", "fetch", "origin", f"+refs/heads/{base_branch}:refs/remotes/origin/{base_branch}"],
         text=True,
         capture_output=True,
         check=False,
     )
-    remote_ref = f"origin/{base_branch}"
+    if fetch_proc.returncode != 0:
+        remote_probe = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if remote_probe.returncode == 0:
+            detail = (fetch_proc.stderr or fetch_proc.stdout or "").strip()
+            raise RuntimeError(
+                f"Failed to fetch latest '{remote_ref}' from origin: {detail or 'git fetch failed'}"
+            )
     probe = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", remote_ref],
         text=True,
         capture_output=True,
         check=False,
     )
-    return remote_ref if probe.returncode == 0 else base_branch
+    if probe.returncode == 0:
+        return remote_ref
+    remote_probe = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if remote_probe.returncode == 0:
+        raise RuntimeError(f"Remote ref '{remote_ref}' could not be resolved after fetching origin.")
+    return base_branch
+
+
+def _unlink_worktree_junction(wt_path: str) -> None:
+    """Remove any Windows NTFS junction / symlink at `<wt_path>/site_ui/node_modules` before removal."""
+    existing_nm = os.path.normpath(os.path.join(wt_path, "site_ui", "node_modules"))
+    if os.path.lexists(existing_nm):
+        try:
+            if os.path.islink(existing_nm):
+                os.unlink(existing_nm)
+            else:
+                os.rmdir(existing_nm)
+        except OSError:
+            pass
+
+
+def _find_branch_worktree(branch: str) -> Optional[str]:
+    """Return the worktree path if `branch` is currently checked out in any git worktree."""
+    proc = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0 or not proc.stdout:
+        return None
+    target_ref = f"refs/heads/{branch}"
+    current_wt: Optional[str] = None
+    for raw_line in proc.stdout.splitlines():
+        line = raw_line.strip()
+        if not line:
+            current_wt = None
+        elif line.startswith("worktree "):
+            current_wt = line.split(" ", 1)[1].strip()
+        elif line.startswith("branch ") and current_wt:
+            if line.split(" ", 1)[1].strip() == target_ref:
+                return current_wt
+    return None
+
+
+def cleanup_task_worktree(
+    worktree_path: Optional[str] = None,
+    branch: Optional[str] = None,
+    delete_branch: bool = False,
+) -> Optional[str]:
+    """Safely remove an isolated worktree (unlinking node_modules junctions first) and optionally delete its agent branch."""
+    target_branch = validate_agent_branch(branch) if branch is not None else None
+    top_proc = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    repo_root = top_proc.stdout.strip() if top_proc.returncode == 0 and top_proc.stdout.strip() else os.getcwd()
+    wt_path = worktree_path
+    if not wt_path and target_branch:
+        wt_path = _find_branch_worktree(target_branch) or os.path.join(
+            repo_root, "scratch", "worktrees", target_branch.replace("/", "-")
+        )
+    if wt_path and os.path.exists(wt_path):
+        _unlink_worktree_junction(wt_path)
+        subprocess.run(
+            ["git", "worktree", "remove", "--force", wt_path],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    subprocess.run(["git", "worktree", "prune"], text=True, capture_output=True, check=False)
+    if delete_branch and target_branch:
+        subprocess.run(
+            ["git", "branch", "-D", target_branch],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    return wt_path.replace("\\", "/") if wt_path else None
 
 
 def prepare_task_branch(branch: str, base_branch: str = "main") -> str:
@@ -163,7 +262,7 @@ def prepare_task_worktree(
     worktree_path: Optional[str] = None,
     base_branch: str = "main",
 ) -> str:
-    """Create an isolated `scratch/worktrees/...` checkout on `branch` rooted at `origin/main`."""
+    """Create an isolated `scratch/worktrees/...` checkout on `branch` rooted at latest `origin/main`."""
     target = validate_agent_branch(branch)
     top_proc = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
@@ -175,16 +274,25 @@ def prepare_task_worktree(
     wt_path = worktree_path or os.path.join(repo_root, "scratch", "worktrees", target.replace("/", "-"))
     resolved_base = _resolve_base_ref(base_branch=base_branch)
 
+    existing_wt = _find_branch_worktree(target)
+    if existing_wt:
+        norm_root = os.path.normcase(os.path.abspath(repo_root))
+        norm_existing = os.path.normcase(os.path.abspath(existing_wt))
+        if norm_existing == norm_root:
+            raise RuntimeError(
+                f"Branch '{target}' is currently checked out in the main repository at '{existing_wt}'. "
+                "Switch the main repository back to 'main' before creating a task worktree."
+            )
+        _unlink_worktree_junction(existing_wt)
+        subprocess.run(
+            ["git", "worktree", "remove", "--force", existing_wt],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
     if os.path.exists(wt_path):
-        existing_nm = os.path.normpath(os.path.join(wt_path, "site_ui", "node_modules"))
-        if os.path.lexists(existing_nm):
-            try:
-                if os.path.islink(existing_nm):
-                    os.unlink(existing_nm)
-                else:
-                    os.rmdir(existing_nm)
-            except OSError:
-                pass
+        _unlink_worktree_junction(wt_path)
         subprocess.run(
             ["git", "worktree", "remove", "--force", wt_path],
             text=True,
@@ -195,8 +303,6 @@ def prepare_task_worktree(
     os.makedirs(os.path.dirname(wt_path), exist_ok=True)
     subprocess.run(["git", "worktree", "add", "-B", target, wt_path, resolved_base], check=True)
 
-    src_nm = os.path.join(repo_root, "site_ui", "node_modules")
-    dst_nm = os.path.join(wt_path, "site_ui", "node_modules")
     src_nm = os.path.normpath(os.path.join(repo_root, "site_ui", "node_modules"))
     dst_nm = os.path.normpath(os.path.join(wt_path, "site_ui", "node_modules"))
     if os.path.isdir(src_nm) and not os.path.exists(dst_nm):
@@ -296,6 +402,21 @@ def github_request(
         ) from err
 
 
+def _normalize_text_list(value: Any) -> List[str]:
+    """Normalize an optional string or sequence of strings into non-empty stripped items."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return [cleaned] if cleaned else []
+    items: List[str] = []
+    for entry in value:
+        text = str(entry).strip()
+        if text:
+            items.append(text)
+    return items
+
+
 def validate_task_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
     """Validate and normalize an agent task specification dictionary."""
     if not isinstance(spec, dict):
@@ -319,7 +440,7 @@ def validate_task_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
     if not verify_cmds:
         raise ValueError("Task spec must include at least one command in 'verification_commands'.")
 
-    normalized = {
+    normalized: Dict[str, Any] = {
         "owned_paths": owned,
         "forbidden_paths": forbidden,
         "acceptance_criteria": acceptance,
@@ -327,42 +448,86 @@ def validate_task_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
     }
     if spec.get("objective"):
         normalized["objective"] = str(spec["objective"]).strip()
+    if spec.get("context"):
+        context_text = str(spec["context"]).strip()
+        if context_text:
+            normalized["context"] = context_text
+    examples = _normalize_text_list(spec.get("examples"))
+    if examples:
+        normalized["examples"] = examples
+    visuals = _normalize_text_list(spec.get("visuals"))
+    if visuals:
+        normalized["visuals"] = visuals
+    impl_notes = _normalize_text_list(spec.get("implementation_notes"))
+    if impl_notes:
+        normalized["implementation_notes"] = impl_notes
     return normalized
 
 
+def _render_rich_block(item: str) -> str:
+    """Render a multi-line/code block item verbatim or single-line text as a bullet."""
+    if "\n" in item or item.startswith(("```", "![", "|", ">")):
+        return item
+    return f"- {item}"
+
+
 def format_task_body(objective: str, spec: Dict[str, Any]) -> str:
-    """Format a GitHub Issue body with readable Markdown and an embedded agent-task-spec block."""
+    """Format a GitHub Issue body with rich context, examples, visuals, and an embedded agent-task-spec block."""
     validated = validate_task_spec({**spec, "objective": objective})
-    spec_json = json.dumps(
-        {
-            "owned_paths": validated["owned_paths"],
-            "forbidden_paths": validated["forbidden_paths"],
-            "acceptance_criteria": validated["acceptance_criteria"],
-            "verification_commands": validated["verification_commands"],
-        },
-        indent=2,
-    )
+    spec_payload: Dict[str, Any] = {
+        "owned_paths": validated["owned_paths"],
+        "forbidden_paths": validated["forbidden_paths"],
+        "acceptance_criteria": validated["acceptance_criteria"],
+        "verification_commands": validated["verification_commands"],
+    }
+    spec_json = json.dumps(spec_payload, indent=2)
 
     lines = [
         "## Objective",
         objective.strip(),
         "",
-        "## Owned Paths",
-        *[f"- `{p}`" for p in validated["owned_paths"]],
-        "",
-        "## Forbidden Paths",
-        *([f"- `{p}`" for p in validated["forbidden_paths"]] or ["- *(None)*"]),
-        "",
-        "## Acceptance Criteria",
-        *[f"- [ ] {item}" for item in validated["acceptance_criteria"]],
-        "",
-        "## Verification Commands",
-        *[f"- `{cmd}`" for cmd in validated["verification_commands"]],
-        "",
-        "```json agent-task-spec",
-        spec_json,
-        "```",
     ]
+
+    if validated.get("context"):
+        lines.extend(["## Context & Motivation", validated["context"], ""])
+
+    if validated.get("examples"):
+        lines.append("## Examples")
+        for ex in validated["examples"]:
+            lines.append(_render_rich_block(ex))
+        lines.append("")
+
+    if validated.get("visuals"):
+        lines.append("## Visuals & Mockups")
+        for vis in validated["visuals"]:
+            lines.append(_render_rich_block(vis))
+        lines.append("")
+
+    if validated.get("implementation_notes"):
+        lines.append("## Implementation Notes")
+        for note in validated["implementation_notes"]:
+            lines.append(_render_rich_block(note))
+        lines.append("")
+
+    lines.extend(
+        [
+            "## Owned Paths",
+            *[f"- `{p}`" for p in validated["owned_paths"]],
+            "",
+            "## Forbidden Paths",
+            *([f"- `{p}`" for p in validated["forbidden_paths"]] or ["- *(None)*"]),
+            "",
+            "## Acceptance Criteria",
+            *[f"- [ ] {item}" for item in validated["acceptance_criteria"]],
+            "",
+            "## Verification Commands",
+            *[f"- `{cmd}`" for cmd in validated["verification_commands"]],
+            "",
+            "```json agent-task-spec",
+            spec_json,
+            "```",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -502,6 +667,10 @@ def create_task_issue(
     acceptance_criteria: List[str],
     verification_commands: List[str],
     forbidden_paths: Optional[List[str]] = None,
+    context: Optional[str] = None,
+    examples: Optional[Sequence[str]] = None,
+    visuals: Optional[Sequence[str]] = None,
+    implementation_notes: Optional[Sequence[str]] = None,
     priority: str = "p2",
     source: str = "roadmap",
     domains: Optional[List[str]] = None,
@@ -530,6 +699,10 @@ def create_task_issue(
             "forbidden_paths": forbidden_paths,
             "acceptance_criteria": acceptance_criteria,
             "verification_commands": verification_commands,
+            "context": context,
+            "examples": examples,
+            "visuals": visuals,
+            "implementation_notes": implementation_notes,
         },
     )
 
@@ -555,6 +728,60 @@ def create_task_issue(
         token=auth_token,
     )
     return {"deduplicated": False, "issue": created}
+
+
+def update_task_issue(
+    issue_number: int,
+    objective: Optional[str] = None,
+    owned_paths: Optional[List[str]] = None,
+    forbidden_paths: Optional[List[str]] = None,
+    acceptance_criteria: Optional[List[str]] = None,
+    verification_commands: Optional[List[str]] = None,
+    context: Optional[str] = None,
+    examples: Optional[Sequence[str]] = None,
+    visuals: Optional[Sequence[str]] = None,
+    implementation_notes: Optional[Sequence[str]] = None,
+    title: Optional[str] = None,
+    repo: Optional[str] = None,
+    token: Optional[str] = None,
+) -> dict:
+    """Update an existing GitHub Issue body with enriched context, examples, visuals, or spec fields."""
+    target_repo = repo or detect_repo_slug()
+    auth_token = token or get_github_token()
+
+    issue = github_request("GET", f"/issues/{issue_number}", repo=target_repo, token=auth_token)
+    existing_body = issue.get("body", "") or ""
+    existing_spec = parse_task_spec(existing_body)
+
+    existing_objective_items = _extract_markdown_section_items(existing_body, "Objective")
+    resolved_objective = (
+        objective.strip()
+        if objective and objective.strip()
+        else ("\n".join(existing_objective_items) if existing_objective_items else issue.get("title", f"Issue #{issue_number}"))
+    )
+
+    merged_spec: Dict[str, Any] = {
+        "owned_paths": owned_paths if owned_paths is not None else existing_spec["owned_paths"],
+        "forbidden_paths": forbidden_paths if forbidden_paths is not None else existing_spec["forbidden_paths"],
+        "acceptance_criteria": acceptance_criteria if acceptance_criteria is not None else existing_spec["acceptance_criteria"],
+        "verification_commands": verification_commands if verification_commands is not None else existing_spec["verification_commands"],
+        "context": context if context is not None else existing_spec.get("context"),
+        "examples": examples if examples is not None else existing_spec.get("examples"),
+        "visuals": visuals if visuals is not None else existing_spec.get("visuals"),
+        "implementation_notes": implementation_notes if implementation_notes is not None else existing_spec.get("implementation_notes"),
+    }
+
+    payload: Dict[str, Any] = {"body": format_task_body(resolved_objective, merged_spec)}
+    if title and title.strip():
+        payload["title"] = title.strip()
+
+    return github_request(
+        "PATCH",
+        f"/issues/{issue_number}",
+        payload=payload,
+        repo=target_repo,
+        token=auth_token,
+    )
 
 
 def list_task_issues(
@@ -685,10 +912,17 @@ def claim_task_issue(
 
 def get_next_ready_issue(
     domain: Optional[str] = None,
+    reclaim_stale_hours: Optional[float] = None,
     repo: Optional[str] = None,
     token: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Fetch the highest-priority `agent:ready` issue, parse its spec, and suggest a feature branch."""
+    if reclaim_stale_hours is not None and reclaim_stale_hours > 0:
+        reclaim_stale_in_progress_issues(
+            max_age_hours=reclaim_stale_hours,
+            repo=repo,
+            token=token,
+        )
     issues = list_task_issues(status="ready", domain=domain, state="open", repo=repo, token=token)
     if not issues:
         return None
@@ -698,12 +932,366 @@ def get_next_ready_issue(
     return task
 
 
+def _parse_github_iso_timestamp(value: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO-8601 UTC timestamp string returned by the GitHub REST API."""
+    if not value or not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    if cleaned.endswith("Z"):
+        cleaned = f"{cleaned[:-1]}+00:00"
+    try:
+        dt = datetime.fromisoformat(cleaned)
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def reclaim_stale_in_progress_issues(
+    max_age_hours: float = 6.0,
+    repo: Optional[str] = None,
+    token: Optional[str] = None,
+) -> List[dict]:
+    """Reclaim open `agent:in-progress` issues older than `max_age_hours` back to `agent:ready` (or `agent:review` if a PR exists)."""
+    target_repo = repo or detect_repo_slug()
+    auth_token = token or get_github_token()
+    owner = target_repo.split("/")[0]
+    now = datetime.now(timezone.utc)
+
+    in_progress = list_task_issues(
+        status="in-progress",
+        state="open",
+        repo=target_repo,
+        token=auth_token,
+    )
+    reclaimed: List[dict] = []
+    for item in in_progress:
+        issue_number = int(item.get("number", 0))
+        if not issue_number:
+            continue
+        updated_at = _parse_github_iso_timestamp(item.get("updated_at") or item.get("created_at"))
+        if updated_at is None:
+            continue
+        age_hours = (now - updated_at).total_seconds() / 3600.0
+        if age_hours < max_age_hours:
+            continue
+
+        head_branch = f"agent/issue-{issue_number}"
+        pr_query = urllib.parse.urlencode(
+            {"state": "open", "head": f"{owner}:{head_branch}", "base": "main"}
+        )
+        open_prs = github_request("GET", f"/pulls?{pr_query}", repo=target_repo, token=auth_token) or []
+        current_labels = [lbl.get("name", "") for lbl in item.get("labels", [])]
+
+        if open_prs:
+            new_labels = _replace_status_label(current_labels, "agent:review")
+            pr_url = open_prs[0].get("html_url", "")
+            comment = (
+                f"Detected open Pull Request ({pr_url}) on stale `agent:in-progress` issue "
+                f"({age_hours:.1f}h old); transitioning to `agent:review`."
+            )
+        else:
+            new_labels = _replace_status_label(current_labels, "agent:ready")
+            comment = (
+                f"Reclaimed stale `agent:in-progress` lease after {age_hours:.1f}h without an open PR; "
+                "resetting status to `agent:ready` for retry."
+            )
+
+        updated = github_request(
+            "PATCH",
+            f"/issues/{issue_number}",
+            payload={"labels": new_labels},
+            repo=target_repo,
+            token=auth_token,
+        )
+        github_request(
+            "POST",
+            f"/issues/{issue_number}/comments",
+            payload={"body": comment},
+            repo=target_repo,
+            token=auth_token,
+        )
+        reclaimed.append(updated)
+
+    return reclaimed
+
+
+SCREENSHOT_BRANCH = "screenshots"
+
+
+def upload_screenshots(
+    file_mappings: Dict[str, str],
+    commit_message: str = "Upload screenshots for issue/PR preview",
+    branch: str = SCREENSHOT_BRANCH,
+    repo: Optional[str] = None,
+    token: Optional[str] = None,
+) -> List[Dict[str, str]]:
+    """
+    Upload screenshot files to an orphan branch (default: `screenshots`) via GitHub Git Data API
+    so inline images render in Issues/PRs without adding binary blobs to `main`.
+    """
+    if not file_mappings:
+        return []
+
+    target_repo = repo or detect_repo_slug()
+    auth_token = token or get_github_token()
+
+    parent_sha: Optional[str] = None
+    base_tree_sha: Optional[str] = None
+    try:
+        ref_data = github_request("GET", f"/git/ref/heads/{branch}", repo=target_repo, token=auth_token)
+        if isinstance(ref_data, dict) and isinstance(ref_data.get("object"), dict):
+            parent_sha = ref_data["object"].get("sha")
+        if parent_sha:
+            commit_data = github_request("GET", f"/git/commits/{parent_sha}", repo=target_repo, token=auth_token)
+            if isinstance(commit_data, dict) and isinstance(commit_data.get("tree"), dict):
+                base_tree_sha = commit_data["tree"].get("sha")
+    except RuntimeError as exc:
+        if "HTTP 404" not in str(exc):
+            raise
+
+    tree_entries: List[Dict[str, str]] = []
+    uploaded: List[Dict[str, str]] = []
+
+    if parent_sha is None:
+        readme_text = (
+            "# PR & Issue Screenshots\n\n"
+            "Orphan branch storing UI verification screenshots and mockups referenced by GitHub Issues and Pull Requests.\n"
+        )
+        readme_b64 = base64.b64encode(readme_text.encode("utf-8")).decode("ascii")
+        readme_blob = github_request(
+            "POST",
+            "/git/blobs",
+            payload={"content": readme_b64, "encoding": "base64"},
+            repo=target_repo,
+            token=auth_token,
+        )
+        tree_entries.append(
+            {"path": "README.md", "mode": "100644", "type": "blob", "sha": readme_blob["sha"]}
+        )
+
+    for local_path, raw_repo_path in file_mappings.items():
+        if not os.path.isfile(local_path):
+            raise FileNotFoundError(f"Screenshot file not found: {local_path}")
+        repo_path = raw_repo_path.strip().lstrip("/").replace("\\", "/")
+        with open(local_path, "rb") as f:
+            b64_content = base64.b64encode(f.read()).decode("ascii")
+        blob = github_request(
+            "POST",
+            "/git/blobs",
+            payload={"content": b64_content, "encoding": "base64"},
+            repo=target_repo,
+            token=auth_token,
+        )
+        tree_entries.append(
+            {"path": repo_path, "mode": "100644", "type": "blob", "sha": blob["sha"]}
+        )
+        raw_url = f"https://raw.githubusercontent.com/{target_repo}/{branch}/{repo_path}"
+        alt_label = os.path.splitext(os.path.basename(repo_path))[0].replace("-", " ").replace("_", " ").title()
+        uploaded.append(
+            {
+                "local_path": local_path,
+                "repo_path": repo_path,
+                "raw_url": raw_url,
+                "markdown": f"![{alt_label}]({raw_url})",
+            }
+        )
+
+    tree_payload: Dict[str, Any] = {"tree": tree_entries}
+    if base_tree_sha:
+        tree_payload["base_tree"] = base_tree_sha
+    created_tree = github_request("POST", "/git/trees", payload=tree_payload, repo=target_repo, token=auth_token)
+
+    commit_payload: Dict[str, Any] = {
+        "message": commit_message,
+        "tree": created_tree["sha"],
+        "parents": [parent_sha] if parent_sha else [],
+    }
+    created_commit = github_request("POST", "/git/commits", payload=commit_payload, repo=target_repo, token=auth_token)
+
+    if parent_sha:
+        github_request(
+            "PATCH",
+            f"/git/refs/heads/{branch}",
+            payload={"sha": created_commit["sha"]},
+            repo=target_repo,
+            token=auth_token,
+        )
+    else:
+        github_request(
+            "POST",
+            "/git/refs",
+            payload={"ref": f"refs/heads/{branch}", "sha": created_commit["sha"]},
+            repo=target_repo,
+            token=auth_token,
+        )
+
+    return uploaded
+
+
+def resolve_screenshot_markdown(
+    screenshots: Optional[Sequence[str]],
+    prefix: str,
+    repo: Optional[str] = None,
+    token: Optional[str] = None,
+) -> List[str]:
+    """Resolve URLs, Markdown image tags, or local screenshot paths (uploading local files to `screenshots` branch)."""
+    if not screenshots:
+        return []
+    markdown_items: List[str] = []
+    local_mappings: Dict[str, str] = {}
+    for item in screenshots:
+        text = str(item).strip()
+        if not text:
+            continue
+        if text.startswith("![") or text.startswith("<img"):
+            markdown_items.append(text)
+        elif text.startswith(("http://", "https://")):
+            label = os.path.splitext(os.path.basename(urllib.parse.urlparse(text).path))[0] or "Screenshot"
+            markdown_items.append(f"![{label}]({text})")
+        elif os.path.isfile(text):
+            clean_prefix = prefix.strip("/")
+            fname = os.path.basename(text)
+            local_mappings[text] = f"{clean_prefix}/{fname}" if clean_prefix else fname
+        else:
+            markdown_items.append(text)
+
+    if local_mappings:
+        uploaded = upload_screenshots(
+            local_mappings,
+            commit_message=f"Add screenshots for {prefix}",
+            repo=repo,
+            token=token,
+        )
+        markdown_items.extend(entry["markdown"] for entry in uploaded)
+
+    return markdown_items
+
+
+def _collect_git_diff_context(base_branch: str = "main") -> Dict[str, Any]:
+    """Safely collect changed files and diffstat against `origin/<base_branch>` when on an agent branch."""
+    try:
+        current = get_current_git_branch()
+        if current in PROTECTED_BRANCHES:
+            return {}
+        base_ref = None
+        for candidate in (f"origin/{base_branch}", base_branch):
+            probe = subprocess.run(
+                ["git", "rev-parse", "--verify", "--quiet", candidate],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if probe.returncode == 0:
+                base_ref = f"{candidate}...HEAD"
+                break
+        if not base_ref:
+            return {}
+
+        stat_proc = subprocess.run(
+            ["git", "diff", "--stat", base_ref],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        names_proc = subprocess.run(
+            ["git", "diff", "--name-status", base_ref],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        changed_files = [
+            line.strip()
+            for line in (names_proc.stdout or "").splitlines()
+            if line.strip()
+        ] if names_proc.returncode == 0 else []
+        diff_stat = (stat_proc.stdout or "").strip() if stat_proc.returncode == 0 else ""
+        return {"changed_files": changed_files, "diff_stat": diff_stat}
+    except Exception:
+        return {}
+
+
+def format_pr_body(
+    issue_number: int,
+    summary: str = "",
+    changed_files: Optional[Sequence[str]] = None,
+    diff_stat: str = "",
+    examples: Optional[Sequence[str]] = None,
+    verification_results: str = "",
+    screenshots: Optional[Sequence[str]] = None,
+    acceptance_criteria: Optional[Sequence[str]] = None,
+) -> str:
+    """Format a comprehensive GitHub Pull Request body with diff details, examples, verification proof, and screenshots."""
+    summary_text = summary.strip() or "Autonomous implementation verified via `scripts/verify_task.py`."
+    lines: List[str] = [
+        f"Closes #{issue_number}",
+        "",
+        "## Summary",
+        summary_text,
+        "",
+    ]
+
+    files_list = _normalize_text_list(changed_files)
+    if files_list or diff_stat.strip():
+        lines.append("## Changes Made")
+        for entry in files_list:
+            parts = entry.split("\t", 1)
+            if len(parts) == 2:
+                lines.append(f"- **{parts[0].strip()}**: `{parts[1].strip()}`")
+            else:
+                lines.append(f"- `{entry}`")
+        if diff_stat.strip():
+            lines.extend(["", "```text", diff_stat.strip(), "```"])
+        lines.append("")
+
+    example_items = _normalize_text_list(examples)
+    if example_items:
+        lines.append("## Examples")
+        for ex in example_items:
+            lines.append(_render_rich_block(ex))
+        lines.append("")
+
+    lines.append("## Verification & Test Results")
+    if verification_results.strip():
+        lines.append(verification_results.strip())
+    else:
+        lines.append("- Verified locally via `python scripts/verify_task.py --issue " + str(issue_number) + "`.")
+    lines.append("")
+
+    shot_items = _normalize_text_list(screenshots)
+    lines.append("## Screenshots")
+    if shot_items:
+        lines.extend(shot_items)
+    else:
+        lines.append("_No UI changes in this PR (or capture pending PR CI `ui-screenshots`)._")
+    lines.append("")
+
+    criteria = _normalize_text_list(acceptance_criteria)
+    lines.append("## Review Checklist")
+    if criteria:
+        for item in criteria:
+            lines.append(f"- [x] {item}")
+    lines.extend(
+        [
+            "- [x] Changes isolated to `agent/issue-" + str(issue_number) + "` branch and within `owned_paths`",
+            "- [x] Automated unit tests and verification checks pass",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def create_or_get_pull_request(
     issue_number: int,
     head_branch: str,
     base_branch: str = "main",
     title: Optional[str] = None,
     summary: str = "",
+    examples: Optional[Sequence[str]] = None,
+    verification_results: str = "",
+    screenshots: Optional[Sequence[str]] = None,
+    changed_files: Optional[Sequence[str]] = None,
+    diff_stat: Optional[str] = None,
+    acceptance_criteria: Optional[Sequence[str]] = None,
+    issue_data: Optional[dict] = None,
     repo: Optional[str] = None,
     token: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -722,13 +1310,43 @@ def create_or_get_pull_request(
     if existing:
         return {"deduplicated": True, "pull_request": existing[0]}
 
+    resolved_issue = issue_data
+    if resolved_issue is None and (not title or acceptance_criteria is None):
+        resolved_issue = github_request("GET", f"/issues/{issue_number}", repo=target_repo, token=auth_token)
+
     pr_title = title
     if not pr_title:
-        issue = github_request("GET", f"/issues/{issue_number}", repo=target_repo, token=auth_token)
-        pr_title = f"{issue.get('title', f'Task #{issue_number}')} (#{issue_number})"
+        assert resolved_issue is not None
+        pr_title = f"{resolved_issue.get('title', f'Task #{issue_number}')} (#{issue_number})"
 
-    summary_text = summary.strip() or "Autonomous implementation verified via `scripts/verify_task.py`."
-    pr_body = f"Closes #{issue_number}\n\n## Summary\n{summary_text}"
+    resolved_criteria = acceptance_criteria
+    if resolved_criteria is None and isinstance(resolved_issue, dict) and resolved_issue.get("body"):
+        try:
+            resolved_criteria = parse_task_spec(resolved_issue["body"]).get("acceptance_criteria", [])
+        except Exception:
+            resolved_criteria = []
+
+    git_ctx: Dict[str, Any] = {}
+    if changed_files is None or diff_stat is None:
+        git_ctx = _collect_git_diff_context(base_branch=base_branch)
+
+    resolved_shots = resolve_screenshot_markdown(
+        screenshots,
+        prefix=f"prs/issue-{issue_number}",
+        repo=target_repo,
+        token=auth_token,
+    )
+
+    pr_body = format_pr_body(
+        issue_number=issue_number,
+        summary=summary,
+        changed_files=changed_files if changed_files is not None else git_ctx.get("changed_files"),
+        diff_stat=diff_stat if diff_stat is not None else git_ctx.get("diff_stat", ""),
+        examples=examples,
+        verification_results=verification_results,
+        screenshots=resolved_shots,
+        acceptance_criteria=resolved_criteria,
+    )
 
     created = github_request(
         "POST",
@@ -753,10 +1371,13 @@ def complete_task_issue(
     open_pr: bool = False,
     base_branch: str = "main",
     close: bool = False,
+    examples: Optional[Sequence[str]] = None,
+    verification_results: str = "",
+    screenshots: Optional[Sequence[str]] = None,
     repo: Optional[str] = None,
     token: Optional[str] = None,
 ) -> dict:
-    """Transition an issue to `agent:review` (optionally pushing, opening a PR, or closing) and post a comment."""
+    """Transition an issue to `agent:review` (optionally pushing, opening a PR, or closing) and post a detailed comment."""
     head_branch: Optional[str] = None
     if push or open_pr or pr is not None:
         head_branch = validate_agent_branch(pr or f"agent/issue-{issue_number}")
@@ -783,6 +1404,13 @@ def complete_task_issue(
         token=auth_token,
     )
 
+    resolved_shots = resolve_screenshot_markdown(
+        screenshots,
+        prefix=f"prs/issue-{issue_number}",
+        repo=target_repo,
+        token=auth_token,
+    )
+
     pr_info: Optional[dict] = None
     if open_pr:
         assert head_branch is not None
@@ -791,6 +1419,10 @@ def complete_task_issue(
             head_branch=head_branch,
             base_branch=base_branch,
             summary=summary,
+            examples=examples,
+            verification_results=verification_results,
+            screenshots=resolved_shots,
+            issue_data=issue,
             repo=target_repo,
             token=auth_token,
         )
@@ -799,11 +1431,15 @@ def complete_task_issue(
 
     comment_parts = ["Verification passed and task implementation is ready for review."]
     if pr:
-        comment_parts.append(f"Branch / PR: `{pr}`")
+        comment_parts.append(f"- **Branch:** `{pr}`")
     if pr_info and pr_info.get("html_url"):
-        comment_parts.append(f"Pull Request: {pr_info['html_url']}")
+        comment_parts.append(f"- **Pull Request:** {pr_info['html_url']}")
     if summary:
-        comment_parts.append(f"\nSummary:\n{summary}")
+        comment_parts.append(f"\n### Summary\n{summary}")
+    if verification_results.strip():
+        comment_parts.append(f"\n### Verification Results\n{verification_results.strip()}")
+    if resolved_shots:
+        comment_parts.append("\n### Screenshots\n" + "\n".join(resolved_shots))
 
     github_request(
         "POST",
@@ -850,6 +1486,7 @@ def block_task_issue(
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="GitHub Issues-backed autonomous task backlog CLI")
     parser.add_argument("--repo", default=None, help="GitHub repo slug owner/name (defaults to git origin)")
+    parser.add_argument("--cwd", default=None, help="Optional working directory (e.g. isolated git worktree path)")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("init", help="Enable GitHub Issues and sync standard agentic labels")
@@ -861,11 +1498,36 @@ def _build_parser() -> argparse.ArgumentParser:
     create_p.add_argument("--forbidden-paths", nargs="*", default=None)
     create_p.add_argument("--acceptance", nargs="+", required=True)
     create_p.add_argument("--verify", nargs="+", required=True)
+    create_p.add_argument("--context", default=None, help="Background, motivation, or telemetry/CI evidence")
+    create_p.add_argument("--example", nargs="*", default=None, help="Concrete examples (payloads, CLI usage, logs)")
+    create_p.add_argument("--visual", nargs="*", default=None, help="Mermaid diagrams, ASCII mockups, or image markdown/URLs")
+    create_p.add_argument("--note", nargs="*", default=None, help="Implementation hints or edge-case notes")
     create_p.add_argument("--priority", choices=["p1", "p2", "p3"], default="p2")
     create_p.add_argument("--source", choices=["roadmap", "telemetry", "test-gap", "data-drift"], default="roadmap")
     create_p.add_argument("--domain", nargs="*", default=[])
     create_p.add_argument("--status", choices=["proposed", "ready"], default="proposed")
     create_p.add_argument("--json", action="store_true")
+
+    update_p = subparsers.add_parser("update", help="Enrich or update an existing agentic GitHub Issue")
+    update_p.add_argument("issue_number", type=int)
+    update_p.add_argument("--title", default=None)
+    update_p.add_argument("--objective", default=None)
+    update_p.add_argument("--owned-paths", nargs="+", default=None)
+    update_p.add_argument("--forbidden-paths", nargs="*", default=None)
+    update_p.add_argument("--acceptance", nargs="+", default=None)
+    update_p.add_argument("--verify", nargs="+", default=None)
+    update_p.add_argument("--context", default=None)
+    update_p.add_argument("--example", nargs="*", default=None)
+    update_p.add_argument("--visual", nargs="*", default=None)
+    update_p.add_argument("--note", nargs="*", default=None)
+    update_p.add_argument("--json", action="store_true")
+
+    upload_p = subparsers.add_parser("upload-screenshots", help="Upload local PNGs to the orphan screenshots branch")
+    upload_p.add_argument("--files", nargs="+", required=True, help="Local image file paths")
+    upload_p.add_argument("--prefix", default="misc", help="Target folder prefix in the screenshots branch")
+    upload_p.add_argument("--branch", default=SCREENSHOT_BRANCH, help="Target orphan branch name")
+    upload_p.add_argument("--message", default="Upload UI screenshots", help="Commit message")
+    upload_p.add_argument("--json", action="store_true")
 
     list_p = subparsers.add_parser("list", help="List backlog issues sorted by priority")
     list_p.add_argument(
@@ -887,7 +1549,30 @@ def _build_parser() -> argparse.ArgumentParser:
     next_p.add_argument("--agent", default="autonomous-executor")
     next_p.add_argument("--checkout", action="store_true")
     next_p.add_argument("--worktree", action="store_true", help="Create an isolated git worktree from origin/main")
+    next_p.add_argument(
+        "--reclaim-stale-hours",
+        type=float,
+        default=None,
+        help="Reclaim stale agent:in-progress issues older than N hours before selecting the next task",
+    )
+    next_p.add_argument("--cwd", dest="sub_cwd", default=None, help="Optional repository working directory")
     next_p.add_argument("--json", action="store_true")
+
+    worktree_p = subparsers.add_parser(
+        "worktree",
+        help="Create or clean up an isolated agent/... git worktree rooted at latest origin/main",
+    )
+    worktree_p.add_argument("--branch", required=True, help="Isolated agent/... branch name")
+    worktree_p.add_argument("--base", default="main", help="Base branch to fetch and branch from (default: main)")
+    worktree_p.add_argument("--path", default=None, help="Optional explicit worktree directory path")
+    worktree_p.add_argument("--remove", action="store_true", help="Remove the worktree instead of creating it")
+    worktree_p.add_argument(
+        "--delete-branch",
+        action="store_true",
+        help="Also delete the local agent/... branch when removing the worktree",
+    )
+    worktree_p.add_argument("--cwd", dest="sub_cwd", default=None, help="Optional repository working directory")
+    worktree_p.add_argument("--json", action="store_true")
 
     approve_p = subparsers.add_parser("approve", help="Approve a proposed issue (transition agent:proposed -> agent:ready)")
     approve_p.add_argument("issue_number", type=int)
@@ -900,15 +1585,21 @@ def _build_parser() -> argparse.ArgumentParser:
     block_p = subparsers.add_parser("block", help="Mark an issue agent:blocked with a diagnostic reason")
     block_p.add_argument("issue_number", type=int)
     block_p.add_argument("--reason", required=True)
+    block_p.add_argument("--cwd", dest="sub_cwd", default=None, help="Optional working directory")
 
     complete_p = subparsers.add_parser("complete", help="Mark an issue agent:review or close it")
     complete_p.add_argument("issue_number", type=int)
     complete_p.add_argument("--summary", default="")
+    complete_p.add_argument("--example", nargs="*", default=None, help="Concrete usage/API/before-after examples for the PR")
+    complete_p.add_argument("--verification", default="", help="Markdown verification results summary")
+    complete_p.add_argument("--verify-report", default=None, help="Path to Markdown verification report (e.g. from verify_task.py --report-markdown)")
+    complete_p.add_argument("--screenshot", nargs="*", default=None, help="Local screenshot paths (uploaded to orphan branch) or image URLs/Markdown")
     complete_p.add_argument("--pr", default=None)
     complete_p.add_argument("--push", action="store_true", help="Safely push the validated agent/... branch to origin before completing")
     complete_p.add_argument("--open-pr", action="store_true", help="Open or reuse a GitHub Pull Request for the task branch")
     complete_p.add_argument("--base", default="main", help="Base branch for the pull request")
     complete_p.add_argument("--close", action="store_true")
+    complete_p.add_argument("--cwd", dest="sub_cwd", default=None, help="Optional working directory (e.g. git worktree)")
 
     return parser
 
@@ -916,6 +1607,21 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    target_cwd = getattr(args, "sub_cwd", None) or getattr(args, "cwd", None)
+    if target_cwd:
+        os.chdir(target_cwd)
+    else:
+        inside_proc = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if inside_proc.returncode != 0:
+            script_repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if os.path.isdir(os.path.join(script_repo_root, ".git")):
+                os.chdir(script_repo_root)
 
     if args.command == "init":
         result = init_repo(repo=args.repo)
@@ -934,6 +1640,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             forbidden_paths=args.forbidden_paths,
             acceptance_criteria=args.acceptance,
             verification_commands=args.verify,
+            context=args.context,
+            examples=args.example,
+            visuals=args.visual,
+            implementation_notes=args.note,
             priority=args.priority,
             source=args.source,
             domains=args.domain,
@@ -946,6 +1656,46 @@ def main(argv: Optional[List[str]] = None) -> int:
             issue = res["issue"]
             action = "Existing open issue matched" if res["deduplicated"] else "Created issue"
             print(f"{action}: #{issue['number']} {issue['title']} ({issue['html_url']})")
+        return 0
+
+    if args.command == "update":
+        updated = update_task_issue(
+            args.issue_number,
+            title=args.title,
+            objective=args.objective,
+            owned_paths=args.owned_paths,
+            forbidden_paths=args.forbidden_paths,
+            acceptance_criteria=args.acceptance,
+            verification_commands=args.verify,
+            context=args.context,
+            examples=args.example,
+            visuals=args.visual,
+            implementation_notes=args.note,
+            repo=args.repo,
+        )
+        if args.json:
+            print(json.dumps(updated, indent=2))
+        else:
+            print(f"Updated #{updated['number']} {updated['title']} ({updated['html_url']})")
+        return 0
+
+    if args.command == "upload-screenshots":
+        clean_prefix = args.prefix.strip("/")
+        mappings = {
+            f: (f"{clean_prefix}/{os.path.basename(f)}" if clean_prefix else os.path.basename(f))
+            for f in args.files
+        }
+        uploaded = upload_screenshots(
+            mappings,
+            commit_message=args.message,
+            branch=args.branch,
+            repo=args.repo,
+        )
+        if args.json:
+            print(json.dumps(uploaded, indent=2))
+        else:
+            for item in uploaded:
+                print(item["markdown"])
         return 0
 
     if args.command == "list":
@@ -978,7 +1728,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     if args.command == "next":
-        task = get_next_ready_issue(domain=args.domain, repo=args.repo)
+        task = get_next_ready_issue(
+            domain=args.domain,
+            reclaim_stale_hours=args.reclaim_stale_hours,
+            repo=args.repo,
+        )
         if task is None:
             if args.json:
                 print("null")
@@ -1002,6 +1756,36 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             wt_note = f" in {task['worktree_path']}" if task.get("worktree_path") else ""
             print(f"#{task['number']} {task['title']} -> branch {task['branch']}{wt_note} ({task['html_url']})")
+        return 0
+
+    if args.command == "worktree":
+        if args.remove:
+            removed_path = cleanup_task_worktree(
+                worktree_path=args.path,
+                branch=args.branch,
+                delete_branch=args.delete_branch,
+            )
+            payload = {
+                "removed": True,
+                "branch": args.branch,
+                "worktree_path": removed_path,
+                "deleted_branch": bool(args.delete_branch),
+            }
+            if args.json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(f"Removed worktree for {args.branch} ({removed_path})")
+            return 0
+        wt_path = prepare_task_worktree(
+            args.branch,
+            worktree_path=args.path,
+            base_branch=args.base,
+        )
+        payload = {"branch": args.branch, "base_branch": args.base, "worktree_path": wt_path}
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"Prepared worktree for {args.branch} from origin/{args.base} at {wt_path}")
         return 0
 
     if args.command == "approve":
@@ -1029,6 +1813,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     if args.command == "complete":
+        verification_text = args.verification or ""
+        if args.verify_report:
+            with open(args.verify_report, "r", encoding="utf-8") as vf:
+                report_content = vf.read().strip()
+            verification_text = f"{verification_text}\n\n{report_content}".strip() if verification_text else report_content
         updated = complete_task_issue(
             args.issue_number,
             summary=args.summary,
@@ -1037,6 +1826,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             open_pr=args.open_pr,
             base_branch=args.base,
             close=args.close,
+            examples=args.example,
+            verification_results=verification_text,
+            screenshots=args.screenshot,
             repo=args.repo,
         )
         pr_note = f" (PR: {updated['pull_request']['html_url']})" if updated.get("pull_request") else ""
